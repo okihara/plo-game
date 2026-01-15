@@ -222,8 +222,19 @@ body {
 /* ホールカード表示 */
 .hole-cards {
   display: flex;
-  gap: 2px;
+  gap: 1px;
   margin-top: 4px;
+}
+
+.hole-cards .card {
+  width: 21px;
+  height: 29px;
+  font-size: 8px;
+  border-radius: 3px;
+}
+
+.hole-cards .card .suit {
+  font-size: 9px;
 }
 
 .hole-cards.hidden .card {
