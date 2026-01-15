@@ -35,9 +35,8 @@ async function init() {
   isDealingCards = true;
   render();
 
-  // カード配布アニメーション
-  const humanIndex = gameState.players.findIndex(p => p.isHuman);
-  await playDealAnimation(6, humanIndex);
+  // カード配布アニメーション（人間プレイヤーは常にインデックス0）
+  await playDealAnimation(6, 0);
 
   isDealingCards = false;
   render();
@@ -53,15 +52,16 @@ function render() {
   const isCPUTurn = currentPlayer && !currentPlayer.isHuman && !gameState.isHandComplete;
 
   // プレイヤーの表示順序を計算（人間プレイヤーが下に来るように）
-  const humanIndex = gameState.players.findIndex(p => p.isHuman);
+  // 人間プレイヤーは常にid:0なので、配列インデックス0に固定
+  const humanIndex = 0;
   const orderedPlayers = [];
   for (let i = 0; i < 6; i++) {
     const idx = (humanIndex + i) % 6;
-    orderedPlayers.push({ player: gameState.players[idx], posIndex: i });
+    orderedPlayers.push({ player: gameState.players[idx], playerIdx: idx, posIndex: i });
   }
 
-  const playersHtml = orderedPlayers.map(({ player, posIndex }) => {
-    const isCurrentPlayer = gameState.currentPlayerIndex === player.id && !gameState.isHandComplete;
+  const playersHtml = orderedPlayers.map(({ player, playerIdx, posIndex }) => {
+    const isCurrentPlayer = gameState.currentPlayerIndex === playerIdx && !gameState.isHandComplete;
     const isWinner = gameState.winners.some(w => w.playerId === player.id);
     const lastAction = lastActions.get(player.id) || null;
     return renderPlayer(player, posIndex, isCurrentPlayer, isWinner, lastAction, isShowdown, isDealingCards);
@@ -175,9 +175,8 @@ async function startNextHand() {
   isDealingCards = true;
   render();
 
-  // カード配布アニメーション
-  const humanIndex = gameState.players.findIndex(p => p.isHuman);
-  await playDealAnimation(6, humanIndex);
+  // カード配布アニメーション（人間プレイヤーは常にインデックス0）
+  await playDealAnimation(6, 0);
 
   isDealingCards = false;
   render();
