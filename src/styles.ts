@@ -493,6 +493,32 @@ body {
   display: none;
 }
 
+/* テーブル移動オーバーレイ */
+.table-transition-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.2s ease;
+}
+
+.table-transition-overlay.hidden {
+  display: none;
+}
+
+.table-transition-content {
+  color: #fff;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; }
   to { opacity: 1; }
@@ -643,5 +669,97 @@ body {
 
 .waiting-message.hidden {
   display: none;
+}
+
+/* カード配布アニメーション */
+.deal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  z-index: 200;
+}
+
+.dealing-card {
+  position: absolute;
+  width: 40px;
+  height: 56px;
+  background: linear-gradient(135deg, #1a3a8a 0%, #0a2060 100%);
+  border: 1px solid #4a6ab0;
+  border-radius: 4px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+  opacity: 0;
+  z-index: 201;
+}
+
+.dealing-card::after {
+  content: '';
+  position: absolute;
+  width: 70%;
+  height: 70%;
+  top: 15%;
+  left: 15%;
+  background: repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 3px,
+    rgba(255,255,255,0.1) 3px,
+    rgba(255,255,255,0.1) 6px
+  );
+  border-radius: 2px;
+}
+
+.dealing-card.animate {
+  animation: dealCard 0.4s ease-out forwards;
+}
+
+@keyframes dealCard {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg) scale(0.5);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(var(--deal-x), var(--deal-y)) rotate(var(--deal-rotate)) scale(1);
+  }
+}
+
+.dealing-card.fade-out {
+  animation: dealCardFadeOut 0.3s ease-out forwards;
+}
+
+@keyframes dealCardFadeOut {
+  0% {
+    opacity: 1;
+    transform: translate(var(--deal-x), var(--deal-y)) rotate(var(--deal-rotate)) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--deal-x), var(--deal-y)) rotate(var(--deal-rotate)) scale(0.8);
+  }
+}
+
+/* 配布中はホールカードを非表示 */
+.my-cards.dealing {
+  opacity: 0;
+}
+
+.my-cards.fade-in {
+  animation: cardsAppear 0.5s ease-out forwards;
+}
+
+@keyframes cardsAppear {
+  0% { opacity: 0; transform: scale(0.8); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+.hole-cards.dealing {
+  opacity: 0;
+}
+
+.hole-cards.fade-in {
+  animation: cardsAppear 0.3s ease-out forwards;
 }
 `;

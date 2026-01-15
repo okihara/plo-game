@@ -9,6 +9,9 @@ import {
   renderActionPanel,
   renderResultOverlay,
   renderThinkingIndicator,
+  renderTableTransition,
+  renderDealOverlay,
+  playDealAnimation,
   formatPot
 } from './ui';
 
@@ -21,12 +24,22 @@ document.head.appendChild(styleSheet);
 let gameState: GameState;
 let lastActions: Map<number, { action: Action; amount: number }> = new Map();
 let isProcessingCPU = false;
+let isTableTransition = false;
+let isDealingCards = false;
 
 // 初期化
-function init() {
+async function init() {
   gameState = createInitialGameState(10000);
   gameState = startNewHand(gameState);
   lastActions.clear();
+  isDealingCards = true;
+  render();
+
+  // カード配布アニメーション
+  const humanIndex = gameState.players.findIndex(p => p.isHuman);
+  await playDealAnimation(6, humanIndex);
+
+  isDealingCards = false;
   render();
   scheduleNextCPUAction();
 }
@@ -51,7 +64,7 @@ function render() {
     const isCurrentPlayer = gameState.currentPlayerIndex === player.id && !gameState.isHandComplete;
     const isWinner = gameState.winners.some(w => w.playerId === player.id);
     const lastAction = lastActions.get(player.id) || null;
-    return renderPlayer(player, posIndex, isCurrentPlayer, isWinner, lastAction, isShowdown);
+    return renderPlayer(player, posIndex, isCurrentPlayer, isWinner, lastAction, isShowdown, isDealingCards);
   }).join('');
 
   app.innerHTML = `
@@ -64,9 +77,11 @@ function render() {
           ${playersHtml}
         </div>
       </div>
-      ${renderMyCards(humanPlayer.holeCards)}
+      ${renderMyCards(humanPlayer.holeCards, isDealingCards)}
       ${renderActionPanel(gameState, handleAction)}
       ${renderResultOverlay(gameState)}
+      ${renderTableTransition(isTableTransition)}
+      ${renderDealOverlay()}
     </div>
   `;
 
@@ -148,7 +163,7 @@ function formatAmount(amount: number): string {
 }
 
 // 次のハンドを開始
-function startNextHand() {
+async function startNextHand() {
   // チップが0以下のプレイヤーをリセット
   for (const player of gameState.players) {
     if (player.chips <= 0) {
@@ -157,6 +172,14 @@ function startNextHand() {
   }
   gameState = startNewHand(gameState);
   lastActions.clear();
+  isDealingCards = true;
+  render();
+
+  // カード配布アニメーション
+  const humanIndex = gameState.players.findIndex(p => p.isHuman);
+  await playDealAnimation(6, humanIndex);
+
+  isDealingCards = false;
   render();
   scheduleNextCPUAction();
 }
@@ -177,9 +200,12 @@ function handleAction(action: Action, amount: number) {
   gameState = applyAction(gameState, gameState.currentPlayerIndex, action, amount);
   render();
 
-  // 人間プレイヤーがフォールドしたら少し待って次のハンドへ
+  // 人間プレイヤーがフォールドしたら「テーブル移動中」を表示して次のハンドへ
   if (action === 'fold') {
+    isTableTransition = true;
+    render();
     setTimeout(() => {
+      isTableTransition = false;
       startNextHand();
     }, 1000);
     return;

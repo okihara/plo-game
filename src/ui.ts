@@ -52,7 +52,8 @@ export function renderPlayer(
   isCurrentPlayer: boolean,
   isWinner: boolean,
   lastAction: { action: Action; amount: number } | null,
-  showCards: boolean
+  showCards: boolean,
+  isDealing: boolean = false
 ): string {
   const avatarClass = [
     'player-avatar',
@@ -80,15 +81,16 @@ export function renderPlayer(
   // 人間プレイヤーのカードは別の場所に表示するので、ここでは他プレイヤーのみ
   let holeCardsHtml = '';
   if (!player.isHuman && player.holeCards.length > 0) {
+    const dealingClass = isDealing ? 'dealing' : '';
     if (showCards && !player.folded) {
       holeCardsHtml = `
-        <div class="hole-cards">
+        <div class="hole-cards ${dealingClass}">
           ${player.holeCards.map(c => renderCard(c)).join('')}
         </div>
       `;
     } else if (!player.folded) {
       holeCardsHtml = `
-        <div class="hole-cards hidden">
+        <div class="hole-cards hidden ${dealingClass}">
           ${Array(4).fill(renderFaceDownCard()).join('')}
         </div>
       `;
@@ -113,11 +115,12 @@ export function renderPlayer(
   `;
 }
 
-export function renderMyCards(cards: Card[]): string {
+export function renderMyCards(cards: Card[], isDealing: boolean = false): string {
   if (cards.length === 0) return '';
 
+  const dealingClass = isDealing ? 'dealing' : '';
   return `
-    <div class="my-cards">
+    <div class="my-cards ${dealingClass}">
       ${cards.map(c => renderCard(c, true)).join('')}
     </div>
   `;
@@ -125,7 +128,7 @@ export function renderMyCards(cards: Card[]): string {
 
 export function renderActionPanel(
   state: GameState,
-  onAction: (action: Action, amount: number) => void
+  _onAction: (action: Action, amount: number) => void
 ): string {
   const humanPlayer = state.players.find(p => p.isHuman)!;
   const isMyTurn = state.players[state.currentPlayerIndex]?.isHuman && !state.isHandComplete;
@@ -228,6 +231,16 @@ export function renderWaitingMessage(visible: boolean): string {
   return `<div class="waiting-message ${visible ? '' : 'hidden'}">あなたの番を待っています...</div>`;
 }
 
+export function renderTableTransition(visible: boolean): string {
+  return `
+    <div class="table-transition-overlay ${visible ? '' : 'hidden'}">
+      <div class="table-transition-content">
+        <span>テーブル移動中...</span>
+      </div>
+    </div>
+  `;
+}
+
 function formatChips(amount: number): string {
   if (amount >= 1000000) {
     return `${(amount / 1000000).toFixed(1)}M`;
@@ -251,4 +264,101 @@ function formatAction(lastAction: { action: Action; amount: number }): string {
 
 export function formatPot(pot: number): string {
   return formatChips(pot);
+}
+
+// カード配布アニメーション用のポジション情報
+interface DealPosition {
+  x: number;
+  y: number;
+  rotate: number;
+}
+
+// プレイヤーポジションごとの配布先座標（テーブル中央からの相対位置）
+function getPlayerDealPosition(positionIndex: number, cardIndex: number): DealPosition {
+  // 各ポジションの基準座標（テーブル中央からの相対px）
+  const positions: Record<number, { x: number; y: number }> = {
+    0: { x: 0, y: 180 },      // 人間プレイヤー - 下
+    1: { x: -120, y: 100 },   // SB - 左下
+    2: { x: -130, y: -20 },   // BB - 左
+    3: { x: 0, y: -120 },     // UTG - 上
+    4: { x: 130, y: -20 },    // HJ - 右
+    5: { x: 120, y: 100 },    // CO - 右下
+  };
+
+  const basePos = positions[positionIndex];
+  // 4枚のカードを少しずつずらして配置
+  const offsetX = (cardIndex - 1.5) * 15;
+  const rotate = (Math.random() - 0.5) * 10;
+
+  return {
+    x: basePos.x + offsetX,
+    y: basePos.y,
+    rotate
+  };
+}
+
+export function renderDealOverlay(): string {
+  return '<div class="deal-overlay" id="deal-overlay"></div>';
+}
+
+export async function playDealAnimation(playerCount: number, humanPositionIndex: number): Promise<void> {
+  const overlay = document.getElementById('deal-overlay');
+  if (!overlay) return;
+
+  // テーブル中央の座標を取得
+  const table = document.querySelector('.poker-table');
+  if (!table) return;
+
+  const tableRect = table.getBoundingClientRect();
+  const centerX = tableRect.left + tableRect.width / 2;
+  const centerY = tableRect.top + tableRect.height / 2;
+
+  // ディーラーの位置（BTNの次のSBから配布開始）
+  const dealOrder: number[] = [];
+  for (let i = 0; i < playerCount; i++) {
+    dealOrder.push((humanPositionIndex + 1 + i) % playerCount);
+  }
+
+  const cards: HTMLElement[] = [];
+  const CARDS_PER_PLAYER = 4;
+  const DEAL_DELAY = 80; // カード間の遅延（ms）
+
+  // 各プレイヤーに1枚ずつ配る（4周）
+  for (let round = 0; round < CARDS_PER_PLAYER; round++) {
+    for (let playerIdx = 0; playerIdx < playerCount; playerIdx++) {
+      const posIndex = dealOrder[playerIdx];
+      const dealPos = getPlayerDealPosition(posIndex, round);
+
+      const card = document.createElement('div');
+      card.className = 'dealing-card';
+      card.style.left = `${centerX - 20}px`;
+      card.style.top = `${centerY - 28}px`;
+      card.style.setProperty('--deal-x', `${dealPos.x}px`);
+      card.style.setProperty('--deal-y', `${dealPos.y}px`);
+      card.style.setProperty('--deal-rotate', `${dealPos.rotate}deg`);
+
+      overlay.appendChild(card);
+      cards.push(card);
+
+      // アニメーション開始
+      await new Promise(resolve => setTimeout(resolve, 10));
+      card.classList.add('animate');
+
+      await new Promise(resolve => setTimeout(resolve, DEAL_DELAY));
+    }
+  }
+
+  // 少し待ってからフェードアウト
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // カードをフェードアウト
+  cards.forEach(card => {
+    card.classList.remove('animate');
+    card.classList.add('fade-out');
+  });
+
+  await new Promise(resolve => setTimeout(resolve, 300));
+
+  // オーバーレイをクリア
+  overlay.innerHTML = '';
 }
