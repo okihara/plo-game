@@ -99,9 +99,9 @@ body {
 
 .player-position.pos-0 { bottom: -12%; left: 50%; transform: translateX(-50%); } /* 人間プレイヤー - 下 */
 .player-position.pos-1 { bottom: 10%; left: -15%; }   /* SB - 左下 */
-.player-position.pos-2 { top: 35%; left: -20%; }    /* BB - 左 */
+.player-position.pos-2 { top: 25%; left: -15%; }    /* BB - 左 */
 .player-position.pos-3 { top: -8%; left: 50%; transform: translateX(-50%); }    /* UTG - 上 */
-.player-position.pos-4 { top: 35%; right: -20%; }   /* HJ - 右 */
+.player-position.pos-4 { top: 25%; right: -15%; }   /* HJ - 右 */
 .player-position.pos-5 { bottom: 10%; right: -15%; }   /* CO - 右下 */
 
 .player-avatar {
