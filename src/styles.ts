@@ -241,6 +241,10 @@ body {
   background: linear-gradient(135deg, #1a3a8a 0%, #0a2060 100%);
 }
 
+.hole-cards.cards-folded {
+  visibility: hidden;
+}
+
 /* カード */
 .card {
   width: 32px;

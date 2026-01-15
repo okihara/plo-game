@@ -82,15 +82,16 @@ export function renderPlayer(
   let holeCardsHtml = '';
   if (!player.isHuman && player.holeCards.length > 0) {
     const dealingClass = isDealing ? 'dealing' : '';
+    const foldedClass = player.folded ? 'cards-folded' : '';
     if (showCards && !player.folded) {
       holeCardsHtml = `
         <div class="hole-cards ${dealingClass}">
           ${player.holeCards.map(c => renderCard(c)).join('')}
         </div>
       `;
-    } else if (!player.folded) {
+    } else {
       holeCardsHtml = `
-        <div class="hole-cards hidden ${dealingClass}">
+        <div class="hole-cards hidden ${dealingClass} ${foldedClass}">
           ${Array(4).fill(renderFaceDownCard()).join('')}
         </div>
       `;
