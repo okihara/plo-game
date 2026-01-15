@@ -136,18 +136,7 @@ function attachEventListeners() {
   // 次のハンドボタン
   const nextHandBtn = document.querySelector('.next-hand-btn');
   if (nextHandBtn) {
-    nextHandBtn.addEventListener('click', () => {
-      // チップが0以下のプレイヤーをリセット
-      for (const player of gameState.players) {
-        if (player.chips <= 0) {
-          player.chips = 10000; // リバイ
-        }
-      }
-      gameState = startNewHand(gameState);
-      lastActions.clear();
-      render();
-      scheduleNextCPUAction();
-    });
+    nextHandBtn.addEventListener('click', startNextHand);
   }
 }
 
@@ -156,6 +145,20 @@ function formatAmount(amount: number): string {
     return `${(amount / 1000).toFixed(1)}K`;
   }
   return amount.toString();
+}
+
+// 次のハンドを開始
+function startNextHand() {
+  // チップが0以下のプレイヤーをリセット
+  for (const player of gameState.players) {
+    if (player.chips <= 0) {
+      player.chips = 10000; // リバイ
+    }
+  }
+  gameState = startNewHand(gameState);
+  lastActions.clear();
+  render();
+  scheduleNextCPUAction();
 }
 
 // アクションハンドラー
@@ -173,6 +176,14 @@ function handleAction(action: Action, amount: number) {
   lastActions.set(currentPlayer.id, { action, amount });
   gameState = applyAction(gameState, gameState.currentPlayerIndex, action, amount);
   render();
+
+  // 人間プレイヤーがフォールドしたら少し待って次のハンドへ
+  if (action === 'fold') {
+    setTimeout(() => {
+      startNextHand();
+    }, 1000);
+    return;
+  }
 
   if (!gameState.isHandComplete) {
     scheduleNextCPUAction();
