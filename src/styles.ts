@@ -400,8 +400,9 @@ body {
   padding: 0 5px;
 }
 
-.bet-slider-container.hidden {
-  display: none;
+.bet-slider-container.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .bet-slider {
@@ -436,6 +437,11 @@ body {
   gap: 6px;
   margin-top: 8px;
   padding: 0 5px;
+}
+
+.preset-bets.disabled {
+  opacity: 0.4;
+  pointer-events: none;
 }
 
 .preset-btn {

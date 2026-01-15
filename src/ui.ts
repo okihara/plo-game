@@ -160,15 +160,15 @@ export function renderActionPanel(
           オールイン
         </button>
       </div>
-      <div class="bet-slider-container ${!canRaise || !isMyTurn ? 'hidden' : ''}">
-        <input type="range" class="bet-slider" min="${minRaise}" max="${maxRaise}" value="${minRaise}" step="${state.bigBlind}">
+      <div class="bet-slider-container ${!canRaise || !isMyTurn ? 'disabled' : ''}">
+        <input type="range" class="bet-slider" min="${minRaise}" max="${maxRaise}" value="${minRaise}" step="${state.bigBlind}" ${!canRaise || !isMyTurn ? 'disabled' : ''}>
         <span class="bet-amount-display">${formatChips(minRaise)}</span>
       </div>
-      <div class="preset-bets ${!canRaise || !isMyTurn ? 'hidden' : ''}">
-        <button class="preset-btn" data-preset="0.33">1/3</button>
-        <button class="preset-btn" data-preset="0.5">1/2</button>
-        <button class="preset-btn" data-preset="0.75">3/4</button>
-        <button class="preset-btn" data-preset="1">ポット</button>
+      <div class="preset-bets ${!canRaise || !isMyTurn ? 'disabled' : ''}">
+        <button class="preset-btn" data-preset="0.33" ${!canRaise || !isMyTurn ? 'disabled' : ''}>1/3</button>
+        <button class="preset-btn" data-preset="0.5" ${!canRaise || !isMyTurn ? 'disabled' : ''}>1/2</button>
+        <button class="preset-btn" data-preset="0.75" ${!canRaise || !isMyTurn ? 'disabled' : ''}>3/4</button>
+        <button class="preset-btn" data-preset="1" ${!canRaise || !isMyTurn ? 'disabled' : ''}>ポット</button>
       </div>
     </div>
   `;
