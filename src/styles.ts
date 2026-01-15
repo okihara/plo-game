@@ -192,10 +192,32 @@ body {
   text-align: center;
 }
 
-.position-badge.dealer {
-  background: #ffd700;
-  color: #000;
+/* ディーラーボタン */
+.dealer-button {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(145deg, #fff9e6 0%, #ffd700 50%, #cc9900 100%);
+  border: 2px solid #aa8800;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 900;
+  color: #333;
+  box-shadow:
+    0 2px 4px rgba(0,0,0,0.4),
+    inset 0 1px 2px rgba(255,255,255,0.6);
+  z-index: 25;
 }
+
+.player-position.pos-0 .dealer-button { top: -40px; left: 80px; }
+.player-position.pos-1 .dealer-button { top: -5px; right: -35px; }
+.player-position.pos-2 .dealer-button { top: -5px; right: -35px; }
+.player-position.pos-3 .dealer-button { bottom: -35px; right: 60px; }
+.player-position.pos-4 .dealer-button { top: -5px; left: -35px; }
+.player-position.pos-5 .dealer-button { top: -5px; left: -35px; }
 
 /* ホールカード表示 */
 .hole-cards {

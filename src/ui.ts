@@ -63,9 +63,11 @@ export function renderPlayer(
 
   const emoji = player.isHuman ? '👤' : '🤖';
 
-  const positionBadge = player.position === 'BTN'
-    ? '<span class="position-badge dealer">D</span>'
-    : `<span class="position-badge">${player.position}</span>`;
+  const dealerButton = player.position === 'BTN'
+    ? '<div class="dealer-button">D</div>'
+    : '';
+
+  const positionBadge = `<span class="position-badge">${player.position}</span>`;
 
   const betDisplay = player.currentBet > 0
     ? `<div class="player-bet">${formatChips(player.currentBet)}</div>`
@@ -106,6 +108,7 @@ export function renderPlayer(
       ${holeCardsHtml}
       ${betDisplay}
       ${lastActionDisplay}
+      ${dealerButton}
     </div>
   `;
 }
