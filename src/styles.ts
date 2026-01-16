@@ -484,11 +484,12 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0,0,0,0.85);
+  background: rgba(0,0,0,0.4);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-end;
+  padding-bottom: 40px;
   z-index: 100;
   animation: fadeIn 0.3s ease;
 }
@@ -530,7 +531,10 @@ body {
 
 .result-content {
   text-align: center;
-  padding: 30px;
+  padding: 20px;
+  background: rgba(0,0,0,0.7);
+  border-radius: 20px;
+  margin: 0 20px;
 }
 
 .result-title {
@@ -564,8 +568,8 @@ body {
 }
 
 .next-hand-btn {
-  padding: 16px 40px;
-  font-size: 16px;
+  padding: 18px 60px;
+  font-size: 18px;
   font-weight: bold;
   background: linear-gradient(180deg, #4CAF50 0%, #388E3C 100%);
   color: #fff;
@@ -575,6 +579,7 @@ body {
   text-transform: uppercase;
   letter-spacing: 1px;
   box-shadow: 0 4px 15px rgba(76,175,80,0.4);
+  min-width: 200px;
 }
 
 .next-hand-btn:active {
@@ -636,6 +641,9 @@ body {
   text-transform: uppercase;
   white-space: nowrap;
   z-index: 15;
+}
+
+.last-action.animate {
   animation: actionPop 0.3s ease;
 }
 
