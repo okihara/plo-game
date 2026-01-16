@@ -12,7 +12,8 @@ import {
   renderTableTransition,
   renderDealOverlay,
   playDealAnimation,
-  formatPot
+  formatPot,
+  resetCommunityCardCount
 } from './ui';
 
 // スタイルを注入
@@ -22,10 +23,11 @@ document.head.appendChild(styleSheet);
 
 // ゲーム状態
 let gameState: GameState;
-let lastActions: Map<number, { action: Action; amount: number }> = new Map();
+let lastActions: Map<number, { action: Action; amount: number; timestamp: number }> = new Map();
 let isProcessingCPU = false;
 let isTableTransition = false;
 let isDealingCards = false;
+let newCommunityCardsCount = 0;
 
 // 初期化
 async function init() {
@@ -33,6 +35,8 @@ async function init() {
   gameState = startNewHand(gameState);
   lastActions.clear();
   isDealingCards = true;
+  newCommunityCardsCount = 0;
+  resetCommunityCardCount();
   render();
 
   // カード配布アニメーション（人間プレイヤーは常にインデックス0）
@@ -73,7 +77,7 @@ function render() {
         ${renderThinkingIndicator(currentPlayer?.name || '', isCPUTurn && isProcessingCPU)}
         <div class="poker-table">
           <div class="pot-display">POT: ${formatPot(gameState.pot)}</div>
-          ${renderCommunityCards(gameState.communityCards)}
+          ${renderCommunityCards(gameState.communityCards, newCommunityCardsCount)}
           ${playersHtml}
         </div>
       </div>
@@ -173,6 +177,8 @@ async function startNextHand() {
   gameState = startNewHand(gameState);
   lastActions.clear();
   isDealingCards = true;
+  newCommunityCardsCount = 0;
+  resetCommunityCardCount();
   render();
 
   // カード配布アニメーション（人間プレイヤーは常にインデックス0）
@@ -195,8 +201,18 @@ function handleAction(action: Action, amount: number) {
   const isValid = validActions.some(a => a.action === action);
   if (!isValid) return;
 
-  lastActions.set(currentPlayer.id, { action, amount });
+  const previousStreet = gameState.currentStreet;
+  const prevCardCount = gameState.communityCards.length;
+  lastActions.set(currentPlayer.id, { action, amount, timestamp: Date.now() });
   gameState = applyAction(gameState, gameState.currentPlayerIndex, action, amount);
+
+  // ストリートが変わったらアクションマーカーをクリアしてカードアニメーション
+  if (gameState.currentStreet !== previousStreet) {
+    lastActions.clear();
+    newCommunityCardsCount = gameState.communityCards.length - prevCardCount;
+  } else {
+    newCommunityCardsCount = 0;
+  }
   render();
 
   // 人間プレイヤーがフォールドしたら「テーブル移動中」を表示して次のハンドへ
@@ -235,9 +251,20 @@ function scheduleNextCPUAction() {
       return;
     }
 
+    const previousStreet = gameState.currentStreet;
+    const prevCardCount = gameState.communityCards.length;
     const cpuAction = getCPUAction(gameState, gameState.currentPlayerIndex);
-    lastActions.set(currentPlayer.id, cpuAction);
+    lastActions.set(currentPlayer.id, { ...cpuAction, timestamp: Date.now() });
     gameState = applyAction(gameState, gameState.currentPlayerIndex, cpuAction.action, cpuAction.amount);
+
+    // ストリートが変わったらアクションマーカーをクリアしてカードアニメーション
+    if (gameState.currentStreet !== previousStreet) {
+      lastActions.clear();
+      newCommunityCardsCount = gameState.communityCards.length - prevCardCount;
+    } else {
+      newCommunityCardsCount = 0;
+    }
+
     isProcessingCPU = false;
     render();
 

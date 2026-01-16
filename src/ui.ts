@@ -33,8 +33,14 @@ export function renderFaceDownCard(large: boolean = false): string {
   return `<div class="card face-down ${sizeClass}"></div>`;
 }
 
-export function renderCommunityCards(cards: Card[]): string {
-  const cardElements = cards.map(c => renderCard(c, true)).join('');
+// 前回のコミュニティカード枚数を追跡
+let prevCommunityCardCount = 0;
+
+export function renderCommunityCards(cards: Card[], newCardsCount: number = 0): string {
+  const cardElements = cards.map((c, index) => {
+    const isNewCard = index >= cards.length - newCardsCount && newCardsCount > 0;
+    return renderCardWithClass(c, true, isNewCard ? 'new-card' : '');
+  }).join('');
   // 5枚まで空のスロットを表示
   const emptySlots = 5 - cards.length;
   const emptyElements = Array(emptySlots).fill('<div class="card face-down large" style="opacity:0.3"></div>').join('');
@@ -46,12 +52,38 @@ export function renderCommunityCards(cards: Card[]): string {
   `;
 }
 
+function renderCardWithClass(card: Card, large: boolean = false, extraClass: string = ''): string {
+  const suitSymbol = SUIT_SYMBOLS[card.suit];
+  const suitName = SUIT_NAMES[card.suit];
+  const sizeClass = large ? 'large' : '';
+
+  return `
+    <div class="card ${suitName} ${sizeClass} ${extraClass}">
+      <span class="rank">${card.rank}</span>
+      <span class="suit">${suitSymbol}</span>
+    </div>
+  `;
+}
+
+export function resetCommunityCardCount(): void {
+  prevCommunityCardCount = 0;
+}
+
+export function getNewCardsCount(currentCount: number): number {
+  const newCount = currentCount - prevCommunityCardCount;
+  prevCommunityCardCount = currentCount;
+  return newCount > 0 ? newCount : 0;
+}
+
+// アニメーション済みのアクションを追跡
+const animatedActions = new Set<string>();
+
 export function renderPlayer(
   player: Player,
   positionIndex: number,
   isCurrentPlayer: boolean,
   isWinner: boolean,
-  lastAction: { action: Action; amount: number } | null,
+  lastAction: { action: Action; amount: number; timestamp?: number } | null,
   showCards: boolean,
   isDealing: boolean = false
 ): string {
@@ -74,9 +106,21 @@ export function renderPlayer(
     ? `<div class="player-bet">${formatChips(player.currentBet)}</div>`
     : '';
 
-  const lastActionDisplay = lastAction && !player.folded
-    ? `<div class="last-action ${lastAction.action}">${formatAction(lastAction)}</div>`
-    : '';
+  let lastActionDisplay = '';
+  if (lastAction && !player.folded) {
+    const actionKey = `${player.id}-${lastAction.timestamp || 0}`;
+    const isNewAction = !animatedActions.has(actionKey);
+    if (isNewAction) {
+      animatedActions.add(actionKey);
+      // 古いエントリをクリア（メモリリーク防止）
+      if (animatedActions.size > 20) {
+        const entries = Array.from(animatedActions);
+        entries.slice(0, 10).forEach(e => animatedActions.delete(e));
+      }
+    }
+    const animateClass = isNewAction ? 'animate' : '';
+    lastActionDisplay = `<div class="last-action ${lastAction.action} ${animateClass}">${formatAction(lastAction)}</div>`;
+  }
 
   // 人間プレイヤーのカードは別の場所に表示するので、ここでは他プレイヤーのみ
   let holeCardsHtml = '';

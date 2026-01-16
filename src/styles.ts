@@ -774,4 +774,65 @@ body {
 .hole-cards.fade-in {
   animation: cardsAppear 0.3s ease-out forwards;
 }
+
+/* コミュニティカードのめくりアニメーション */
+.community-cards .card {
+  transform-style: preserve-3d;
+  perspective: 1000px;
+}
+
+.community-cards .card.new-card {
+  animation: flipCard 0.6s ease forwards;
+  animation-delay: 0.3s;
+}
+
+/* 裏面を最初に表示 */
+.community-cards .card.new-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #1a3a8a 0%, #0a2060 100%);
+  border-radius: 4px;
+  backface-visibility: hidden;
+  animation: hideBack 0.6s ease forwards;
+  animation-delay: 0.3s;
+}
+
+.community-cards .card.new-card .rank,
+.community-cards .card.new-card .suit {
+  animation: showFace 0.6s ease forwards;
+  animation-delay: 0.3s;
+  opacity: 0;
+}
+
+@keyframes flipCard {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(180deg);
+  }
+}
+
+@keyframes hideBack {
+  0%, 45% {
+    opacity: 1;
+  }
+  55%, 100% {
+    opacity: 0;
+  }
+}
+
+@keyframes showFace {
+  0%, 45% {
+    opacity: 0;
+  }
+  55%, 100% {
+    opacity: 1;
+  }
+}
+
 `;
