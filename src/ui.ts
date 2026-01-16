@@ -75,9 +75,6 @@ export function getNewCardsCount(currentCount: number): number {
   return newCount > 0 ? newCount : 0;
 }
 
-// アニメーション済みのアクションを追跡
-const animatedActions = new Set<string>();
-
 export function renderPlayer(
   player: Player,
   positionIndex: number,
@@ -106,20 +103,13 @@ export function renderPlayer(
     ? `<div class="player-bet">${formatChips(player.currentBet)}</div>`
     : '';
 
+  // アクションマーカー: 1秒後に消えるため、アクション後1秒以内のみ表示
   let lastActionDisplay = '';
-  if (lastAction && !player.folded) {
-    const actionKey = `${player.id}-${lastAction.timestamp || 0}`;
-    const isNewAction = !animatedActions.has(actionKey);
-    if (isNewAction) {
-      animatedActions.add(actionKey);
-      // 古いエントリをクリア（メモリリーク防止）
-      if (animatedActions.size > 20) {
-        const entries = Array.from(animatedActions);
-        entries.slice(0, 10).forEach(e => animatedActions.delete(e));
-      }
+  if (lastAction && lastAction.timestamp) {
+    const elapsed = Date.now() - lastAction.timestamp;
+    if (elapsed < 1000) {
+      lastActionDisplay = `<div class="last-action ${lastAction.action}">${formatAction(lastAction)}</div>`;
     }
-    const animateClass = isNewAction ? 'animate' : '';
-    lastActionDisplay = `<div class="last-action ${lastAction.action} ${animateClass}">${formatAction(lastAction)}</div>`;
   }
 
   // 人間プレイヤーのカードは別の場所に表示するので、ここでは他プレイヤーのみ

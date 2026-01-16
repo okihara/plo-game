@@ -629,7 +629,7 @@ body {
   40% { transform: scale(1); }
 }
 
-/* 最後のアクション表示 */
+/* 最後のアクション表示 - プレイヤーアイコンの上に表示 */
 .last-action {
   position: absolute;
   background: rgba(0,0,0,0.9);
@@ -641,15 +641,29 @@ body {
   text-transform: uppercase;
   white-space: nowrap;
   z-index: 15;
+  left: 50%;
+  transform: translateX(-50%);
+  top: -30px;
+  animation: actionPopAndFade 1s ease forwards;
 }
 
-.last-action.animate {
-  animation: actionPop 0.3s ease;
-}
-
-@keyframes actionPop {
-  0% { transform: scale(0.5); opacity: 0; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes actionPopAndFade {
+  0% {
+    transform: translateX(-50%) scale(0.5);
+    opacity: 0;
+  }
+  20% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  80% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(0.8);
+    opacity: 0;
+  }
 }
 
 .last-action.fold { background: #666; }
@@ -657,13 +671,6 @@ body {
 .last-action.call { background: #4CAF50; }
 .last-action.raise, .last-action.bet { background: #FF9800; }
 .last-action.allin { background: #e63946; }
-
-.player-position.pos-0 .last-action { top: -50px; }
-.player-position.pos-1 .last-action { right: -70px; top: 10px; }
-.player-position.pos-2 .last-action { right: -80px; top: 30px; }
-.player-position.pos-3 .last-action { bottom: -30px; }
-.player-position.pos-4 .last-action { left: -80px; top: 30px; }
-.player-position.pos-5 .last-action { left: -70px; top: 10px; }
 
 /* 待機メッセージ */
 .waiting-message {

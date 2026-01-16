@@ -28,6 +28,7 @@ let isProcessingCPU = false;
 let isTableTransition = false;
 let isDealingCards = false;
 let newCommunityCardsCount = 0;
+let actionMarkerTimers: Map<number, ReturnType<typeof setTimeout>> = new Map();
 
 // 初期化
 async function init() {
@@ -166,6 +167,28 @@ function formatAmount(amount: number): string {
   return amount.toString();
 }
 
+// アクションマーカーを1秒後に消すタイマー
+function scheduleActionMarkerClear(playerId: number) {
+  // 既存のタイマーをクリア
+  const existingTimer = actionMarkerTimers.get(playerId);
+  if (existingTimer) {
+    clearTimeout(existingTimer);
+  }
+
+  const timer = setTimeout(() => {
+    lastActions.delete(playerId);
+    actionMarkerTimers.delete(playerId);
+    render();
+  }, 1000);
+
+  actionMarkerTimers.set(playerId, timer);
+}
+
+function clearAllActionMarkerTimers() {
+  actionMarkerTimers.forEach(timer => clearTimeout(timer));
+  actionMarkerTimers.clear();
+}
+
 // 次のハンドを開始
 async function startNextHand() {
   // チップが0以下のプレイヤーをリセット
@@ -176,6 +199,7 @@ async function startNextHand() {
   }
   gameState = startNewHand(gameState);
   lastActions.clear();
+  clearAllActionMarkerTimers();
   isDealingCards = true;
   newCommunityCardsCount = 0;
   resetCommunityCardCount();
@@ -203,15 +227,19 @@ function handleAction(action: Action, amount: number) {
 
   const previousStreet = gameState.currentStreet;
   const prevCardCount = gameState.communityCards.length;
-  lastActions.set(currentPlayer.id, { action, amount, timestamp: Date.now() });
+  const playerId = currentPlayer.id;
+  lastActions.set(playerId, { action, amount, timestamp: Date.now() });
   gameState = applyAction(gameState, gameState.currentPlayerIndex, action, amount);
 
   // ストリートが変わったらアクションマーカーをクリアしてカードアニメーション
   if (gameState.currentStreet !== previousStreet) {
     lastActions.clear();
+    clearAllActionMarkerTimers();
     newCommunityCardsCount = gameState.communityCards.length - prevCardCount;
   } else {
     newCommunityCardsCount = 0;
+    // 1秒後にアクションマーカーを消すためのタイマー
+    scheduleActionMarkerClear(playerId);
   }
   render();
 
@@ -253,16 +281,20 @@ function scheduleNextCPUAction() {
 
     const previousStreet = gameState.currentStreet;
     const prevCardCount = gameState.communityCards.length;
+    const playerId = currentPlayer.id;
     const cpuAction = getCPUAction(gameState, gameState.currentPlayerIndex);
-    lastActions.set(currentPlayer.id, { ...cpuAction, timestamp: Date.now() });
+    lastActions.set(playerId, { ...cpuAction, timestamp: Date.now() });
     gameState = applyAction(gameState, gameState.currentPlayerIndex, cpuAction.action, cpuAction.amount);
 
     // ストリートが変わったらアクションマーカーをクリアしてカードアニメーション
     if (gameState.currentStreet !== previousStreet) {
       lastActions.clear();
+      clearAllActionMarkerTimers();
       newCommunityCardsCount = gameState.communityCards.length - prevCardCount;
     } else {
       newCommunityCardsCount = 0;
+      // 1秒後にアクションマーカーを消すためのタイマー
+      scheduleActionMarkerClear(playerId);
     }
 
     isProcessingCPU = false;
