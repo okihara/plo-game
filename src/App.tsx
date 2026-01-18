@@ -4,7 +4,6 @@ import {
   MyCards,
   ActionPanel,
   ResultOverlay,
-  TableTransition,
 } from './components';
 
 export function App() {
@@ -12,7 +11,6 @@ export function App() {
     gameState,
     lastActions,
     isProcessingCPU,
-    isTableTransition,
     isDealingCards,
     newCommunityCardsCount,
     handleAction,
@@ -36,8 +34,6 @@ export function App() {
       <ActionPanel state={gameState} onAction={handleAction} />
 
       <ResultOverlay state={gameState} onNextHand={startNextHand} />
-
-      <TableTransition visible={isTableTransition} />
     </div>
   );
 }

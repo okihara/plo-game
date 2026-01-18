@@ -22,7 +22,6 @@ export function useGameState() {
   });
   const [lastActions, setLastActions] = useState<Map<number, LastAction>>(new Map());
   const [isProcessingCPU, setIsProcessingCPU] = useState(false);
-  const [isTableTransition, setIsTableTransition] = useState(false);
   const [isDealingCards, setIsDealingCards] = useState(true);
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
 
@@ -134,15 +133,6 @@ export function useGameState() {
         scheduleActionMarkerClear(playerId);
       }
 
-      if (action === 'fold') {
-        setIsTableTransition(true);
-        setTimeout(() => {
-          setIsTableTransition(false);
-          startNextHandInternal();
-        }, 1000);
-        return newState;
-      }
-
       if (!newState.isHandComplete) {
         setTimeout(() => scheduleNextCPUAction(newState), 300);
       }
@@ -199,7 +189,6 @@ export function useGameState() {
     gameState,
     lastActions,
     isProcessingCPU,
-    isTableTransition,
     isDealingCards,
     newCommunityCardsCount,
     handleAction,
