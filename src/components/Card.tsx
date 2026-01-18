@@ -7,15 +7,24 @@ const SUIT_SYMBOLS: Record<string, string> = {
   s: '♠',
 };
 
+type CardSize = 'sm' | 'md' | 'lg';
+
+const sizeStyles: Record<CardSize, { card: string; suit: string }> = {
+  sm: { card: 'w-8 h-11 text-sm', suit: 'text-base' },
+  md: { card: 'w-10 h-14 text-lg', suit: 'text-xl' },
+  lg: { card: 'w-14 h-20 text-xl', suit: 'text-2xl' },
+};
+
 interface CardProps {
   card: CardType;
-  large?: boolean;
+  size?: CardSize;
   isNew?: boolean;
 }
 
-export function Card({ card, large = false, isNew = false }: CardProps) {
+export function Card({ card, size = 'sm', isNew = false }: CardProps) {
   const isRed = card.suit === 'h' || card.suit === 'd';
   const suitSymbol = SUIT_SYMBOLS[card.suit];
+  const styles = sizeStyles[size];
 
   return (
     <div
@@ -23,29 +32,35 @@ export function Card({ card, large = false, isNew = false }: CardProps) {
         flex flex-col items-center justify-center
         bg-gradient-to-br from-white to-gray-100
         rounded shadow-md relative
-        ${large ? 'w-10 h-14 text-lg' : 'w-8 h-11 text-base'}
+        ${styles.card}
         ${isRed ? 'text-red-600' : 'text-blue-900'}
         ${isNew ? 'animate-flip-card' : ''}
       `}
     >
       <span className="leading-none font-bold">{card.rank}</span>
-      <span className={`leading-none ${large ? 'text-xl' : 'text-lg'}`}>{suitSymbol}</span>
+      <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
     </div>
   );
 }
 
+const faceDownSizeStyles: Record<CardSize, string> = {
+  sm: 'w-8 h-11',
+  md: 'w-10 h-14',
+  lg: 'w-14 h-20',
+};
+
 interface FaceDownCardProps {
-  large?: boolean;
+  size?: CardSize;
 }
 
-export function FaceDownCard({ large = false }: FaceDownCardProps) {
+export function FaceDownCard({ size = 'sm' }: FaceDownCardProps) {
   return (
     <div
       className={`
         bg-gradient-to-br from-blue-800 to-blue-950
         border border-blue-500 rounded shadow-md
         relative overflow-hidden
-        ${large ? 'w-10 h-14' : 'w-8 h-11'}
+        ${faceDownSizeStyles[size]}
       `}
     >
       <div

@@ -16,11 +16,7 @@ export function MyCards({ cards, isDealing }: MyCardsProps) {
       }`}
     >
       {cards.map((card, i) => (
-        <div key={i} className="w-[52px] h-[72px] shadow-lg">
-          <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-white to-gray-100 rounded text-lg font-bold">
-            <Card card={card} large />
-          </div>
-        </div>
+        <Card key={i} card={card} size="lg" />
       ))}
     </div>
   );
