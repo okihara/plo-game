@@ -88,7 +88,7 @@ export function useGameState() {
 
     setIsProcessingCPU(true);
 
-    const thinkTime = 800 + Math.random() * 1200;
+    const thinkTime = 300 + Math.random() * 500;
     console.log('[scheduleNextCPUAction] 思考時間:', thinkTime.toFixed(0), 'ms');
 
     cpuTimeoutRef.current = setTimeout(() => {
