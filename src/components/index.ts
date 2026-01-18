@@ -7,3 +7,4 @@ export { ThinkingIndicator } from './ThinkingIndicator';
 export { MyCards } from './MyCards';
 export { TableTransition } from './TableTransition';
 export { PokerTable } from './PokerTable';
+export { HandAnalysisOverlay } from './HandAnalysisOverlay';

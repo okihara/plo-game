@@ -3,6 +3,7 @@ import { Card } from './Card';
 
 interface MyCardsProps {
   cards: CardType[];
+  communityCards: CardType[];
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
 }
@@ -53,6 +54,7 @@ export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
           );
         })}
       </div>
+
       <div
         className={`mt-1 text-xs font-medium ${getStrengthColor(percentile)} ${isDealing ? 'opacity-0' : ''}`}
         style={isDealing ? {} : { transition: 'opacity 0.3s ease' }}

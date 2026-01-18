@@ -72,7 +72,24 @@ export function getCPUAction(state: GameState, playerIndex: number): { action: A
   return { action: 'fold', amount: 0 };
 }
 
+// プリフロップ評価の詳細情報
+export interface PreFlopEvaluation {
+  score: number;           // 総合スコア (0-1)
+  hasPair: boolean;        // ペアがあるか
+  pairRank: string | null; // ペアのランク (例: "AA", "KK")
+  hasAceSuited: boolean;   // Aスーテッドがあるか
+  isDoubleSuited: boolean; // ダブルスーテッドか
+  isSingleSuited: boolean; // シングルスーテッドか
+  isRundown: boolean;      // ランダウン（連続4枚）か
+  hasWrap: boolean;        // ラップ可能性（密なハンド）
+  hasDangler: boolean;     // ダングラー（孤立カード）があるか
+}
+
 export function evaluatePreFlopStrength(holeCards: Card[]): number {
+  return getPreFlopEvaluation(holeCards).score;
+}
+
+export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   // PLOハンド評価 - 3つの主要要素: ナッティネス、コネクティビティ、スーテッドネス
 
   const values = holeCards.map(c => getRankValue(c.rank));
@@ -93,23 +110,28 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
 
   // ハイペア（AA, KK, QQ, JJ）
   const pairRanks = Array.from(rankCounts.entries()).filter(([_, count]) => count >= 2);
+  let pairRank: string | null = null;
   for (const [rank, count] of pairRanks) {
     const pairValue = getRankValue(rank);
     if (count >= 2) {
       // AAは最強、KK, QQ, JJも強い
       nuttiness += (pairValue / 14) * 0.15;
       if (rank === 'A' && count === 2) nuttiness += 0.1; // AAボーナス
+      if (!pairRank || pairValue > getRankValue(pairRank[0] as Rank)) {
+        pairRank = rank + rank;
+      }
     }
   }
 
   // Aを持っているか（ナッツフラッシュの可能性）
   const hasAce = ranks.includes('A');
+  let hasAceSuited = false;
   if (hasAce) {
     // Aが同じスーツの他のカードとペアになっているか
     const aceIndex = ranks.indexOf('A');
     const aceSuit = suits[aceIndex];
-    const aceSuited = suits.filter((s, i) => s === aceSuit && i !== aceIndex).length > 0;
-    if (aceSuited) nuttiness += 0.08; // ナッツフラッシュドローの可能性
+    hasAceSuited = suits.filter((s, i) => s === aceSuit && i !== aceIndex).length > 0;
+    if (hasAceSuited) nuttiness += 0.08; // ナッツフラッシュドローの可能性
   }
 
   // ハイカードの平均値
@@ -142,11 +164,13 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
 
   // ラップ可能性（KQJT, JT98など）
   const span = uniqueValues[uniqueValues.length - 1] - uniqueValues[0];
-  if (span <= 4 && uniqueValues.length >= 3) {
+  const hasWrap = span <= 4 && uniqueValues.length >= 3;
+  if (hasWrap) {
     connectivity += 0.1; // 密なハンドボーナス
   }
 
   // ダングラー（孤立したカード）のペナルティ
+  let hasDangler = false;
   if (uniqueValues.length === 4) {
     const gaps = [];
     for (let i = 0; i < 3; i++) {
@@ -155,6 +179,7 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
     // 1枚だけ離れている場合（例: KQJ5の5）
     const maxGap = Math.max(...gaps);
     if (maxGap >= 5) {
+      hasDangler = true;
       connectivity -= 0.08; // ダングラーペナルティ
     }
   }
@@ -164,13 +189,13 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
   const suitCountValues = Array.from(suitCounts.values());
 
   // ダブルスーテッド（2-2）が最強
-  const doubleSuited = suitCountValues.filter(c => c === 2).length === 2;
-  if (doubleSuited) {
+  const isDoubleSuited = suitCountValues.filter(c => c === 2).length === 2;
+  if (isDoubleSuited) {
     suitedness += 0.2;
   } else {
     // シングルスーテッド（2枚同じスーツ）
-    const singleSuited = suitCountValues.some(c => c === 2);
-    if (singleSuited) {
+    const isSingleSuited = suitCountValues.some(c => c === 2);
+    if (isSingleSuited) {
       suitedness += 0.1;
     }
   }
@@ -191,12 +216,13 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
   let bonus = 0;
 
   // AAxx ダブルスーテッド
-  if (rankCounts.get('A') === 2 && doubleSuited) {
+  if (rankCounts.get('A') === 2 && isDoubleSuited) {
     bonus += 0.1;
   }
 
   // ランダウン（連続4枚: KQJT, JT98など）
-  if (uniqueValues.length === 4 && span === 3) {
+  const isRundown = uniqueValues.length === 4 && span === 3;
+  if (isRundown) {
     bonus += 0.08;
   }
 
@@ -207,8 +233,21 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
 
   // 合計スコア
   const totalScore = nuttiness + connectivity + suitedness + bonus;
+  const score = Math.min(1, Math.max(0, totalScore));
 
-  return Math.min(1, Math.max(0, totalScore));
+  const isSingleSuited = !isDoubleSuited && suitCountValues.some(c => c === 2);
+
+  return {
+    score,
+    hasPair: pairRanks.length > 0,
+    pairRank,
+    hasAceSuited,
+    isDoubleSuited,
+    isSingleSuited,
+    isRundown,
+    hasWrap,
+    hasDangler,
+  };
 }
 
 function getStreetMultiplier(street: string): number {
