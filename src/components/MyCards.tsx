@@ -4,6 +4,7 @@ import { Card } from './Card';
 interface MyCardsProps {
   cards: CardType[];
   isDealing: boolean;
+  dealOrder: number; // SBからの配布順序（0-5）
 }
 
 // ハンド強度を%表示に変換（上位何%のハンドかを示す）
@@ -22,7 +23,7 @@ function getStrengthColor(percentile: number): string {
   return 'text-gray-400'; // 弱いハンド
 }
 
-export function MyCards({ cards, isDealing }: MyCardsProps) {
+export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
   if (cards.length === 0) return null;
 
   const strength = evaluatePreFlopStrength(cards);
@@ -33,20 +34,24 @@ export function MyCards({ cards, isDealing }: MyCardsProps) {
       className="flex flex-col items-center py-2.5 bg-gradient-to-b from-transparent to-black/30"
     >
       <div className="flex gap-1.5 justify-center">
-        {cards.map((card, i) => (
-          <div
-            key={i}
-            className={isDealing ? 'animate-deal-card' : ''}
-            style={isDealing ? {
-              opacity: 0,
-              animationDelay: `${i * 80}ms`,
-              '--deal-from-x': '0px',
-              '--deal-from-y': '-120px',
-            } as React.CSSProperties : {}}
-          >
-            <Card card={card} size="lg" />
-          </div>
-        ))}
+        {cards.map((card, cardIndex) => {
+          // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
+          const dealDelay = (cardIndex * 6 + dealOrder) * 80;
+          return (
+            <div
+              key={cardIndex}
+              className={isDealing ? 'animate-deal-card' : ''}
+              style={isDealing ? {
+                opacity: 0,
+                animationDelay: `${dealDelay}ms`,
+                '--deal-from-x': '0px',
+                '--deal-from-y': '-120px',
+              } as React.CSSProperties : {}}
+            >
+              <Card card={card} size="lg" />
+            </div>
+          );
+        })}
       </div>
       <div
         className={`mt-1 text-xs font-medium ${getStrengthColor(percentile)} ${isDealing ? 'opacity-0' : ''}`}

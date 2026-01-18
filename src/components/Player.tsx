@@ -10,6 +10,7 @@ interface PlayerProps {
   lastAction: LastAction | null;
   showCards: boolean;
   isDealing: boolean;
+  dealOrder: number; // SBからの配布順序（0-5）
 }
 
 function formatChips(amount: number): string {
@@ -88,6 +89,7 @@ export function Player({
   lastAction,
   showCards,
   isDealing,
+  dealOrder,
 }: PlayerProps) {
   const emoji = player.isHuman ? '👤' : '🤖';
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
@@ -124,20 +126,26 @@ export function Player({
                   <Card card={card} />
                 </div>
               ))
-            : Array(4).fill(null).map((_, i) => (
-                <div
-                  key={i}
-                  className={`w-[21px] h-[29px] scale-[0.65] origin-top-left ${isDealing ? 'animate-deal-card' : ''}`}
-                  style={isDealing ? {
-                    opacity: 0,
-                    animationDelay: `${positionIndex * 200 + i * 80}ms`,
-                    '--deal-from-x': dealFromOffsets[positionIndex].x,
-                    '--deal-from-y': dealFromOffsets[positionIndex].y,
-                  } as React.CSSProperties : {}}
-                >
-                  <FaceDownCard />
-                </div>
-              ))}
+            : Array(4).fill(null).map((_, cardIndex) => {
+                // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
+                // dealOrder: SBからの順番(0-5)
+                // 各カードの配布タイミング = (周回 * 6人 + 配布順) * 間隔
+                const dealDelay = (cardIndex * 6 + dealOrder) * 80;
+                return (
+                  <div
+                    key={cardIndex}
+                    className={`w-[21px] h-[29px] scale-[0.65] origin-top-left ${isDealing ? 'animate-deal-card' : ''}`}
+                    style={isDealing ? {
+                      opacity: 0,
+                      animationDelay: `${dealDelay}ms`,
+                      '--deal-from-x': dealFromOffsets[positionIndex].x,
+                      '--deal-from-y': dealFromOffsets[positionIndex].y,
+                    } as React.CSSProperties : {}}
+                  >
+                    <FaceDownCard />
+                  </div>
+                );
+              })}
         </div>
       )}
 

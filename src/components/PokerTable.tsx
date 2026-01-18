@@ -40,6 +40,15 @@ export function PokerTable({
     orderedPlayers.push({ player: state.players[idx], playerIdx: idx, posIndex: i });
   }
 
+  // SBから時計回りに配る順序を計算
+  // SBのプレイヤーインデックスを見つける
+  const sbPlayerIdx = state.players.findIndex(p => p.position === 'SB');
+  // 各プレイヤーの配布順序（SBから時計回り）を計算
+  const getDealOrder = (playerIdx: number): number => {
+    // playerIdxからSBまでの距離を計算（時計回り）
+    return (playerIdx - sbPlayerIdx + 6) % 6;
+  };
+
   return (
     <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
       <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isCPUTurn && isProcessingCPU} />
@@ -64,6 +73,7 @@ export function PokerTable({
             lastAction={lastActions.get(player.id) || null}
             showCards={isShowdown}
             isDealing={isDealingCards}
+            dealOrder={getDealOrder(playerIdx)}
           />
         ))}
       </div>
