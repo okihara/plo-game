@@ -52,18 +52,72 @@ export function useGameState() {
   }, []);
 
   const scheduleNextCPUAction = useCallback((state: GameState) => {
-    if (state.isHandComplete) return;
+    console.log('[scheduleNextCPUAction] 開始', {
+      isHandComplete: state.isHandComplete,
+      currentPlayerIndex: state.currentPlayerIndex,
+      currentStreet: state.currentStreet,
+    });
+
+    // 既存のタイムアウトをキャンセル
+    if (cpuTimeoutRef.current) {
+      console.log('[scheduleNextCPUAction] 既存のタイムアウトをキャンセル');
+      clearTimeout(cpuTimeoutRef.current);
+      cpuTimeoutRef.current = null;
+    }
+
+    if (state.isHandComplete) {
+      console.log('[scheduleNextCPUAction] ハンド完了のため終了');
+      return;
+    }
 
     const currentPlayer = state.players[state.currentPlayerIndex];
-    if (!currentPlayer || currentPlayer.isHuman) return;
+    if (!currentPlayer || currentPlayer.isHuman) {
+      console.log('[scheduleNextCPUAction] 人間プレイヤーのため終了', {
+        currentPlayer: currentPlayer?.name,
+        isHuman: currentPlayer?.isHuman,
+      });
+      return;
+    }
+
+    console.log('[scheduleNextCPUAction] CPUプレイヤーのアクション開始', {
+      playerName: currentPlayer.name,
+      playerId: currentPlayer.id,
+      position: currentPlayer.position,
+      chips: currentPlayer.chips,
+    });
 
     setIsProcessingCPU(true);
 
     const thinkTime = 800 + Math.random() * 1200;
+    console.log('[scheduleNextCPUAction] 思考時間:', thinkTime.toFixed(0), 'ms');
 
     cpuTimeoutRef.current = setTimeout(() => {
+      cpuTimeoutRef.current = null; // タイムアウト実行後にクリア
+
       setGameState(currentState => {
+        console.log('[scheduleNextCPUAction] タイムアウト実行', {
+          isHandComplete: currentState.isHandComplete,
+          expectedPlayerIndex: state.currentPlayerIndex,
+          actualPlayerIndex: currentState.currentPlayerIndex,
+        });
+
+        // 状態が変わっていたらスキップ（別のアクションが先に実行された）
+        if (currentState.currentPlayerIndex !== state.currentPlayerIndex) {
+          console.log('[scheduleNextCPUAction] プレイヤーインデックスが変わったためスキップ');
+          setIsProcessingCPU(false);
+          return currentState;
+        }
+
         if (currentState.isHandComplete) {
+          console.log('[scheduleNextCPUAction] タイムアウト内でハンド完了検出');
+          setIsProcessingCPU(false);
+          return currentState;
+        }
+
+        // 現在のプレイヤーが人間なら何もしない
+        const actualCurrentPlayer = currentState.players[currentState.currentPlayerIndex];
+        if (actualCurrentPlayer.isHuman) {
+          console.log('[scheduleNextCPUAction] 現在のプレイヤーは人間のためスキップ');
           setIsProcessingCPU(false);
           return currentState;
         }
@@ -73,6 +127,12 @@ export function useGameState() {
         const playerId = currentState.players[currentState.currentPlayerIndex].id;
         const cpuAction = getCPUAction(currentState, currentState.currentPlayerIndex);
 
+        console.log('[scheduleNextCPUAction] CPUアクション決定', {
+          playerId,
+          action: cpuAction.action,
+          amount: cpuAction.amount,
+        });
+
         setLastActions(prev => {
           const newMap = new Map(prev);
           newMap.set(playerId, { ...cpuAction, timestamp: Date.now() });
@@ -81,7 +141,16 @@ export function useGameState() {
 
         const newState = applyAction(currentState, currentState.currentPlayerIndex, cpuAction.action, cpuAction.amount);
 
+        console.log('[scheduleNextCPUAction] アクション適用後', {
+          previousStreet,
+          newStreet: newState.currentStreet,
+          pot: newState.pot,
+          nextPlayerIndex: newState.currentPlayerIndex,
+          isHandComplete: newState.isHandComplete,
+        });
+
         if (newState.currentStreet !== previousStreet) {
+          console.log('[scheduleNextCPUAction] ストリート変更検出');
           setLastActions(new Map());
           clearAllActionMarkerTimers();
           setNewCommunityCardsCount(newState.communityCards.length - prevCardCount);
@@ -93,7 +162,17 @@ export function useGameState() {
         setIsProcessingCPU(false);
 
         if (!newState.isHandComplete) {
-          setTimeout(() => scheduleNextCPUAction(newState), 300);
+          const nextPlayer = newState.players[newState.currentPlayerIndex];
+          console.log('[scheduleNextCPUAction] 次のプレイヤー確認', {
+            nextPlayerName: nextPlayer?.name,
+            nextPlayerIsHuman: nextPlayer?.isHuman,
+          });
+          if (nextPlayer && !nextPlayer.isHuman) {
+            console.log('[scheduleNextCPUAction] 次のCPUアクションをスケジュール (300ms後)');
+            setTimeout(() => scheduleNextCPUAction(newState), 300);
+          }
+        } else {
+          console.log('[scheduleNextCPUAction] ハンド完了');
         }
 
         return newState;
