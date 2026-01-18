@@ -24,6 +24,7 @@ export function useGameState() {
   const [isProcessingCPU, setIsProcessingCPU] = useState(false);
   const [isDealingCards, setIsDealingCards] = useState(true);
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
+  const [isChangingTable, setIsChangingTable] = useState(false);
 
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const cpuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,6 +192,45 @@ export function useGameState() {
       const isValid = validActions.some(a => a.action === action);
       if (!isValid) return currentState;
 
+      // 人間がフォールドしたら「テーブル移動中」を表示して新しいハンドを開始
+      if (action === 'fold') {
+        // 既存のタイムアウトをキャンセル
+        if (cpuTimeoutRef.current) {
+          clearTimeout(cpuTimeoutRef.current);
+          cpuTimeoutRef.current = null;
+        }
+
+        setLastActions(new Map());
+        clearAllActionMarkerTimers();
+        setIsChangingTable(true);
+
+        // 0.7秒後にテーブル移動完了、新しいハンドを開始
+        setTimeout(() => {
+          setIsChangingTable(false);
+          setGameState(prevState => {
+            const stateWithRebuy = {
+              ...prevState,
+              players: prevState.players.map(p => ({
+                ...p,
+                chips: p.chips <= 0 ? 10000 : p.chips,
+              })),
+            };
+            const newState = startNewHand(stateWithRebuy);
+            setIsDealingCards(true);
+            setNewCommunityCardsCount(0);
+
+            setTimeout(() => {
+              setIsDealingCards(false);
+              scheduleNextCPUAction(newState);
+            }, 2000);
+
+            return newState;
+          });
+        }, 700);
+
+        return currentState;
+      }
+
       const previousStreet = currentState.currentStreet;
       const prevCardCount = currentState.communityCards.length;
       const playerId = currentPlayer.id;
@@ -270,6 +310,7 @@ export function useGameState() {
     isProcessingCPU,
     isDealingCards,
     newCommunityCardsCount,
+    isChangingTable,
     handleAction,
     startNextHand,
   };

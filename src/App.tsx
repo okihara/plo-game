@@ -15,6 +15,7 @@ export function App() {
     isProcessingCPU,
     isDealingCards,
     newCommunityCardsCount,
+    isChangingTable,
     handleAction,
     startNextHand,
   } = useGameState();
@@ -65,6 +66,15 @@ export function App() {
         isVisible={showAnalysis}
         onClose={() => setShowAnalysis(false)}
       />
+
+      {/* テーブル移動中オーバーレイ */}
+      {isChangingTable && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="text-white text-xl font-bold">
+            テーブル移動中...
+          </div>
+        </div>
+      )}
     </div>
   );
 }
