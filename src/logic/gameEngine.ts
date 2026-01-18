@@ -368,7 +368,7 @@ function moveToNextStreet(state: GameState): GameState {
 }
 
 function runOutBoard(state: GameState): GameState {
-  let newState = JSON.parse(JSON.stringify(state)) as GameState;
+  const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   while (newState.communityCards.length < 5) {
     const { cards, remainingDeck } = dealCards(newState.deck, 1);
