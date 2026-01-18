@@ -46,7 +46,7 @@ export function PokerTable({
 
       <div className="w-[85%] max-w-[320px] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1e5631_0%,#145028_50%,#0d3d1c_100%)] rounded-[45%] border-8 border-[#2a1810] shadow-[0_0_0_4px_#4a3020,0_0_30px_rgba(0,0,0,0.5),inset_0_0_60px_rgba(0,0,0,0.3)] relative">
         {/* Pot Display */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-5 py-2 rounded-full text-sm font-bold text-yellow-400 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)] z-10">
+        <div className="absolute top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-5 py-2 rounded-full text-sm font-bold text-yellow-400 drop-shadow-[0_0_10px_rgba(255,215,0,0.5)] z-10">
           POT: {formatChips(state.pot)}
         </div>
 
