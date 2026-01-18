@@ -1,4 +1,4 @@
-import { GameState, Action, Card } from './types';
+import { GameState, Action, Card, Rank } from './types';
 import { getValidActions } from './gameEngine';
 import { getRankValue } from './deck';
 
@@ -73,47 +73,142 @@ export function getCPUAction(state: GameState, playerIndex: number): { action: A
 }
 
 export function evaluatePreFlopStrength(holeCards: Card[]): number {
-  // PLOのハンド評価（簡易版）
-  let score = 0;
+  // PLOハンド評価 - 3つの主要要素: ナッティネス、コネクティビティ、スーテッドネス
 
-  // ペアがあるか
-  const ranks = holeCards.map(c => c.rank);
-  const rankCounts = new Map<string, number>();
-  for (const r of ranks) {
-    rankCounts.set(r, (rankCounts.get(r) || 0) + 1);
-  }
-  const pairs = Array.from(rankCounts.values()).filter(c => c >= 2).length;
-  score += pairs * 0.15;
-
-  // 高いカード
   const values = holeCards.map(c => getRankValue(c.rank));
-  const avgValue = values.reduce((a, b) => a + b, 0) / 4;
-  score += (avgValue - 8) / 14 * 0.3;
-
-  // スーツの連携（ダブルスーテッド）
   const suits = holeCards.map(c => c.suit);
+  const ranks = holeCards.map(c => c.rank);
+
+  // ランクとスーツのカウント
+  const rankCounts = new Map<Rank, number>();
   const suitCounts = new Map<string, number>();
-  for (const s of suits) {
-    suitCounts.set(s, (suitCounts.get(s) || 0) + 1);
+  for (let i = 0; i < 4; i++) {
+    rankCounts.set(ranks[i], (rankCounts.get(ranks[i]) || 0) + 1);
+    suitCounts.set(suits[i], (suitCounts.get(suits[i]) || 0) + 1);
   }
-  const suitedCount = Array.from(suitCounts.values()).filter(c => c >= 2).length;
-  score += suitedCount * 0.1;
 
-  // コネクト性
-  const sortedValues = [...values].sort((a, b) => a - b);
+  // === 1. ナッティネス (0-0.4) ===
+  // ナッツになりやすいハンドを評価
+  let nuttiness = 0;
+
+  // ハイペア（AA, KK, QQ, JJ）
+  const pairRanks = Array.from(rankCounts.entries()).filter(([_, count]) => count >= 2);
+  for (const [rank, count] of pairRanks) {
+    const pairValue = getRankValue(rank);
+    if (count >= 2) {
+      // AAは最強、KK, QQ, JJも強い
+      nuttiness += (pairValue / 14) * 0.15;
+      if (rank === 'A' && count === 2) nuttiness += 0.1; // AAボーナス
+    }
+  }
+
+  // Aを持っているか（ナッツフラッシュの可能性）
+  const hasAce = ranks.includes('A');
+  if (hasAce) {
+    // Aが同じスーツの他のカードとペアになっているか
+    const aceIndex = ranks.indexOf('A');
+    const aceSuit = suits[aceIndex];
+    const aceSuited = suits.filter((s, i) => s === aceSuit && i !== aceIndex).length > 0;
+    if (aceSuited) nuttiness += 0.08; // ナッツフラッシュドローの可能性
+  }
+
+  // ハイカードの平均値
+  const avgValue = values.reduce((a, b) => a + b, 0) / 4;
+  nuttiness += (avgValue - 7) / 14 * 0.1;
+
+  // === 2. コネクティビティ (0-0.35) ===
+  // カード間のつながりを評価
   let connectivity = 0;
-  for (let i = 0; i < 3; i++) {
-    const gap = sortedValues[i + 1] - sortedValues[i];
-    if (gap <= 3) connectivity += (4 - gap) / 3;
-  }
-  score += connectivity / 3 * 0.2;
+  const sortedValues = [...values].sort((a, b) => a - b);
+  const uniqueValues = [...new Set(sortedValues)];
 
-  // AAxxは非常に強い
-  if (rankCounts.get('A') === 2) {
-    score += 0.25;
+  // ギャップを評価（小さいほど良い）
+  let totalGap = 0;
+  let connections = 0;
+  for (let i = 0; i < uniqueValues.length - 1; i++) {
+    const gap = uniqueValues[i + 1] - uniqueValues[i];
+    if (gap <= 4) {
+      // gap 1 = 連続, gap 2 = 1ギャップ, gap 3 = 2ギャップ, gap 4 = 3ギャップ
+      connections++;
+      totalGap += gap;
+    }
   }
 
-  return Math.min(1, Math.max(0, score));
+  if (connections > 0) {
+    // 連続性スコア: 多くのカードが近いほど高い
+    const avgGap = totalGap / connections;
+    connectivity += (connections / 3) * (1 - (avgGap - 1) / 4) * 0.25;
+  }
+
+  // ラップ可能性（KQJT, JT98など）
+  const span = uniqueValues[uniqueValues.length - 1] - uniqueValues[0];
+  if (span <= 4 && uniqueValues.length >= 3) {
+    connectivity += 0.1; // 密なハンドボーナス
+  }
+
+  // ダングラー（孤立したカード）のペナルティ
+  if (uniqueValues.length === 4) {
+    const gaps = [];
+    for (let i = 0; i < 3; i++) {
+      gaps.push(uniqueValues[i + 1] - uniqueValues[i]);
+    }
+    // 1枚だけ離れている場合（例: KQJ5の5）
+    const maxGap = Math.max(...gaps);
+    if (maxGap >= 5) {
+      connectivity -= 0.08; // ダングラーペナルティ
+    }
+  }
+
+  // === 3. スーテッドネス (0-0.25) ===
+  let suitedness = 0;
+  const suitCountValues = Array.from(suitCounts.values());
+
+  // ダブルスーテッド（2-2）が最強
+  const doubleSuited = suitCountValues.filter(c => c === 2).length === 2;
+  if (doubleSuited) {
+    suitedness += 0.2;
+  } else {
+    // シングルスーテッド（2枚同じスーツ）
+    const singleSuited = suitCountValues.some(c => c === 2);
+    if (singleSuited) {
+      suitedness += 0.1;
+    }
+  }
+
+  // 3枚以上同じスーツはペナルティ（アウツが減る）
+  const tripleOrMoreSuited = suitCountValues.some(c => c >= 3);
+  if (tripleOrMoreSuited) {
+    suitedness -= 0.05;
+  }
+
+  // レインボー（全て異なるスーツ）は弱い
+  const isRainbow = suitCountValues.every(c => c === 1);
+  if (isRainbow) {
+    suitedness -= 0.05;
+  }
+
+  // === 特別なハンドパターン ===
+  let bonus = 0;
+
+  // AAxx ダブルスーテッド
+  if (rankCounts.get('A') === 2 && doubleSuited) {
+    bonus += 0.1;
+  }
+
+  // ランダウン（連続4枚: KQJT, JT98など）
+  if (uniqueValues.length === 4 && span === 3) {
+    bonus += 0.08;
+  }
+
+  // ペアが2つ（例: KKQQ）
+  if (pairRanks.length === 2) {
+    bonus += 0.05;
+  }
+
+  // 合計スコア
+  const totalScore = nuttiness + connectivity + suitedness + bonus;
+
+  return Math.min(1, Math.max(0, totalScore));
 }
 
 function getStreetMultiplier(street: string): number {
