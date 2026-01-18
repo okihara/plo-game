@@ -23,13 +23,13 @@ export function Card({ card, large = false, isNew = false }: CardProps) {
         flex flex-col items-center justify-center
         bg-gradient-to-br from-white to-gray-100
         rounded shadow-md relative
-        ${large ? 'w-10 h-14 text-sm' : 'w-8 h-11 text-xs'}
+        ${large ? 'w-10 h-14 text-lg' : 'w-8 h-11 text-base'}
         ${isRed ? 'text-red-600' : 'text-blue-900'}
         ${isNew ? 'animate-flip-card' : ''}
       `}
     >
       <span className="leading-none font-bold">{card.rank}</span>
-      <span className={`leading-none ${large ? 'text-lg' : 'text-sm'}`}>{suitSymbol}</span>
+      <span className={`leading-none ${large ? 'text-xl' : 'text-lg'}`}>{suitSymbol}</span>
     </div>
   );
 }
