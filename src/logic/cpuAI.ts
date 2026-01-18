@@ -72,7 +72,7 @@ export function getCPUAction(state: GameState, playerIndex: number): { action: A
   return { action: 'fold', amount: 0 };
 }
 
-function evaluatePreFlopStrength(holeCards: Card[]): number {
+export function evaluatePreFlopStrength(holeCards: Card[]): number {
   // PLOのハンド評価（簡易版）
   let score = 0;
 
