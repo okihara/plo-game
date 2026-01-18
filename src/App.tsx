@@ -20,7 +20,7 @@ export function App() {
     startNextHand,
   } = useGameState();
 
-  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showAnalysis, setShowAnalysis] = useState(true);
 
   const humanPlayer = gameState.players.find(p => p.isHuman)!;
   const humanPlayerIdx = gameState.players.findIndex(p => p.isHuman);

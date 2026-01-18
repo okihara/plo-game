@@ -53,7 +53,7 @@ export function HandAnalysisOverlay({
         {/* プリフロップ評価 */}
         <div className="mb-2">
           <div className="text-white font-bold text-sm mb-1">
-            Top {Math.round((1 - preflopEval.score) * 100)}%
+            Score: {preflopEval.score.toFixed(2)}
           </div>
           <div className="flex flex-col gap-0.5">
             <EvalItem label="Pair" value={preflopEval.pairRank} positive={!!preflopEval.pairRank} />
