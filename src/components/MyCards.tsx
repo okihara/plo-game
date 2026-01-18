@@ -30,16 +30,28 @@ export function MyCards({ cards, isDealing }: MyCardsProps) {
 
   return (
     <div
-      className={`flex flex-col items-center py-2.5 bg-gradient-to-b from-transparent to-black/30 ${
-        isDealing ? 'opacity-0' : ''
-      }`}
+      className="flex flex-col items-center py-2.5 bg-gradient-to-b from-transparent to-black/30"
     >
       <div className="flex gap-1.5 justify-center">
         {cards.map((card, i) => (
-          <Card key={i} card={card} size="lg" />
+          <div
+            key={i}
+            className={isDealing ? 'animate-deal-card' : ''}
+            style={isDealing ? {
+              opacity: 0,
+              animationDelay: `${i * 80}ms`,
+              '--deal-from-x': '0px',
+              '--deal-from-y': '-120px',
+            } as React.CSSProperties : {}}
+          >
+            <Card card={card} size="lg" />
+          </div>
         ))}
       </div>
-      <div className={`mt-1 text-xs font-medium ${getStrengthColor(percentile)}`}>
+      <div
+        className={`mt-1 text-xs font-medium ${getStrengthColor(percentile)} ${isDealing ? 'opacity-0' : ''}`}
+        style={isDealing ? {} : { transition: 'opacity 0.3s ease' }}
+      >
         Top {percentile}%
       </div>
     </div>

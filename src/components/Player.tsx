@@ -69,6 +69,17 @@ const actionColorStyles: Record<Action, string> = {
   allin: 'bg-red-500',
 };
 
+// カードがテーブル中央から各プレイヤー位置へ飛んでくる方向
+// positionIndex: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
+const dealFromOffsets: Record<number, { x: string; y: string }> = {
+  0: { x: '0px', y: '-120px' },    // 下 ← 中央から下へ
+  1: { x: '80px', y: '-60px' },    // 左下 ← 中央から左下へ
+  2: { x: '80px', y: '60px' },     // 左上 ← 中央から左上へ
+  3: { x: '0px', y: '120px' },     // 上 ← 中央から上へ
+  4: { x: '-80px', y: '60px' },    // 右上 ← 中央から右上へ
+  5: { x: '-80px', y: '-60px' },   // 右下 ← 中央から右下へ
+};
+
 export function Player({
   player,
   positionIndex,
@@ -106,7 +117,7 @@ export function Player({
 
       {/* Hole Cards (for CPU players) */}
       {!player.isHuman && player.holeCards.length > 0 && (
-        <div className={`flex gap-0.5 mt-1 ${isDealing ? 'opacity-0' : ''} ${player.folded ? 'invisible' : ''}`}>
+        <div className={`flex gap-0.5 mt-1 ${player.folded ? 'invisible' : ''}`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
                 <div key={i} className="w-[21px] h-[29px] scale-[0.65] origin-top-left">
@@ -114,7 +125,16 @@ export function Player({
                 </div>
               ))
             : Array(4).fill(null).map((_, i) => (
-                <div key={i} className="w-[21px] h-[29px] scale-[0.65] origin-top-left">
+                <div
+                  key={i}
+                  className={`w-[21px] h-[29px] scale-[0.65] origin-top-left ${isDealing ? 'animate-deal-card' : ''}`}
+                  style={isDealing ? {
+                    opacity: 0,
+                    animationDelay: `${positionIndex * 200 + i * 80}ms`,
+                    '--deal-from-x': dealFromOffsets[positionIndex].x,
+                    '--deal-from-y': dealFromOffsets[positionIndex].y,
+                  } as React.CSSProperties : {}}
+                >
                   <FaceDownCard />
                 </div>
               ))}
