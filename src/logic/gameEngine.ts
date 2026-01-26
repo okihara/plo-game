@@ -154,19 +154,25 @@ export function getValidActions(state: GameState, playerIndex: number): { action
     actions.push({ action: 'call', minAmount: callAmount, maxAmount: callAmount });
   }
 
+  // ポットリミット計算: コール額 + (現在のポット + コール額)
+  const potAfterCall = state.pot + toCall;
+  const potLimitRaise = toCall + potAfterCall; // コール額 + コール後のポット
+  const maxByPotLimit = Math.min(potLimitRaise, player.chips);
+
   // ベット/レイズ
   if (player.chips > toCall) {
     const minRaiseTotal = state.currentBet + state.minRaise;
     const minRaiseAmount = minRaiseTotal - player.currentBet;
 
     if (state.currentBet === 0) {
-      // ベット
+      // ベット（ポットリミット = 現在のポット）
+      const potLimitBet = Math.min(state.pot, player.chips);
       const minBet = Math.min(state.bigBlind, player.chips);
-      actions.push({ action: 'bet', minAmount: minBet, maxAmount: player.chips });
+      actions.push({ action: 'bet', minAmount: minBet, maxAmount: potLimitBet });
     } else {
       // レイズ
       if (player.chips >= minRaiseAmount) {
-        actions.push({ action: 'raise', minAmount: minRaiseAmount, maxAmount: player.chips });
+        actions.push({ action: 'raise', minAmount: minRaiseAmount, maxAmount: maxByPotLimit });
       }
     }
   }
