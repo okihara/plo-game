@@ -4,7 +4,7 @@ import { evaluatePLOHand, compareHands } from './handEvaluator';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
-export function createInitialGameState(playerChips: number = 10000): GameState {
+export function createInitialGameState(playerChips: number = 600): GameState {
   const players: Player[] = [];
 
   // プレイヤー作成 (人間は常にBTN位置からスタート)
@@ -36,8 +36,8 @@ export function createInitialGameState(playerChips: number = 10000): GameState {
     currentPlayerIndex: 0,
     currentBet: 0,
     minRaise: 0,
-    smallBlind: 50,
-    bigBlind: 100,
+    smallBlind: 1,
+    bigBlind: 3,
     lastRaiserIndex: -1,
     handHistory: [],
     isHandComplete: false,

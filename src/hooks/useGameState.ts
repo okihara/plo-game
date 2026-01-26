@@ -17,7 +17,7 @@ export interface LastAction {
 
 export function useGameState() {
   const [gameState, setGameState] = useState<GameState>(() => {
-    const initial = createInitialGameState(10000);
+    const initial = createInitialGameState();
     return startNewHand(initial);
   });
   const [lastActions, setLastActions] = useState<Map<number, LastAction>>(new Map());
@@ -212,7 +212,7 @@ export function useGameState() {
               ...prevState,
               players: prevState.players.map(p => ({
                 ...p,
-                chips: p.chips <= 0 ? 10000 : p.chips,
+                chips: p.chips <= 0 ? 600 : p.chips,
               })),
             };
             const newState = startNewHand(stateWithRebuy);
@@ -266,7 +266,7 @@ export function useGameState() {
         ...currentState,
         players: currentState.players.map(p => ({
           ...p,
-          chips: p.chips <= 0 ? 10000 : p.chips,
+          chips: p.chips <= 0 ? 600 : p.chips,
         })),
       };
       const newState = startNewHand(stateWithRebuy);
