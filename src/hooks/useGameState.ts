@@ -150,30 +150,56 @@ export function useGameState() {
           isHandComplete: newState.isHandComplete,
         });
 
+        // 最後のアクションを表示するための遅延付きクリア
+        scheduleActionMarkerClear(playerId);
+
         if (newState.currentStreet !== previousStreet) {
           console.log('[scheduleNextCPUAction] ストリート変更検出');
-          setLastActions(new Map());
-          clearAllActionMarkerTimers();
           setNewCommunityCardsCount(newState.communityCards.length - prevCardCount);
-        } else {
-          setNewCommunityCardsCount(0);
-          scheduleActionMarkerClear(playerId);
-        }
 
-        setIsProcessingCPU(false);
+          // ストリート変更時は、アクション表示後に遅延を入れてから次へ進む
+          setIsProcessingCPU(false);
 
-        if (!newState.isHandComplete) {
-          const nextPlayer = newState.players[newState.currentPlayerIndex];
-          console.log('[scheduleNextCPUAction] 次のプレイヤー確認', {
-            nextPlayerName: nextPlayer?.name,
-            nextPlayerIsHuman: nextPlayer?.isHuman,
-          });
-          if (nextPlayer && !nextPlayer.isHuman) {
-            console.log('[scheduleNextCPUAction] 次のCPUアクションをスケジュール (300ms後)');
-            setTimeout(() => scheduleNextCPUAction(newState), 300);
+          if (!newState.isHandComplete) {
+            const nextPlayer = newState.players[newState.currentPlayerIndex];
+            console.log('[scheduleNextCPUAction] 次のプレイヤー確認 (ストリート変更後)', {
+              nextPlayerName: nextPlayer?.name,
+              nextPlayerIsHuman: nextPlayer?.isHuman,
+            });
+            if (nextPlayer && !nextPlayer.isHuman) {
+              console.log('[scheduleNextCPUAction] 次のCPUアクションをスケジュール (1000ms後)');
+              setTimeout(() => {
+                setLastActions(new Map());
+                clearAllActionMarkerTimers();
+                scheduleNextCPUAction(newState);
+              }, 1000);
+            } else {
+              // 人間の番なら少し待ってからアクションマーカーをクリア
+              setTimeout(() => {
+                setLastActions(new Map());
+                clearAllActionMarkerTimers();
+              }, 1000);
+            }
+          } else {
+            console.log('[scheduleNextCPUAction] ハンド完了');
           }
         } else {
-          console.log('[scheduleNextCPUAction] ハンド完了');
+          setNewCommunityCardsCount(0);
+          setIsProcessingCPU(false);
+
+          if (!newState.isHandComplete) {
+            const nextPlayer = newState.players[newState.currentPlayerIndex];
+            console.log('[scheduleNextCPUAction] 次のプレイヤー確認', {
+              nextPlayerName: nextPlayer?.name,
+              nextPlayerIsHuman: nextPlayer?.isHuman,
+            });
+            if (nextPlayer && !nextPlayer.isHuman) {
+              console.log('[scheduleNextCPUAction] 次のCPUアクションをスケジュール (300ms後)');
+              setTimeout(() => scheduleNextCPUAction(newState), 300);
+            }
+          } else {
+            console.log('[scheduleNextCPUAction] ハンド完了');
+          }
         }
 
         return newState;
@@ -243,17 +269,26 @@ export function useGameState() {
 
       const newState = applyAction(currentState, currentState.currentPlayerIndex, action, amount);
 
+      // 人間のアクションを表示するための遅延付きクリア
+      scheduleActionMarkerClear(playerId);
+
       if (newState.currentStreet !== previousStreet) {
-        setLastActions(new Map());
-        clearAllActionMarkerTimers();
         setNewCommunityCardsCount(newState.communityCards.length - prevCardCount);
+
+        // ストリート変更時は、アクション表示後に遅延を入れてから次へ進む
+        if (!newState.isHandComplete) {
+          setTimeout(() => {
+            setLastActions(new Map());
+            clearAllActionMarkerTimers();
+            scheduleNextCPUAction(newState);
+          }, 1000);
+        }
       } else {
         setNewCommunityCardsCount(0);
-        scheduleActionMarkerClear(playerId);
-      }
 
-      if (!newState.isHandComplete) {
-        setTimeout(() => scheduleNextCPUAction(newState), 300);
+        if (!newState.isHandComplete) {
+          setTimeout(() => scheduleNextCPUAction(newState), 300);
+        }
       }
 
       return newState;
