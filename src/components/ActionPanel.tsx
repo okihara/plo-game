@@ -34,8 +34,8 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
   }, [minRaise]);
 
   const handlePreset = useCallback((preset: number) => {
-    const potSize = state.pot;
-    const raiseAmount = Math.round(potSize * preset) + toCall;
+    const potAfterCall = state.pot + toCall;
+    const raiseAmount = Math.round(potAfterCall * preset) + toCall;
     const clampedValue = Math.max(minRaise, Math.min(maxRaise, raiseAmount));
     setSliderValue(clampedValue);
   }, [state.pot, toCall, minRaise, maxRaise]);
