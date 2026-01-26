@@ -177,9 +177,12 @@ export function getValidActions(state: GameState, playerIndex: number): { action
     }
   }
 
-  // オールイン
+  // オールイン（チップがポットリミット以下の場合のみ）
   if (player.chips > 0) {
-    actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+    const maxBetOrRaise = state.currentBet === 0 ? state.pot : potLimitRaise;
+    if (player.chips <= maxBetOrRaise) {
+      actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+    }
   }
 
   return actions;
