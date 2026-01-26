@@ -103,7 +103,7 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
           min={minRaise}
           max={maxRaise}
           value={sliderValue}
-          step={state.bigBlind}
+          step={10}
           onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
           disabled={!canRaise || !isMyTurn}
           className="flex-1 h-2 rounded bg-gradient-to-r from-gray-600 to-gray-500 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-6 [&::-webkit-slider-thumb]:h-6 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-yellow-400 [&::-webkit-slider-thumb]:to-yellow-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
