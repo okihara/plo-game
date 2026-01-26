@@ -50,16 +50,6 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
 
   return (
     <div className="bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] px-3 py-3 border-t border-gray-700 min-h-[130px]">
-      {/* Action Info */}
-      <div className="flex justify-between items-center mb-2.5 px-1 text-[13px] text-gray-400">
-        <span>
-          ベット: <span className="text-yellow-400 font-bold">{formatChips(state.currentBet)}</span>
-          {toCall > 0 && (
-            <> | コール: <span className="text-yellow-400 font-bold">{formatChips(toCall)}</span></>
-          )}
-        </span>
-      </div>
-
       {/* Action Buttons */}
       <div className="grid grid-cols-4 gap-2 mb-2.5">
         <button
