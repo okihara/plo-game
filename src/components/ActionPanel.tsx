@@ -53,7 +53,7 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
   }, [toCall, humanPlayer.chips, sliderValue, onAction]);
 
   return (
-    <div className="bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] px-3 py-3 border-t border-gray-700 min-h-[130px]">
+    <div className="bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] px-3 pt-3 pb-2 border-t border-gray-700">
       {/* Preset Buttons & Bet Slider */}
       <div className={`flex items-center gap-2 px-1 mb-2.5 ${(!canRaise || !isMyTurn) ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="w-1/2 flex gap-1">
