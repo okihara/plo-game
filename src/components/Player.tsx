@@ -112,7 +112,7 @@ export function Player({
       </div>
 
       {/* Player Info */}
-      <div className="bg-black/80 px-[1vh] py-[0.5vh] rounded-lg mt-[0.5vh] text-center min-w-[8vh]">
+      <div className="bg-black/80 px-[1vh] py-[0.5vh] rounded-lg -mt-[1.0vh] text-center min-w-[8vh] z-10">
         <div className="text-[1.3vh] text-gray-400 whitespace-nowrap">{player.name}</div>
         <div className="text-[1.5vh] font-bold text-white">{formatChips(player.chips)}</div>
       </div>
