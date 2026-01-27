@@ -9,13 +9,73 @@ import {
   getCPUAction,
 } from '../logic';
 
+// ============================================
+// 型定義
+// ============================================
+
 export interface LastAction {
   action: Action;
   amount: number;
   timestamp: number;
 }
 
+// ============================================
+// 定数
+// ============================================
+
+/** アクションマーカーの表示時間 (ms) */
+const ACTION_MARKER_DISPLAY_TIME = 1000;
+
+/** ストリート変更後の待機時間 (ms) */
+const STREET_CHANGE_DELAY = 1000;
+
+/** 同一ストリート内でのCPUアクション間隔 (ms) */
+const CPU_ACTION_INTERVAL = 300;
+
+/** CPUの最小思考時間 (ms) */
+const CPU_THINK_TIME_MIN = 300;
+
+/** CPUの思考時間の揺らぎ (ms) */
+const CPU_THINK_TIME_VARIANCE = 500;
+
+/** カード配布アニメーション時間 (ms) */
+const DEAL_ANIMATION_TIME = 2000;
+
+/** テーブル移動時間 (ms) */
+const TABLE_CHANGE_DELAY = 700;
+
+/** チップがなくなった時のリバイ額 */
+const REBUY_AMOUNT = 600;
+
+// ============================================
+// ヘルパー関数
+// ============================================
+
+/** ランダムな思考時間を生成 */
+const getRandomThinkTime = (): number =>
+  CPU_THINK_TIME_MIN + Math.random() * CPU_THINK_TIME_VARIANCE;
+
+/** プレイヤーのチップをリバイで補充した状態を返す */
+const applyRebuyIfNeeded = (state: GameState): GameState => ({
+  ...state,
+  players: state.players.map(p => ({
+    ...p,
+    chips: p.chips <= 0 ? REBUY_AMOUNT : p.chips,
+  })),
+});
+
+/** 次のプレイヤーがCPUかどうか判定 */
+const isNextPlayerCPU = (state: GameState): boolean => {
+  const nextPlayer = state.players[state.currentPlayerIndex];
+  return nextPlayer != null && !nextPlayer.isHuman;
+};
+
+// ============================================
+// メインフック
+// ============================================
+
 export function useGameState() {
+  // --- State ---
   const [gameState, setGameState] = useState<GameState>(() => {
     const initial = createInitialGameState();
     return startNewHand(initial);
@@ -26,15 +86,23 @@ export function useGameState() {
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
   const [isChangingTable, setIsChangingTable] = useState(false);
 
+  // --- Refs ---
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const cpuTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ============================================
+  // アクションマーカー管理
+  // ============================================
+
+  /** 全てのアクションマーカータイマーをクリア */
   const clearAllActionMarkerTimers = useCallback(() => {
     actionMarkerTimersRef.current.forEach(timer => clearTimeout(timer));
     actionMarkerTimersRef.current.clear();
   }, []);
 
+  /** 指定プレイヤーのアクションマーカーを一定時間後にクリアするタイマーを設定 */
   const scheduleActionMarkerClear = useCallback((playerId: number) => {
+    // 既存のタイマーがあればクリア
     const existingTimer = actionMarkerTimersRef.current.get(playerId);
     if (existingTimer) {
       clearTimeout(existingTimer);
@@ -47,170 +115,156 @@ export function useGameState() {
         return newMap;
       });
       actionMarkerTimersRef.current.delete(playerId);
-    }, 1000);
+    }, ACTION_MARKER_DISPLAY_TIME);
 
     actionMarkerTimersRef.current.set(playerId, timer);
   }, []);
 
-  const scheduleNextCPUAction = useCallback((state: GameState) => {
-    console.log('[scheduleNextCPUAction] 開始', {
-      isHandComplete: state.isHandComplete,
-      currentPlayerIndex: state.currentPlayerIndex,
-      currentStreet: state.currentStreet,
+  /** アクションを記録する */
+  const recordAction = useCallback((playerId: number, action: Action, amount: number) => {
+    setLastActions(prev => {
+      const newMap = new Map(prev);
+      newMap.set(playerId, { action, amount, timestamp: Date.now() });
+      return newMap;
     });
+  }, []);
 
-    // 既存のタイムアウトをキャンセル
+  /** 全アクションマーカーをクリア */
+  const clearAllActions = useCallback(() => {
+    setLastActions(new Map());
+    clearAllActionMarkerTimers();
+  }, [clearAllActionMarkerTimers]);
+
+  // ============================================
+  // CPUアクションスケジューリング
+  // ============================================
+
+  /** 進行中のCPUタイムアウトをキャンセル */
+  const cancelPendingCPUAction = useCallback(() => {
     if (cpuTimeoutRef.current) {
-      console.log('[scheduleNextCPUAction] 既存のタイムアウトをキャンセル');
       clearTimeout(cpuTimeoutRef.current);
       cpuTimeoutRef.current = null;
     }
+  }, []);
 
-    if (state.isHandComplete) {
-      console.log('[scheduleNextCPUAction] ハンド完了のため終了');
-      return;
-    }
+  /** 次のCPUアクションをスケジュール */
+  const scheduleNextCPUAction = useCallback((state: GameState) => {
+    cancelPendingCPUAction();
 
+    // ハンド完了または人間の番なら何もしない
+    if (state.isHandComplete) return;
     const currentPlayer = state.players[state.currentPlayerIndex];
-    if (!currentPlayer || currentPlayer.isHuman) {
-      console.log('[scheduleNextCPUAction] 人間プレイヤーのため終了', {
-        currentPlayer: currentPlayer?.name,
-        isHuman: currentPlayer?.isHuman,
-      });
-      return;
-    }
-
-    console.log('[scheduleNextCPUAction] CPUプレイヤーのアクション開始', {
-      playerName: currentPlayer.name,
-      playerId: currentPlayer.id,
-      position: currentPlayer.position,
-      chips: currentPlayer.chips,
-    });
+    if (!currentPlayer || currentPlayer.isHuman) return;
 
     setIsProcessingCPU(true);
 
-    const thinkTime = 300 + Math.random() * 500;
-    console.log('[scheduleNextCPUAction] 思考時間:', thinkTime.toFixed(0), 'ms');
-
     cpuTimeoutRef.current = setTimeout(() => {
-      cpuTimeoutRef.current = null; // タイムアウト実行後にクリア
+      cpuTimeoutRef.current = null;
 
       setGameState(currentState => {
-        console.log('[scheduleNextCPUAction] タイムアウト実行', {
-          isHandComplete: currentState.isHandComplete,
-          expectedPlayerIndex: state.currentPlayerIndex,
-          actualPlayerIndex: currentState.currentPlayerIndex,
-        });
-
-        // 状態が変わっていたらスキップ（別のアクションが先に実行された）
+        // 状態の整合性チェック
         if (currentState.currentPlayerIndex !== state.currentPlayerIndex) {
-          console.log('[scheduleNextCPUAction] プレイヤーインデックスが変わったためスキップ');
           setIsProcessingCPU(false);
           return currentState;
         }
-
         if (currentState.isHandComplete) {
-          console.log('[scheduleNextCPUAction] タイムアウト内でハンド完了検出');
+          setIsProcessingCPU(false);
+          return currentState;
+        }
+        const actualPlayer = currentState.players[currentState.currentPlayerIndex];
+        if (actualPlayer.isHuman) {
           setIsProcessingCPU(false);
           return currentState;
         }
 
-        // 現在のプレイヤーが人間なら何もしない
-        const actualCurrentPlayer = currentState.players[currentState.currentPlayerIndex];
-        if (actualCurrentPlayer.isHuman) {
-          console.log('[scheduleNextCPUAction] 現在のプレイヤーは人間のためスキップ');
-          setIsProcessingCPU(false);
-          return currentState;
-        }
-
+        // CPUアクションを実行
         const previousStreet = currentState.currentStreet;
         const prevCardCount = currentState.communityCards.length;
-        const playerId = currentState.players[currentState.currentPlayerIndex].id;
+        const playerId = actualPlayer.id;
         const cpuAction = getCPUAction(currentState, currentState.currentPlayerIndex);
 
-        console.log('[scheduleNextCPUAction] CPUアクション決定', {
-          playerId,
-          action: cpuAction.action,
-          amount: cpuAction.amount,
-        });
-
-        setLastActions(prev => {
-          const newMap = new Map(prev);
-          newMap.set(playerId, { ...cpuAction, timestamp: Date.now() });
-          return newMap;
-        });
-
+        recordAction(playerId, cpuAction.action, cpuAction.amount);
         const newState = applyAction(currentState, currentState.currentPlayerIndex, cpuAction.action, cpuAction.amount);
-
-        console.log('[scheduleNextCPUAction] アクション適用後', {
-          previousStreet,
-          newStreet: newState.currentStreet,
-          pot: newState.pot,
-          nextPlayerIndex: newState.currentPlayerIndex,
-          isHandComplete: newState.isHandComplete,
-        });
-
-        // 最後のアクションを表示するための遅延付きクリア
         scheduleActionMarkerClear(playerId);
 
-        if (newState.currentStreet !== previousStreet) {
-          console.log('[scheduleNextCPUAction] ストリート変更検出');
+        const streetChanged = newState.currentStreet !== previousStreet;
+        setIsProcessingCPU(false);
+
+        if (streetChanged) {
+          // ストリート変更時: コミュニティカード追加を反映
           setNewCommunityCardsCount(newState.communityCards.length - prevCardCount);
 
-          // ストリート変更時は、アクション表示後に遅延を入れてから次へ進む
-          setIsProcessingCPU(false);
-
           if (!newState.isHandComplete) {
-            const nextPlayer = newState.players[newState.currentPlayerIndex];
-            console.log('[scheduleNextCPUAction] 次のプレイヤー確認 (ストリート変更後)', {
-              nextPlayerName: nextPlayer?.name,
-              nextPlayerIsHuman: nextPlayer?.isHuman,
-            });
-            if (nextPlayer && !nextPlayer.isHuman) {
-              console.log('[scheduleNextCPUAction] 次のCPUアクションをスケジュール (1000ms後)');
-              setTimeout(() => {
-                setLastActions(new Map());
-                clearAllActionMarkerTimers();
+            setTimeout(() => {
+              clearAllActions();
+              if (isNextPlayerCPU(newState)) {
                 scheduleNextCPUAction(newState);
-              }, 1000);
-            } else {
-              // 人間の番なら少し待ってからアクションマーカーをクリア
-              setTimeout(() => {
-                setLastActions(new Map());
-                clearAllActionMarkerTimers();
-              }, 1000);
-            }
-          } else {
-            console.log('[scheduleNextCPUAction] ハンド完了');
+              }
+            }, STREET_CHANGE_DELAY);
           }
         } else {
+          // 同一ストリート: 次のCPUアクションへ
           setNewCommunityCardsCount(0);
-          setIsProcessingCPU(false);
 
-          if (!newState.isHandComplete) {
-            const nextPlayer = newState.players[newState.currentPlayerIndex];
-            console.log('[scheduleNextCPUAction] 次のプレイヤー確認', {
-              nextPlayerName: nextPlayer?.name,
-              nextPlayerIsHuman: nextPlayer?.isHuman,
-            });
-            if (nextPlayer && !nextPlayer.isHuman) {
-              console.log('[scheduleNextCPUAction] 次のCPUアクションをスケジュール (300ms後)');
-              setTimeout(() => scheduleNextCPUAction(newState), 300);
-            }
-          } else {
-            console.log('[scheduleNextCPUAction] ハンド完了');
+          if (!newState.isHandComplete && isNextPlayerCPU(newState)) {
+            setTimeout(() => scheduleNextCPUAction(newState), CPU_ACTION_INTERVAL);
           }
         }
 
         return newState;
       });
-    }, thinkTime);
-  }, [clearAllActionMarkerTimers, scheduleActionMarkerClear]);
+    }, getRandomThinkTime());
+  }, [cancelPendingCPUAction, recordAction, scheduleActionMarkerClear, clearAllActions]);
 
+  // ============================================
+  // ハンド管理
+  // ============================================
+
+  /** 新しいハンドを開始する内部処理 */
+  const startNewHandWithAnimation = useCallback((state: GameState) => {
+    const stateWithRebuy = applyRebuyIfNeeded(state);
+    const newState = startNewHand(stateWithRebuy);
+
+    clearAllActions();
+    setIsDealingCards(true);
+    setNewCommunityCardsCount(0);
+
+    setTimeout(() => {
+      setIsDealingCards(false);
+      scheduleNextCPUAction(newState);
+    }, DEAL_ANIMATION_TIME);
+
+    return newState;
+  }, [clearAllActions, scheduleNextCPUAction]);
+
+  /** 次のハンドを開始 (外部API) */
+  const startNextHand = useCallback(() => {
+    setGameState(currentState => startNewHandWithAnimation(currentState));
+  }, [startNewHandWithAnimation]);
+
+  // ============================================
+  // プレイヤーアクション処理
+  // ============================================
+
+  /** 人間プレイヤーのフォールド処理 */
+  const handleHumanFold = useCallback((currentState: GameState) => {
+    cancelPendingCPUAction();
+    clearAllActions();
+    setIsChangingTable(true);
+
+    setTimeout(() => {
+      setIsChangingTable(false);
+      setGameState(prevState => startNewHandWithAnimation(prevState));
+    }, TABLE_CHANGE_DELAY);
+
+    return currentState; // フォールド時は即座に状態を変えない（テーブル移動演出のため）
+  }, [cancelPendingCPUAction, clearAllActions, startNewHandWithAnimation]);
+
+  /** 人間プレイヤーのアクション処理 */
   const handleAction = useCallback((action: Action, amount: number) => {
     setGameState(currentState => {
+      // バリデーション
       if (currentState.isHandComplete) return currentState;
-
       const currentPlayer = currentState.players[currentState.currentPlayerIndex];
       if (!currentPlayer.isHuman) return currentState;
 
@@ -218,126 +272,63 @@ export function useGameState() {
       const isValid = validActions.some(a => a.action === action);
       if (!isValid) return currentState;
 
-      // 人間がフォールドしたら「テーブル移動中」を表示して新しいハンドを開始
+      // フォールドは特別処理
       if (action === 'fold') {
-        // 既存のタイムアウトをキャンセル
-        if (cpuTimeoutRef.current) {
-          clearTimeout(cpuTimeoutRef.current);
-          cpuTimeoutRef.current = null;
-        }
-
-        setLastActions(new Map());
-        clearAllActionMarkerTimers();
-        setIsChangingTable(true);
-
-        // 0.7秒後にテーブル移動完了、新しいハンドを開始
-        setTimeout(() => {
-          setIsChangingTable(false);
-          setGameState(prevState => {
-            const stateWithRebuy = {
-              ...prevState,
-              players: prevState.players.map(p => ({
-                ...p,
-                chips: p.chips <= 0 ? 600 : p.chips,
-              })),
-            };
-            const newState = startNewHand(stateWithRebuy);
-            setIsDealingCards(true);
-            setNewCommunityCardsCount(0);
-
-            setTimeout(() => {
-              setIsDealingCards(false);
-              scheduleNextCPUAction(newState);
-            }, 2000);
-
-            return newState;
-          });
-        }, 700);
-
-        return currentState;
+        return handleHumanFold(currentState);
       }
 
+      // 通常のアクション処理
       const previousStreet = currentState.currentStreet;
       const prevCardCount = currentState.communityCards.length;
       const playerId = currentPlayer.id;
 
-      setLastActions(prev => {
-        const newMap = new Map(prev);
-        newMap.set(playerId, { action, amount, timestamp: Date.now() });
-        return newMap;
-      });
-
+      recordAction(playerId, action, amount);
       const newState = applyAction(currentState, currentState.currentPlayerIndex, action, amount);
-
-      // 人間のアクションを表示するための遅延付きクリア
       scheduleActionMarkerClear(playerId);
 
-      if (newState.currentStreet !== previousStreet) {
+      const streetChanged = newState.currentStreet !== previousStreet;
+
+      if (streetChanged) {
         setNewCommunityCardsCount(newState.communityCards.length - prevCardCount);
 
-        // ストリート変更時は、アクション表示後に遅延を入れてから次へ進む
         if (!newState.isHandComplete) {
           setTimeout(() => {
-            setLastActions(new Map());
-            clearAllActionMarkerTimers();
+            clearAllActions();
             scheduleNextCPUAction(newState);
-          }, 1000);
+          }, STREET_CHANGE_DELAY);
         }
       } else {
         setNewCommunityCardsCount(0);
 
         if (!newState.isHandComplete) {
-          setTimeout(() => scheduleNextCPUAction(newState), 300);
+          setTimeout(() => scheduleNextCPUAction(newState), CPU_ACTION_INTERVAL);
         }
       }
 
       return newState;
     });
-  }, [clearAllActionMarkerTimers, scheduleActionMarkerClear, scheduleNextCPUAction]);
+  }, [handleHumanFold, recordAction, scheduleActionMarkerClear, clearAllActions, scheduleNextCPUAction]);
 
-  const startNextHandInternal = useCallback(() => {
-    setGameState(currentState => {
-      const stateWithRebuy = {
-        ...currentState,
-        players: currentState.players.map(p => ({
-          ...p,
-          chips: p.chips <= 0 ? 600 : p.chips,
-        })),
-      };
-      const newState = startNewHand(stateWithRebuy);
-      setLastActions(new Map());
-      clearAllActionMarkerTimers();
-      setIsDealingCards(true);
-      setNewCommunityCardsCount(0);
+  // ============================================
+  // 初期化
+  // ============================================
 
-      setTimeout(() => {
-        setIsDealingCards(false);
-        scheduleNextCPUAction(newState);
-      }, 2000);
-
-      return newState;
-    });
-  }, [clearAllActionMarkerTimers, scheduleNextCPUAction]);
-
-  const startNextHand = useCallback(() => {
-    startNextHandInternal();
-  }, [startNextHandInternal]);
-
-  // Initial deal animation
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsDealingCards(false);
       scheduleNextCPUAction(gameState);
-    }, 2000);
+    }, DEAL_ANIMATION_TIME);
 
     return () => {
       clearTimeout(timer);
-      if (cpuTimeoutRef.current) {
-        clearTimeout(cpuTimeoutRef.current);
-      }
+      cancelPendingCPUAction();
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ============================================
+  // 公開API
+  // ============================================
 
   return {
     gameState,
