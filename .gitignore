@@ -2,3 +2,13 @@ node_modules
 dist
 .DS_Store
 *.log
+
+# Environment files
+.env
+*.env.local
+
+# Generated TypeScript files in shared
+shared/types/*.js
+shared/types/*.js.map
+shared/types/*.d.ts
+shared/types/*.d.ts.map
