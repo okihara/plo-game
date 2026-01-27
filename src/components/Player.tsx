@@ -100,7 +100,7 @@ export function Player({
   isDealing,
   dealOrder,
 }: PlayerProps) {
-  const avatarImage = cpuAvatars[player.name];
+  const avatarImage = player.isHuman ? '/images/you.png' : cpuAvatars[player.name];
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
 
   return (
