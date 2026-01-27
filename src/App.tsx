@@ -27,23 +27,25 @@ export function App() {
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
   const humanDealOrder = (humanPlayerIdx - sbPlayerIdx + 6) % 6;
 
+  // 9:16コンテナ内でのvh相当の単位を使うため、コンテナベースの設計
   return (
-    <div className="flex flex-col w-full max-w-[calc(100vh*9/16)] aspect-[9/16] overflow-hidden relative">
+    <div className="flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative">
       {/* ゲーム情報ヘッダー */}
-      <div className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-sm py-[0.2vh] text-center shadow-sm">
-        <span className="text-[1.2vh] font-bold text-pink-600">PLO</span>
-        <span className="text-[1vh] text-gray-400 mx-[0.3vh]">|</span>
-        <span className="text-[1.1vh] font-semibold text-gray-600">{gameState.smallBlind}/{gameState.bigBlind}</span>
+      <div className="absolute top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-sm py-[1%] text-center shadow-sm">
+        <span className="text-[2.5%] font-bold text-pink-600 leading-none" style={{ fontSize: 'min(1.2vh, 2vw)' }}>PLO</span>
+        <span className="text-gray-400 mx-[0.5%]" style={{ fontSize: 'min(1vh, 1.7vw)' }}>|</span>
+        <span className="font-semibold text-gray-600" style={{ fontSize: 'min(1.1vh, 1.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
       </div>
 
       {/* 分析ボタン */}
       <button
         onClick={() => setShowAnalysis(!showAnalysis)}
-        className={`absolute top-[1vh] right-[1vh] z-40 w-[4vh] h-[4vh] rounded-full flex items-center justify-center text-[2vh] font-bold transition-colors ${
+        className={`absolute z-40 rounded-full flex items-center justify-center font-bold transition-colors ${
           showAnalysis
             ? 'bg-blue-500 text-white'
             : 'bg-black/50 text-gray-300 hover:bg-black/70'
         }`}
+        style={{ top: '2%', right: '2%', width: '7%', height: 'calc(7% * 9 / 16)', fontSize: 'min(2vh, 3.5vw)' }}
       >
         i
       </button>
@@ -76,8 +78,8 @@ export function App() {
 
       {/* テーブル移動中オーバーレイ */}
       {isChangingTable && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="text-white text-[2.5vh] font-bold">
+        <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
+          <div className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
             テーブル移動中...
           </div>
         </div>

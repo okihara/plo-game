@@ -37,7 +37,7 @@ export function HandAnalysisOverlay({
   const isPreflop = communityCards.length < 3;
 
   return (
-    <div className="fixed top-[1vh] left-[1vh] z-50 pointer-events-auto">
+    <div className="absolute top-[3%] left-[2%] z-50 pointer-events-auto">
       <div className="bg-black/90 border border-gray-600 rounded-md p-[1vh] min-w-[18vh] shadow-xl text-[1.2vh]">
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-[0.8vh] border-b border-gray-700 pb-[0.5vh]">

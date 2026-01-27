@@ -39,7 +39,7 @@ export function ResultOverlay({ state, onNextHand }: ResultOverlayProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex flex-col items-center justify-end pb-[5vh] z-[100] animate-fade-in">
+    <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-end pb-[8%] z-[100] animate-fade-in">
       <div className="text-center p-[2.5vh] bg-black/70 rounded-2xl mx-[2.5vh]">
         <div
           className={`text-[3.5vh] font-black mb-[2vh] uppercase ${
