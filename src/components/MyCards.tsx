@@ -18,7 +18,7 @@ export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
       <div className="flex gap-[0.8vh] justify-center">
         {cards.map((card, cardIndex) => {
           // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
-          const dealDelay = (cardIndex * 6 + dealOrder) * 80;
+          const dealDelay = (cardIndex * 6 + dealOrder) * 40;
           return (
             <div
               key={cardIndex}

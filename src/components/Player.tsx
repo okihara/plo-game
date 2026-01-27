@@ -143,7 +143,7 @@ export function Player({
                 // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
                 // dealOrder: SBからの順番(0-5)
                 // 各カードの配布タイミング = (周回 * 6人 + 配布順) * 間隔
-                const dealDelay = (cardIndex * 6 + dealOrder) * 80;
+                const dealDelay = (cardIndex * 6 + dealOrder) * 40;
                 return (
                   <div
                     key={cardIndex}

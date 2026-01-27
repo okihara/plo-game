@@ -17,6 +17,7 @@ export function App() {
     newCommunityCardsCount,
     isChangingTable,
     handleAction,
+    handlePreFold,
     startNextHand,
   } = useGameState();
 
@@ -65,7 +66,7 @@ export function App() {
         dealOrder={humanDealOrder}
       />
 
-      <ActionPanel state={gameState} onAction={handleAction} />
+      <ActionPanel state={gameState} onAction={handleAction} onPreFold={handlePreFold} />
 
       <ResultOverlay state={gameState} onNextHand={startNextHand} />
 

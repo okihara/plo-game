@@ -1,8 +1,33 @@
-import { GameState, Action, Card, Rank } from './types';
+import { GameState, Action, Card, Rank, Street } from './types';
 import { getValidActions } from './gameEngine';
 import { getRankValue } from './deck';
+import { evaluatePLOHand } from './handEvaluator';
 
-// シンプルなCPU AI
+// ハンド評価情報
+interface HandEvaluation {
+  strength: number;        // 0-1 総合強度
+  madeHandRank: number;    // メイドハンドのランク (1-9)
+  hasFlushDraw: boolean;   // フラッシュドロー
+  hasStraightDraw: boolean; // ストレートドロー
+  hasWrapDraw: boolean;    // ラップドロー（8アウツ以上）
+  drawStrength: number;    // ドローの強さ 0-1
+  isNuts: boolean;         // ナッツか
+  isNearNuts: boolean;     // セミナッツか
+}
+
+// ボードテクスチャ
+interface BoardTexture {
+  isPaired: boolean;       // ペアボード
+  isTrips: boolean;        // トリップスボード
+  flushPossible: boolean;  // フラッシュ完成可能
+  flushDraw: boolean;      // フラッシュドロー可能（同スート3枚）
+  straightPossible: boolean; // ストレート完成可能
+  isConnected: boolean;    // コネクトボード
+  isWet: boolean;          // ウェットボード
+  highCard: number;        // 最高カード
+}
+
+// CPU AI - より賢い判断
 export function getCPUAction(state: GameState, playerIndex: number): { action: Action; amount: number } {
   const player = state.players[playerIndex];
   const validActions = getValidActions(state, playerIndex);
@@ -11,65 +36,701 @@ export function getCPUAction(state: GameState, playerIndex: number): { action: A
     return { action: 'fold', amount: 0 };
   }
 
-  const handStrength = evaluatePreFlopStrength(player.holeCards);
-  const streetMultiplier = getStreetMultiplier(state.currentStreet);
+  const toCall = state.currentBet - player.currentBet;
+  const potOdds = toCall > 0 ? toCall / (state.pot + toCall) : 0;
   const positionBonus = getPositionBonus(player.position);
 
-  const effectiveStrength = handStrength * streetMultiplier + positionBonus;
+  // プリフロップとポストフロップで異なるロジック
+  if (state.currentStreet === 'preflop') {
+    return getPreflopAction(state, playerIndex, validActions, positionBonus);
+  }
 
-  const random = Math.random();
+  // ポストフロップ: 実際のハンド強度とドローを評価
+  const handEval = evaluatePostFlopHand(player.holeCards, state.communityCards);
+  const boardTexture = analyzeBoardTexture(state.communityCards);
+
+  // 相手のアグレッション分析
+  const aggression = analyzeOpponentAggression(state, playerIndex);
+
+  return getPostFlopAction(state, playerIndex, validActions, handEval, boardTexture, aggression, potOdds, positionBonus);
+}
+
+// プリフロップアクション
+function getPreflopAction(
+  state: GameState,
+  playerIndex: number,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  positionBonus: number
+): { action: Action; amount: number } {
+  const player = state.players[playerIndex];
+  const handStrength = evaluatePreFlopStrength(player.holeCards);
+  const effectiveStrength = Math.min(1, handStrength + positionBonus);
+
   const toCall = state.currentBet - player.currentBet;
-  const potOdds = toCall / (state.pot + toCall);
+  const potOdds = toCall > 0 ? toCall / (state.pot + toCall) : 0;
+  const random = Math.random();
 
-  // 強いハンド
-  if (effectiveStrength > 0.7) {
-    // レイズ/ベットを試みる
+  // 相手からのレイズがあるかチェック
+  const facingRaise = state.currentBet > state.bigBlind;
+  const facingBigRaise = toCall > state.pot * 0.5;
+
+  // === プレミアムハンド (0.75+): 積極的にプレイ ===
+  if (effectiveStrength > 0.75) {
     const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
-    if (raiseAction && random > 0.3) {
-      const raiseAmount = calculateRaiseAmount(state, raiseAction.minAmount, raiseAction.maxAmount, effectiveStrength);
-      return { action: raiseAction.action, amount: raiseAmount };
+    if (raiseAction) {
+      // 3betまたは4bet
+      const raiseSize = facingRaise ? 3 : 2.5; // 3bet時は大きめ
+      const raiseAmount = Math.min(
+        raiseAction.maxAmount,
+        Math.max(raiseAction.minAmount, Math.floor(state.pot * raiseSize))
+      );
+      if (random > 0.15) { // 85%でレイズ
+        return { action: raiseAction.action, amount: raiseAmount };
+      }
     }
-    // コールまたはチェック
+    // コール
     const callAction = validActions.find(a => a.action === 'call');
     if (callAction) return { action: 'call', amount: callAction.minAmount };
     const checkAction = validActions.find(a => a.action === 'check');
     if (checkAction) return { action: 'check', amount: 0 };
   }
 
-  // 中程度のハンド
-  if (effectiveStrength > 0.4) {
-    // ポットオッズが良ければコール
-    if (potOdds < effectiveStrength) {
-      const callAction = validActions.find(a => a.action === 'call');
-      if (callAction) return { action: 'call', amount: callAction.minAmount };
+  // === 良いハンド (0.55-0.75): ポジションと状況による ===
+  if (effectiveStrength > 0.55) {
+    // 大きなレイズには慎重
+    if (facingBigRaise) {
+      if (effectiveStrength > 0.65) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      return { action: 'fold', amount: 0 };
+    }
+
+    // レイズするか?
+    if (!facingRaise && random > 0.4) {
+      const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+      if (raiseAction) {
+        const raiseAmount = Math.min(
+          raiseAction.maxAmount,
+          Math.max(raiseAction.minAmount, Math.floor(state.pot * 0.75))
+        );
+        return { action: raiseAction.action, amount: raiseAmount };
+      }
+    }
+
+    // コール
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction && potOdds < effectiveStrength * 0.8) {
+      return { action: 'call', amount: callAction.minAmount };
     }
     const checkAction = validActions.find(a => a.action === 'check');
     if (checkAction) return { action: 'check', amount: 0 };
 
-    // たまにブラフ
-    if (random > 0.85) {
-      const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
-      if (raiseAction) {
-        return { action: raiseAction.action, amount: raiseAction.minAmount };
+    // ポットオッズが悪ければフォールド
+    if (toCall > 0) return { action: 'fold', amount: 0 };
+  }
+
+  // === 普通のハンド (0.35-0.55): マルチウェイではプレイ可能 ===
+  if (effectiveStrength > 0.35) {
+    // レイズには降りる
+    if (facingRaise && toCall > state.bigBlind * 3) {
+      return { action: 'fold', amount: 0 };
+    }
+
+    // チェック優先
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+
+    // 安くコールできるならコール
+    if (potOdds < 0.2 && toCall <= state.bigBlind * 2) {
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+    }
+  }
+
+  // === 弱いハンド: 基本フォールド ===
+  const checkAction = validActions.find(a => a.action === 'check');
+  if (checkAction) return { action: 'check', amount: 0 };
+
+  // たまにスチール
+  if (!facingRaise && positionBonus >= 0.08 && random > 0.92) {
+    const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+    if (raiseAction) {
+      return { action: raiseAction.action, amount: raiseAction.minAmount };
+    }
+  }
+
+  return { action: 'fold', amount: 0 };
+}
+
+// ポストフロップアクション
+function getPostFlopAction(
+  state: GameState,
+  playerIndex: number,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  handEval: HandEvaluation,
+  boardTexture: BoardTexture,
+  aggression: number,
+  potOdds: number,
+  positionBonus: number
+): { action: Action; amount: number } {
+  const player = state.players[playerIndex];
+  const toCall = state.currentBet - player.currentBet;
+  const street = state.currentStreet;
+
+  // SPR (Stack to Pot Ratio)
+  const spr = player.chips / Math.max(1, state.pot);
+
+  // === モンスターハンド: ナッツまたはセミナッツ ===
+  if (handEval.isNuts || (handEval.isNearNuts && handEval.madeHandRank >= 5)) {
+    return playStrongHand(state, validActions, handEval, boardTexture, spr);
+  }
+
+  // === 強いメイドハンド (ツーペア+) ===
+  if (handEval.madeHandRank >= 3) {
+    // ペアボードでフルハウス以下は慎重に
+    if (boardTexture.isPaired && handEval.madeHandRank < 7) {
+      // 相手がアグレッシブなら降りることも
+      if (aggression > 0.7 && toCall > state.pot * 0.5) {
+        const checkAction = validActions.find(a => a.action === 'check');
+        if (checkAction) return { action: 'check', amount: 0 };
+        // コールはするがレイズはしない
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction && potOdds < 0.35) {
+          return { action: 'call', amount: callAction.minAmount };
+        }
+        return { action: 'fold', amount: 0 };
+      }
+    }
+
+    // フラッシュボードでフラッシュ未完成は慎重
+    if (boardTexture.flushPossible && handEval.madeHandRank < 6) {
+      if (aggression > 0.6) {
+        const checkAction = validActions.find(a => a.action === 'check');
+        if (checkAction) return { action: 'check', amount: 0 };
+        if (potOdds > 0.3) return { action: 'fold', amount: 0 };
+      }
+    }
+
+    return playMediumStrengthHand(state, validActions, handEval, aggression, potOdds);
+  }
+
+  // === ドローハンド ===
+  if (handEval.hasFlushDraw || handEval.hasStraightDraw || handEval.hasWrapDraw) {
+    return playDrawHand(state, validActions, handEval, boardTexture, potOdds, street);
+  }
+
+  // === ワンペア ===
+  if (handEval.madeHandRank === 2) {
+    // トップペア以上なら継続
+    if (handEval.strength > 0.4) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+      if (potOdds < 0.25) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+    }
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+    return { action: 'fold', amount: 0 };
+  }
+
+  // === 弱いハンド ===
+  // ブラフ機会の検討
+  if (shouldBluff(state, playerIndex, boardTexture, aggression, positionBonus)) {
+    const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+    if (raiseAction) {
+      const bluffSize = Math.min(
+        raiseAction.maxAmount,
+        Math.max(raiseAction.minAmount, Math.floor(state.pot * 0.6))
+      );
+      return { action: raiseAction.action, amount: bluffSize };
+    }
+  }
+
+  const checkAction = validActions.find(a => a.action === 'check');
+  if (checkAction) return { action: 'check', amount: 0 };
+
+  // 非常に安いならコール
+  if (potOdds < 0.1 && toCall < player.chips * 0.03) {
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
+  return { action: 'fold', amount: 0 };
+}
+
+// 強いハンドのプレイ
+function playStrongHand(
+  state: GameState,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  _handEval: HandEvaluation,
+  boardTexture: BoardTexture,
+  _spr: number
+): { action: Action; amount: number } {
+  const random = Math.random();
+
+  // ウェットボードでは速めにプレイ
+  if (boardTexture.isWet) {
+    const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+    if (raiseAction) {
+      // ポットの75-100%
+      const raiseAmount = Math.min(
+        raiseAction.maxAmount,
+        Math.max(raiseAction.minAmount, Math.floor(state.pot * (0.75 + random * 0.25)))
+      );
+      return { action: raiseAction.action, amount: raiseAmount };
+    }
+  }
+
+  // ドライボードではスロープレイも混ぜる
+  if (!boardTexture.isWet && random > 0.65) {
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
+  // 通常はバリューベット
+  const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+  if (raiseAction) {
+    const raiseAmount = Math.min(
+      raiseAction.maxAmount,
+      Math.max(raiseAction.minAmount, Math.floor(state.pot * 0.7))
+    );
+    return { action: raiseAction.action, amount: raiseAmount };
+  }
+
+  const callAction = validActions.find(a => a.action === 'call');
+  if (callAction) return { action: 'call', amount: callAction.minAmount };
+  const checkAction = validActions.find(a => a.action === 'check');
+  if (checkAction) return { action: 'check', amount: 0 };
+
+  return { action: 'fold', amount: 0 };
+}
+
+// 中程度の強さのハンド
+function playMediumStrengthHand(
+  state: GameState,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  handEval: HandEvaluation,
+  aggression: number,
+  potOdds: number
+): { action: Action; amount: number } {
+  const random = Math.random();
+  const toCall = state.currentBet - state.players[state.currentPlayerIndex].currentBet;
+
+  // 相手がパッシブならベット
+  if (aggression < 0.3) {
+    const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+    if (raiseAction && random > 0.3) {
+      const raiseAmount = Math.min(
+        raiseAction.maxAmount,
+        Math.max(raiseAction.minAmount, Math.floor(state.pot * 0.5))
+      );
+      return { action: raiseAction.action, amount: raiseAmount };
+    }
+  }
+
+  // ポットコントロール
+  const checkAction = validActions.find(a => a.action === 'check');
+  if (checkAction) return { action: 'check', amount: 0 };
+
+  // ベットに直面したらポットオッズで判断
+  if (potOdds < handEval.strength * 0.6) {
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
+  // 高すぎるなら降りる
+  if (toCall > state.pot * 0.5 && aggression > 0.5) {
+    return { action: 'fold', amount: 0 };
+  }
+
+  const callAction = validActions.find(a => a.action === 'call');
+  if (callAction) return { action: 'call', amount: callAction.minAmount };
+
+  return { action: 'fold', amount: 0 };
+}
+
+// ドローハンドのプレイ
+function playDrawHand(
+  state: GameState,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  handEval: HandEvaluation,
+  _boardTexture: BoardTexture,
+  potOdds: number,
+  street: Street
+): { action: Action; amount: number } {
+  const random = Math.random();
+
+  // ドローの強さによるエクイティ概算
+  let drawEquity = handEval.drawStrength;
+
+  // ターンでドローが減る
+  if (street === 'turn') {
+    drawEquity *= 0.5;
+  }
+  // リバーではドローの価値なし
+  if (street === 'river') {
+    drawEquity = 0;
+  }
+
+  // ナッツドローはセミブラフ
+  if (handEval.hasWrapDraw || (handEval.hasFlushDraw && handEval.drawStrength > 0.4)) {
+    const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+    if (raiseAction && random > 0.4) {
+      const raiseAmount = Math.min(
+        raiseAction.maxAmount,
+        Math.max(raiseAction.minAmount, Math.floor(state.pot * 0.6))
+      );
+      return { action: raiseAction.action, amount: raiseAmount };
+    }
+  }
+
+  // ポットオッズが合えばコール
+  if (potOdds < drawEquity) {
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
+  // インプライドオッズを考慮（ナッツドロー）
+  if (handEval.drawStrength > 0.35 && potOdds < drawEquity * 1.5) {
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
+  const checkAction = validActions.find(a => a.action === 'check');
+  if (checkAction) return { action: 'check', amount: 0 };
+
+  return { action: 'fold', amount: 0 };
+}
+
+// ブラフすべきか判断
+function shouldBluff(
+  state: GameState,
+  playerIndex: number,
+  boardTexture: BoardTexture,
+  aggression: number,
+  positionBonus: number
+): boolean {
+  const random = Math.random();
+  const player = state.players[playerIndex];
+
+  // すでにベットがあるならブラフしにくい
+  if (state.currentBet > 0) return false;
+
+  // ポジションが良い
+  const hasPosition = positionBonus >= 0.08;
+
+  // 相手がパッシブ
+  const passiveOpponents = aggression < 0.3;
+
+  // 怖いボード（ペアやフラッシュ完成）
+  const scaryBoard = boardTexture.isPaired || boardTexture.flushPossible;
+
+  // ブラフ頻度
+  let bluffFrequency = 0.05; // 基本5%
+
+  if (hasPosition) bluffFrequency += 0.08;
+  if (passiveOpponents) bluffFrequency += 0.05;
+  if (scaryBoard) bluffFrequency += 0.05;
+
+  // スタックが少ない時はブラフしにくい
+  if (player.chips < state.pot) bluffFrequency *= 0.3;
+
+  return random < bluffFrequency;
+}
+
+// ポストフロップのハンド評価
+function evaluatePostFlopHand(holeCards: Card[], communityCards: Card[]): HandEvaluation {
+  if (communityCards.length < 3) {
+    return {
+      strength: evaluatePreFlopStrength(holeCards),
+      madeHandRank: 0,
+      hasFlushDraw: false,
+      hasStraightDraw: false,
+      hasWrapDraw: false,
+      drawStrength: 0,
+      isNuts: false,
+      isNearNuts: false,
+    };
+  }
+
+  // メイドハンドを評価
+  const madeHand = evaluatePLOHand(holeCards, communityCards.length >= 5
+    ? communityCards
+    : [...communityCards, ...getDummyCards(5 - communityCards.length, [...holeCards, ...communityCards])]
+  );
+
+  // ドロー評価
+  const drawInfo = evaluateDraws(holeCards, communityCards);
+
+  // ナッツ判定（簡易版）
+  const isNuts = checkIfNuts(holeCards, communityCards, madeHand.rank);
+  const isNearNuts = !isNuts && madeHand.rank >= 5 && madeHand.highCards[0] >= 12;
+
+  // 総合強度計算
+  let strength = madeHand.rank / 9;
+
+  // ハイカードボーナス
+  if (madeHand.highCards.length > 0) {
+    strength += (madeHand.highCards[0] - 8) / 60;
+  }
+
+  // ドローボーナス（リバー以外）
+  if (communityCards.length < 5) {
+    strength += drawInfo.drawStrength * 0.3;
+  }
+
+  return {
+    strength: Math.min(1, strength),
+    madeHandRank: madeHand.rank,
+    hasFlushDraw: drawInfo.hasFlushDraw,
+    hasStraightDraw: drawInfo.hasStraightDraw,
+    hasWrapDraw: drawInfo.hasWrapDraw,
+    drawStrength: drawInfo.drawStrength,
+    isNuts,
+    isNearNuts,
+  };
+}
+
+// ドロー評価
+function evaluateDraws(holeCards: Card[], communityCards: Card[]): {
+  hasFlushDraw: boolean;
+  hasStraightDraw: boolean;
+  hasWrapDraw: boolean;
+  drawStrength: number;
+} {
+  const allCards = [...holeCards, ...communityCards];
+  let drawStrength = 0;
+
+  // フラッシュドロー判定（PLO: ホールから2枚使用必須）
+  const suitCounts: Record<string, { hole: number; comm: number }> = {};
+  for (const card of holeCards) {
+    suitCounts[card.suit] = suitCounts[card.suit] || { hole: 0, comm: 0 };
+    suitCounts[card.suit].hole++;
+  }
+  for (const card of communityCards) {
+    suitCounts[card.suit] = suitCounts[card.suit] || { hole: 0, comm: 0 };
+    suitCounts[card.suit].comm++;
+  }
+
+  let hasFlushDraw = false;
+  for (const [suit, counts] of Object.entries(suitCounts)) {
+    if (counts.hole >= 2 && counts.hole + counts.comm >= 4) {
+      hasFlushDraw = true;
+      // ナッツフラッシュドローならボーナス
+      const holeOfSuit = holeCards.filter(c => c.suit === suit);
+      const hasAce = holeOfSuit.some(c => c.rank === 'A');
+      drawStrength += hasAce ? 0.4 : 0.25;
+      break;
+    }
+  }
+
+  // ストレートドロー判定
+  const values = [...new Set(allCards.map(c => getRankValue(c.rank)))].sort((a, b) => b - a);
+  const holeValues = new Set(holeCards.map(c => getRankValue(c.rank)));
+
+  let hasStraightDraw = false;
+  let hasWrapDraw = false;
+  let maxOuts = 0;
+
+  // 連続性チェック（5枚のウィンドウ）
+  for (let high = 14; high >= 5; high--) {
+    let count = 0;
+    let holeUsed = 0;
+    const missing: number[] = [];
+
+    for (let v = high; v > high - 5; v--) {
+      const checkVal = v === 0 ? 14 : v;
+      if (values.includes(checkVal)) {
+        count++;
+        if (holeValues.has(checkVal)) holeUsed++;
+      } else {
+        missing.push(checkVal);
+      }
+    }
+
+    // PLOでは2枚使用必須
+    if (count >= 4 && missing.length === 1 && holeUsed >= 2) {
+      hasStraightDraw = true;
+      // アウツ数でラップ判定
+      const outs = countStraightOuts(values, holeValues);
+      if (outs >= 8) {
+        hasWrapDraw = true;
+        maxOuts = Math.max(maxOuts, outs);
       }
     }
   }
 
-  // 弱いハンド
-  // チェックできればチェック
-  const checkAction = validActions.find(a => a.action === 'check');
-  if (checkAction) return { action: 'check', amount: 0 };
+  if (hasStraightDraw) {
+    drawStrength += hasWrapDraw ? 0.35 : 0.2;
+  }
 
-  // ポットオッズが非常に良い場合はコール
-  if (potOdds < 0.15 && random > 0.5) {
-    const callAction = validActions.find(a => a.action === 'call');
-    if (callAction && callAction.minAmount < player.chips * 0.1) {
-      return { action: 'call', amount: callAction.minAmount };
+  return {
+    hasFlushDraw,
+    hasStraightDraw,
+    hasWrapDraw,
+    drawStrength: Math.min(1, drawStrength),
+  };
+}
+
+// ストレートアウツを数える
+function countStraightOuts(allValues: number[], holeValues: Set<number>): number {
+  let outs = 0;
+  const valuesSet = new Set(allValues);
+
+  for (let card = 2; card <= 14; card++) {
+    if (valuesSet.has(card)) continue;
+
+    const testValues = [...allValues, card].sort((a, b) => b - a);
+    // 5連続があるかチェック
+    for (let i = 0; i <= testValues.length - 5; i++) {
+      let isConsecutive = true;
+      let holeUsed = 0;
+      for (let j = 0; j < 5; j++) {
+        if (j > 0 && testValues[i + j - 1] - testValues[i + j] !== 1) {
+          isConsecutive = false;
+          break;
+        }
+        if (holeValues.has(testValues[i + j])) holeUsed++;
+      }
+      if (isConsecutive && holeUsed >= 2) {
+        outs++;
+        break;
+      }
     }
   }
 
-  // フォールド
-  return { action: 'fold', amount: 0 };
+  return outs;
+}
+
+// ナッツ判定（簡易版）
+function checkIfNuts(holeCards: Card[], communityCards: Card[], handRank: number): boolean {
+  // ストレートフラッシュはほぼナッツ
+  if (handRank === 9) return true;
+
+  // フォーカードはほぼナッツ
+  if (handRank === 8) return true;
+
+  // フルハウスでトップセットなら強い
+  if (handRank === 7) {
+    const boardValues = communityCards.map(c => getRankValue(c.rank));
+    const holeValues = holeCards.map(c => getRankValue(c.rank));
+    const maxBoard = Math.max(...boardValues);
+    if (holeValues.filter(v => v === maxBoard).length >= 2) return true;
+  }
+
+  // ナッツフラッシュ判定
+  if (handRank === 6) {
+    for (const suit of ['h', 'd', 'c', 's']) {
+      const holeOfSuit = holeCards.filter(c => c.suit === suit);
+      const boardOfSuit = communityCards.filter(c => c.suit === suit);
+      if (holeOfSuit.length >= 2 && boardOfSuit.length >= 3) {
+        // Aスーテッドがあればナッツ
+        if (holeOfSuit.some(c => c.rank === 'A')) return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// ダミーカードを生成（評価用）
+function getDummyCards(count: number, usedCards: Card[]): Card[] {
+  const used = new Set(usedCards.map(c => `${c.rank}${c.suit}`));
+  const result: Card[] = [];
+  const ranks: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
+  const suits = ['h', 'd', 'c', 's'] as const;
+
+  for (const rank of ranks) {
+    for (const suit of suits) {
+      if (!used.has(`${rank}${suit}`) && result.length < count) {
+        result.push({ rank, suit });
+      }
+    }
+  }
+  return result;
+}
+
+// ボードテクスチャ分析
+function analyzeBoardTexture(communityCards: Card[]): BoardTexture {
+  const values = communityCards.map(c => getRankValue(c.rank));
+  const suits = communityCards.map(c => c.suit);
+
+  // ペアボード
+  const valueCounts = new Map<number, number>();
+  for (const v of values) {
+    valueCounts.set(v, (valueCounts.get(v) || 0) + 1);
+  }
+  const maxCount = Math.max(...valueCounts.values(), 0);
+  const isPaired = maxCount >= 2;
+  const isTrips = maxCount >= 3;
+
+  // フラッシュ可能性
+  const suitCounts = new Map<string, number>();
+  for (const s of suits) {
+    suitCounts.set(s, (suitCounts.get(s) || 0) + 1);
+  }
+  const maxSuitCount = Math.max(...suitCounts.values(), 0);
+  const flushPossible = maxSuitCount >= 3;
+  const flushDraw = maxSuitCount === 2;
+
+  // ストレート可能性
+  const uniqueValues = [...new Set(values)].sort((a, b) => a - b);
+  let isConnected = false;
+  let straightPossible = false;
+
+  if (uniqueValues.length >= 3) {
+    // 連続性チェック
+    let maxConsecutive = 1;
+    let currentConsecutive = 1;
+    for (let i = 1; i < uniqueValues.length; i++) {
+      if (uniqueValues[i] - uniqueValues[i - 1] <= 2) {
+        currentConsecutive++;
+        maxConsecutive = Math.max(maxConsecutive, currentConsecutive);
+      } else {
+        currentConsecutive = 1;
+      }
+    }
+    isConnected = maxConsecutive >= 3;
+    straightPossible = isConnected;
+  }
+
+  // ウェットボード判定
+  const isWet = (flushDraw || flushPossible) || isConnected;
+
+  return {
+    isPaired,
+    isTrips,
+    flushPossible,
+    flushDraw,
+    straightPossible,
+    isConnected,
+    isWet,
+    highCard: Math.max(...values, 0),
+  };
+}
+
+// 相手のアグレッション分析
+function analyzeOpponentAggression(state: GameState, playerIndex: number): number {
+  const history = state.handHistory;
+  let raises = 0;
+  let actions = 0;
+
+  for (const action of history) {
+    if (action.playerId !== playerIndex) {
+      actions++;
+      if (action.action === 'raise' || action.action === 'bet' || action.action === 'allin') {
+        raises++;
+      }
+    }
+  }
+
+  if (actions === 0) return 0.3; // デフォルト
+  return raises / actions;
 }
 
 // プリフロップ評価の詳細情報
@@ -314,16 +975,6 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   };
 }
 
-function getStreetMultiplier(street: string): number {
-  switch (street) {
-    case 'preflop': return 0.8;
-    case 'flop': return 0.9;
-    case 'turn': return 1.0;
-    case 'river': return 1.1;
-    default: return 1.0;
-  }
-}
-
 function getPositionBonus(position: string): number {
   switch (position) {
     case 'BTN': return 0.1;
@@ -334,21 +985,4 @@ function getPositionBonus(position: string): number {
     case 'SB': return -0.05;
     default: return 0;
   }
-}
-
-function calculateRaiseAmount(
-  state: GameState,
-  minAmount: number,
-  maxAmount: number,
-  strength: number
-): number {
-  // ポットサイズを基準にレイズ額を決定
-  const potSizeRaise = state.pot * (0.5 + strength * 0.5);
-  const targetAmount = Math.max(minAmount, Math.min(maxAmount, potSizeRaise));
-
-  // 少しランダム性を加える
-  const variance = (Math.random() - 0.5) * 0.2;
-  const finalAmount = targetAmount * (1 + variance);
-
-  return Math.round(Math.max(minAmount, Math.min(maxAmount, finalAmount)));
 }

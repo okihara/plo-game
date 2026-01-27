@@ -39,7 +39,7 @@ const CPU_THINK_TIME_MIN = 300;
 const CPU_THINK_TIME_VARIANCE = 500;
 
 /** カード配布アニメーション時間 (ms) */
-const DEAL_ANIMATION_TIME = 2000;
+const DEAL_ANIMATION_TIME = 1000;
 
 /** テーブル移動時間 (ms) */
 const TABLE_CHANGE_DELAY = 700;
@@ -147,14 +147,18 @@ export function useGameState() {
     }
   }, []);
 
+
   /** 次のCPUアクションをスケジュール */
   const scheduleNextCPUAction = useCallback((state: GameState) => {
     cancelPendingCPUAction();
 
-    // ハンド完了または人間の番なら何もしない
+    // ハンド完了なら何もしない
     if (state.isHandComplete) return;
     const currentPlayer = state.players[state.currentPlayerIndex];
-    if (!currentPlayer || currentPlayer.isHuman) return;
+    if (!currentPlayer) return;
+
+    // 人間の番なら待機
+    if (currentPlayer.isHuman) return;
 
     setIsProcessingCPU(true);
 
@@ -327,6 +331,27 @@ export function useGameState() {
   }, []);
 
   // ============================================
+  // Fast Fold（プリフロップ時の即座フォールド）
+  // ============================================
+
+  /** プリフロップ中に自分のターン前でもフォールドして次のテーブルへ移動 */
+  const handlePreFold = useCallback(() => {
+    // プリフロップ以外では無効
+    if (gameState.currentStreet !== 'preflop') return;
+    if (gameState.isHandComplete) return;
+
+    // 即座にテーブル移動を開始
+    cancelPendingCPUAction();
+    clearAllActions();
+    setIsChangingTable(true);
+
+    setTimeout(() => {
+      setIsChangingTable(false);
+      setGameState(prevState => startNewHandWithAnimation(prevState));
+    }, TABLE_CHANGE_DELAY);
+  }, [gameState.currentStreet, gameState.isHandComplete, cancelPendingCPUAction, clearAllActions, startNewHandWithAnimation]);
+
+  // ============================================
   // 公開API
   // ============================================
 
@@ -338,6 +363,7 @@ export function useGameState() {
     newCommunityCardsCount,
     isChangingTable,
     handleAction,
+    handlePreFold,
     startNextHand,
   };
 }
