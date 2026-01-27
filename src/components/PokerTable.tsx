@@ -53,7 +53,7 @@ export function PokerTable({
     <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
       <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isCPUTurn && isProcessingCPU} />
 
-      <div className="h-[75%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1e5631_0%,#145028_50%,#0d3d1c_100%)] rounded-[45%] border-[0.5vh] border-[#2a1810] shadow-[0_0_0_0.3vh_#4a3020,0_0_2vh_rgba(0,0,0,0.5),inset_0_0_4vh_rgba(0,0,0,0.3)] relative">
+      <div className="h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1e5631_0%,#145028_50%,#0d3d1c_100%)] rounded-[45%] border-[0.5vh] border-[#2a1810] shadow-[0_0_0_0.3vh_#4a3020,0_0_2vh_rgba(0,0,0,0.5),inset_0_0_4vh_rgba(0,0,0,0.3)] relative">
         {/* Pot Display */}
         <div className="absolute top-[55%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[2vh] py-[1vh] rounded-full text-[1.8vh] font-bold text-yellow-400 drop-shadow-[0_0_1vh_rgba(255,215,0,0.5)] z-10">
           POT: {formatChips(state.pot)}

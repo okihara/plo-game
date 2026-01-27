@@ -28,7 +28,7 @@ export function App() {
   const humanDealOrder = (humanPlayerIdx - sbPlayerIdx + 6) % 6;
 
   return (
-    <div className="flex flex-col h-full aspect-[9/16] max-h-screen overflow-hidden relative">
+    <div className="flex flex-col w-full max-w-[calc(100vh*9/16)] aspect-[9/16] overflow-hidden relative">
       {/* 分析ボタン */}
       <button
         onClick={() => setShowAnalysis(!showAnalysis)}
