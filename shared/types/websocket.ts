@@ -98,3 +98,11 @@ export interface TableInfo {
   maxPlayers: number;
   isFastFold: boolean;
 }
+
+// Socket authentication data
+export interface SocketAuthData {
+  token?: string;
+  isBot?: boolean;
+  botName?: string;
+  botAvatar?: string | null;
+}

@@ -9,6 +9,7 @@ interface AuthenticatedSocket extends Socket {
   odId?: string;
   odName?: string;
   odAvatarUrl?: string | null;
+  odIsBot?: boolean;
 }
 
 interface GameSocketDependencies {
@@ -24,9 +25,25 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   tableManager.createTable('1/3', false); // Regular table
   tableManager.createTable('1/3', true);  // Fast fold table
 
-  // Authentication middleware (allows anonymous guests)
+  // Authentication middleware (allows anonymous guests and bots)
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
+      // Check if this is a bot connection
+      const isBot = socket.handshake.auth.isBot === true;
+      if (isBot) {
+        const botName = socket.handshake.auth.botName || 'Bot';
+        const botAvatar = socket.handshake.auth.botAvatar || null;
+        const botId = `bot_${socket.id}`;
+
+        socket.odId = botId;
+        socket.odName = botName;
+        socket.odAvatarUrl = botAvatar;
+        socket.odIsBot = true;
+
+        console.log(`Bot connected: ${botId} (${botName})`);
+        return next();
+      }
+
       const token = socket.handshake.auth.token ||
         socket.handshake.headers.cookie?.split('token=')[1]?.split(';')[0];
 
@@ -42,6 +59,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           socket.odId = user.id;
           socket.odName = user.username;
           socket.odAvatarUrl = user.avatarUrl;
+          socket.odIsBot = false;
           return next();
         }
       }
@@ -52,6 +70,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.odId = guestId;
       socket.odName = `Guest${guestNumber}`;
       socket.odAvatarUrl = null;
+      socket.odIsBot = false;
 
       next();
     } catch (err) {
@@ -61,6 +80,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.odId = guestId;
       socket.odName = `Guest${guestNumber}`;
       socket.odAvatarUrl = null;
+      socket.odIsBot = false;
       next();
     }
   });
@@ -178,12 +198,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('fastfold:join', async (data: { blinds: string }) => {
       const { blinds } = data;
       const isGuest = socket.odId!.startsWith('guest_');
+      const isBot = socket.odIsBot === true;
 
       try {
         const [, bb] = blinds.split('/').map(Number);
         const minBuyIn = bb * 100; // $300 for $1/$3
 
-        if (!isGuest) {
+        if (!isGuest && !isBot) {
           // Authenticated user - check balance
           const bankroll = await prisma.bankroll.findUnique({
             where: { userId: socket.odId },
@@ -216,14 +237,15 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           tableManager.removePlayerFromTracking(socket.odId!);
         }
 
-        // Queue player (guests get default buy-in)
+        // Queue player (guests and bots get default buy-in)
         await fastFoldPool.queuePlayer(
           socket.odId!,
           socket.odName!,
           socket.odAvatarUrl!,
           socket,
           minBuyIn,
-          blinds
+          blinds,
+          isBot // Pass isBot flag
         );
       } catch (err) {
         console.error('Error joining fast fold:', err);

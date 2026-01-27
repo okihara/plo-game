@@ -6,6 +6,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
+    "bot": "tsx src/bot/index.ts",
+    "bot:dev": "tsx watch src/bot/index.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
@@ -22,6 +24,7 @@
     "ioredis": "^5.4.2",
     "nanoid": "^5.0.9",
     "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
     "zod": "^3.24.1"
   },
   "devDependencies": {

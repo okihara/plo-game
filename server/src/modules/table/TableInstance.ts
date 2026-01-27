@@ -1,18 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action, Card, Player } from '../../shared/logic/types.js';
 import { createInitialGameState, startNewHand, applyAction, getValidActions, getActivePlayers } from '../../shared/logic/gameEngine.js';
-import { getCPUAction } from '../../shared/logic/cpuAI.js';
 import { OnlinePlayer, ClientGameState } from '../../../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
-
-const CPU_NAMES = ['Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka', 'Yuki', 'Sora', 'Ren'];
-const CPU_AVATARS = [
-  '/avatars/cpu-1.png',
-  '/avatars/cpu-2.png',
-  '/avatars/cpu-3.png',
-  '/avatars/cpu-4.png',
-  '/avatars/cpu-5.png',
-];
 
 interface SeatInfo {
   odId: string;
@@ -63,7 +53,8 @@ export class TableInstance {
     odAvatarUrl: string | null,
     socket: Socket,
     buyIn: number,
-    preferredSeat?: number
+    preferredSeat?: number,
+    isBot: boolean = false
   ): number | null {
     // Find available seat
     let seatIndex = preferredSeat ?? -1;
@@ -81,7 +72,7 @@ export class TableInstance {
       odId,
       odName,
       odAvatarUrl,
-      odIsHuman: true,
+      odIsHuman: !isBot, // Bots are not human
       socket,
       chips: buyIn,
       buyIn,
@@ -95,8 +86,7 @@ export class TableInstance {
       player: this.getOnlinePlayer(seatIndex)!,
     });
 
-    // Fill with CPUs if needed and start hand
-    this.fillWithCPUs();
+    // Start hand if enough players
     this.maybeStartHand();
 
     return seatIndex;
@@ -126,9 +116,6 @@ export class TableInstance {
         this.handleAction(odId, 'fold', 0);
       }
     }
-
-    // Refill CPUs
-    this.fillWithCPUs();
   }
 
   // Handle player action
@@ -242,35 +229,6 @@ export class TableInstance {
 
   // Private methods
 
-  private fillWithCPUs(): void {
-    const humanCount = this.getHumanPlayerCount();
-    if (humanCount === 0) return; // Don't fill if no humans
-
-    let cpuIndex = 0;
-    for (let i = 0; i < 6; i++) {
-      if (this.seats[i] === null) {
-        const cpuName = CPU_NAMES[cpuIndex % CPU_NAMES.length];
-        const cpuAvatar = CPU_AVATARS[cpuIndex % CPU_AVATARS.length];
-        cpuIndex++;
-
-        this.seats[i] = {
-          odId: `cpu-${nanoid(8)}`,
-          odName: cpuName,
-          odAvatarUrl: cpuAvatar,
-          odIsHuman: false,
-          socket: null,
-          chips: this.bigBlind * 200, // Standard buy-in
-          buyIn: this.bigBlind * 200,
-        };
-
-        this.io.to(this.roomName).emit('table:player_joined', {
-          seat: i,
-          player: this.getOnlinePlayer(i)!,
-        });
-      }
-    }
-  }
-
   private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
 
@@ -310,10 +268,10 @@ export class TableInstance {
     // Start the hand
     this.gameState = startNewHand(this.gameState);
 
-    // Send hole cards to each player
+    // Send hole cards to each player (human and bot)
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
-      if (seat?.socket && seat.odIsHuman) {
+      if (seat?.socket) {
         seat.socket.emit('game:hole_cards', {
           cards: this.gameState.players[i].holeCards,
         });
@@ -333,32 +291,27 @@ export class TableInstance {
     const currentPlayerIndex = this.gameState.currentPlayerIndex;
     const currentSeat = this.seats[currentPlayerIndex];
 
-    if (!currentSeat) return;
+    if (!currentSeat || !currentSeat.socket) {
+      // No socket means player disconnected - auto-fold
+      if (currentSeat) {
+        this.handleAction(currentSeat.odId, 'fold', 0);
+      }
+      return;
+    }
 
     const validActions = getValidActions(this.gameState, currentPlayerIndex);
 
-    if (currentSeat.odIsHuman && currentSeat.socket) {
-      // Human player - send action request
-      currentSeat.socket.emit('game:action_required', {
-        playerId: currentSeat.odId,
-        validActions,
-        timeoutMs: this.ACTION_TIMEOUT_MS,
-      });
+    // Send action request (works for both human players and bots)
+    currentSeat.socket.emit('game:action_required', {
+      playerId: currentSeat.odId,
+      validActions,
+      timeoutMs: this.ACTION_TIMEOUT_MS,
+    });
 
-      // Set action timer
-      this.actionTimer = setTimeout(() => {
-        // Auto-fold on timeout
-        this.handleAction(currentSeat.odId, 'fold', 0);
-      }, this.ACTION_TIMEOUT_MS);
-    } else {
-      // CPU player - get AI action
-      setTimeout(() => {
-        if (!this.gameState || this.gameState.isHandComplete) return;
-
-        const aiAction = getCPUAction(this.gameState, currentPlayerIndex);
-        this.handleAction(currentSeat.odId, aiAction.action, aiAction.amount);
-      }, 800 + Math.random() * 1200); // 800-2000ms delay
-    }
+    // Set action timer - auto-fold on timeout
+    this.actionTimer = setTimeout(() => {
+      this.handleAction(currentSeat.odId, 'fold', 0);
+    }, this.ACTION_TIMEOUT_MS);
   }
 
   private handleHandComplete(): void {
@@ -400,19 +353,13 @@ export class TableInstance {
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
       if (seat && seat.chips <= 0) {
-        if (seat.odIsHuman) {
-          // Notify human player they're busted
-          seat.socket?.emit('table:error', { message: 'You have run out of chips!' });
-          this.unseatPlayer(seat.odId);
-        } else {
-          // Remove CPU and add new one
-          this.seats[i] = null;
-        }
+        // Notify player they're busted
+        seat.socket?.emit('table:error', { message: 'You have run out of chips!' });
+        this.unseatPlayer(seat.odId);
       }
     }
 
-    // Refill CPUs and start next hand
-    this.fillWithCPUs();
+    // Start next hand if enough players
     this.maybeStartHand();
   }
 
@@ -457,7 +404,7 @@ export class TableInstance {
           folded: player?.folded ?? false,
           isAllIn: player?.isAllIn ?? false,
           hasActed: player?.hasActed ?? false,
-          isConnected: seat.socket?.connected ?? !seat.odIsHuman,
+          isConnected: seat.socket?.connected ?? false,
         };
       }),
       communityCards: this.gameState.communityCards,
@@ -490,7 +437,7 @@ export class TableInstance {
       folded: player?.folded ?? false,
       isAllIn: player?.isAllIn ?? false,
       hasActed: player?.hasActed ?? false,
-      isConnected: seat.socket?.connected ?? !seat.odIsHuman,
+      isConnected: seat.socket?.connected ?? false,
     };
   }
 }

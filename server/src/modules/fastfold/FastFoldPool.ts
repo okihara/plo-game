@@ -10,6 +10,7 @@ interface QueuedPlayer {
   socket: Socket;
   chips: number;
   queuedAt: number;
+  isBot: boolean;
 }
 
 export class FastFoldPool {
@@ -33,7 +34,8 @@ export class FastFoldPool {
     odAvatarUrl: string | null,
     socket: Socket,
     chips: number,
-    blinds: string
+    blinds: string,
+    isBot: boolean = false
   ): Promise<void> {
     const player: QueuedPlayer = {
       odId,
@@ -42,6 +44,7 @@ export class FastFoldPool {
       socket,
       chips,
       queuedAt: Date.now(),
+      isBot,
     };
 
     // Get or create queue for this blind level
@@ -112,7 +115,9 @@ export class FastFoldPool {
         player.odName,
         player.odAvatarUrl,
         player.socket,
-        player.chips
+        player.chips,
+        undefined, // preferredSeat
+        player.isBot
       );
 
       if (seatNumber !== null) {
