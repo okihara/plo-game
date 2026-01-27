@@ -9,6 +9,7 @@ import { redis } from './config/redis.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
+import { adminRoutes } from './modules/admin/routes.js';
 
 const fastify = Fastify({
   logger: env.NODE_ENV === 'development',
@@ -46,9 +47,7 @@ await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 // Start server and setup Socket.io
 const start = async () => {
   try {
-    await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
-
-    // Setup Socket.io on the same server
+    // Setup Socket.io on the same server (before listen for admin routes)
     const io = new Server(fastify.server, {
       cors: {
         origin: env.CLIENT_URL,
@@ -56,10 +55,16 @@ const start = async () => {
       },
     });
 
-    setupGameSocket(io, fastify);
+    const { tableManager, fastFoldPool } = setupGameSocket(io, fastify);
+
+    // Register admin routes (needs io, tableManager, fastFoldPool)
+    await fastify.register(adminRoutes({ io, tableManager, fastFoldPool }));
+
+    await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 
     console.log(`Server running on http://localhost:${env.PORT}`);
     console.log(`WebSocket ready on ws://localhost:${env.PORT}`);
+    console.log(`Status dashboard: http://localhost:${env.PORT}/admin/status`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);

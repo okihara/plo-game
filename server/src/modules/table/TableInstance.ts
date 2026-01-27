@@ -423,7 +423,7 @@ export class TableInstance {
     this.io.to(this.roomName).emit('game:state', { state: clientState });
   }
 
-  private getClientGameState(): ClientGameState {
+  public getClientGameState(): ClientGameState {
     if (!this.gameState) {
       return {
         tableId: this.id,

@@ -11,7 +11,12 @@ interface AuthenticatedSocket extends Socket {
   odAvatarUrl?: string | null;
 }
 
-export function setupGameSocket(io: Server, fastify: FastifyInstance): void {
+interface GameSocketDependencies {
+  tableManager: TableManager;
+  fastFoldPool: FastFoldPool;
+}
+
+export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
   const fastFoldPool = new FastFoldPool(io, tableManager);
 
@@ -264,4 +269,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): void {
       socket.emit('lobby:tables', { tables });
     });
   });
+
+  return { tableManager, fastFoldPool };
 }
