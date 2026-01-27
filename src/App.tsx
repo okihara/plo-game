@@ -28,11 +28,11 @@ export function App() {
   const humanDealOrder = (humanPlayerIdx - sbPlayerIdx + 6) % 6;
 
   return (
-    <div className="flex flex-col w-full h-full max-w-screen max-h-screen overflow-hidden relative">
+    <div className="flex flex-col h-full aspect-[9/16] max-h-screen overflow-hidden relative">
       {/* 分析ボタン */}
       <button
         onClick={() => setShowAnalysis(!showAnalysis)}
-        className={`absolute top-2 right-2 z-40 w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-colors ${
+        className={`absolute top-[1vh] right-[1vh] z-40 w-[4vh] h-[4vh] rounded-full flex items-center justify-center text-[2vh] font-bold transition-colors ${
           showAnalysis
             ? 'bg-blue-500 text-white'
             : 'bg-black/50 text-gray-300 hover:bg-black/70'
@@ -70,7 +70,7 @@ export function App() {
       {/* テーブル移動中オーバーレイ */}
       {isChangingTable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
-          <div className="text-white text-xl font-bold">
+          <div className="text-white text-[2.5vh] font-bold">
             テーブル移動中...
           </div>
         </div>

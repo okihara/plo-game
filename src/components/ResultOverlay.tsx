@@ -39,22 +39,22 @@ export function ResultOverlay({ state, onNextHand }: ResultOverlayProps) {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex flex-col items-center justify-end pb-10 z-[100] animate-fade-in">
-      <div className="text-center p-5 bg-black/70 rounded-2xl mx-5">
+    <div className="fixed inset-0 bg-black/40 flex flex-col items-center justify-end pb-[5vh] z-[100] animate-fade-in">
+      <div className="text-center p-[2.5vh] bg-black/70 rounded-2xl mx-[2.5vh]">
         <div
-          className={`text-[28px] font-black mb-4 uppercase ${
+          className={`text-[3.5vh] font-black mb-[2vh] uppercase ${
             humanWon
-              ? 'text-green-400 drop-shadow-[0_0_20px_rgba(0,255,0,0.5)]'
-              : 'text-red-400 drop-shadow-[0_0_20px_rgba(255,68,68,0.5)]'
+              ? 'text-green-400 drop-shadow-[0_0_2vh_rgba(0,255,0,0.5)]'
+              : 'text-red-400 drop-shadow-[0_0_2vh_rgba(255,68,68,0.5)]'
           }`}
         >
           {title}
         </div>
-        <div className="text-base text-gray-400 mb-5">{details}</div>
-        {amount && <div className="text-2xl font-bold text-yellow-400 mb-7">{amount}</div>}
+        <div className="text-[2vh] text-gray-400 mb-[2.5vh]">{details}</div>
+        {amount && <div className="text-[3vh] font-bold text-yellow-400 mb-[3.5vh]">{amount}</div>}
         <button
           onClick={onNextHand}
-          className="py-4 px-14 text-lg font-bold bg-gradient-to-b from-green-500 to-green-700 text-white border-none rounded-full cursor-pointer uppercase tracking-wider shadow-[0_4px_15px_rgba(76,175,80,0.4)] min-w-[200px] active:scale-95 transition-transform"
+          className="py-[2vh] px-[7vh] text-[2.2vh] font-bold bg-gradient-to-b from-green-500 to-green-700 text-white border-none rounded-full cursor-pointer uppercase tracking-wider shadow-[0_0.5vh_1.5vh_rgba(76,175,80,0.4)] min-w-[25vh] active:scale-95 transition-transform"
         >
           次のハンド
         </button>

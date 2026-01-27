@@ -44,21 +44,21 @@ const positionStyles: Record<number, string> = {
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-30px]',
-  1: 'top-0 right-[-50px]',
-  2: 'top-[20px] right-[-60px]',
-  3: 'bottom-[-25px]',
-  4: 'top-[20px] left-[-60px]',
-  5: 'top-0 left-[-50px]',
+  0: 'top-[-3.5vh]',
+  1: 'top-0 right-[-6vh]',
+  2: 'top-[2.5vh] right-[-7vh]',
+  3: 'bottom-[-3vh]',
+  4: 'top-[2.5vh] left-[-7vh]',
+  5: 'top-0 left-[-6vh]',
 };
 
 const dealerButtonStyles: Record<number, string> = {
-  0: 'top-[-40px] left-[80px]',
-  1: 'top-[-5px] right-[-35px]',
-  2: 'top-[-5px] right-[-35px]',
-  3: 'bottom-[-35px] right-[60px]',
-  4: 'top-[-5px] left-[-35px]',
-  5: 'top-[-5px] left-[-35px]',
+  0: 'top-[-5vh] left-[9vh]',
+  1: 'top-[-0.5vh] right-[-4vh]',
+  2: 'top-[-0.5vh] right-[-4vh]',
+  3: 'bottom-[-4vh] right-[7vh]',
+  4: 'top-[-0.5vh] left-[-4vh]',
+  5: 'top-[-0.5vh] left-[-4vh]',
 };
 
 const actionColorStyles: Record<Action, string> = {
@@ -73,12 +73,12 @@ const actionColorStyles: Record<Action, string> = {
 // カードがテーブル中央から各プレイヤー位置へ飛んでくる方向
 // positionIndex: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
 const dealFromOffsets: Record<number, { x: string; y: string }> = {
-  0: { x: '0px', y: '-120px' },    // 下 ← 中央から下へ
-  1: { x: '80px', y: '-60px' },    // 左下 ← 中央から左下へ
-  2: { x: '80px', y: '60px' },     // 左上 ← 中央から左上へ
-  3: { x: '0px', y: '120px' },     // 上 ← 中央から上へ
-  4: { x: '-80px', y: '60px' },    // 右上 ← 中央から右上へ
-  5: { x: '-80px', y: '-60px' },   // 右下 ← 中央から右下へ
+  0: { x: '0', y: '-14vh' },    // 下 ← 中央から下へ
+  1: { x: '10vh', y: '-7vh' },    // 左下 ← 中央から左下へ
+  2: { x: '10vh', y: '7vh' },     // 左上 ← 中央から左上へ
+  3: { x: '0', y: '14vh' },     // 上 ← 中央から上へ
+  4: { x: '-10vh', y: '7vh' },    // 右上 ← 中央から右上へ
+  5: { x: '-10vh', y: '-7vh' },   // 右下 ← 中央から右下へ
 };
 
 export function Player({
@@ -99,30 +99,30 @@ export function Player({
       {/* Avatar */}
       <div
         className={`
-          w-12 h-12 rounded-full
+          w-[5.5vh] h-[5.5vh] rounded-full
           bg-gradient-to-br from-gray-500 to-gray-700
-          border-[3px] flex items-center justify-center
-          text-xl relative overflow-hidden
-          ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_15px_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-gray-600'}
+          border-[0.3vh] flex items-center justify-center
+          text-[2.5vh] relative overflow-hidden
+          ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_1.5vh_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-gray-600'}
           ${player.folded ? 'opacity-40 grayscale' : ''}
-          ${isWinner ? 'border-green-400 shadow-[0_0_20px_rgba(0,255,0,0.6)]' : ''}
+          ${isWinner ? 'border-green-400 shadow-[0_0_2vh_rgba(0,255,0,0.6)]' : ''}
         `}
       >
         {emoji}
       </div>
 
       {/* Player Info */}
-      <div className="bg-black/80 px-2.5 py-1 rounded-lg mt-1 text-center min-w-[70px]">
-        <div className="text-[11px] text-gray-400 whitespace-nowrap">{player.name}</div>
-        <div className="text-xs font-bold text-white">{formatChips(player.chips)}</div>
+      <div className="bg-black/80 px-[1vh] py-[0.5vh] rounded-lg mt-[0.5vh] text-center min-w-[8vh]">
+        <div className="text-[1.3vh] text-gray-400 whitespace-nowrap">{player.name}</div>
+        <div className="text-[1.5vh] font-bold text-white">{formatChips(player.chips)}</div>
       </div>
 
       {/* Hole Cards (for CPU players) */}
       {!player.isHuman && player.holeCards.length > 0 && (
-        <div className={`flex gap-0.5 mt-1 ${player.folded ? 'invisible' : ''}`}>
+        <div className={`flex gap-[0.3vh] mt-[0.5vh] ${player.folded ? 'invisible' : ''}`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
-                <div key={i} className="w-[21px] h-[29px] scale-[0.65] origin-top-left">
+                <div key={i} className="w-[2.3vh] h-[3.3vh] scale-[0.65] origin-top-left">
                   <Card card={card} />
                 </div>
               ))
@@ -134,7 +134,7 @@ export function Player({
                 return (
                   <div
                     key={cardIndex}
-                    className={`w-[21px] h-[29px] scale-[0.65] origin-top-left ${isDealing ? 'animate-deal-card' : ''}`}
+                    className={`w-[2.3vh] h-[3.3vh] scale-[0.65] origin-top-left ${isDealing ? 'animate-deal-card' : ''}`}
                     style={isDealing ? {
                       opacity: 0,
                       animationDelay: `${dealDelay}ms`,
@@ -151,21 +151,21 @@ export function Player({
 
       {/* Current Bet */}
       {player.currentBet > 0 && (
-        <div className={`absolute bg-black/70 text-yellow-400 px-2 py-0.5 rounded-lg text-[11px] font-bold whitespace-nowrap ${betPositionStyles[positionIndex]}`}>
+        <div className={`absolute bg-black/70 text-yellow-400 px-[0.8vh] py-[0.3vh] rounded-lg text-[1.3vh] font-bold whitespace-nowrap ${betPositionStyles[positionIndex]}`}>
           {formatChips(player.currentBet)}
         </div>
       )}
 
       {/* Last Action Marker */}
       {showActionMarker && (
-        <div className={`absolute left-1/2 -translate-x-1/2 top-[-30px] px-3 py-1 rounded-xl text-[11px] font-bold uppercase whitespace-nowrap z-[15] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
+        <div className={`absolute left-1/2 -translate-x-1/2 top-[-3.5vh] px-[1vh] py-[0.5vh] rounded-xl text-[1.3vh] font-bold uppercase whitespace-nowrap z-[15] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
           {formatAction(lastAction.action, lastAction.amount)}
         </div>
       )}
 
       {/* Dealer Button */}
       {player.position === 'BTN' && (
-        <div className={`absolute w-7 h-7 bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-2 border-yellow-700 rounded-full flex items-center justify-center text-sm font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyles[positionIndex]}`}>
+        <div className={`absolute w-[3vh] h-[3vh] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.2vh] border-yellow-700 rounded-full flex items-center justify-center text-[1.5vh] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyles[positionIndex]}`}>
           D
         </div>
       )}

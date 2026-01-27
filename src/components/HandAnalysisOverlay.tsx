@@ -37,25 +37,25 @@ export function HandAnalysisOverlay({
   const isPreflop = communityCards.length < 3;
 
   return (
-    <div className="fixed top-2 left-2 z-50 pointer-events-auto">
-      <div className="bg-black/90 border border-gray-600 rounded-md p-2 min-w-[160px] shadow-xl text-[10px]">
+    <div className="fixed top-[1vh] left-[1vh] z-50 pointer-events-auto">
+      <div className="bg-black/90 border border-gray-600 rounded-md p-[1vh] min-w-[18vh] shadow-xl text-[1.2vh]">
         {/* ヘッダー */}
-        <div className="flex justify-between items-center mb-1.5 border-b border-gray-700 pb-1">
+        <div className="flex justify-between items-center mb-[0.8vh] border-b border-gray-700 pb-[0.5vh]">
           <span className="text-white font-bold">Analysis</span>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-white text-sm leading-none"
+            className="text-gray-400 hover:text-white text-[1.5vh] leading-none"
           >
             ×
           </button>
         </div>
 
         {/* プリフロップ評価 */}
-        <div className="mb-2">
-          <div className="text-white font-bold text-sm mb-1">
+        <div className="mb-[1vh]">
+          <div className="text-white font-bold text-[1.5vh] mb-[0.5vh]">
             Score: {preflopEval.score.toFixed(2)}
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-[0.3vh]">
             <EvalItem label="Pair" value={preflopEval.pairRank} positive={!!preflopEval.pairRank} />
             <EvalItem label="A-suited" value={preflopEval.hasAceSuited ? "Yes" : "No"} positive={preflopEval.hasAceSuited} />
             <EvalItem label="DS" value={preflopEval.isDoubleSuited ? "Yes" : "No"} positive={preflopEval.isDoubleSuited} />
@@ -68,8 +68,8 @@ export function HandAnalysisOverlay({
 
         {/* ポストフロップ評価 */}
         {!isPreflop && postflopInfo && (
-          <div className="border-t border-gray-700 pt-1.5">
-            <div className="flex flex-col gap-0.5">
+          <div className="border-t border-gray-700 pt-[0.8vh]">
+            <div className="flex flex-col gap-[0.3vh]">
               {postflopInfo.handRank && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">Hand</span>

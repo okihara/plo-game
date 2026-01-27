@@ -10,9 +10,9 @@ const SUIT_SYMBOLS: Record<string, string> = {
 type CardSize = 'sm' | 'md' | 'lg';
 
 const sizeStyles: Record<CardSize, { card: string; suit: string }> = {
-  sm: { card: 'w-8 h-11 text-sm', suit: 'text-base' },
-  md: { card: 'w-10 h-14 text-lg', suit: 'text-xl' },
-  lg: { card: 'w-14 h-20 text-xl', suit: 'text-2xl' },
+  sm: { card: 'w-[3.5vh] h-[5vh] text-[1.5vh]', suit: 'text-[2vh]' },
+  md: { card: 'w-[4.5vh] h-[6.5vh] text-[2vh]', suit: 'text-[2.5vh]' },
+  lg: { card: 'w-[6vh] h-[8.5vh] text-[2.5vh]', suit: 'text-[3vh]' },
 };
 
 interface CardProps {
@@ -98,9 +98,9 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
 }
 
 const faceDownSizeStyles: Record<CardSize, string> = {
-  sm: 'w-8 h-11',
-  md: 'w-10 h-14',
-  lg: 'w-14 h-20',
+  sm: 'w-[3.5vh] h-[5vh]',
+  md: 'w-[4.5vh] h-[6.5vh]',
+  lg: 'w-[6vh] h-[8.5vh]',
 };
 
 interface FaceDownCardProps {
