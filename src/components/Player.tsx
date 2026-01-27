@@ -81,6 +81,15 @@ const dealFromOffsets: Record<number, { x: string; y: string }> = {
   5: { x: '-10vh', y: '-7vh' },   // 右下 ← 中央から右下へ
 };
 
+// CPUアバター画像マッピング
+const cpuAvatars: Record<string, string> = {
+  'Miko': '/images/miko.png',
+  'Kento': '/images/kento.png',
+  'Luna': '/images/luna.png',
+  'Hiro': '/images/hiro.png',
+  'Tomoka': '/images/tomoka.png',
+};
+
 export function Player({
   player,
   positionIndex,
@@ -91,7 +100,7 @@ export function Player({
   isDealing,
   dealOrder,
 }: PlayerProps) {
-  const emoji = player.isHuman ? '👤' : '🤖';
+  const avatarImage = cpuAvatars[player.name];
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
 
   return (
@@ -99,7 +108,7 @@ export function Player({
       {/* Avatar */}
       <div
         className={`
-          w-[5.5vh] h-[5.5vh] rounded-full
+          w-[7vh] h-[7vh] rounded-full
           bg-gradient-to-br from-gray-500 to-gray-700
           border-[0.3vh] flex items-center justify-center
           text-[2.5vh] relative overflow-hidden
@@ -108,7 +117,11 @@ export function Player({
           ${isWinner ? 'border-green-400 shadow-[0_0_2vh_rgba(0,255,0,0.6)]' : ''}
         `}
       >
-        {emoji}
+        {avatarImage ? (
+          <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
+        ) : (
+          player.isHuman ? '👤' : '🤖'
+        )}
       </div>
 
       {/* Player Info */}

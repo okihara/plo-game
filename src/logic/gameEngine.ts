@@ -8,7 +8,7 @@ export function createInitialGameState(playerChips: number = 600): GameState {
   const players: Player[] = [];
 
   // プレイヤー作成 (人間は常にBTN位置からスタート)
-  const names = ['You', 'Player 2', 'Player 3', 'Player 4', 'Player 5', 'Player 6'];
+  const names = ['You', 'Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka'];
   for (let i = 0; i < 6; i++) {
     players.push({
       id: i,

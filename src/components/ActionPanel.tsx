@@ -53,7 +53,7 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
   }, [toCall, humanPlayer.chips, sliderValue, onAction]);
 
   return (
-    <div className="bg-gradient-to-b from-[#1a1a2e] to-[#0f0f1e] px-[1.5vh] pt-[1.5vh] pb-[1vh] border-t border-gray-700">
+    <div className="bg-gradient-to-b from-white/90 to-white/80 px-[1.5vh] pt-[1.5vh] pb-[1vh] border-t-2 border-pink-300 backdrop-blur-sm">
       {/* Preset Buttons & Bet Slider */}
       <div className={`flex items-center gap-[1vh] px-[0.5vh] mb-[1.2vh] ${(!canRaise || !isMyTurn) ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="w-1/2 flex gap-[0.5vh]">
@@ -67,14 +67,14 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
               key={label}
               onClick={() => handlePreset(value)}
               disabled={!canRaise || !isMyTurn}
-              className="flex-1 py-[1vh] px-[0.5vh] border border-gray-600 rounded-md bg-white/10 text-white text-[1.3vh] font-bold transition-all active:bg-yellow-500/30 active:border-yellow-400"
+              className="flex-1 py-[1vh] px-[0.5vh] border-2 border-pink-400 rounded-md bg-pink-100 text-pink-700 text-[1.3vh] font-bold transition-all active:bg-pink-300 active:border-pink-500"
             >
               {label}
             </button>
           ))}
         </div>
         <div className="w-1/2 flex items-center gap-[1vh]">
-          <span className="text-yellow-400 font-bold text-[1.5vh] min-w-[6vh] text-right border border-gray-600 rounded px-[1vh] py-[0.5vh]">
+          <span className="text-orange-600 font-bold text-[1.5vh] min-w-[6vh] text-right border-2 border-orange-300 rounded px-[1vh] py-[0.5vh] bg-orange-50">
             {formatChips(sliderValue)}
           </span>
           <input
@@ -85,7 +85,7 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
             step={1}
             onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
             disabled={!canRaise || !isMyTurn}
-            className="flex-1 h-[1vh] rounded bg-gradient-to-r from-gray-600 to-gray-500 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[3vh] [&::-webkit-slider-thumb]:h-[3vh] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-yellow-400 [&::-webkit-slider-thumb]:to-yellow-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+            className="flex-1 h-[1vh] rounded bg-gradient-to-r from-pink-300 to-orange-300 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[3vh] [&::-webkit-slider-thumb]:h-[3vh] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-orange-400 [&::-webkit-slider-thumb]:to-pink-500 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
           />
         </div>
       </div>
@@ -95,17 +95,17 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
         <button
           onClick={() => handleAction('fold')}
           disabled={!isMyTurn}
-          className="py-[1.8vh] px-[1vh] rounded-lg text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-b from-gray-500 to-gray-700 text-white"
+          className="py-[1.8vh] px-[1vh] rounded-xl text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-b from-gray-400 to-gray-500 text-white shadow-md"
         >
           フォールド
         </button>
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
           disabled={!isMyTurn}
-          className={`py-[1.8vh] px-[1vh] rounded-lg text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white ${
+          className={`py-[1.8vh] px-[1vh] rounded-xl text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0
-              ? 'bg-gradient-to-b from-blue-500 to-blue-700'
-              : 'bg-gradient-to-b from-green-500 to-green-700'
+              ? 'bg-gradient-to-b from-cyan-400 to-blue-500'
+              : 'bg-gradient-to-b from-emerald-400 to-green-500'
           }`}
         >
           {toCall === 0 ? 'チェック' : `コール ${formatChips(toCall)}`}
@@ -113,7 +113,7 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
         <button
           onClick={() => handleAction(state.currentBet === 0 ? 'bet' : 'raise')}
           disabled={!canRaise || !isMyTurn}
-          className="py-[1.8vh] px-[1vh] rounded-lg text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-b from-orange-500 to-orange-700 text-white"
+          className="py-[1.8vh] px-[1vh] rounded-xl text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-b from-orange-400 to-pink-500 text-white shadow-md"
         >
           {state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
         </button>
