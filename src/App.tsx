@@ -29,6 +29,13 @@ export function App() {
 
   return (
     <div className="flex flex-col w-full max-w-[calc(100vh*9/16)] aspect-[9/16] overflow-hidden relative">
+      {/* ゲーム情報ヘッダー */}
+      <div className="fixed top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-sm py-[0.2vh] text-center shadow-sm">
+        <span className="text-[1.2vh] font-bold text-pink-600">PLO</span>
+        <span className="text-[1vh] text-gray-400 mx-[0.3vh]">|</span>
+        <span className="text-[1.1vh] font-semibold text-gray-600">{gameState.smallBlind}/{gameState.bigBlind}</span>
+      </div>
+
       {/* 分析ボタン */}
       <button
         onClick={() => setShowAnalysis(!showAnalysis)}
