@@ -4,12 +4,17 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:client": "vite",
+    "dev:server": "cd server && npm run dev",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build:server": "cd server && npm run build",
+    "preview": "vite preview",
+    "setup": "npm install && cd server && npm install"
   },
   "dependencies": {
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/react": "^18.3.3",

@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  username      String    @unique
+  avatarUrl     String?
+  provider      String    // google, discord, apple
+  providerId    String
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLoginAt   DateTime?
+
+  bankroll      Bankroll?
+  transactions  Transaction[]
+  handHistories HandHistoryPlayer[]
+
+  @@unique([provider, providerId])
+  @@index([email])
+}
+
+model Bankroll {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  balance   Int      @default(10000) // Starting chips
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id        String          @id @default(cuid())
+  userId    String
+  type      TransactionType
+  amount    Int
+  tableId   String?
+  handId    String?
+  createdAt DateTime        @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum TransactionType {
+  DAILY_BONUS
+  LOGIN_BONUS
+  WIN
+  LOSS
+  BUY_IN
+  CASH_OUT
+}
+
+model HandHistory {
+  id             String   @id @default(cuid())
+  tableId        String
+  handNumber     Int
+  blinds         String   // e.g., "10/20"
+  communityCards String[] // Array of card strings
+  potSize        Int
+  winners        String[] // Array of winner user IDs
+  actions        Json     // Full action history
+  createdAt      DateTime @default(now())
+
+  players HandHistoryPlayer[]
+
+  @@index([tableId])
+  @@index([createdAt])
+}
+
+model HandHistoryPlayer {
+  id            String @id @default(cuid())
+  handHistoryId String
+  userId        String
+  seatPosition  Int
+  holeCards     String[] // Array of card strings
+  finalHand     String?  // e.g., "Full House, Aces full of Kings"
+  profit        Int      // Can be negative for losses
+
+  handHistory HandHistory @relation(fields: [handHistoryId], references: [id], onDelete: Cascade)
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([handHistoryId])
+}
+
+model DailyBonus {
+  id        String   @id @default(cuid())
+  odId   String   @unique
+  claimedAt DateTime @default(now())
+
+  @@index([odId, claimedAt])
+}
