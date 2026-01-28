@@ -1,5 +1,5 @@
 import { GameState } from '../logic';
-import { LastAction } from '../hooks/useOnlineGameState';
+import { LastAction, ActionTimeout } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -11,6 +11,7 @@ interface PokerTableProps {
   isDealingCards: boolean;
   newCommunityCardsCount: number;
   humanIndex?: number;
+  actionTimeout?: ActionTimeout | null;
 }
 
 function formatChips(amount: number): string {
@@ -29,6 +30,7 @@ export function PokerTable({
   isDealingCards,
   newCommunityCardsCount,
   humanIndex = 0,
+  actionTimeout,
 }: PokerTableProps) {
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -62,19 +64,23 @@ export function PokerTable({
         <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
 
         {/* Players */}
-        {orderedPlayers.map(({ player, playerIdx, posIndex }) => (
-          <Player
-            key={player.id}
-            player={player}
-            positionIndex={posIndex}
-            isCurrentPlayer={state.currentPlayerIndex === playerIdx && !state.isHandComplete}
-            isWinner={state.winners.some(w => w.playerId === player.id)}
-            lastAction={lastActions.get(player.id) || null}
-            showCards={isShowdown}
-            isDealing={isDealingCards}
-            dealOrder={getDealOrder(playerIdx)}
-          />
-        ))}
+        {orderedPlayers.map(({ player, playerIdx, posIndex }) => {
+          const isCurrentPlayer = state.currentPlayerIndex === playerIdx && !state.isHandComplete;
+          return (
+            <Player
+              key={player.id}
+              player={player}
+              positionIndex={posIndex}
+              isCurrentPlayer={isCurrentPlayer}
+              isWinner={state.winners.some(w => w.playerId === player.id)}
+              lastAction={lastActions.get(player.id) || null}
+              showCards={isShowdown}
+              isDealing={isDealingCards}
+              dealOrder={getDealOrder(playerIdx)}
+              actionTimeout={isCurrentPlayer ? actionTimeout : null}
+            />
+          );
+        })}
       </div>
     </div>
   );

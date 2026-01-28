@@ -25,11 +25,11 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
+    actionTimeout,
     connect,
     disconnect,
     joinFastFold,
     handleAction,
-    handlePreFold,
     startNextHand,
   } = useOnlineGameState();
 
@@ -157,6 +157,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             isDealingCards={isDealingCards}
             newCommunityCardsCount={newCommunityCardsCount}
             humanIndex={humanPlayerIdx}
+            actionTimeout={actionTimeout}
           />
 
           {humanPlayer && (
@@ -168,7 +169,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             />
           )}
 
-          <ActionPanel state={gameState} onAction={handleAction} onPreFold={handlePreFold} />
+          <ActionPanel state={gameState} onAction={handleAction} />
 
           <ResultOverlay state={gameState} onNextHand={startNextHand} />
 

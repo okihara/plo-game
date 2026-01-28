@@ -13,6 +13,11 @@ export interface LastAction {
   timestamp: number;
 }
 
+export interface ActionTimeout {
+  timeoutMs: number;
+  requestedAt: number;
+}
+
 export interface OnlineGameHookResult {
   // 接続状態
   isConnecting: boolean;
@@ -31,6 +36,7 @@ export interface OnlineGameHookResult {
   isDealingCards: boolean;
   newCommunityCardsCount: number;
   isChangingTable: boolean;
+  actionTimeout: ActionTimeout | null;
 
   // アクション
   connect: () => Promise<void>;
@@ -38,7 +44,6 @@ export interface OnlineGameHookResult {
   joinFastFold: () => void;
   leaveFastFold: () => void;
   handleAction: (action: Action, amount: number) => void;
-  handlePreFold: () => void;
   startNextHand: () => void;
 }
 
@@ -147,6 +152,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
   const [isDealingCards, setIsDealingCards] = useState(false);
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
   const [isChangingTable, setIsChangingTable] = useState(false);
+  const [actionTimeout, setActionTimeout] = useState<ActionTimeout | null>(null);
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -249,13 +255,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
 
   const handleAction = useCallback((action: Action, amount: number) => {
     wsService.sendAction(action, amount);
+    setActionTimeout(null);
   }, []);
-
-  const handlePreFold = useCallback(() => {
-    if (clientState?.currentStreet !== 'preflop') return;
-    if (!clientState?.isHandInProgress) return;
-    wsService.fastFold();
-  }, [clientState]);
 
   const startNextHand = useCallback(() => {
     // サーバー側で自動的に次のハンドが始まるので、クライアントでは何もしない
@@ -289,6 +290,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setMySeat(null);
         setMyHoleCards([]);
         setClientState(null);
+        setActionTimeout(null);
       },
       onGameState: (state) => {
         // ストリート変更検出
@@ -330,6 +332,15 @@ export function useOnlineGameState(): OnlineGameHookResult {
         clearAllActions();
         // カード配布アニメーションはonHoleCardsで開始される
       },
+      onActionRequired: ({ timeoutMs }) => {
+        setActionTimeout({
+          timeoutMs,
+          requestedAt: Date.now(),
+        });
+      },
+      onHandComplete: () => {
+        setActionTimeout(null);
+      },
     });
 
     return () => {
@@ -364,12 +375,12 @@ export function useOnlineGameState(): OnlineGameHookResult {
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
+    actionTimeout,
     connect,
     disconnect,
     joinFastFold,
     leaveFastFold,
     handleAction,
-    handlePreFold,
     startNextHand,
   };
 }

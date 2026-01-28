@@ -178,10 +178,6 @@ class WebSocketService {
     this.socket?.emit('game:action', { action, amount });
   }
 
-  fastFold(): void {
-    this.socket?.emit('game:fast_fold');
-  }
-
   // Fast fold pool
   joinFastFoldPool(blinds: string): void {
     this.socket?.emit('fastfold:join', { blinds });

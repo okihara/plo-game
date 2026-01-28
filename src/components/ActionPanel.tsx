@@ -4,7 +4,6 @@ import { GameState, Action, getValidActions } from '../logic';
 interface ActionPanelProps {
   state: GameState;
   onAction: (action: Action, amount: number) => void;
-  onPreFold?: () => void;
 }
 
 function formatChips(amount: number): string {
@@ -16,14 +15,10 @@ function formatChips(amount: number): string {
   return amount.toString();
 }
 
-export function ActionPanel({ state, onAction, onPreFold }: ActionPanelProps) {
+export function ActionPanel({ state, onAction }: ActionPanelProps) {
   const humanPlayer = state.players.find(p => p.isHuman)!;
   const isMyTurn = state.players[state.currentPlayerIndex]?.isHuman && !state.isHandComplete;
   const validActions = isMyTurn ? getValidActions(state, state.currentPlayerIndex) : [];
-
-  // プリフロップでは自分のターン前でもフォールド可能
-  const isPreflop = state.currentStreet === 'preflop';
-  const canPreFold = isPreflop && !isMyTurn && !state.isHandComplete && !humanPlayer.folded;
 
   const toCall = state.currentBet - humanPlayer.currentBet;
   const canRaise = validActions.some(a => a.action === 'raise' || a.action === 'bet');
@@ -98,14 +93,8 @@ export function ActionPanel({ state, onAction, onPreFold }: ActionPanelProps) {
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-[1vh]">
         <button
-          onClick={() => {
-            if (isMyTurn) {
-              handleAction('fold');
-            } else if (canPreFold && onPreFold) {
-              onPreFold();
-            }
-          }}
-          disabled={!isMyTurn && !canPreFold}
+          onClick={() => handleAction('fold')}
+          disabled={!isMyTurn}
           className="py-[1.8vh] px-[1vh] rounded-xl text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-400 to-gray-500"
         >
           フォールド
