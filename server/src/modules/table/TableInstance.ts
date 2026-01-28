@@ -44,7 +44,9 @@ export class TableInstance {
   private gameState: GameState | null = null;
   private io: Server;
   private actionTimer: NodeJS.Timeout | null = null;
+  private streetTransitionTimer: NodeJS.Timeout | null = null;
   private readonly ACTION_TIMEOUT_MS = 30000;
+  private readonly STREET_TRANSITION_DELAY_MS = 2000;
   private isHandInProgress = false;
   private pendingStartHand = false;
 
@@ -267,6 +269,9 @@ export class TableInstance {
     }
     this.pendingAction = null;
 
+    // ストリート変更検出用に現在のストリートを保存
+    const previousStreet = this.gameState.currentStreet;
+
     // Apply action
     this.gameState = applyAction(this.gameState, seatIndex, action, amount);
 
@@ -280,9 +285,22 @@ export class TableInstance {
       this.broadcastGameState();
       this.handleHandComplete();
     } else {
-      // Request next action then broadcast (so pendingAction is set)
-      this.requestNextAction();
-      this.broadcastGameState();
+      // ストリートが変わった場合は遅延後に次のアクションを要求
+      const streetChanged = this.gameState.currentStreet !== previousStreet;
+      if (streetChanged) {
+        // 先にゲーム状態をブロードキャスト（コミュニティカードを表示）
+        // 遅延後に次のアクションを要求
+        this.streetTransitionTimer = setTimeout(() => {
+          this.broadcastGameState();
+          this.streetTransitionTimer = null;
+          this.requestNextAction();
+          this.broadcastGameState();
+        }, this.STREET_TRANSITION_DELAY_MS);
+      } else {
+        // Request next action then broadcast (so pendingAction is set)
+        this.requestNextAction();
+        this.broadcastGameState();
+      }
     }
 
     return true;
