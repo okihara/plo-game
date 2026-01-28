@@ -1,5 +1,5 @@
 import { GameState } from '../logic';
-import { LastAction } from '../hooks/useGameState';
+import { LastAction } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
 import { ThinkingIndicator } from './ThinkingIndicator';

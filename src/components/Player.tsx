@@ -1,6 +1,6 @@
 import { Player as PlayerType, Action } from '../logic';
 import { Card, FaceDownCard } from './Card';
-import { LastAction } from '../hooks/useGameState';
+import { LastAction } from '../hooks/useOnlineGameState';
 
 interface PlayerProps {
   player: PlayerType;
