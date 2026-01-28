@@ -83,10 +83,25 @@ export function startNewHand(state: GameState): GameState {
     newState.players[i].position = POSITIONS[posIndex];
   }
 
-  // ブラインドを投稿
-  const sbIndex = getNextActivePlayer(newState, newState.dealerPosition);
-  const bbIndex = getNextActivePlayer(newState, sbIndex);
+  // アクティブプレイヤー数を確認
+  const activeCount = getActivePlayerCount(newState);
 
+  let sbIndex: number;
+  let bbIndex: number;
+
+  if (activeCount === 2) {
+    // Heads-up（2人プレイ）の特殊ルール: BTN = SB
+    // ディーラー位置から最初のアクティブプレイヤーがBTN兼SB
+    sbIndex = getNextPlayerWithChips(newState, newState.dealerPosition - 1);
+    if (sbIndex === -1) sbIndex = newState.dealerPosition;
+    bbIndex = getNextPlayerWithChips(newState, sbIndex);
+  } else {
+    // 通常ルール（3人以上）: ディーラーの次がSB、その次がBB
+    sbIndex = getNextPlayerWithChips(newState, newState.dealerPosition);
+    bbIndex = getNextPlayerWithChips(newState, sbIndex);
+  }
+
+  // ブラインドを投稿
   newState.players[sbIndex].currentBet = Math.min(newState.smallBlind, newState.players[sbIndex].chips);
   newState.players[sbIndex].totalBetThisRound = newState.players[sbIndex].currentBet;
   newState.players[sbIndex].chips -= newState.players[sbIndex].currentBet;
@@ -106,9 +121,20 @@ export function startNewHand(state: GameState): GameState {
     newState.deck = remainingDeck;
   }
 
-  // UTGからアクション開始
-  newState.currentPlayerIndex = getNextActivePlayer(newState, bbIndex);
+  // アクション開始位置を決定
+  if (activeCount === 2) {
+    // Heads-upではプリフロップはSB（BTN）から先にアクション
+    newState.currentPlayerIndex = sbIndex;
+  } else {
+    // 通常ルール: UTG（BBの次）からアクション開始
+    newState.currentPlayerIndex = getNextActivePlayer(newState, bbIndex);
+  }
   newState.lastRaiserIndex = bbIndex;
+
+  // アクション可能なプレイヤーがいない場合（全員オールイン）はショーダウンへ
+  if (newState.currentPlayerIndex === -1) {
+    return runOutBoard(newState);
+  }
 
   return newState;
 }
@@ -118,6 +144,25 @@ function getNextActivePlayer(state: GameState, fromIndex: number): number {
   let count = 0;
   while (count < 6) {
     if (!state.players[index].folded && !state.players[index].isAllIn && state.players[index].chips > 0) {
+      return index;
+    }
+    index = (index + 1) % 6;
+    count++;
+  }
+  return -1;
+}
+
+// ゲームに参加可能なプレイヤー数（folded でなく、チップを持っている）
+function getActivePlayerCount(state: GameState): number {
+  return state.players.filter(p => !p.folded && p.chips > 0).length;
+}
+
+// ディーラーから見て次のアクティブプレイヤー（チップ > 0、foldedでない）
+function getNextPlayerWithChips(state: GameState, fromIndex: number): number {
+  let index = (fromIndex + 1) % 6;
+  let count = 0;
+  while (count < 6) {
+    if (!state.players[index].folded && state.players[index].chips > 0) {
       return index;
     }
     index = (index + 1) % 6;

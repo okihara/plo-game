@@ -300,6 +300,13 @@ export class TableInstance {
     if (!this.gameState || this.gameState.isHandComplete) return;
 
     const currentPlayerIndex = this.gameState.currentPlayerIndex;
+
+    // currentPlayerIndex が -1 の場合（全員オールインなど）はハンド完了処理へ
+    if (currentPlayerIndex === -1) {
+      this.handleHandComplete();
+      return;
+    }
+
     const currentSeat = this.seats[currentPlayerIndex];
 
     if (!currentSeat || !currentSeat.socket) {
