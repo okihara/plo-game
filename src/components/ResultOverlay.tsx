@@ -15,7 +15,8 @@ function formatChips(amount: number): string {
 }
 
 export function ResultOverlay({ state, onNextHand }: ResultOverlayProps) {
-  if (!state.isHandComplete) {
+  // ハンド完了していない、または勝者がいない（待機中など）場合は表示しない
+  if (!state.isHandComplete || state.winners.length === 0) {
     return null;
   }
 

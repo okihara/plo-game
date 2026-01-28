@@ -34,6 +34,8 @@ export interface OnlineGameHookResult {
   isDealingCards: boolean;
   newCommunityCardsCount: number;
   isChangingTable: boolean;
+  isWaitingForPlayers: boolean;
+  seatedPlayerCount: number;
   actionTimeoutAt: ActionTimeoutAt | null;
   actionTimeoutMs: number | null;
 
@@ -356,6 +358,14 @@ export function useOnlineGameState(): OnlineGameHookResult {
       !gameState.players[gameState.currentPlayerIndex]?.isHuman
     : false;
 
+  // 着席しているプレイヤー数
+  const seatedPlayerCount = clientState
+    ? clientState.players.filter(p => p !== null).length
+    : 0;
+
+  // 他のプレイヤーを待っている状態かどうか
+  const isWaitingForPlayers = clientState !== null && !clientState.isHandInProgress;
+
   return {
     isConnecting,
     isConnected,
@@ -369,6 +379,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
+    isWaitingForPlayers,
+    seatedPlayerCount,
     actionTimeoutAt,
     actionTimeoutMs,
     connect,

@@ -25,6 +25,8 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
+    isWaitingForPlayers,
+    seatedPlayerCount,
     actionTimeoutAt,
     actionTimeoutMs,
     connect,
@@ -189,6 +191,21 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
               <div className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
                 テーブル移動中...
+              </div>
+            </div>
+          )}
+
+          {/* 他のプレイヤーを待っている状態のオーバーレイ */}
+          {isWaitingForPlayers && !isChangingTable && (
+            <div className="absolute inset-0 z-45 flex items-center justify-center bg-black/60 pointer-events-none">
+              <div className="text-center">
+                <div className="animate-pulse text-5xl mb-4">⏳</div>
+                <p className="text-white font-bold mb-2" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
+                  他のプレイヤーを待っています...
+                </p>
+                <p className="text-white/70" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+                  {seatedPlayerCount}/6 人着席中
+                </p>
               </div>
             </div>
           )}

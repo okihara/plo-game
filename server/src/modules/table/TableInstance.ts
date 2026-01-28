@@ -140,6 +140,12 @@ export class TableInstance {
     this.io.to(this.roomName).emit('table:player_joined', joinData);
     this.logMessage('table:player_joined', 'all', joinData);
 
+    // Send current table state to the newly seated player
+    // This allows them to see the table immediately while waiting for more players
+    const clientState = this.getClientGameState();
+    socket.emit('game:state', { state: clientState });
+    this.logMessage('game:state', odId, { street: clientState.currentStreet, pot: clientState.pot });
+
     // Start hand if enough players
     this.maybeStartHand();
 
