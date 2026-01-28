@@ -294,7 +294,6 @@ export class TableInstance {
           this.broadcastGameState();
           this.streetTransitionTimer = null;
           this.requestNextAction();
-          this.broadcastGameState();
         }, this.STREET_TRANSITION_DELAY_MS);
       } else {
         // Request next action then broadcast (so pendingAction is set)
