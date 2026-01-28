@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action, Card, Player } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, applyAction, getValidActions, getActivePlayers } from '../../shared/logic/gameEngine.js';
+import { createInitialGameState, startNewHand, applyAction, getValidActions, getActivePlayers, determineWinner } from '../../shared/logic/gameEngine.js';
 import { OnlinePlayer, ClientGameState } from '../../../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
 
@@ -203,7 +203,8 @@ export class TableInstance {
 
     // If only one player left, they win
     if (activePlayers.length <= 1) {
-      this.gameState.isHandComplete = true;
+      this.gameState = determineWinner(this.gameState);
+      this.broadcastGameState();
       this.handleHandComplete();
       return;
     }
@@ -222,8 +223,9 @@ export class TableInstance {
     }
 
     if (attempts >= 6) {
-      // No more players can act - complete the hand
-      this.gameState.isHandComplete = true;
+      // No more players can act - run out board and determine winner
+      this.gameState = determineWinner(this.gameState);
+      this.broadcastGameState();
       this.handleHandComplete();
       return;
     }

@@ -434,12 +434,19 @@ function runOutBoard(state: GameState): GameState {
   return determineWinner(newState);
 }
 
-function determineWinner(state: GameState): GameState {
+export function determineWinner(state: GameState): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   newState.isHandComplete = true;
   newState.currentStreet = 'showdown';
 
   const activePlayers = getActivePlayers(newState);
+
+  // アクティブプレイヤーがいない場合（異常ケース）
+  if (activePlayers.length === 0) {
+    console.error('determineWinner: No active players found');
+    newState.winners = [];
+    return newState;
+  }
 
   // 1人だけ残っている場合
   if (activePlayers.length === 1) {
