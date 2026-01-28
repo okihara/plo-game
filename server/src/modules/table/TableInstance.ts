@@ -14,6 +14,24 @@ interface SeatInfo {
   buyIn: number;
 }
 
+// ダッシュボード用：送信メッセージログ
+export interface MessageLog {
+  timestamp: number;
+  event: string;
+  target: 'all' | string; // 'all' = broadcast, string = playerId
+  data: unknown;
+}
+
+// ダッシュボード用：待機中のアクションリクエスト
+export interface PendingAction {
+  playerId: string;
+  playerName: string;
+  seatNumber: number;
+  validActions: { action: string; minAmount: number; maxAmount: number }[];
+  requestedAt: number;
+  timeoutMs: number;
+}
+
 export class TableInstance {
   public readonly id: string;
   public readonly blinds: string;
@@ -30,6 +48,11 @@ export class TableInstance {
   private isHandInProgress = false;
   private pendingStartHand = false;
 
+  // ダッシュボード用トラッキング
+  private messageLog: MessageLog[] = [];
+  private readonly MAX_MESSAGE_LOG = 50; // 直近50件を保持
+  private pendingAction: PendingAction | null = null;
+
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false) {
     this.id = nanoid(12);
     this.blinds = blinds;
@@ -44,6 +67,35 @@ export class TableInstance {
   // Get room name for this table
   private get roomName() {
     return `table:${this.id}`;
+  }
+
+  // ダッシュボード用：メッセージをログに記録
+  private logMessage(event: string, target: 'all' | string, data: unknown): void {
+    this.messageLog.push({
+      timestamp: Date.now(),
+      event,
+      target,
+      data,
+    });
+    // 古いログを削除
+    if (this.messageLog.length > this.MAX_MESSAGE_LOG) {
+      this.messageLog.shift();
+    }
+  }
+
+  // ダッシュボード用：ゲーム状態詳細を取得
+  public getDebugState(): {
+    messageLog: MessageLog[];
+    pendingAction: PendingAction | null;
+    gamePhase: string;
+  } {
+    return {
+      messageLog: this.messageLog,
+      pendingAction: this.pendingAction,
+      gamePhase: this.isHandInProgress
+        ? (this.gameState?.currentStreet ?? 'unknown')
+        : 'waiting',
+    };
   }
 
   // Add a player to the table
@@ -81,10 +133,12 @@ export class TableInstance {
     socket.join(this.roomName);
 
     // Broadcast player joined
-    this.io.to(this.roomName).emit('table:player_joined', {
+    const joinData = {
       seat: seatIndex,
       player: this.getOnlinePlayer(seatIndex)!,
-    });
+    };
+    this.io.to(this.roomName).emit('table:player_joined', joinData);
+    this.logMessage('table:player_joined', 'all', joinData);
 
     // Start hand if enough players
     this.maybeStartHand();
@@ -104,10 +158,9 @@ export class TableInstance {
 
     this.seats[seatIndex] = null;
 
-    this.io.to(this.roomName).emit('table:player_left', {
-      seat: seatIndex,
-      odId,
-    });
+    const leftData = { seat: seatIndex, odId };
+    this.io.to(this.roomName).emit('table:player_left', leftData);
+    this.logMessage('table:player_left', 'all', leftData);
 
     // If in a hand, fold the player
     if (this.gameState && !this.gameState.isHandComplete) {
@@ -137,21 +190,20 @@ export class TableInstance {
 
     if (!isValid) return false;
 
-    // Clear action timer
+    // Clear action timer and pending action
     if (this.actionTimer) {
       clearTimeout(this.actionTimer);
       this.actionTimer = null;
     }
+    this.pendingAction = null;
 
     // Apply action
     this.gameState = applyAction(this.gameState, seatIndex, action, amount);
 
     // Broadcast action
-    this.io.to(this.roomName).emit('game:action_taken', {
-      playerId: odId,
-      action,
-      amount,
-    });
+    const actionData = { playerId: odId, action, amount };
+    this.io.to(this.roomName).emit('game:action_taken', actionData);
+    this.logMessage('game:action_taken', 'all', actionData);
 
     // Check for street change
     this.broadcastGameState();
@@ -184,11 +236,9 @@ export class TableInstance {
         const player = this.gameState.players[seatIndex];
         if (player && !player.folded) {
           player.folded = true;
-          this.io.to(this.roomName).emit('game:action_taken', {
-            playerId: odId,
-            action: 'fold',
-            amount: 0,
-          });
+          const foldData = { playerId: odId, action: 'fold', amount: 0 };
+          this.io.to(this.roomName).emit('game:action_taken', foldData);
+          this.logMessage('game:action_taken', 'all', foldData);
         }
       }
     }
@@ -197,6 +247,7 @@ export class TableInstance {
     const seat = this.seats[seatIndex];
     if (seat?.socket) {
       seat.socket.emit('fastfold:ready_for_new_table');
+      this.logMessage('fastfold:ready_for_new_table', odId, {});
     }
   }
 
@@ -283,9 +334,9 @@ export class TableInstance {
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
       if (seat?.socket) {
-        seat.socket.emit('game:hole_cards', {
-          cards: this.gameState.players[i].holeCards,
-        });
+        const holeCardsData = { cards: this.gameState.players[i].holeCards };
+        seat.socket.emit('game:hole_cards', holeCardsData);
+        this.logMessage('game:hole_cards', seat.odId, { cardCount: holeCardsData.cards.length });
       }
     }
 
@@ -319,12 +370,28 @@ export class TableInstance {
 
     const validActions = getValidActions(this.gameState, currentPlayerIndex);
 
+    // Set pending action for dashboard
+    this.pendingAction = {
+      playerId: currentSeat.odId,
+      playerName: currentSeat.odName,
+      seatNumber: currentPlayerIndex,
+      validActions: validActions.map(a => ({
+        action: a.action,
+        minAmount: a.minAmount,
+        maxAmount: a.maxAmount,
+      })),
+      requestedAt: Date.now(),
+      timeoutMs: this.ACTION_TIMEOUT_MS,
+    };
+
     // Send action request (works for both human players and bots)
-    currentSeat.socket.emit('game:action_required', {
+    const actionRequiredData = {
       playerId: currentSeat.odId,
       validActions,
       timeoutMs: this.ACTION_TIMEOUT_MS,
-    });
+    };
+    currentSeat.socket.emit('game:action_required', actionRequiredData);
+    this.logMessage('game:action_required', currentSeat.odId, actionRequiredData);
 
     // Set action timer - auto-fold on timeout
     this.actionTimer = setTimeout(() => {
@@ -335,26 +402,32 @@ export class TableInstance {
   private handleHandComplete(): void {
     if (!this.gameState) return;
 
+    // Clear pending action
+    this.pendingAction = null;
+
     // Broadcast winners
-    this.io.to(this.roomName).emit('game:hand_complete', {
+    const handCompleteData = {
       winners: this.gameState.winners.map(w => ({
         playerId: this.seats[w.playerId]?.odId || '',
         amount: w.amount,
         handName: w.handName,
       })),
-    });
+    };
+    this.io.to(this.roomName).emit('game:hand_complete', handCompleteData);
+    this.logMessage('game:hand_complete', 'all', handCompleteData);
 
     // Showdown - reveal cards
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1) {
-      const showdownPlayers = getActivePlayers(this.gameState);
-      this.io.to(this.roomName).emit('game:showdown', {
+      const showdownData = {
         winners: this.gameState.winners.map(w => ({
           playerId: this.seats[w.playerId]?.odId || '',
           amount: w.amount,
           handName: w.handName,
           cards: this.gameState!.players[w.playerId].holeCards,
         })),
-      });
+      };
+      this.io.to(this.roomName).emit('game:showdown', showdownData);
+      this.logMessage('game:showdown', 'all', showdownData);
     }
 
     // Update seat chips
@@ -386,6 +459,7 @@ export class TableInstance {
 
     const clientState = this.getClientGameState();
     this.io.to(this.roomName).emit('game:state', { state: clientState });
+    this.logMessage('game:state', 'all', { street: clientState.currentStreet, pot: clientState.pot });
   }
 
   public getClientGameState(): ClientGameState {

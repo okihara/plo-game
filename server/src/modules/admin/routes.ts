@@ -4,6 +4,7 @@ import { TableManager } from '../table/TableManager.js';
 import { FastFoldPool } from '../fastfold/FastFoldPool.js';
 import { redis } from '../../config/redis.js';
 import { prisma } from '../../config/database.js';
+import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 
 interface AdminDependencies {
   io: Server;
@@ -30,6 +31,10 @@ interface TableStats {
     folded: boolean;
     isAllIn: boolean;
   }>;
+  // デバッグ情報
+  gamePhase: string;
+  pendingAction: PendingAction | null;
+  recentMessages: MessageLog[];
 }
 
 interface ServerStats {
@@ -86,6 +91,7 @@ export function adminRoutes(deps: AdminDependencies) {
         const table = tableManager.getTable(info.id);
         if (table) {
           const gameState = table.getClientGameState();
+          const debugState = table.getDebugState();
           tableDetails.push({
             id: info.id,
             blinds: info.blinds,
@@ -105,6 +111,10 @@ export function adminRoutes(deps: AdminDependencies) {
               folded: p.folded,
               isAllIn: p.isAllIn,
             })) ?? [],
+            // デバッグ情報
+            gamePhase: debugState.gamePhase,
+            pendingAction: debugState.pendingAction,
+            recentMessages: debugState.messageLog.slice(-10), // 直近10件
           });
         }
       }
@@ -312,6 +322,70 @@ function getDashboardHTML(): string {
     }
     .player-chips { color: #fbbf24; font-size: 11px; }
     .player-status { font-size: 10px; color: #64748b; }
+    .pending-action {
+      background: #422006;
+      border: 1px solid #f59e0b;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+    .pending-action-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+    }
+    .pending-action-title {
+      color: #fbbf24;
+      font-weight: 600;
+      font-size: 13px;
+    }
+    .pending-action-timer {
+      color: #f59e0b;
+      font-size: 12px;
+    }
+    .pending-action-player {
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+    .pending-action-options {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    .action-option {
+      background: #334155;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+    }
+    .message-log {
+      background: #0f172a;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .message-log-title {
+      color: #94a3b8;
+      font-size: 12px;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    .message-item {
+      font-size: 11px;
+      padding: 4px 0;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      gap: 8px;
+    }
+    .message-item:last-child { border-bottom: none; }
+    .message-time { color: #64748b; min-width: 70px; }
+    .message-event { color: #60a5fa; min-width: 140px; }
+    .message-target { color: #a78bfa; min-width: 80px; }
+    .message-data { color: #94a3b8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .queue-bar {
       height: 8px;
       background: #334155;
@@ -535,12 +609,63 @@ function getDashboardHTML(): string {
           if (player.folded) status += ' Fold';
           else if (player.isAllIn) status += ' All-In';
 
-          return '<div class="' + classes.join(' ') + '">' +
+          // Highlight if this player has pending action
+          const isPending = table.pendingAction && table.pendingAction.seatNumber === i;
+          if (isPending) classes.push('pending');
+
+          return '<div class="' + classes.join(' ') + '"' + (isPending ? ' style="border-color:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,0.5)"' : '') + '>' +
             '<div class="player-name">' + player.odName + '</div>' +
             '<div class="player-chips">' + formatChips(player.chips) + '</div>' +
-            '<div class="player-status">' + status + '</div>' +
+            '<div class="player-status">' + status + (isPending ? ' ⏳' : '') + '</div>' +
             '</div>';
         }).join('');
+
+        // Pending action section
+        let pendingActionHtml = '';
+        if (table.pendingAction) {
+          const pa = table.pendingAction;
+          const elapsed = Date.now() - pa.requestedAt;
+          const remaining = Math.max(0, pa.timeoutMs - elapsed);
+          const remainingSec = Math.ceil(remaining / 1000);
+          const actionsHtml = pa.validActions.map(a => {
+            let label = a.action;
+            if (a.minAmount > 0) {
+              label += ' $' + a.minAmount;
+              if (a.maxAmount !== a.minAmount) label += '-$' + a.maxAmount;
+            }
+            return '<span class="action-option">' + label + '</span>';
+          }).join('');
+
+          pendingActionHtml = '<div class="pending-action">' +
+            '<div class="pending-action-header">' +
+              '<span class="pending-action-title">⏳ アクション待機中</span>' +
+              '<span class="pending-action-timer">' + remainingSec + '秒</span>' +
+            '</div>' +
+            '<div class="pending-action-player">' + pa.playerName + ' (Seat ' + (pa.seatNumber + 1) + ')</div>' +
+            '<div class="pending-action-options">' + actionsHtml + '</div>' +
+          '</div>';
+        }
+
+        // Message log section
+        let messageLogHtml = '';
+        if (table.recentMessages && table.recentMessages.length > 0) {
+          const messagesHtml = table.recentMessages.slice().reverse().map(msg => {
+            const time = new Date(msg.timestamp).toLocaleTimeString('ja-JP');
+            const target = msg.target === 'all' ? 'broadcast' : msg.target.slice(0, 8) + '...';
+            const dataStr = JSON.stringify(msg.data).slice(0, 50);
+            return '<div class="message-item">' +
+              '<span class="message-time">' + time + '</span>' +
+              '<span class="message-event">' + msg.event + '</span>' +
+              '<span class="message-target">' + target + '</span>' +
+              '<span class="message-data">' + dataStr + '</span>' +
+            '</div>';
+          }).join('');
+
+          messageLogHtml = '<div class="message-log">' +
+            '<div class="message-log-title">直近のメッセージ</div>' +
+            messagesHtml +
+          '</div>';
+        }
 
         return '<div class="table-card">' +
           '<div class="table-header">' +
@@ -555,6 +680,8 @@ function getDashboardHTML(): string {
             '</div>' +
           '</div>' +
           '<div class="players-grid">' + playersHtml + '</div>' +
+          pendingActionHtml +
+          messageLogHtml +
         '</div>';
       }).join('');
 
