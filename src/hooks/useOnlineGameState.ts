@@ -196,11 +196,6 @@ export function useOnlineGameState(): OnlineGameHookResult {
     scheduleActionMarkerClear(playerId);
   }, [scheduleActionMarkerClear]);
 
-  const clearAllActions = useCallback(() => {
-    setLastActions(new Map());
-    clearAllActionMarkerTimers();
-  }, [clearAllActionMarkerTimers]);
-
   const startDealingAnimation = useCallback(() => {
     if (dealingTimerRef.current) {
       clearTimeout(dealingTimerRef.current);
@@ -284,7 +279,6 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setTableId(tid);
         setMySeat(seat);
         setMyHoleCards([]);
-        clearAllActions();
         // カード配布アニメーションはonHoleCardsで開始される
       },
       onTableLeft: () => {
@@ -298,7 +292,6 @@ export function useOnlineGameState(): OnlineGameHookResult {
         // ストリート変更検出
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
-          clearAllActions();
         } else {
           setNewCommunityCardsCount(0);
         }
@@ -314,7 +307,6 @@ export function useOnlineGameState(): OnlineGameHookResult {
         // 新しいハンドが開始されたらカード配布アニメーション
         if (cards.length > 0) {
           startDealingAnimation();
-          clearAllActions();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
         }
@@ -334,7 +326,6 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setTableId(newTableId);
         setIsChangingTable(false);
         setMyHoleCards([]);
-        clearAllActions();
         // カード配布アニメーションはonHoleCardsで開始される
       },
     });
@@ -342,7 +333,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
     return () => {
       clearAllActionMarkerTimers();
     };
-  }, [clientState, clearAllActions, clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
+  }, [clientState, clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState
