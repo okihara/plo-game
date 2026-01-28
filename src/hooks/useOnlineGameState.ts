@@ -152,6 +152,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
+  const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ============================================
   // アクションマーカー管理
@@ -191,6 +192,17 @@ export function useOnlineGameState(): OnlineGameHookResult {
     setLastActions(new Map());
     clearAllActionMarkerTimers();
   }, [clearAllActionMarkerTimers]);
+
+  const startDealingAnimation = useCallback(() => {
+    if (dealingTimerRef.current) {
+      clearTimeout(dealingTimerRef.current);
+    }
+    setIsDealingCards(true);
+    dealingTimerRef.current = setTimeout(() => {
+      setIsDealingCards(false);
+      dealingTimerRef.current = null;
+    }, 1000);
+  }, []);
 
   // ============================================
   // WebSocket接続
@@ -268,13 +280,9 @@ export function useOnlineGameState(): OnlineGameHookResult {
       onTableJoined: (tid, seat) => {
         setTableId(tid);
         setMySeat(seat);
-        setIsDealingCards(true);
         setMyHoleCards([]);
         clearAllActions();
-
-        setTimeout(() => {
-          setIsDealingCards(false);
-        }, 1000);
+        // カード配布アニメーションはonHoleCardsで開始される
       },
       onTableLeft: () => {
         setTableId(null);
@@ -296,6 +304,13 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setClientState(state);
       },
       onHoleCards: (cards) => {
+        // 新しいハンドが開始されたらカード配布アニメーション
+        if (cards.length > 0) {
+          startDealingAnimation();
+          clearAllActions();
+          prevStreetRef.current = null;
+          prevCardCountRef.current = 0;
+        }
         setMyHoleCards(cards);
       },
       onActionTaken: ({ playerId, action, amount }) => {
@@ -311,20 +326,16 @@ export function useOnlineGameState(): OnlineGameHookResult {
       onFastFoldTableAssigned: (newTableId) => {
         setTableId(newTableId);
         setIsChangingTable(false);
-        setIsDealingCards(true);
         setMyHoleCards([]);
         clearAllActions();
-
-        setTimeout(() => {
-          setIsDealingCards(false);
-        }, 1000);
+        // カード配布アニメーションはonHoleCardsで開始される
       },
     });
 
     return () => {
       clearAllActionMarkerTimers();
     };
-  }, [clientState, clearAllActions, clearAllActionMarkerTimers, recordAction]);
+  }, [clientState, clearAllActions, clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState
