@@ -197,8 +197,8 @@ export function Player({
         <div className="text-[1.5vh] font-bold text-white">{formatChips(player.chips)}</div>
       </div>
 
-      {/* Hole Cards (for CPU players) */}
-      {!player.isHuman && player.holeCards.length > 0 && (
+      {/* Hole Cards (for other players) */}
+      {positionIndex !== 0 && (
         <div className={`flex gap-[0.3vh] mt-[0.5vh] ${player.folded ? 'invisible' : ''}`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
