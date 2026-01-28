@@ -12,6 +12,7 @@ interface SeatInfo {
   socket: Socket | null;
   chips: number;
   buyIn: number;
+  waitingForNextHand: boolean; // ハンド中に着席した場合、次のハンドから参加
 }
 
 // ダッシュボード用：送信メッセージログ
@@ -130,6 +131,7 @@ export class TableInstance {
       socket,
       chips: buyIn,
       buyIn,
+      waitingForNextHand: this.isHandInProgress, // ハンド中に着席した場合は次のハンドから参加
     };
 
     socket.join(this.roomName);
@@ -223,7 +225,8 @@ export class TableInstance {
     while (attempts < 6) {
       const player = this.gameState.players[nextIndex];
       const seat = this.seats[nextIndex];
-      if (player && !player.folded && !player.isAllIn && seat) {
+      // waitingForNextHandのプレイヤーはスキップ
+      if (player && !player.folded && !player.isAllIn && seat && !seat.waitingForNextHand) {
         break;
       }
       nextIndex = (nextIndex + 1) % 6;
@@ -401,9 +404,12 @@ export class TableInstance {
     }
 
     // Sync chips from seats to game state (before startNewHand)
+    // Also clear waitingForNextHand flag for all players
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
       if (seat) {
+        // 新しいハンド開始時にwaitingForNextHandフラグをクリア
+        seat.waitingForNextHand = false;
         this.gameState.players[i].chips = seat.chips;
         this.gameState.players[i].name = seat.odName;
         this.gameState.players[i].isHuman = seat.odIsHuman;
@@ -610,6 +616,22 @@ export class TableInstance {
       players: this.seats.map((seat, i) => {
         if (!seat) return null;
         const player = this.gameState!.players[i];
+        // waitingForNextHandのプレイヤーはハンドに参加していない状態で表示
+        if (seat.waitingForNextHand) {
+          return {
+            odId: seat.odId,
+            odName: seat.odName,
+            odAvatarUrl: seat.odAvatarUrl,
+            odIsHuman: seat.odIsHuman,
+            seatNumber: i,
+            chips: seat.chips, // buyIn時のチップを表示
+            currentBet: 0,
+            folded: true, // 参加していないのでfolded扱い
+            isAllIn: false,
+            hasActed: true,
+            isConnected: seat.socket?.connected ?? false,
+          };
+        }
         return {
           odId: seat.odId,
           odName: seat.odName,
@@ -644,6 +666,23 @@ export class TableInstance {
     if (!seat) return null;
 
     const player = this.gameState?.players[seatIndex];
+
+    // waitingForNextHandのプレイヤーはハンドに参加していない状態で表示
+    if (seat.waitingForNextHand) {
+      return {
+        odId: seat.odId,
+        odName: seat.odName,
+        odAvatarUrl: seat.odAvatarUrl,
+        odIsHuman: seat.odIsHuman,
+        seatNumber: seatIndex,
+        chips: seat.chips,
+        currentBet: 0,
+        folded: true,
+        isAllIn: false,
+        hasActed: true,
+        isConnected: seat.socket?.connected ?? false,
+      };
+    }
 
     return {
       odId: seat.odId,
