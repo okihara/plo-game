@@ -156,6 +156,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             isProcessingCPU={isProcessingCPU}
             isDealingCards={isDealingCards}
             newCommunityCardsCount={newCommunityCardsCount}
+            humanIndex={humanPlayerIdx}
           />
 
           {humanPlayer && (

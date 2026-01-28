@@ -10,6 +10,7 @@ interface PokerTableProps {
   isProcessingCPU: boolean;
   isDealingCards: boolean;
   newCommunityCardsCount: number;
+  humanIndex?: number;
 }
 
 function formatChips(amount: number): string {
@@ -27,13 +28,11 @@ export function PokerTable({
   isProcessingCPU,
   isDealingCards,
   newCommunityCardsCount,
+  humanIndex = 0,
 }: PokerTableProps) {
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
   const currentPlayer = state.players[state.currentPlayerIndex];
   const isCPUTurn = currentPlayer && !currentPlayer.isHuman && !state.isHandComplete;
-
-  // Human player is always index 0
-  const humanIndex = 0;
   const orderedPlayers = [];
   for (let i = 0; i < 6; i++) {
     const idx = (humanIndex + i) % 6;

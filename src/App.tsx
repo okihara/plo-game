@@ -57,6 +57,7 @@ export function App() {
         isProcessingCPU={isProcessingCPU}
         isDealingCards={isDealingCards}
         newCommunityCardsCount={newCommunityCardsCount}
+        humanIndex={humanPlayerIdx}
       />
 
       <MyCards
