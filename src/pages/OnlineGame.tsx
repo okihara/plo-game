@@ -36,7 +36,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     startNextHand,
   } = useOnlineGameState();
 
-  const [showAnalysis, setShowAnalysis] = useState(true);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   // 接続と参加
   useEffect(() => {
