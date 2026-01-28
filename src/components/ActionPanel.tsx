@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { GameState, Action, getValidActions } from '../logic';
+import { GameState, Action } from '../logic';
 
 interface ActionPanelProps {
   state: GameState;
@@ -18,14 +18,19 @@ function formatChips(amount: number): string {
 export function ActionPanel({ state, onAction }: ActionPanelProps) {
   const humanPlayer = state.players.find(p => p.isHuman)!;
   const isMyTurn = state.players[state.currentPlayerIndex]?.isHuman && !state.isHandComplete;
-  const validActions = isMyTurn ? getValidActions(state, state.currentPlayerIndex) : [];
 
   const toCall = state.currentBet - humanPlayer.currentBet;
-  const canRaise = validActions.some(a => a.action === 'raise' || a.action === 'bet');
-  const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
 
-  const minRaise = raiseAction?.minAmount || state.bigBlind;
-  const maxRaise = raiseAction?.maxAmount || humanPlayer.chips;
+  // オンラインモード用のシンプルなレイズ判定
+  // サーバー側でバリデーションするので、クライアントは基本的な条件のみチェック
+  const canRaise = isMyTurn && humanPlayer.chips > toCall && !humanPlayer.isAllIn;
+
+  // Pot Limit の最大レイズ額を計算
+  const potAfterCall = state.pot + toCall;
+  const maxPotRaise = potAfterCall + state.currentBet + toCall;
+
+  const minRaise = Math.max(state.minRaise, state.bigBlind);
+  const maxRaise = Math.min(humanPlayer.chips, maxPotRaise);
 
   const [sliderValue, setSliderValue] = useState(minRaise);
 
