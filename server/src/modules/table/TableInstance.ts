@@ -156,19 +156,81 @@ export class TableInstance {
       seat.socket.leave(this.roomName);
     }
 
+    // Check if this player was the one we're waiting for action
+    const wasCurrentPlayer = this.gameState &&
+      !this.gameState.isHandComplete &&
+      this.gameState.currentPlayerIndex === seatIndex;
+
     this.seats[seatIndex] = null;
 
     const leftData = { seat: seatIndex, odId };
     this.io.to(this.roomName).emit('table:player_left', leftData);
     this.logMessage('table:player_left', 'all', leftData);
 
-    // If in a hand, fold the player
+    // If in a hand, fold the player directly (not via handleAction since seat is already null)
     if (this.gameState && !this.gameState.isHandComplete) {
       const player = this.gameState.players[seatIndex];
       if (player && !player.folded) {
-        this.handleAction(odId, 'fold', 0);
+        // Directly fold the player in game state
+        player.folded = true;
+
+        // Broadcast the fold action
+        const foldData = { playerId: odId, action: 'fold', amount: 0 };
+        this.io.to(this.roomName).emit('game:action_taken', foldData);
+        this.logMessage('game:action_taken', 'all', foldData);
+
+        // If this player was the current player, clear timer and advance
+        if (wasCurrentPlayer) {
+          if (this.actionTimer) {
+            clearTimeout(this.actionTimer);
+            this.actionTimer = null;
+          }
+          this.pendingAction = null;
+
+          // Advance to next player or complete hand
+          this.advanceToNextPlayer();
+        }
       }
     }
+  }
+
+  // Advance game to next player after a fold
+  private advanceToNextPlayer(): void {
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    // Find next active player
+    const activePlayers = getActivePlayers(this.gameState);
+
+    // If only one player left, they win
+    if (activePlayers.length <= 1) {
+      this.gameState.isHandComplete = true;
+      this.handleHandComplete();
+      return;
+    }
+
+    // Find next player who can act
+    let nextIndex = (this.gameState.currentPlayerIndex + 1) % 6;
+    let attempts = 0;
+    while (attempts < 6) {
+      const player = this.gameState.players[nextIndex];
+      const seat = this.seats[nextIndex];
+      if (player && !player.folded && !player.isAllIn && seat) {
+        break;
+      }
+      nextIndex = (nextIndex + 1) % 6;
+      attempts++;
+    }
+
+    if (attempts >= 6) {
+      // No more players can act - complete the hand
+      this.gameState.isHandComplete = true;
+      this.handleHandComplete();
+      return;
+    }
+
+    this.gameState.currentPlayerIndex = nextIndex;
+    this.broadcastGameState();
+    this.requestNextAction();
   }
 
   // Handle player action
@@ -361,10 +423,15 @@ export class TableInstance {
     const currentSeat = this.seats[currentPlayerIndex];
 
     if (!currentSeat || !currentSeat.socket) {
-      // No socket means player disconnected - auto-fold
-      if (currentSeat) {
-        this.handleAction(currentSeat.odId, 'fold', 0);
+      // No socket means player disconnected - fold and advance
+      const player = this.gameState.players[currentPlayerIndex];
+      if (player && !player.folded) {
+        player.folded = true;
+        const foldData = { playerId: currentSeat?.odId || `seat_${currentPlayerIndex}`, action: 'fold', amount: 0 };
+        this.io.to(this.roomName).emit('game:action_taken', foldData);
+        this.logMessage('game:action_taken', 'all', foldData);
       }
+      this.advanceToNextPlayer();
       return;
     }
 
@@ -394,8 +461,28 @@ export class TableInstance {
     this.logMessage('game:action_required', currentSeat.odId, actionRequiredData);
 
     // Set action timer - auto-fold on timeout
+    const playerIdForTimeout = currentSeat.odId;
+    const seatIndexForTimeout = currentPlayerIndex;
     this.actionTimer = setTimeout(() => {
-      this.handleAction(currentSeat.odId, 'fold', 0);
+      // Check if player is still at the table
+      const seat = this.seats[seatIndexForTimeout];
+      if (seat && seat.odId === playerIdForTimeout) {
+        // Player still there, force fold via handleAction
+        this.handleAction(playerIdForTimeout, 'fold', 0);
+      } else {
+        // Player already left, but game might be stuck - advance if needed
+        if (this.gameState &&
+            !this.gameState.isHandComplete &&
+            this.gameState.currentPlayerIndex === seatIndexForTimeout) {
+          // Game is stuck waiting for this player, advance
+          const player = this.gameState.players[seatIndexForTimeout];
+          if (player && !player.folded) {
+            player.folded = true;
+          }
+          this.pendingAction = null;
+          this.advanceToNextPlayer();
+        }
+      }
     }, this.ACTION_TIMEOUT_MS);
   }
 
