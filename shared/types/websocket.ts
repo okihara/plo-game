@@ -88,6 +88,9 @@ export interface ClientGameState {
   smallBlind: number;
   bigBlind: number;
   isHandInProgress: boolean;
+  // アクションタイムアウト情報
+  actionTimeoutAt: number | null;  // タイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
+  actionTimeoutMs: number | null;  // タイムアウト時間（ミリ秒）
 }
 
 export interface TableInfo {

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Player as PlayerType, Action } from '../logic';
 import { Card, FaceDownCard } from './Card';
-import { LastAction, ActionTimeout } from '../hooks/useOnlineGameState';
+import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 
 interface PlayerProps {
   player: PlayerType;
@@ -12,7 +12,8 @@ interface PlayerProps {
   showCards: boolean;
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
-  actionTimeout?: ActionTimeout | null;
+  actionTimeoutAt?: ActionTimeoutAt | null;
+  actionTimeoutMs?: number | null;
 }
 
 function formatChips(amount: number): string {
@@ -101,7 +102,8 @@ export function Player({
   showCards,
   isDealing,
   dealOrder,
-  actionTimeout,
+  actionTimeoutAt,
+  actionTimeoutMs,
 }: PlayerProps) {
   const avatarImage = player.isHuman ? '/images/you.png' : cpuAvatars[player.name];
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
@@ -110,14 +112,13 @@ export function Player({
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!actionTimeout) {
+    if (!actionTimeoutAt) {
       setRemainingTime(null);
       return;
     }
 
     const updateTimer = () => {
-      const elapsed = Date.now() - actionTimeout.requestedAt;
-      const remaining = Math.max(0, actionTimeout.timeoutMs - elapsed);
+      const remaining = Math.max(0, actionTimeoutAt - Date.now());
       setRemainingTime(remaining);
     };
 
@@ -125,11 +126,11 @@ export function Player({
     const interval = setInterval(updateTimer, 100);
 
     return () => clearInterval(interval);
-  }, [actionTimeout]);
+  }, [actionTimeoutAt]);
 
   // タイマーの進捗率（0-1）
-  const timerProgress = actionTimeout && remainingTime !== null
-    ? remainingTime / actionTimeout.timeoutMs
+  const timerProgress = actionTimeoutAt && actionTimeoutMs && remainingTime !== null
+    ? remainingTime / actionTimeoutMs
     : null;
 
   return (

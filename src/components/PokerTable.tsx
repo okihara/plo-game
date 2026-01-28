@@ -1,5 +1,5 @@
 import { GameState } from '../logic';
-import { LastAction, ActionTimeout } from '../hooks/useOnlineGameState';
+import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -11,7 +11,8 @@ interface PokerTableProps {
   isDealingCards: boolean;
   newCommunityCardsCount: number;
   humanIndex?: number;
-  actionTimeout?: ActionTimeout | null;
+  actionTimeoutAt?: ActionTimeoutAt | null;
+  actionTimeoutMs?: number | null;
 }
 
 function formatChips(amount: number): string {
@@ -30,7 +31,8 @@ export function PokerTable({
   isDealingCards,
   newCommunityCardsCount,
   humanIndex = 0,
-  actionTimeout,
+  actionTimeoutAt,
+  actionTimeoutMs,
 }: PokerTableProps) {
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
   const currentPlayer = state.players[state.currentPlayerIndex];
@@ -77,7 +79,8 @@ export function PokerTable({
               showCards={isShowdown}
               isDealing={isDealingCards}
               dealOrder={getDealOrder(playerIdx)}
-              actionTimeout={isCurrentPlayer ? actionTimeout : null}
+              actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}
+              actionTimeoutMs={isCurrentPlayer ? actionTimeoutMs : null}
             />
           );
         })}

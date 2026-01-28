@@ -229,8 +229,8 @@ export class TableInstance {
     }
 
     this.gameState.currentPlayerIndex = nextIndex;
-    this.broadcastGameState();
     this.requestNextAction();
+    this.broadcastGameState();
   }
 
   // Handle player action
@@ -267,15 +267,14 @@ export class TableInstance {
     this.io.to(this.roomName).emit('game:action_taken', actionData);
     this.logMessage('game:action_taken', 'all', actionData);
 
-    // Check for street change
-    this.broadcastGameState();
-
     // Check if hand is complete
     if (this.gameState.isHandComplete) {
+      this.broadcastGameState();
       this.handleHandComplete();
     } else {
-      // Request next action
+      // Request next action then broadcast (so pendingAction is set)
       this.requestNextAction();
+      this.broadcastGameState();
     }
 
     return true;
@@ -402,11 +401,9 @@ export class TableInstance {
       }
     }
 
-    // Broadcast game state
-    this.broadcastGameState();
-
-    // Request first action
+    // Request first action then broadcast (so pendingAction is set)
     this.requestNextAction();
+    this.broadcastGameState();
   }
 
   private requestNextAction(): void {
@@ -550,6 +547,12 @@ export class TableInstance {
   }
 
   public getClientGameState(): ClientGameState {
+    // タイムアウト情報を計算
+    const actionTimeoutAt = this.pendingAction
+      ? this.pendingAction.requestedAt + this.pendingAction.timeoutMs
+      : null;
+    const actionTimeoutMs = this.pendingAction?.timeoutMs ?? null;
+
     if (!this.gameState) {
       return {
         tableId: this.id,
@@ -564,6 +567,8 @@ export class TableInstance {
         smallBlind: this.smallBlind,
         bigBlind: this.bigBlind,
         isHandInProgress: false,
+        actionTimeoutAt: null,
+        actionTimeoutMs: null,
       };
     }
 
@@ -596,6 +601,8 @@ export class TableInstance {
       smallBlind: this.gameState.smallBlind,
       bigBlind: this.gameState.bigBlind,
       isHandInProgress: this.isHandInProgress,
+      actionTimeoutAt,
+      actionTimeoutMs,
     };
   }
 

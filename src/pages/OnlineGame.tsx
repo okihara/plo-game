@@ -25,7 +25,8 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
-    actionTimeout,
+    actionTimeoutAt,
+    actionTimeoutMs,
     connect,
     disconnect,
     joinFastFold,
@@ -157,7 +158,8 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             isDealingCards={isDealingCards}
             newCommunityCardsCount={newCommunityCardsCount}
             humanIndex={humanPlayerIdx}
-            actionTimeout={actionTimeout}
+            actionTimeoutAt={actionTimeoutAt}
+            actionTimeoutMs={actionTimeoutMs}
           />
 
           {humanPlayer && (

@@ -13,10 +13,8 @@ export interface LastAction {
   timestamp: number;
 }
 
-export interface ActionTimeout {
-  timeoutMs: number;
-  requestedAt: number;
-}
+// アクションタイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
+export type ActionTimeoutAt = number;
 
 export interface OnlineGameHookResult {
   // 接続状態
@@ -36,7 +34,8 @@ export interface OnlineGameHookResult {
   isDealingCards: boolean;
   newCommunityCardsCount: number;
   isChangingTable: boolean;
-  actionTimeout: ActionTimeout | null;
+  actionTimeoutAt: ActionTimeoutAt | null;
+  actionTimeoutMs: number | null;
 
   // アクション
   connect: () => Promise<void>;
@@ -152,7 +151,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
   const [isDealingCards, setIsDealingCards] = useState(false);
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
   const [isChangingTable, setIsChangingTable] = useState(false);
-  const [actionTimeout, setActionTimeout] = useState<ActionTimeout | null>(null);
+  const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
+  const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -255,7 +255,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
 
   const handleAction = useCallback((action: Action, amount: number) => {
     wsService.sendAction(action, amount);
-    setActionTimeout(null);
+    setActionTimeoutAt(null);
   }, []);
 
   const startNextHand = useCallback(() => {
@@ -290,7 +290,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setMySeat(null);
         setMyHoleCards([]);
         setClientState(null);
-        setActionTimeout(null);
+        setActionTimeoutAt(null);
       },
       onGameState: (state) => {
         // ストリート変更検出
@@ -304,6 +304,9 @@ export function useOnlineGameState(): OnlineGameHookResult {
         prevStreetRef.current = state.currentStreet;
         prevCardCountRef.current = state.communityCards.length;
         setClientState(state);
+        // タイマー情報を更新
+        setActionTimeoutAt(state.actionTimeoutAt ?? null);
+        setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
       onHoleCards: (cards) => {
         // 新しいハンドが開始されたらカード配布アニメーション
@@ -331,15 +334,6 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setMyHoleCards([]);
         clearAllActions();
         // カード配布アニメーションはonHoleCardsで開始される
-      },
-      onActionRequired: ({ timeoutMs }) => {
-        setActionTimeout({
-          timeoutMs,
-          requestedAt: Date.now(),
-        });
-      },
-      onHandComplete: () => {
-        setActionTimeout(null);
       },
     });
 
@@ -375,7 +369,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
-    actionTimeout,
+    actionTimeoutAt,
+    actionTimeoutMs,
     connect,
     disconnect,
     joinFastFold,
