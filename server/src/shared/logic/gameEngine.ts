@@ -74,8 +74,11 @@ export function startNewHand(state: GameState): GameState {
   // デッキをシャッフル
   newState.deck = shuffleDeck(createDeck());
 
-  // ディーラーを移動
-  newState.dealerPosition = (newState.dealerPosition + 1) % 6;
+  // ディーラーを移動（チップを持っているプレイヤーの席へ）
+  const nextDealer = getNextPlayerWithChips(newState, newState.dealerPosition);
+  if (nextDealer !== -1) {
+    newState.dealerPosition = nextDealer;
+  }
 
   // ポジションを更新
   for (let i = 0; i < 6; i++) {

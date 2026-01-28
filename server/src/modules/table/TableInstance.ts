@@ -363,11 +363,19 @@ export class TableInstance {
 
     this.isHandInProgress = true;
 
+    // Preserve dealer position from previous hand
+    const previousDealerPosition = this.gameState?.dealerPosition ?? -1;
+
     // Create initial game state
     const buyInChips = this.bigBlind * 200;
     this.gameState = createInitialGameState(buyInChips);
     this.gameState.smallBlind = this.smallBlind;
     this.gameState.bigBlind = this.bigBlind;
+
+    // Restore dealer position (startNewHand will increment it)
+    if (previousDealerPosition >= 0) {
+      this.gameState.dealerPosition = previousDealerPosition;
+    }
 
     // Sync chips from seats to game state (before startNewHand)
     for (let i = 0; i < 6; i++) {
@@ -382,7 +390,7 @@ export class TableInstance {
       }
     }
 
-    // Start the hand
+    // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = startNewHand(this.gameState);
 
     // 空席のプレイヤーをfoldedにする（startNewHandがfoldedをリセットするため、後で処理）
