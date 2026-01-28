@@ -255,18 +255,29 @@ export class TableInstance {
     this.gameState.smallBlind = this.smallBlind;
     this.gameState.bigBlind = this.bigBlind;
 
-    // Sync chips from seats to game state
+    // Sync chips from seats to game state (before startNewHand)
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
       if (seat) {
         this.gameState.players[i].chips = seat.chips;
         this.gameState.players[i].name = seat.odName;
         this.gameState.players[i].isHuman = seat.odIsHuman;
+      } else {
+        // 空席のプレイヤーはチップ0にしてゲームに参加させない
+        this.gameState.players[i].chips = 0;
       }
     }
 
     // Start the hand
     this.gameState = startNewHand(this.gameState);
+
+    // 空席のプレイヤーをfoldedにする（startNewHandがfoldedをリセットするため、後で処理）
+    for (let i = 0; i < 6; i++) {
+      if (!this.seats[i]) {
+        this.gameState.players[i].folded = true;
+        this.gameState.players[i].hasActed = true;
+      }
+    }
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < 6; i++) {
