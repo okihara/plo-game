@@ -63,7 +63,7 @@ export interface ServerToClientEvents {
 export interface OnlinePlayer {
   odId: string;
   odName: string;
-  odAvatarUrl: string | null;
+  avatarId: number;
   seatNumber: number;
   chips: number;
   currentBet: number;

@@ -93,6 +93,7 @@ function convertOnlinePlayerToPlayer(
     isAllIn: online.isAllIn,
     hasActed: online.hasActed,
     position: POSITIONS[posIndex],
+    avatarId: online.avatarId,
   };
 }
 

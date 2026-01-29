@@ -84,14 +84,17 @@ const dealFromOffsets: Record<number, { x: string; y: string }> = {
   5: { x: '-10vh', y: '-7vh' },   // 右下 ← 中央から右下へ
 };
 
-// CPUアバター画像マッピング
+// CPUアバター画像マッピング（オフラインモード用フォールバック）
 const cpuAvatars: Record<string, string> = {
-  'Miko': '/images/icons/miko.png',
-  'Kento': '/images/icons/kento.png',
-  'Luna': '/images/icons/luna.png',
-  'Hiro': '/images/icons/hiro.png',
-  'Tomoka': '/images/icons/tomoka.png',
+  'Miko': '/images/icons/avatar1.png',
+  'Kento': '/images/icons/avatar2.png',
+  'Luna': '/images/icons/avatar3.png',
+  'Hiro': '/images/icons/avatar4.png',
+  'Tomoka': '/images/icons/avatar5.png',
 };
+
+// avatarIdから画像パスを生成
+const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
 
 export function Player({
   player,
@@ -107,7 +110,10 @@ export function Player({
 }: PlayerProps) {
   // positionIndex === 0 が自分の位置
   const isMe = positionIndex === 0;
-  const avatarImage = isMe ? '/images/icons/you.png' : cpuAvatars[player.name];
+  // avatarIdがあればそれを使用、なければオフラインモードのフォールバック
+  const avatarImage = player.avatarId !== undefined
+    ? getAvatarImage(player.avatarId)
+    : (isMe ? '/images/icons/avatar0.png' : cpuAvatars[player.name]);
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
 
   // タイマー表示用の残り時間

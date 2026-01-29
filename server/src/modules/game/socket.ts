@@ -138,7 +138,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const seatNumber = table.seatPlayer(
           socket.odId!,
           socket.odName!,
-          socket.odAvatarUrl!,
           socket,
           buyIn
         );

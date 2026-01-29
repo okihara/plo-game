@@ -113,7 +113,6 @@ export class FastFoldPool {
       const seatNumber = table.seatPlayer(
         player.odId,
         player.odName,
-        player.odAvatarUrl,
         player.socket,
         player.chips
       );

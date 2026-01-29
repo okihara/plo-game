@@ -7,7 +7,7 @@ import { nanoid } from 'nanoid';
 interface SeatInfo {
   odId: string;
   odName: string;
-  odAvatarUrl: string | null;
+  avatarId: number;
   socket: Socket | null;
   chips: number;
   buyIn: number;
@@ -104,7 +104,6 @@ export class TableInstance {
   public seatPlayer(
     odId: string,
     odName: string,
-    odAvatarUrl: string | null,
     socket: Socket,
     buyIn: number,
     preferredSeat?: number
@@ -121,10 +120,13 @@ export class TableInstance {
 
     if (seatIndex === -1) return null;
 
+    // ランダムなアバターIDを割り当て (0-14)
+    const avatarId = Math.floor(Math.random() * 15);
+
     this.seats[seatIndex] = {
       odId,
       odName,
-      odAvatarUrl,
+      avatarId,
       socket,
       chips: buyIn,
       buyIn,
@@ -618,7 +620,7 @@ export class TableInstance {
           return {
             odId: seat.odId,
             odName: seat.odName,
-            odAvatarUrl: seat.odAvatarUrl,
+            avatarId: seat.avatarId,
             seatNumber: i,
             chips: seat.chips, // buyIn時のチップを表示
             currentBet: 0,
@@ -631,7 +633,7 @@ export class TableInstance {
         return {
           odId: seat.odId,
           odName: seat.odName,
-          odAvatarUrl: seat.odAvatarUrl,
+          avatarId: seat.avatarId,
           seatNumber: i,
           chips: player?.chips ?? seat.chips,
           currentBet: player?.currentBet ?? 0,
@@ -667,7 +669,7 @@ export class TableInstance {
       return {
         odId: seat.odId,
         odName: seat.odName,
-        odAvatarUrl: seat.odAvatarUrl,
+        avatarId: seat.avatarId,
         seatNumber: seatIndex,
         chips: seat.chips,
         currentBet: 0,
@@ -681,7 +683,7 @@ export class TableInstance {
     return {
       odId: seat.odId,
       odName: seat.odName,
-      odAvatarUrl: seat.odAvatarUrl,
+      avatarId: seat.avatarId,
       seatNumber: seatIndex,
       chips: player?.chips ?? seat.chips,
       currentBet: player?.currentBet ?? 0,
