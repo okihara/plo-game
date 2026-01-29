@@ -552,7 +552,8 @@ export class TableInstance {
     // Update seat chips
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
-      if (seat && this.gameState.players[i]) {
+      // waitingForNextHandのプレイヤーはハンドに参加していないのでチップを上書きしない
+      if (seat && this.gameState.players[i] && !seat.waitingForNextHand) {
         seat.chips = this.gameState.players[i].chips;
       }
     }

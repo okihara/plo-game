@@ -30,7 +30,9 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
   const potAfterCall = state.pot + toCall;
   const maxPotRaise = potAfterCall + state.currentBet + toCall;
 
-  const minRaise = Math.max(state.minRaise, state.bigBlind);
+  // サーバーと同じ計算方法でminRaiseを算出
+  const minRaiseTotal = state.currentBet + state.minRaise;
+  const minRaise = Math.max(minRaiseTotal - myPlayer.currentBet, state.bigBlind);
   const maxRaise = Math.min(myPlayer.chips, maxPotRaise);
 
   const [sliderValue, setSliderValue] = useState(minRaise);
