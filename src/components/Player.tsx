@@ -86,11 +86,11 @@ const dealFromOffsets: Record<number, { x: string; y: string }> = {
 
 // CPUアバター画像マッピング
 const cpuAvatars: Record<string, string> = {
-  'Miko': '/images/miko.png',
-  'Kento': '/images/kento.png',
-  'Luna': '/images/luna.png',
-  'Hiro': '/images/hiro.png',
-  'Tomoka': '/images/tomoka.png',
+  'Miko': '/images/icons/miko.png',
+  'Kento': '/images/icons/kento.png',
+  'Luna': '/images/icons/luna.png',
+  'Hiro': '/images/icons/hiro.png',
+  'Tomoka': '/images/icons/tomoka.png',
 };
 
 export function Player({
@@ -107,7 +107,7 @@ export function Player({
 }: PlayerProps) {
   // positionIndex === 0 が自分の位置
   const isMe = positionIndex === 0;
-  const avatarImage = isMe ? '/images/you.png' : cpuAvatars[player.name];
+  const avatarImage = isMe ? '/images/icons/you.png' : cpuAvatars[player.name];
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
 
   // タイマー表示用の残り時間
