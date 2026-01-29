@@ -1,10 +1,10 @@
 import { useState, useCallback, useEffect } from 'react';
-import { GameState, Action, getValidActions } from '../logic';
+import { GameState, Action } from '../logic';
 
 interface ActionPanelProps {
   state: GameState;
+  mySeat: number;
   onAction: (action: Action, amount: number) => void;
-  onPreFold?: () => void;
 }
 
 function formatChips(amount: number): string {
@@ -16,21 +16,24 @@ function formatChips(amount: number): string {
   return amount.toString();
 }
 
-export function ActionPanel({ state, onAction, onPreFold }: ActionPanelProps) {
-  const humanPlayer = state.players.find(p => p.isHuman)!;
-  const isMyTurn = state.players[state.currentPlayerIndex]?.isHuman && !state.isHandComplete;
-  const validActions = isMyTurn ? getValidActions(state, state.currentPlayerIndex) : [];
+export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
+  const myPlayer = state.players[mySeat];
+  const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
 
-  // プリフロップでは自分のターン前でもフォールド可能
-  const isPreflop = state.currentStreet === 'preflop';
-  const canPreFold = isPreflop && !isMyTurn && !state.isHandComplete && !humanPlayer.folded;
+  const toCall = state.currentBet - myPlayer.currentBet;
 
-  const toCall = state.currentBet - humanPlayer.currentBet;
-  const canRaise = validActions.some(a => a.action === 'raise' || a.action === 'bet');
-  const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+  // オンラインモード用のシンプルなレイズ判定
+  // サーバー側でバリデーションするので、クライアントは基本的な条件のみチェック
+  const canRaise = isMyTurn && myPlayer.chips > toCall && !myPlayer.isAllIn;
 
-  const minRaise = raiseAction?.minAmount || state.bigBlind;
-  const maxRaise = raiseAction?.maxAmount || humanPlayer.chips;
+  // Pot Limit の最大レイズ額を計算
+  const potAfterCall = state.pot + toCall;
+  const maxPotRaise = potAfterCall + state.currentBet + toCall;
+
+  // サーバーと同じ計算方法でminRaiseを算出
+  const minRaiseTotal = state.currentBet + state.minRaise;
+  const minRaise = Math.max(minRaiseTotal - myPlayer.currentBet, state.bigBlind);
+  const maxRaise = Math.min(myPlayer.chips, maxPotRaise);
 
   const [sliderValue, setSliderValue] = useState(minRaise);
 
@@ -48,14 +51,14 @@ export function ActionPanel({ state, onAction, onPreFold }: ActionPanelProps) {
   const handleAction = useCallback((action: Action) => {
     let amount = 0;
     if (action === 'call') {
-      amount = Math.min(toCall, humanPlayer.chips);
+      amount = Math.min(toCall, myPlayer.chips);
     } else if (action === 'bet' || action === 'raise') {
       amount = sliderValue;
     } else if (action === 'allin') {
-      amount = humanPlayer.chips;
+      amount = myPlayer.chips;
     }
     onAction(action, amount);
-  }, [toCall, humanPlayer.chips, sliderValue, onAction]);
+  }, [toCall, myPlayer.chips, sliderValue, onAction]);
 
   return (
     <div className="bg-gradient-to-b from-white/90 to-white/80 px-[1.5vh] pt-[1.5vh] pb-[1vh] border-t-2 border-pink-300 backdrop-blur-sm">
@@ -98,14 +101,8 @@ export function ActionPanel({ state, onAction, onPreFold }: ActionPanelProps) {
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-[1vh]">
         <button
-          onClick={() => {
-            if (isMyTurn) {
-              handleAction('fold');
-            } else if (canPreFold && onPreFold) {
-              onPreFold();
-            }
-          }}
-          disabled={!isMyTurn && !canPreFold}
+          onClick={() => handleAction('fold')}
+          disabled={!isMyTurn}
           className="py-[1.8vh] px-[1vh] rounded-xl text-[1.5vh] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-400 to-gray-500"
         >
           フォールド

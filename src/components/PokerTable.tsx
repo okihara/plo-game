@@ -1,5 +1,5 @@
 import { GameState } from '../logic';
-import { LastAction } from '../hooks/useGameState';
+import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
 import { ThinkingIndicator } from './ThinkingIndicator';
@@ -10,6 +10,9 @@ interface PokerTableProps {
   isProcessingCPU: boolean;
   isDealingCards: boolean;
   newCommunityCardsCount: number;
+  humanIndex?: number;
+  actionTimeoutAt?: ActionTimeoutAt | null;
+  actionTimeoutMs?: number | null;
 }
 
 function formatChips(amount: number): string {
@@ -27,13 +30,14 @@ export function PokerTable({
   isProcessingCPU,
   isDealingCards,
   newCommunityCardsCount,
+  humanIndex = 0,
+  actionTimeoutAt,
+  actionTimeoutMs,
 }: PokerTableProps) {
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
   const currentPlayer = state.players[state.currentPlayerIndex];
-  const isCPUTurn = currentPlayer && !currentPlayer.isHuman && !state.isHandComplete;
-
-  // Human player is always index 0
-  const humanIndex = 0;
+  // オンラインでは他のプレイヤーのターンかどうか
+  const isOtherPlayerTurn = currentPlayer && state.currentPlayerIndex !== humanIndex && !state.isHandComplete;
   const orderedPlayers = [];
   for (let i = 0; i < 6; i++) {
     const idx = (humanIndex + i) % 6;
@@ -51,7 +55,7 @@ export function PokerTable({
 
   return (
     <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
-      <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isCPUTurn && isProcessingCPU} />
+      <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isOtherPlayerTurn && isProcessingCPU} />
 
       <div className="h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#4ade80_0%,#22c55e_50%,#16a34a_100%)] rounded-[45%] border-[0.5vh] border-[#fbbf24] shadow-[0_0_0_0.3vh_#f59e0b,0_0_2vh_rgba(0,0,0,0.3),inset_0_0_4vh_rgba(255,255,255,0.2)] relative">
         {/* Pot Display */}
@@ -63,19 +67,24 @@ export function PokerTable({
         <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
 
         {/* Players */}
-        {orderedPlayers.map(({ player, playerIdx, posIndex }) => (
-          <Player
-            key={player.id}
-            player={player}
-            positionIndex={posIndex}
-            isCurrentPlayer={state.currentPlayerIndex === playerIdx && !state.isHandComplete}
-            isWinner={state.winners.some(w => w.playerId === player.id)}
-            lastAction={lastActions.get(player.id) || null}
-            showCards={isShowdown}
-            isDealing={isDealingCards}
-            dealOrder={getDealOrder(playerIdx)}
-          />
-        ))}
+        {orderedPlayers.map(({ player, playerIdx, posIndex }) => {
+          const isCurrentPlayer = state.currentPlayerIndex === playerIdx && !state.isHandComplete;
+          return (
+            <Player
+              key={player.id}
+              player={player}
+              positionIndex={posIndex}
+              isCurrentPlayer={isCurrentPlayer}
+              isWinner={state.winners.some(w => w.playerId === player.id)}
+              lastAction={lastActions.get(player.id) || null}
+              showCards={isShowdown}
+              isDealing={isDealingCards}
+              dealOrder={getDealOrder(playerIdx)}
+              actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}
+              actionTimeoutMs={isCurrentPlayer ? actionTimeoutMs : null}
+            />
+          );
+        })}
       </div>
     </div>
   );

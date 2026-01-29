@@ -1,7 +1,7 @@
-import { GameState, Action, Card, Rank, Street } from './types';
-import { getValidActions } from './gameEngine';
-import { getRankValue } from './deck';
-import { evaluatePLOHand } from './handEvaluator';
+import { GameState, Action, Card, Rank, Street } from './types.js';
+import { getValidActions } from './gameEngine.js';
+import { getRankValue } from './deck.js';
+import { evaluatePLOHand } from './handEvaluator.js';
 
 // ハンド評価情報
 interface HandEvaluation {

@@ -1,6 +1,7 @@
+import { useState, useEffect } from 'react';
 import { Player as PlayerType, Action } from '../logic';
 import { Card, FaceDownCard } from './Card';
-import { LastAction } from '../hooks/useGameState';
+import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 
 interface PlayerProps {
   player: PlayerType;
@@ -11,6 +12,8 @@ interface PlayerProps {
   showCards: boolean;
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
+  actionTimeoutAt?: ActionTimeoutAt | null;
+  actionTimeoutMs?: number | null;
 }
 
 function formatChips(amount: number): string {
@@ -81,14 +84,17 @@ const dealFromOffsets: Record<number, { x: string; y: string }> = {
   5: { x: '-10vh', y: '-7vh' },   // 右下 ← 中央から右下へ
 };
 
-// CPUアバター画像マッピング
+// CPUアバター画像マッピング（オフラインモード用フォールバック）
 const cpuAvatars: Record<string, string> = {
-  'Miko': '/images/miko.png',
-  'Kento': '/images/kento.png',
-  'Luna': '/images/luna.png',
-  'Hiro': '/images/hiro.png',
-  'Tomoka': '/images/tomoka.png',
+  'Miko': '/images/icons/avatar1.png',
+  'Kento': '/images/icons/avatar2.png',
+  'Luna': '/images/icons/avatar3.png',
+  'Hiro': '/images/icons/avatar4.png',
+  'Tomoka': '/images/icons/avatar5.png',
 };
+
+// avatarIdから画像パスを生成
+const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
 
 export function Player({
   player,
@@ -99,28 +105,97 @@ export function Player({
   showCards,
   isDealing,
   dealOrder,
+  actionTimeoutAt,
+  actionTimeoutMs,
 }: PlayerProps) {
-  const avatarImage = player.isHuman ? '/images/you.png' : cpuAvatars[player.name];
+  // positionIndex === 0 が自分の位置
+  const isMe = positionIndex === 0;
+  // avatarIdがあればそれを使用、なければオフラインモードのフォールバック
+  const avatarImage = player.avatarId !== undefined
+    ? getAvatarImage(player.avatarId)
+    : (isMe ? '/images/icons/avatar0.png' : cpuAvatars[player.name]);
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
+
+  // タイマー表示用の残り時間
+  const [remainingTime, setRemainingTime] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!actionTimeoutAt) {
+      setRemainingTime(null);
+      return;
+    }
+
+    const updateTimer = () => {
+      const remaining = Math.max(0, actionTimeoutAt - Date.now());
+      setRemainingTime(remaining);
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 100);
+
+    return () => clearInterval(interval);
+  }, [actionTimeoutAt]);
+
+  // タイマーの進捗率（0-1）
+  const timerProgress = actionTimeoutAt && actionTimeoutMs && remainingTime !== null
+    ? remainingTime / actionTimeoutMs
+    : null;
 
   return (
     <div className={`absolute flex flex-col items-center transition-all duration-300 ${positionStyles[positionIndex]}`}>
-      {/* Avatar */}
-      <div
-        className={`
-          w-[7vh] h-[7vh] rounded-full
-          bg-gradient-to-br from-gray-500 to-gray-700
-          border-[0.3vh] flex items-center justify-center
-          text-[2.5vh] relative overflow-hidden
-          ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_1.5vh_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-gray-600'}
-          ${player.folded ? 'opacity-40 grayscale' : ''}
-          ${isWinner ? 'border-green-400 shadow-[0_0_2vh_rgba(0,255,0,0.6)]' : ''}
-        `}
-      >
-        {avatarImage ? (
-          <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
-        ) : (
-          player.isHuman ? '👤' : '🤖'
+      {/* Avatar with Timer Ring */}
+      <div className="relative">
+        {/* Timer Ring */}
+        {timerProgress !== null && (
+          <svg
+            className="absolute inset-0 w-[8vh] h-[8vh] -m-[0.5vh] -rotate-90"
+            viewBox="0 0 100 100"
+          >
+            {/* Background circle */}
+            <circle
+              cx="50"
+              cy="50"
+              r="46"
+              fill="none"
+              stroke="rgba(0,0,0,0.3)"
+              strokeWidth="6"
+            />
+            {/* Progress circle */}
+            <circle
+              cx="50"
+              cy="50"
+              r="46"
+              fill="none"
+              stroke={timerProgress > 0.3 ? '#22c55e' : timerProgress > 0.1 ? '#eab308' : '#ef4444'}
+              strokeWidth="6"
+              strokeLinecap="round"
+              strokeDasharray={`${timerProgress * 289} 289`}
+              className="transition-all duration-100"
+            />
+          </svg>
+        )}
+        <div
+          className={`
+            w-[7vh] h-[7vh] rounded-full
+            bg-gradient-to-br from-gray-500 to-gray-700
+            border-[0.3vh] flex items-center justify-center
+            text-[2.5vh] relative overflow-hidden
+            ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_1.5vh_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-gray-600'}
+            ${player.folded ? 'opacity-40 grayscale' : ''}
+            ${isWinner ? 'border-green-400 shadow-[0_0_2vh_rgba(0,255,0,0.6)]' : ''}
+          `}
+        >
+          {avatarImage ? (
+            <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
+          ) : (
+            isMe ? '👤' : '🤖'
+          )}
+        </div>
+        {/* Remaining seconds display */}
+        {remainingTime !== null && (
+          <div className="absolute -bottom-[0.5vh] left-1/2 -translate-x-1/2 bg-black/80 px-[0.8vh] py-[0.2vh] rounded text-[1.2vh] font-bold text-white z-20">
+            {Math.ceil(remainingTime / 1000)}s
+          </div>
         )}
       </div>
 
@@ -130,8 +205,8 @@ export function Player({
         <div className="text-[1.5vh] font-bold text-white">{formatChips(player.chips)}</div>
       </div>
 
-      {/* Hole Cards (for CPU players) */}
-      {!player.isHuman && player.holeCards.length > 0 && (
+      {/* Hole Cards (for other players) */}
+      {positionIndex !== 0 && (
         <div className={`flex gap-[0.3vh] mt-[0.5vh] ${player.folded ? 'invisible' : ''}`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (

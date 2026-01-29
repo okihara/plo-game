@@ -1,6 +1,223 @@
-import { Card, Suit } from './types';
+import { Card, Suit, Rank } from './types';
 import { evaluatePLOHand, compareHands } from './handEvaluator';
 import { getRankValue } from './deck';
+
+// プリフロップ評価結果
+export interface PreFlopEvaluation {
+  score: number;           // 総合スコア (0-1)
+  hasPair: boolean;        // ペアがあるか
+  pairRank: string | null; // ペアのランク (例: "AA", "KK")
+  hasAceSuited: boolean;   // Aスーテッドがあるか
+  isDoubleSuited: boolean; // ダブルスーテッドか
+  isSingleSuited: boolean; // シングルスーテッドか
+  isRundown: boolean;      // ランダウン（連続4枚）か
+  hasWrap: boolean;        // ラップ可能性（密なハンド）
+  hasDangler: boolean;     // ダングラー（孤立カード）があるか
+}
+
+// プリフロップハンド評価
+export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
+  if (holeCards.length !== 4) {
+    return {
+      score: 0,
+      hasPair: false,
+      pairRank: null,
+      hasAceSuited: false,
+      isDoubleSuited: false,
+      isSingleSuited: false,
+      isRundown: false,
+      hasWrap: false,
+      hasDangler: false,
+    };
+  }
+
+  const values = holeCards.map(c => getRankValue(c.rank));
+  const suits = holeCards.map(c => c.suit);
+  const ranks = holeCards.map(c => c.rank);
+
+  // ランクとスーツのカウント
+  const rankCounts = new Map<Rank, number>();
+  const suitCounts = new Map<string, number>();
+  const suitToCards = new Map<string, Card[]>();
+  for (let i = 0; i < 4; i++) {
+    rankCounts.set(ranks[i], (rankCounts.get(ranks[i]) || 0) + 1);
+    suitCounts.set(suits[i], (suitCounts.get(suits[i]) || 0) + 1);
+    if (!suitToCards.has(suits[i])) suitToCards.set(suits[i], []);
+    suitToCards.get(suits[i])!.push(holeCards[i]);
+  }
+
+  const sortedValues = [...values].sort((a, b) => a - b);
+  const uniqueValues = [...new Set(sortedValues)];
+  const span = uniqueValues.length > 1 ? uniqueValues[uniqueValues.length - 1] - uniqueValues[0] : 0;
+  const suitCountValues = Array.from(suitCounts.values());
+
+  // スーテッドネスの判定
+  const isDoubleSuited = suitCountValues.filter(c => c === 2).length === 2;
+  const isSingleSuited = !isDoubleSuited && suitCountValues.some(c => c === 2);
+  const tripleOrMoreSuited = suitCountValues.some(c => c >= 3);
+  const isRainbow = suitCountValues.every(c => c === 1);
+
+  // ペア情報
+  const pairRanks = Array.from(rankCounts.entries()).filter(([, count]) => count >= 2);
+  let pairRank: string | null = null;
+  for (const [rank] of pairRanks) {
+    const pairValue = getRankValue(rank);
+    if (!pairRank || pairValue > getRankValue(pairRank[0] as Rank)) {
+      pairRank = rank + rank;
+    }
+  }
+
+  // Aスーテッドの判定
+  const hasAce = ranks.includes('A');
+  let hasAceSuited = false;
+  let aceHighFlushDrawCount = 0;
+  if (hasAce) {
+    for (const [, cards] of suitToCards.entries()) {
+      if (cards.some(c => c.rank === 'A') && cards.length >= 2) {
+        hasAceSuited = true;
+        aceHighFlushDrawCount++;
+      }
+    }
+  }
+
+  // === 1. ナッティネス (0-0.45) ===
+  let nuttiness = 0;
+
+  const hasAA = rankCounts.get('A') === 2;
+  const hasKK = rankCounts.get('K') === 2;
+  const hasQQ = rankCounts.get('Q') === 2;
+  const hasJJ = rankCounts.get('J') === 2;
+
+  if (hasAA) {
+    nuttiness += 0.25;
+  } else if (hasKK) {
+    nuttiness += 0.18;
+  } else if (hasQQ) {
+    nuttiness += 0.14;
+  } else if (hasJJ) {
+    nuttiness += 0.10;
+  } else if (pairRanks.length > 0) {
+    const highestPairValue = Math.max(...pairRanks.map(([r]) => getRankValue(r)));
+    nuttiness += (highestPairValue / 14) * 0.08;
+  }
+
+  if (aceHighFlushDrawCount >= 2) {
+    nuttiness += 0.12;
+  } else if (aceHighFlushDrawCount === 1) {
+    nuttiness += 0.08;
+  }
+
+  const avgValue = values.reduce((a, b) => a + b, 0) / 4;
+  nuttiness += Math.max(0, (avgValue - 8) / 14 * 0.08);
+
+  // === 2. コネクティビティ (0-0.35) ===
+  let connectivity = 0;
+
+  const isRundown = uniqueValues.length === 4 && span === 3;
+  if (isRundown) {
+    const minValue = uniqueValues[0];
+    if (minValue >= 10) {
+      connectivity += 0.30;
+    } else if (minValue >= 7) {
+      connectivity += 0.25;
+    } else {
+      connectivity += 0.18;
+    }
+  } else {
+    let gapScore = 0;
+    for (let i = 0; i < uniqueValues.length - 1; i++) {
+      const gap = uniqueValues[i + 1] - uniqueValues[i];
+      if (gap === 1) gapScore += 3;
+      else if (gap === 2) gapScore += 2;
+      else if (gap === 3) gapScore += 1;
+    }
+    connectivity += (gapScore / 9) * 0.20;
+  }
+
+  const hasWrap = span <= 4 && uniqueValues.length >= 3;
+  if (hasWrap && !isRundown) {
+    connectivity += 0.08;
+  }
+
+  let hasDangler = false;
+  if (uniqueValues.length === 4) {
+    const gaps = [];
+    for (let i = 0; i < 3; i++) {
+      gaps.push(uniqueValues[i + 1] - uniqueValues[i]);
+    }
+    const maxGap = Math.max(...gaps);
+    const maxGapIndex = gaps.indexOf(maxGap);
+
+    if (maxGap >= 5 && (maxGapIndex === 0 || maxGapIndex === 2)) {
+      hasDangler = true;
+      connectivity -= 0.12;
+    } else if (maxGap >= 4) {
+      hasDangler = true;
+      connectivity -= 0.06;
+    }
+  }
+
+  // === 3. スーテッドネス (0-0.25) ===
+  let suitedness = 0;
+
+  if (isDoubleSuited) {
+    suitedness += 0.20;
+    if (hasAceSuited) {
+      suitedness += 0.05;
+    }
+  } else if (isSingleSuited) {
+    suitedness += 0.10;
+    if (hasAceSuited) {
+      suitedness += 0.03;
+    }
+  }
+
+  if (tripleOrMoreSuited) {
+    suitedness -= 0.08;
+  }
+
+  if (isRainbow) {
+    suitedness -= 0.05;
+  }
+
+  // === 特別なプレミアムハンドパターン ===
+  let bonus = 0;
+
+  if (hasAA && hasKK && isDoubleSuited) {
+    bonus += 0.15;
+  } else if (hasAA && ranks.includes('J') && ranks.includes('T') && isDoubleSuited) {
+    bonus += 0.12;
+  } else if (hasKK && hasQQ && isDoubleSuited) {
+    bonus += 0.10;
+  } else if (hasAA && isDoubleSuited) {
+    bonus += 0.08;
+  }
+
+  if (pairRanks.length === 2) {
+    const pairValues = pairRanks.map(([r]) => getRankValue(r));
+    const avgPairValue = (pairValues[0] + pairValues[1]) / 2;
+    bonus += 0.03 + (avgPairValue / 14) * 0.04;
+  }
+
+  if (isRundown && isDoubleSuited) {
+    bonus += 0.08;
+  }
+
+  const totalScore = nuttiness + connectivity + suitedness + bonus;
+  const score = Math.min(1, Math.max(0, totalScore));
+
+  return {
+    score,
+    hasPair: pairRanks.length > 0,
+    pairRank,
+    hasAceSuited,
+    isDoubleSuited,
+    isSingleSuited,
+    isRundown,
+    hasWrap,
+    hasDangler,
+  };
+}
 
 // 残りのデッキからカードを取得
 function getRemainingDeck(usedCards: Card[]): Card[] {

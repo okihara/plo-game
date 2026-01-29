@@ -11,6 +11,8 @@
 
 ## 開発
 
+### オフラインモード（CPU対戦）
+
 ```bash
 # 依存関係のインストール
 npm install
@@ -20,6 +22,78 @@ npm run dev
 
 # ビルド
 npm run build
+```
+
+### オンラインモード（マルチプレイヤー）
+
+オンラインモードには、バックエンドサーバーとボットの起動が必要です。
+
+#### 1. インフラ起動（PostgreSQL + Redis）
+
+```bash
+docker-compose up -d
+```
+
+#### 2. サーバーセットアップ
+
+```bash
+cd server
+npm install
+
+# 環境変数の設定
+cp .env.example .env
+# .envファイルを編集してJWT_SECRETなどを設定
+
+# データベースのセットアップ
+npm run db:push
+```
+
+#### 3. サーバー起動
+
+```bash
+cd server
+npm run dev          # 開発モード（ホットリロード）
+# または
+npm run start        # 本番モード（要事前ビルド: npm run build）
+```
+
+サーバーは `http://localhost:3001` で起動します。
+
+#### 4. ボット起動（オプション）
+
+プレイヤーが少ない場合にテーブルを埋めるCPUボットを起動できます。
+
+```bash
+cd server
+npm run bot          # ボット起動
+# または
+npm run bot:dev      # 開発モード（ホットリロード）
+```
+
+環境変数でボットの動作をカスタマイズできます:
+
+| 変数 | デフォルト | 説明 |
+|------|-----------|------|
+| `SERVER_URL` | `http://localhost:3001` | 接続先サーバー |
+| `BOT_COUNT` | `10` | 起動するボット数 |
+| `BLINDS` | `1/3` | 参加するブラインドレベル |
+
+例:
+```bash
+BOT_COUNT=5 BLINDS=1/3 npm run bot
+```
+
+#### 全体起動（3ターミナル）
+
+```bash
+# ターミナル1: フロントエンド
+npm run dev
+
+# ターミナル2: バックエンドサーバー
+cd server && npm run dev
+
+# ターミナル3: ボット（オプション）
+cd server && npm run bot
 ```
 
 ## 技術スタック

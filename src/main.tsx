@@ -1,19 +1,21 @@
-import { StrictMode } from 'react';
+import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
-import { App } from './App';
-import { PlayerTest } from './pages/PlayerTest';
+import { SimpleLobby } from './pages/SimpleLobby';
+import { OnlineGame } from './pages/OnlineGame';
 import './index.css';
 
-// URLハッシュでテストページに切り替え可能
-// 例: http://localhost:5173/#player-test
-const getPage = () => {
-  const hash = window.location.hash;
-  if (hash === '#player-test') return <PlayerTest />;
-  return <App />;
-};
+function App() {
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  if (isPlaying) {
+    return <OnlineGame onBack={() => setIsPlaying(false)} />;
+  }
+
+  return <SimpleLobby onPlayOnline={() => setIsPlaying(true)} />;
+}
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>
-    {getPage()}
+    <App />
   </StrictMode>
 );

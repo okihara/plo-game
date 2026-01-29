@@ -17,7 +17,7 @@ export function HandAnalysisOverlay({
   const preflopEval = useMemo(() => getPreFlopEvaluation(holeCards), [holeCards]);
 
   const postflopInfo = useMemo(() => {
-    if (communityCards.length < 3) {
+    if (holeCards.length !== 4 || communityCards.length < 3) {
       return null;
     }
     const equity = calculateEquity(holeCards, communityCards, 5, 300);
