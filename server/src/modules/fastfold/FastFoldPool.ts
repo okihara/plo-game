@@ -115,9 +115,7 @@ export class FastFoldPool {
         player.odName,
         player.odAvatarUrl,
         player.socket,
-        player.chips,
-        undefined, // preferredSeat
-        player.isBot
+        player.chips
       );
 
       if (seatNumber !== null) {

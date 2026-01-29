@@ -8,7 +8,6 @@ interface SeatInfo {
   odId: string;
   odName: string;
   odAvatarUrl: string | null;
-  odIsHuman: boolean;
   socket: Socket | null;
   chips: number;
   buyIn: number;
@@ -108,8 +107,7 @@ export class TableInstance {
     odAvatarUrl: string | null,
     socket: Socket,
     buyIn: number,
-    preferredSeat?: number,
-    isBot: boolean = false
+    preferredSeat?: number
   ): number | null {
     // Find available seat
     let seatIndex = preferredSeat ?? -1;
@@ -127,7 +125,6 @@ export class TableInstance {
       odId,
       odName,
       odAvatarUrl,
-      odIsHuman: !isBot, // Bots are not human
       socket,
       chips: buyIn,
       buyIn,
@@ -340,9 +337,9 @@ export class TableInstance {
     }
   }
 
-  // Get the number of human players
-  public getHumanPlayerCount(): number {
-    return this.seats.filter(s => s?.odIsHuman).length;
+  // Get the number of connected players
+  public getConnectedPlayerCount(): number {
+    return this.seats.filter(s => s?.socket?.connected).length;
   }
 
   // Get total player count
@@ -412,7 +409,6 @@ export class TableInstance {
         seat.waitingForNextHand = false;
         this.gameState.players[i].chips = seat.chips;
         this.gameState.players[i].name = seat.odName;
-        this.gameState.players[i].isHuman = seat.odIsHuman;
       } else {
         // 空席のプレイヤーはチップ0にしてゲームに参加させない
         this.gameState.players[i].chips = 0;
@@ -622,7 +618,6 @@ export class TableInstance {
             odId: seat.odId,
             odName: seat.odName,
             odAvatarUrl: seat.odAvatarUrl,
-            odIsHuman: seat.odIsHuman,
             seatNumber: i,
             chips: seat.chips, // buyIn時のチップを表示
             currentBet: 0,
@@ -636,7 +631,6 @@ export class TableInstance {
           odId: seat.odId,
           odName: seat.odName,
           odAvatarUrl: seat.odAvatarUrl,
-          odIsHuman: seat.odIsHuman,
           seatNumber: i,
           chips: player?.chips ?? seat.chips,
           currentBet: player?.currentBet ?? 0,
@@ -673,7 +667,6 @@ export class TableInstance {
         odId: seat.odId,
         odName: seat.odName,
         odAvatarUrl: seat.odAvatarUrl,
-        odIsHuman: seat.odIsHuman,
         seatNumber: seatIndex,
         chips: seat.chips,
         currentBet: 0,
@@ -688,7 +681,6 @@ export class TableInstance {
       odId: seat.odId,
       odName: seat.odName,
       odAvatarUrl: seat.odAvatarUrl,
-      odIsHuman: seat.odIsHuman,
       seatNumber: seatIndex,
       chips: player?.chips ?? seat.chips,
       currentBet: player?.currentBet ?? 0,

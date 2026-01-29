@@ -197,7 +197,6 @@ export class BotClient {
           totalBetThisRound: onlinePlayer.currentBet,
           folded: onlinePlayer.folded,
           isAllIn: onlinePlayer.isAllIn,
-          isHuman: onlinePlayer.odIsHuman,
           hasActed: onlinePlayer.hasActed,
         });
       } else {
@@ -212,7 +211,6 @@ export class BotClient {
           totalBetThisRound: 0,
           folded: true,
           isAllIn: false,
-          isHuman: false,
           hasActed: true,
         });
       }

@@ -26,7 +26,6 @@ interface TableStats {
     odName: string;
     seatNumber: number;
     chips: number;
-    isHuman: boolean;
     isConnected: boolean;
     folded: boolean;
     isAllIn: boolean;
@@ -106,7 +105,6 @@ export function adminRoutes(deps: AdminDependencies) {
               odName: p.odName,
               seatNumber: p.seatNumber,
               chips: p.chips,
-              isHuman: p.odIsHuman,
               isConnected: p.isConnected,
               folded: p.folded,
               isAllIn: p.isAllIn,
@@ -601,11 +599,9 @@ function getDashboardHTML(): string {
             return '<div class="player-slot"><div style="color:#475569">空席</div><div class="player-status">Seat ' + (i + 1) + '</div></div>';
           }
           const classes = ['player-slot', 'occupied'];
-          if (player.isHuman) classes.push('human');
-          else classes.push('cpu');
           if (player.folded) classes.push('folded');
 
-          let status = player.isHuman ? '👤' : '🤖';
+          let status = '👤'; // オンラインモードでは全員人間
           if (player.folded) status += ' Fold';
           else if (player.isAllIn) status += ' All-In';
 

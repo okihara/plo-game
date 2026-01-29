@@ -3,6 +3,7 @@ import { GameState, Action } from '../logic';
 
 interface ActionPanelProps {
   state: GameState;
+  mySeat: number;
   onAction: (action: Action, amount: number) => void;
 }
 
@@ -15,22 +16,22 @@ function formatChips(amount: number): string {
   return amount.toString();
 }
 
-export function ActionPanel({ state, onAction }: ActionPanelProps) {
-  const humanPlayer = state.players.find(p => p.isHuman)!;
-  const isMyTurn = state.players[state.currentPlayerIndex]?.isHuman && !state.isHandComplete;
+export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
+  const myPlayer = state.players[mySeat];
+  const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
 
-  const toCall = state.currentBet - humanPlayer.currentBet;
+  const toCall = state.currentBet - myPlayer.currentBet;
 
   // オンラインモード用のシンプルなレイズ判定
   // サーバー側でバリデーションするので、クライアントは基本的な条件のみチェック
-  const canRaise = isMyTurn && humanPlayer.chips > toCall && !humanPlayer.isAllIn;
+  const canRaise = isMyTurn && myPlayer.chips > toCall && !myPlayer.isAllIn;
 
   // Pot Limit の最大レイズ額を計算
   const potAfterCall = state.pot + toCall;
   const maxPotRaise = potAfterCall + state.currentBet + toCall;
 
   const minRaise = Math.max(state.minRaise, state.bigBlind);
-  const maxRaise = Math.min(humanPlayer.chips, maxPotRaise);
+  const maxRaise = Math.min(myPlayer.chips, maxPotRaise);
 
   const [sliderValue, setSliderValue] = useState(minRaise);
 
@@ -48,14 +49,14 @@ export function ActionPanel({ state, onAction }: ActionPanelProps) {
   const handleAction = useCallback((action: Action) => {
     let amount = 0;
     if (action === 'call') {
-      amount = Math.min(toCall, humanPlayer.chips);
+      amount = Math.min(toCall, myPlayer.chips);
     } else if (action === 'bet' || action === 'raise') {
       amount = sliderValue;
     } else if (action === 'allin') {
-      amount = humanPlayer.chips;
+      amount = myPlayer.chips;
     }
     onAction(action, amount);
-  }, [toCall, humanPlayer.chips, sliderValue, onAction]);
+  }, [toCall, myPlayer.chips, sliderValue, onAction]);
 
   return (
     <div className="bg-gradient-to-b from-white/90 to-white/80 px-[1.5vh] pt-[1.5vh] pb-[1vh] border-t-2 border-pink-300 backdrop-blur-sm">

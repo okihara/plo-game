@@ -76,7 +76,6 @@ function convertOnlinePlayerToPlayer(
       folded: true,
       isAllIn: false,
       hasActed: true,
-      isHuman: false,
       position: POSITIONS[(index - dealerSeat + 6) % 6],
     };
   }
@@ -93,7 +92,6 @@ function convertOnlinePlayerToPlayer(
     folded: online.folded,
     isAllIn: online.isAllIn,
     hasActed: online.hasActed,
-    isHuman: online.odIsHuman,
     position: POSITIONS[posIndex],
   };
 }
@@ -343,10 +341,9 @@ export function useOnlineGameState(): OnlineGameHookResult {
     ? convertClientStateToGameState(clientState, myHoleCards, mySeat)
     : null;
 
-  // 現在のプレイヤーがCPUかどうか
+  // 他のプレイヤーのターンかどうか
   const isProcessingCPU = gameState
-    ? gameState.currentPlayerIndex !== mySeat &&
-      !gameState.players[gameState.currentPlayerIndex]?.isHuman
+    ? gameState.currentPlayerIndex !== mySeat
     : false;
 
   // 着席しているプレイヤー数

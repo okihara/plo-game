@@ -2,6 +2,7 @@ import { GameState } from '../logic';
 
 interface ResultOverlayProps {
   state: GameState;
+  mySeat: number;
   onNextHand: () => void;
 }
 
@@ -14,22 +15,22 @@ function formatChips(amount: number): string {
   return amount.toString();
 }
 
-export function ResultOverlay({ state, onNextHand }: ResultOverlayProps) {
+export function ResultOverlay({ state, mySeat, onNextHand }: ResultOverlayProps) {
   // ハンド完了していない、または勝者がいない（待機中など）場合は表示しない
   if (!state.isHandComplete || state.winners.length === 0) {
     return null;
   }
 
-  const humanPlayer = state.players.find(p => p.isHuman)!;
-  const humanWon = state.winners.some(w => w.playerId === humanPlayer.id);
+  const myPlayer = state.players[mySeat];
+  const iWon = state.winners.some(w => w.playerId === myPlayer.id);
   const winnerInfo = state.winners[0];
 
   let title = '';
   let details = '';
   let amount = '';
 
-  if (humanWon) {
-    const myWinAmount = state.winners.find(w => w.playerId === humanPlayer.id)!.amount;
+  if (iWon) {
+    const myWinAmount = state.winners.find(w => w.playerId === myPlayer.id)!.amount;
     title = 'YOU WIN!';
     details = winnerInfo.handName || '';
     amount = `+${formatChips(myWinAmount)}`;
@@ -44,7 +45,7 @@ export function ResultOverlay({ state, onNextHand }: ResultOverlayProps) {
       <div className="text-center p-[2.5vh] bg-black/70 rounded-2xl mx-[2.5vh]">
         <div
           className={`text-[3.5vh] font-black mb-[2vh] uppercase ${
-            humanWon
+            iWon
               ? 'text-green-400 drop-shadow-[0_0_2vh_rgba(0,255,0,0.5)]'
               : 'text-red-400 drop-shadow-[0_0_2vh_rgba(255,68,68,0.5)]'
           }`}

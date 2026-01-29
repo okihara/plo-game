@@ -173,9 +173,9 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             />
           )}
 
-          <ActionPanel state={gameState} onAction={handleAction} />
+          <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
 
-          <ResultOverlay state={gameState} onNextHand={startNextHand} />
+          <ResultOverlay state={gameState} mySeat={humanPlayerIdx} onNextHand={startNextHand} />
 
           {humanPlayer && (
             <HandAnalysisOverlay

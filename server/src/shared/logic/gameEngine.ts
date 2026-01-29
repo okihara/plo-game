@@ -26,7 +26,6 @@ export function createInitialGameState(playerChips: number = 600): GameState {
       totalBetThisRound: 0,  // このハンド全体での累計ベット額
       folded: false,
       isAllIn: false,
-      isHuman: i === 0,      // インデックス0が人間プレイヤー
       hasActed: false,       // このストリートでアクション済みか
     });
   }

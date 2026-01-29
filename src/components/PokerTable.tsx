@@ -36,7 +36,8 @@ export function PokerTable({
 }: PokerTableProps) {
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
   const currentPlayer = state.players[state.currentPlayerIndex];
-  const isCPUTurn = currentPlayer && !currentPlayer.isHuman && !state.isHandComplete;
+  // オンラインでは他のプレイヤーのターンかどうか
+  const isOtherPlayerTurn = currentPlayer && state.currentPlayerIndex !== humanIndex && !state.isHandComplete;
   const orderedPlayers = [];
   for (let i = 0; i < 6; i++) {
     const idx = (humanIndex + i) % 6;
@@ -54,7 +55,7 @@ export function PokerTable({
 
   return (
     <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
-      <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isCPUTurn && isProcessingCPU} />
+      <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isOtherPlayerTurn && isProcessingCPU} />
 
       <div className="h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#4ade80_0%,#22c55e_50%,#16a34a_100%)] rounded-[45%] border-[0.5vh] border-[#fbbf24] shadow-[0_0_0_0.3vh_#f59e0b,0_0_2vh_rgba(0,0,0,0.3),inset_0_0_4vh_rgba(255,255,255,0.2)] relative">
         {/* Pot Display */}

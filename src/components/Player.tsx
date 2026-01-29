@@ -105,7 +105,9 @@ export function Player({
   actionTimeoutAt,
   actionTimeoutMs,
 }: PlayerProps) {
-  const avatarImage = player.isHuman ? '/images/you.png' : cpuAvatars[player.name];
+  // positionIndex === 0 が自分の位置
+  const isMe = positionIndex === 0;
+  const avatarImage = isMe ? '/images/you.png' : cpuAvatars[player.name];
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
 
   // タイマー表示用の残り時間
@@ -180,7 +182,7 @@ export function Player({
           {avatarImage ? (
             <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
           ) : (
-            player.isHuman ? '👤' : '🤖'
+            isMe ? '👤' : '🤖'
           )}
         </div>
         {/* Remaining seconds display */}

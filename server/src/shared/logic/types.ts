@@ -18,7 +18,6 @@ export interface Player {
   totalBetThisRound: number;
   folded: boolean;
   isAllIn: boolean;
-  isHuman: boolean;
   hasActed: boolean;
 }
 
