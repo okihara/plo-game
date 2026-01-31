@@ -13,7 +13,7 @@ export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
 
   return (
     <div
-      className="@container flex flex-col items-center py-[1.5vh] bg-gradient-to-b from-transparent to-black/30"
+      className="@container flex flex-col items-center py-[3cqw] bg-gradient-to-b from-transparent to-black/30"
     >
       <div className="flex gap-[2cqw] justify-center">
         {cards.map((card, cardIndex) => {
