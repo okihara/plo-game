@@ -204,14 +204,12 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             actionTimeoutMs={actionTimeoutMs}
           />
 
-          {humanPlayer && (
-            <MyCards
-              cards={myHoleCards}
-              communityCards={gameState.communityCards}
-              isDealing={isDealingCards}
-              dealOrder={humanDealOrder}
-            />
-          )}
+          <MyCards
+            cards={myHoleCards}
+            communityCards={gameState.communityCards}
+            isDealing={isDealingCards}
+            dealOrder={humanDealOrder}
+          />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
 
