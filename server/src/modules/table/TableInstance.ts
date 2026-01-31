@@ -162,6 +162,8 @@ export class TableInstance {
 
     const seat = this.seats[seatIndex];
     if (seat?.socket) {
+      // プレイヤーにテーブルを離れたことを通知
+      seat.socket.emit('table:left');
       seat.socket.leave(this.roomName);
     }
 

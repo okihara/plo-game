@@ -87,6 +87,7 @@ export class BotManager {
       serverUrl: this.config.serverUrl,
       name,
       avatarUrl: BOT_AVATARS[avatarIndex],
+      defaultBlinds: this.config.blinds,
     });
 
     try {

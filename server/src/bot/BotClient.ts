@@ -10,6 +10,7 @@ interface BotConfig {
   name: string;
   avatarUrl: string | null;
   disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
+  defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
 }
 
 // デフォルト: 2% の確率で切断（約50ハンドに1回）
@@ -24,6 +25,7 @@ export class BotClient {
   private config: BotConfig;
   private isConnected = false;
   private tableId: string | null = null;
+  private currentBlinds: string | null = null; // 現在のブラインド設定（再キューイング用）
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -75,6 +77,16 @@ export class BotClient {
         console.log(`[${this.config.name}] Left table`);
         this.tableId = null;
         this.seatNumber = -1;
+        // 自動的に再度マッチメイキングに参加
+        this.rejoinMatchmaking();
+      });
+
+      this.socket.on('table:closed', () => {
+        console.log(`[${this.config.name}] Table closed`);
+        this.tableId = null;
+        this.seatNumber = -1;
+        // 自動的に再度マッチメイキングに参加
+        this.rejoinMatchmaking();
       });
 
       this.socket.on('table:error', (data: { message: string }) => {
@@ -255,8 +267,20 @@ export class BotClient {
       throw new Error('Not connected to server');
     }
 
+    this.currentBlinds = blinds;
     console.log(`[${this.config.name}] Joining matchmaking pool (${blinds})`);
     this.socket.emit('matchmaking:join', { blinds });
+  }
+
+  private rejoinMatchmaking(): void {
+    const blinds = this.currentBlinds ?? this.config.defaultBlinds ?? '1/3';
+    // 少し遅延して再参加（サーバー側の状態更新を待つ）
+    setTimeout(() => {
+      if (this.isConnected && this.socket && !this.tableId) {
+        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds})`);
+        this.socket.emit('matchmaking:join', { blinds });
+      }
+    }, 500);
   }
 
   async leaveMatchmaking(blinds: string): Promise<void> {
@@ -273,10 +297,40 @@ export class BotClient {
       setTimeout(() => {
         if (this.isConnected) {
           console.log(`[${this.config.name}] Intentionally disconnecting`);
-          this.disconnect();
+          this.disconnectAndReconnect();
         }
       }, delay);
     }
+  }
+
+  private async disconnectAndReconnect(): Promise<void> {
+    const blinds = this.currentBlinds ?? this.config.defaultBlinds ?? '1/3';
+
+    // 切断
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+    this.isConnected = false;
+    this.playerId = null;
+    this.tableId = null;
+    this.seatNumber = -1;
+    this.holeCards = [];
+    this.gameState = null;
+
+    // 3-8秒後に再接続（人間らしい間隔）
+    const reconnectDelay = 3000 + Math.random() * 5000;
+    console.log(`[${this.config.name}] Will reconnect in ${Math.round(reconnectDelay)}ms`);
+
+    setTimeout(async () => {
+      try {
+        await this.connect();
+        await this.joinMatchmaking(blinds);
+        console.log(`[${this.config.name}] Reconnected and rejoined matchmaking`);
+      } catch (err) {
+        console.error(`[${this.config.name}] Failed to reconnect:`, err);
+      }
+    }, reconnectDelay);
   }
 
   disconnect(): void {
