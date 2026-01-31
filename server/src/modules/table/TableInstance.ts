@@ -45,7 +45,7 @@ export class TableInstance {
   private io: Server;
   private actionTimer: NodeJS.Timeout | null = null;
   private streetTransitionTimer: NodeJS.Timeout | null = null;
-  private readonly ACTION_TIMEOUT_MS = 30000;
+  private readonly ACTION_TIMEOUT_MS = 10000;
   private readonly STREET_TRANSITION_DELAY_MS = 2000;
   private isHandInProgress = false;
   private pendingStartHand = false;
@@ -385,6 +385,10 @@ export class TableInstance {
 
   private startNewHand(): void {
     if (this.isHandInProgress) return;
+
+    // Re-check player count (players may have disconnected during the delay)
+    const playerCount = this.getPlayerCount();
+    if (playerCount < 2) return;
 
     this.isHandInProgress = true;
 
