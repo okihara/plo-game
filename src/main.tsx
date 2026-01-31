@@ -2,6 +2,7 @@ import { StrictMode, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SimpleLobby } from './pages/SimpleLobby';
 import { OnlineGame } from './pages/OnlineGame';
+import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import './index.css';
 
 function App() {
@@ -16,6 +17,8 @@ function App() {
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>
-    <App />
+    <GameSettingsProvider>
+      <App />
+    </GameSettingsProvider>
   </StrictMode>
 );

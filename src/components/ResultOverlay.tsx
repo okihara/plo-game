@@ -1,4 +1,5 @@
 import { GameState } from '../logic';
+import { useGameSettings } from '../contexts/GameSettingsContext';
 
 interface ResultOverlayProps {
   state: GameState;
@@ -6,16 +7,9 @@ interface ResultOverlayProps {
   onNextHand: () => void;
 }
 
-function formatChips(amount: number): string {
-  if (amount >= 1000000) {
-    return `${(amount / 1000000).toFixed(1)}M`;
-  } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}K`;
-  }
-  return amount.toString();
-}
-
 export function ResultOverlay({ state, mySeat, onNextHand }: ResultOverlayProps) {
+  const { formatChips } = useGameSettings();
+
   // ハンド完了していない、または勝者がいない（待機中など）場合は表示しない
   if (!state.isHandComplete || state.winners.length === 0) {
     return null;

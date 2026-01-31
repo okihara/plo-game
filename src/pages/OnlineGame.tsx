@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
+import { useGameSettings } from '../contexts/GameSettingsContext';
 import {
   PokerTable,
   MyCards,
@@ -38,10 +39,19 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     startNextHand,
   } = useOnlineGameState(blinds);
 
+  const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
+
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const mountTimeRef = useRef(Date.now());
+
+  // gameStateが変わったらbigBlindを設定
+  useEffect(() => {
+    if (gameState) {
+      setBigBlind(gameState.bigBlind);
+    }
+  }, [gameState, setBigBlind]);
 
   // 最低表示時間のタイマー
   useEffect(() => {
@@ -148,8 +158,8 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="w-full h-screen flex items-center justify-center bg-gray-100 relative">
-        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative">
+      <div className="w-full h-screen flex items-center justify-center bg-gray-900 relative">
+        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-100">
           {/* ゲーム情報ヘッダー */}
           <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-white/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
             <button
@@ -186,6 +196,19 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                     <span>分析表示</span>
                     <span className={showAnalysis ? 'text-cyan-500' : 'text-gray-400'}>
                       {showAnalysis ? '✓' : ''}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUseBBNotation(!settings.useBBNotation);
+                      setShowSettingsMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                  >
+                    <span>BB表記</span>
+                    <span className={settings.useBBNotation ? 'text-cyan-500' : 'text-gray-400'}>
+                      {settings.useBBNotation ? '✓' : ''}
                     </span>
                   </button>
                 </div>

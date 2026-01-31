@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GameState, Action } from '../logic';
+import { useGameSettings } from '../contexts/GameSettingsContext';
 
 interface ActionPanelProps {
   state: GameState;
@@ -7,16 +8,8 @@ interface ActionPanelProps {
   onAction: (action: Action, amount: number) => void;
 }
 
-function formatChips(amount: number): string {
-  if (amount >= 1000000) {
-    return `${(amount / 1000000).toFixed(1)}M`;
-  } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}K`;
-  }
-  return amount.toString();
-}
-
 export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
+  const { formatChips } = useGameSettings();
   const myPlayer = state.players[mySeat];
   const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
 

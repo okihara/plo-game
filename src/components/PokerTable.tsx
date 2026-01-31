@@ -3,6 +3,7 @@ import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
 import { ThinkingIndicator } from './ThinkingIndicator';
+import { useGameSettings } from '../contexts/GameSettingsContext';
 
 interface PokerTableProps {
   state: GameState;
@@ -15,15 +16,6 @@ interface PokerTableProps {
   actionTimeoutMs?: number | null;
 }
 
-function formatChips(amount: number): string {
-  if (amount >= 1000000) {
-    return `${(amount / 1000000).toFixed(1)}M`;
-  } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}K`;
-  }
-  return amount.toString();
-}
-
 export function PokerTable({
   state,
   lastActions,
@@ -34,6 +26,7 @@ export function PokerTable({
   actionTimeoutAt,
   actionTimeoutMs,
 }: PokerTableProps) {
+  const { formatChips } = useGameSettings();
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
   const currentPlayer = state.players[state.currentPlayerIndex];
   // オンラインでは他のプレイヤーのターンかどうか

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Player as PlayerType, Action } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
+import { useGameSettings } from '../contexts/GameSettingsContext';
 
 interface PlayerProps {
   player: PlayerType;
@@ -16,16 +17,7 @@ interface PlayerProps {
   actionTimeoutMs?: number | null;
 }
 
-function formatChips(amount: number): string {
-  if (amount >= 1000000) {
-    return `$${(amount / 1000000).toFixed(1)}M`;
-  } else if (amount >= 1000) {
-    return `$${(amount / 1000).toFixed(1)}K`;
-  }
-  return `$${amount}`;
-}
-
-function formatAction(action: Action, amount: number): string {
+function formatAction(action: Action, amount: number, formatChips: (n: number) => string): string {
   switch (action) {
     case 'fold': return 'FOLD';
     case 'check': return 'CHECK';
@@ -108,6 +100,7 @@ export function Player({
   actionTimeoutAt,
   actionTimeoutMs,
 }: PlayerProps) {
+  const { formatChips } = useGameSettings();
   // positionIndex === 0 が自分の位置
   const isMe = positionIndex === 0;
   // avatarIdがあればそれを使用、なければオフラインモードのフォールバック
@@ -247,7 +240,7 @@ export function Player({
       {/* Last Action Marker */}
       {showActionMarker && (
         <div className={`absolute left-1/2 -translate-x-1/2 top-[-11cqw] px-[3.1cqw] py-[1.5cqw] rounded-xl text-[4.2cqw] font-bold uppercase whitespace-nowrap z-[15] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
-          {formatAction(lastAction.action, lastAction.amount)}
+          {formatAction(lastAction.action, lastAction.amount, formatChips)}
         </div>
       )}
 
