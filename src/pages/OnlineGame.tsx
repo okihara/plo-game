@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import {
   PokerTable,
@@ -7,6 +7,8 @@ import {
   ResultOverlay,
   HandAnalysisOverlay,
 } from '../components';
+
+const MIN_LOADING_TIME_MS = 1000; // 最低1秒は接続中画面を表示
 
 interface OnlineGameProps {
   blinds: string;
@@ -38,6 +40,20 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   } = useOnlineGameState(blinds);
 
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const mountTimeRef = useRef(Date.now());
+
+  // 最低表示時間のタイマー
+  useEffect(() => {
+    const elapsed = Date.now() - mountTimeRef.current;
+    const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
+
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, remaining);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // 接続と参加
   useEffect(() => {
@@ -50,13 +66,29 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     };
   }, [connect, disconnect, joinMatchmaking]);
 
-  // 接続中
-  if (isConnecting) {
+  // ブラインド表示用
+  const blindsLabel = `$${blinds.replace('/', '/$')}`;
+
+  // 接続中（または最低表示時間が経過していない）
+  const showLoadingScreen = isConnecting || !minLoadingComplete;
+
+  if (showLoadingScreen) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">サーバーに接続中...</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Volt Poker Club</h1>
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm font-bold rounded">PLO</span>
+            <span className="text-white/60">{blindsLabel}</span>
+          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+          <p className="text-white/70">テーブルに接続中...</p>
+          <button
+            onClick={onBack}
+            className="mt-6 text-white/40 hover:text-white/60 text-sm transition-colors"
+          >
+            キャンセル
+          </button>
         </div>
       </div>
     );
@@ -65,7 +97,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   // 接続エラー
   if (connectionError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
         <div className="text-center bg-white/10 rounded-2xl p-8 max-w-sm">
           <div className="text-red-400 text-5xl mb-4">!</div>
           <h2 className="text-white text-xl font-bold mb-2">接続エラー</h2>
