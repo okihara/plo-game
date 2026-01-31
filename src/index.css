@@ -22,11 +22,12 @@ html, body {
   justify-content: center;
   align-items: center;
   overflow: hidden;
+  background: #000;
 }
 
 body {
   font-family: 'Roboto', sans-serif;
-  background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 50%, #a8edea 100%);
+  background: #000;
   color: #fff;
   touch-action: manipulation;
 }
