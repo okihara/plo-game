@@ -42,8 +42,8 @@ export interface OnlineGameHookResult {
   // アクション
   connect: () => Promise<void>;
   disconnect: () => void;
-  joinFastFold: () => void;
-  leaveFastFold: () => void;
+  joinMatchmaking: () => void;
+  leaveMatchmaking: () => void;
   handleAction: (action: Action, amount: number) => void;
   startNextHand: () => void;
 }
@@ -234,15 +234,15 @@ export function useOnlineGameState(): OnlineGameHookResult {
   }, []);
 
   // ============================================
-  // Fast Fold
+  // Matchmaking
   // ============================================
 
-  const joinFastFold = useCallback(() => {
-    wsService.joinFastFoldPool('1/3'); // $1/$3 blinds
+  const joinMatchmaking = useCallback(() => {
+    wsService.joinMatchmaking('1/3'); // $1/$3 blinds
   }, []);
 
-  const leaveFastFold = useCallback(() => {
-    wsService.leaveFastFoldPool();
+  const leaveMatchmaking = useCallback(() => {
+    wsService.leaveMatchmaking();
   }, []);
 
   // ============================================
@@ -374,8 +374,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
     actionTimeoutMs,
     connect,
     disconnect,
-    joinFastFold,
-    leaveFastFold,
+    joinMatchmaking,
+    leaveMatchmaking,
     handleAction,
     startNextHand,
   };

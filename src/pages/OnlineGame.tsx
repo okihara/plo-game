@@ -31,7 +31,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     actionTimeoutMs,
     connect,
     disconnect,
-    joinFastFold,
+    joinMatchmaking,
     handleAction,
     startNextHand,
   } = useOnlineGameState();
@@ -41,13 +41,13 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
   // 接続と参加
   useEffect(() => {
     connect().then(() => {
-      joinFastFold();
+      joinMatchmaking();
     });
 
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, joinFastFold]);
+  }, [connect, disconnect, joinMatchmaking]);
 
   // 接続中
   if (isConnecting) {
@@ -71,7 +71,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
           <p className="text-white/70 mb-6">{connectionError}</p>
           <div className="space-y-3">
             <button
-              onClick={() => connect().then(() => joinFastFold())}
+              onClick={() => connect().then(() => joinMatchmaking())}
               className="w-full py-3 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-white hover:from-cyan-600 hover:to-blue-600 transition-all"
             >
               再接続

@@ -34,8 +34,8 @@ class WebSocketService {
     onStreetChanged?: (street: string, communityCards: Card[]) => void;
     onShowdown?: (winners: { playerId: string; amount: number; handName: string; cards: Card[] }[]) => void;
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
-    onFastFoldQueued?: (position: number) => void;
-    onFastFoldTableAssigned?: (tableId: string) => void;
+    onMatchmakingQueued?: (position: number) => void;
+    onMatchmakingTableAssigned?: (tableId: string) => void;
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
   } = {};
@@ -119,13 +119,13 @@ class WebSocketService {
         this.listeners.onHandComplete?.(winners);
       });
 
-      // Fast fold events
-      this.socket.on('fastfold:queued', ({ position }) => {
-        this.listeners.onFastFoldQueued?.(position);
+      // Matchmaking events
+      this.socket.on('matchmaking:queued', ({ position }) => {
+        this.listeners.onMatchmakingQueued?.(position);
       });
 
-      this.socket.on('fastfold:table_assigned', ({ tableId }) => {
-        this.listeners.onFastFoldTableAssigned?.(tableId);
+      this.socket.on('matchmaking:table_assigned', ({ tableId }) => {
+        this.listeners.onMatchmakingTableAssigned?.(tableId);
       });
 
       // Timeout for initial connection
@@ -178,13 +178,13 @@ class WebSocketService {
     this.socket?.emit('game:action', { action, amount });
   }
 
-  // Fast fold pool
-  joinFastFoldPool(blinds: string): void {
-    this.socket?.emit('fastfold:join', { blinds });
+  // Matchmaking pool
+  joinMatchmaking(blinds: string): void {
+    this.socket?.emit('matchmaking:join', { blinds });
   }
 
-  leaveFastFoldPool(): void {
-    this.socket?.emit('fastfold:leave');
+  leaveMatchmaking(): void {
+    this.socket?.emit('matchmaking:leave');
   }
 }
 

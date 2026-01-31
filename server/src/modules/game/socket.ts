@@ -194,7 +194,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     });
 
     // Handle fast fold pool join
-    socket.on('fastfold:join', async (data: { blinds: string }) => {
+    socket.on('matchmaking:join', async (data: { blinds: string }) => {
       const { blinds } = data;
       const isGuest = socket.odId!.startsWith('guest_');
       const isBot = socket.odIsBot === true;
@@ -248,12 +248,12 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         );
       } catch (err) {
         console.error('Error joining fast fold:', err);
-        socket.emit('table:error', { message: 'Failed to join fast fold pool' });
+        socket.emit('table:error', { message: 'Failed to join matchmaking pool' });
       }
     });
 
     // Handle fast fold pool leave
-    socket.on('fastfold:leave', async (data: { blinds: string }) => {
+    socket.on('matchmaking:leave', async (data: { blinds: string }) => {
       await matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
 
       // Leave current table too

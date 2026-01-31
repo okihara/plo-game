@@ -101,12 +101,12 @@ export class BotClient {
         this.holeCards = [];
       });
 
-      this.socket.on('fastfold:queued', (data: { position: number }) => {
-        console.log(`[${this.config.name}] Queued in Fast Fold pool (position: ${data.position})`);
+      this.socket.on('matchmaking:queued', (data: { position: number }) => {
+        console.log(`[${this.config.name}] Queued in matchmaking pool (position: ${data.position})`);
       });
 
-      this.socket.on('fastfold:table_assigned', (data: { tableId: string }) => {
-        console.log(`[${this.config.name}] Assigned to Fast Fold table ${data.tableId}`);
+      this.socket.on('matchmaking:table_assigned', (data: { tableId: string }) => {
+        console.log(`[${this.config.name}] Assigned to table ${data.tableId}`);
       });
 
       // Timeout for connection
@@ -243,18 +243,18 @@ export class BotClient {
     this.socket.emit('game:action', { action, amount });
   }
 
-  async joinFastFoldPool(blinds: string): Promise<void> {
+  async joinMatchmaking(blinds: string): Promise<void> {
     if (!this.socket || !this.isConnected) {
       throw new Error('Not connected to server');
     }
 
-    console.log(`[${this.config.name}] Joining Fast Fold pool (${blinds})`);
-    this.socket.emit('fastfold:join', { blinds });
+    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds})`);
+    this.socket.emit('matchmaking:join', { blinds });
   }
 
-  async leaveFastFoldPool(blinds: string): Promise<void> {
+  async leaveMatchmaking(blinds: string): Promise<void> {
     if (!this.socket) return;
-    this.socket.emit('fastfold:leave', { blinds });
+    this.socket.emit('matchmaking:leave', { blinds });
   }
 
   disconnect(): void {

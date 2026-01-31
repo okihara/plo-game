@@ -334,8 +334,8 @@ export class TableInstance {
     // Emit event for MatchmakingPool to handle re-queuing
     const seat = this.seats[seatIndex];
     if (seat?.socket) {
-      seat.socket.emit('fastfold:ready_for_new_table');
-      this.logMessage('fastfold:ready_for_new_table', odId, {});
+      seat.socket.emit('matchmaking:ready_for_new_table');
+      this.logMessage('matchmaking:ready_for_new_table', odId, {});
     }
   }
 

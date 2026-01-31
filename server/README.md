@@ -133,8 +133,8 @@ server/
 | `table:leave` | - | テーブル離脱 |
 | `game:action` | `{ action, amount? }` | アクション送信 |
 | `game:fast_fold` | - | ファストフォールド |
-| `fastfold:join` | `{ blinds }` | ファストフォールドプール参加 |
-| `fastfold:leave` | - | プール離脱 |
+| `matchmaking:join` | `{ blinds }` | マッチメイキングプール参加 |
+| `matchmaking:leave` | - | プール離脱 |
 
 #### サーバー → クライアント
 
@@ -145,8 +145,8 @@ server/
 | `game:state` | `{ state }` | ゲーム状態更新 |
 | `game:hole_cards` | `{ cards }` | ホールカード配布 |
 | `game:action_required` | `{ playerId, validActions, timeoutMs }` | アクション要求 |
-| `fastfold:queued` | `{ position }` | キュー待機中 |
-| `fastfold:table_assigned` | `{ tableId }` | 新テーブル割当 |
+| `matchmaking:queued` | `{ position }` | キュー待機中 |
+| `matchmaking:table_assigned` | `{ tableId }` | 新テーブル割当 |
 
 ## ゲストモード
 

@@ -97,8 +97,8 @@ export class BotManager {
         this.bots.set(playerId, bot);
         this.usedNames.add(name);
 
-        // Join Fast Fold pool
-        await bot.joinFastFoldPool(this.config.blinds);
+        // Join matchmaking pool
+        await bot.joinMatchmaking(this.config.blinds);
 
         return bot;
       }

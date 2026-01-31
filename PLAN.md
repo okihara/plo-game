@@ -122,7 +122,7 @@ plo-game/
 // キー設計
 session:{sessionId}           // セッションデータ
 table:state:{tableId}         // ゲーム状態
-fastfold:queue:{blinds}       // ファストフォールドキュー（Sorted Set）
+matchmaking:queue:{blinds}    // マッチメイキングキュー（Sorted Set）
 player:table:{odId}          // プレイヤーの現在テーブル
 channel:table:{tableId}       // Pub/Subチャンネル
 ```
@@ -140,8 +140,8 @@ channel:table:{tableId}       // Pub/Subチャンネル
 'table:state'         // ゲーム状態更新
 'game:hole_cards'     // ホールカード配布
 'game:action_required'// アクション要求（タイマー付き）
-'fastfold:queued'     // キュー位置通知
-'fastfold:table_assigned' // 新テーブル割当
+'matchmaking:queued'     // キュー位置通知
+'matchmaking:table_assigned' // 新テーブル割当
 ```
 
 ## データベース（主要テーブル）

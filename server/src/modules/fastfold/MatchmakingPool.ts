@@ -27,7 +27,7 @@ export class MatchmakingPool {
     this.startProcessing();
   }
 
-  // Add player to fast fold queue
+  // Add player to matchmaking queue
   public async queuePlayer(
     odId: string,
     odName: string,
@@ -64,13 +64,13 @@ export class MatchmakingPool {
 
     // Also store in Redis for persistence
     await redis.zadd(
-      REDIS_KEYS.fastfoldQueue(blinds),
+      REDIS_KEYS.matchmakingQueue(blinds),
       player.queuedAt,
       JSON.stringify({ odId, odName, odAvatarUrl, chips })
     );
 
     // Notify player of queue position
-    socket.emit('fastfold:queued', { position: queue.length });
+    socket.emit('matchmaking:queued', { position: queue.length });
 
     // Try to seat immediately
     this.processQueue(blinds);
@@ -95,7 +95,7 @@ export class MatchmakingPool {
     const queue = this.queues.get(blinds);
     if (!queue || queue.length === 0) return;
 
-    // Find or create a fast fold table with available seats
+    // Find or create a table with available seats
     let table = this.tableManager.findAvailableTable(blinds, true);
     if (!table) {
       table = this.tableManager.createTable(blinds, true);
@@ -122,11 +122,11 @@ export class MatchmakingPool {
         this.tableManager.setPlayerTable(player.odId, table.id);
 
         // Notify player
-        player.socket.emit('fastfold:table_assigned', { tableId: table.id });
+        player.socket.emit('matchmaking:table_assigned', { tableId: table.id });
         player.socket.emit('table:joined', { tableId: table.id, seat: seatNumber });
 
         // Remove from Redis
-        await redis.zrem(REDIS_KEYS.fastfoldQueue(blinds), JSON.stringify({
+        await redis.zrem(REDIS_KEYS.matchmakingQueue(blinds), JSON.stringify({
           odId: player.odId,
           odName: player.odName,
           odAvatarUrl: player.odAvatarUrl,
