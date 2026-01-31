@@ -9,10 +9,11 @@ import {
 } from '../components';
 
 interface OnlineGameProps {
+  blinds: string;
   onBack: () => void;
 }
 
-export function OnlineGame({ onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const {
     isConnecting,
     isConnected,
@@ -34,7 +35,7 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     joinMatchmaking,
     handleAction,
     startNextHand,
-  } = useOnlineGameState();
+  } = useOnlineGameState(blinds);
 
   const [showAnalysis, setShowAnalysis] = useState(false);
 

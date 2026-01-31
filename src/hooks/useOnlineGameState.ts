@@ -135,7 +135,7 @@ function convertClientStateToGameState(
 // メインフック
 // ============================================
 
-export function useOnlineGameState(): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -238,8 +238,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
   // ============================================
 
   const joinMatchmaking = useCallback(() => {
-    wsService.joinMatchmaking('1/3'); // $1/$3 blinds
-  }, []);
+    wsService.joinMatchmaking(blinds);
+  }, [blinds]);
 
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();

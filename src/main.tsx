@@ -5,13 +5,13 @@ import { OnlineGame } from './pages/OnlineGame';
 import './index.css';
 
 function App() {
-  const [isPlaying, setIsPlaying] = useState(false);
+  const [blinds, setBlinds] = useState<string | null>(null);
 
-  if (isPlaying) {
-    return <OnlineGame onBack={() => setIsPlaying(false)} />;
+  if (blinds) {
+    return <OnlineGame blinds={blinds} onBack={() => setBlinds(null)} />;
   }
 
-  return <SimpleLobby onPlayOnline={() => setIsPlaying(true)} />;
+  return <SimpleLobby onPlayOnline={(selectedBlinds) => setBlinds(selectedBlinds)} />;
 }
 
 createRoot(document.getElementById('app')!).render(
