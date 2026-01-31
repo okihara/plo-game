@@ -9,7 +9,11 @@ interface BotConfig {
   serverUrl: string;
   name: string;
   avatarUrl: string | null;
+  disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
 }
+
+// デフォルト: 2% の確率で切断（約50ハンドに1回）
+const DEFAULT_DISCONNECT_CHANCE = 0.02;
 
 export class BotClient {
   private socket: Socket | null = null;
@@ -99,6 +103,9 @@ export class BotClient {
       this.socket.on('game:hand_complete', () => {
         // Reset for next hand
         this.holeCards = [];
+
+        // 一定確率で意図的に切断（人間らしさを演出）
+        this.maybeDisconnectRandomly();
       });
 
       this.socket.on('matchmaking:queued', (data: { position: number }) => {
@@ -255,6 +262,21 @@ export class BotClient {
   async leaveMatchmaking(blinds: string): Promise<void> {
     if (!this.socket) return;
     this.socket.emit('matchmaking:leave', { blinds });
+  }
+
+  private maybeDisconnectRandomly(): void {
+    const chance = this.config.disconnectChance ?? DEFAULT_DISCONNECT_CHANCE;
+    if (Math.random() < chance) {
+      // 少し遅延してから切断（自然な感じに）
+      const delay = 1000 + Math.random() * 3000; // 1-4秒後
+      console.log(`[${this.config.name}] Will disconnect in ${Math.round(delay)}ms (simulating player leave)`);
+      setTimeout(() => {
+        if (this.isConnected) {
+          console.log(`[${this.config.name}] Intentionally disconnecting`);
+          this.disconnect();
+        }
+      }, delay);
+    }
   }
 
   disconnect(): void {
