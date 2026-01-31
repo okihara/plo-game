@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { Server } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
-import { FastFoldPool } from '../fastfold/FastFoldPool.js';
+import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { redis } from '../../config/redis.js';
 import { prisma } from '../../config/database.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
@@ -9,7 +9,7 @@ import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 interface AdminDependencies {
   io: Server;
   tableManager: TableManager;
-  fastFoldPool: FastFoldPool;
+  matchmakingPool: MatchmakingPool;
 }
 
 interface TableStats {
@@ -74,7 +74,7 @@ interface ServerStats {
 const startTime = Date.now();
 
 export function adminRoutes(deps: AdminDependencies) {
-  const { io, tableManager, fastFoldPool } = deps;
+  const { io, tableManager, matchmakingPool } = deps;
 
   return async function (fastify: FastifyInstance) {
     // JSON API for stats
@@ -125,7 +125,7 @@ export function adminRoutes(deps: AdminDependencies) {
       const blindLevels = ['1/3', '2/5', '5/10'];
       const fastFoldQueues = blindLevels.map(blinds => ({
         blinds,
-        ...fastFoldPool.getQueueStatus(blinds),
+        ...matchmakingPool.getQueueStatus(blinds),
       }));
 
       // Database check

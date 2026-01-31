@@ -55,10 +55,10 @@ const start = async () => {
       },
     });
 
-    const { tableManager, fastFoldPool } = setupGameSocket(io, fastify);
+    const { tableManager, matchmakingPool } = setupGameSocket(io, fastify);
 
-    // Register admin routes (needs io, tableManager, fastFoldPool)
-    await fastify.register(adminRoutes({ io, tableManager, fastFoldPool }));
+    // Register admin routes (needs io, tableManager, matchmakingPool)
+    await fastify.register(adminRoutes({ io, tableManager, matchmakingPool }));
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 

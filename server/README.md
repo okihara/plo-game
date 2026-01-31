@@ -102,7 +102,7 @@ server/
 │   │   │   ├── TableInstance.ts  # ゲームテーブル
 │   │   │   └── TableManager.ts   # テーブル管理
 │   │   └── fastfold/
-│   │       └── FastFoldPool.ts   # ファストフォールドキュー
+│   │       └── MatchmakingPool.ts   # マッチメイキングプール
 │   ├── shared/
 │   │   └── logic/           # ゲームロジック (クライアントと共通)
 │   └── index.ts             # エントリーポイント

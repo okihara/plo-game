@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { FastifyInstance } from 'fastify';
 import { TableManager } from '../table/TableManager.js';
-import { FastFoldPool } from '../fastfold/FastFoldPool.js';
+import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
 
@@ -14,12 +14,12 @@ interface AuthenticatedSocket extends Socket {
 
 interface GameSocketDependencies {
   tableManager: TableManager;
-  fastFoldPool: FastFoldPool;
+  matchmakingPool: MatchmakingPool;
 }
 
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
-  const fastFoldPool = new FastFoldPool(io, tableManager);
+  const matchmakingPool = new MatchmakingPool(io, tableManager);
 
   // Create default tables
   tableManager.createTable('1/3', false); // Regular table
@@ -237,7 +237,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         }
 
         // Queue player (guests and bots get default buy-in)
-        await fastFoldPool.queuePlayer(
+        await matchmakingPool.queuePlayer(
           socket.odId!,
           socket.odName!,
           socket.odAvatarUrl!,
@@ -254,7 +254,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     // Handle fast fold pool leave
     socket.on('fastfold:leave', async (data: { blinds: string }) => {
-      await fastFoldPool.removeFromQueue(socket.odId!, data.blinds);
+      await matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
 
       // Leave current table too
       const table = tableManager.getPlayerTable(socket.odId!);
@@ -291,5 +291,5 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     });
   });
 
-  return { tableManager, fastFoldPool };
+  return { tableManager, matchmakingPool };
 }

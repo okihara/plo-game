@@ -13,7 +13,7 @@ interface QueuedPlayer {
   isBot: boolean;
 }
 
-export class FastFoldPool {
+export class MatchmakingPool {
   private io: Server;
   private tableManager: TableManager;
   private queues: Map<string, QueuedPlayer[]> = new Map(); // blinds -> players

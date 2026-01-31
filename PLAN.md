@@ -25,7 +25,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                 Game Server (Node.js + Fastify)              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │TableManager │  │FastFoldPool │  │ GameEngine  │         │
+│  │TableManager │  │MatchmakingPool│  │ GameEngine  │         │
 │  │ (テーブル管理)│  │(キュー管理) │  │ (既存ロジック)│         │
 │  └─────────────┘  └─────────────┘  └─────────────┘         │
 └─────────────────────────────┬───────────────────────────────┘
@@ -178,7 +178,7 @@ hand_histories (id, table_id, hand_number, community_cards,
 - [x] アクションタイマー実装
 
 ### Phase 3: ファストフォールドプール ✅
-- [x] FastFoldPool 実装
+- [x] MatchmakingPool 実装
 - [x] Redis キュー管理（Sorted Set）
 - [x] テーブル間移動ロジック
 - [x] CPU補充ロジック（プレイヤー不足時）
