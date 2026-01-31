@@ -27,8 +27,10 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
   const canRaise = isMyTurn && myPlayer.chips > toCall && !myPlayer.isAllIn;
 
   // Pot Limit の最大レイズ額を計算
+  // PLOのポットリミット: コール額 + (現在のポット + コール額)
+  // 例: ポット100、コール額20 → 最大レイズ = 20 + (100 + 20) = 140
   const potAfterCall = state.pot + toCall;
-  const maxPotRaise = potAfterCall + state.currentBet + toCall;
+  const maxPotRaise = toCall + potAfterCall;
 
   // サーバーと同じ計算方法でminRaiseを算出
   const minRaiseTotal = state.currentBet + state.minRaise;
