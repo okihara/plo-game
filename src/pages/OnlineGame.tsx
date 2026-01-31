@@ -149,7 +149,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="w-full h-screen flex items-center justify-center bg-gray-100 relative">
-        <div className="flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative">
+        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative">
           {/* ゲーム情報ヘッダー */}
           <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-white/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
             <button
