@@ -297,40 +297,10 @@ export class BotClient {
       setTimeout(() => {
         if (this.isConnected) {
           console.log(`[${this.config.name}] Intentionally disconnecting`);
-          this.disconnectAndReconnect();
+          this.disconnect();
         }
       }, delay);
     }
-  }
-
-  private async disconnectAndReconnect(): Promise<void> {
-    const blinds = this.currentBlinds ?? this.config.defaultBlinds ?? '1/3';
-
-    // 切断
-    if (this.socket) {
-      this.socket.disconnect();
-      this.socket = null;
-    }
-    this.isConnected = false;
-    this.playerId = null;
-    this.tableId = null;
-    this.seatNumber = -1;
-    this.holeCards = [];
-    this.gameState = null;
-
-    // 3-8秒後に再接続（人間らしい間隔）
-    const reconnectDelay = 3000 + Math.random() * 5000;
-    console.log(`[${this.config.name}] Will reconnect in ${Math.round(reconnectDelay)}ms`);
-
-    setTimeout(async () => {
-      try {
-        await this.connect();
-        await this.joinMatchmaking(blinds);
-        console.log(`[${this.config.name}] Reconnected and rejoined matchmaking`);
-      } catch (err) {
-        console.error(`[${this.config.name}] Failed to reconnect:`, err);
-      }
-    }, reconnectDelay);
   }
 
   disconnect(): void {
