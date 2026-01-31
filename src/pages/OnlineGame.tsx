@@ -18,7 +18,6 @@ interface OnlineGameProps {
 export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const {
     isConnecting,
-    isConnected,
     connectionError,
     gameState,
     mySeat,
@@ -40,6 +39,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   } = useOnlineGameState(blinds);
 
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const mountTimeRef = useRef(Date.now());
 
@@ -149,42 +149,49 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="w-full h-screen flex items-center justify-center bg-gray-100 relative">
-        {/* 戻るボタン */}
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 z-50 px-4 py-2 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors text-sm"
-        >
-          ← ロビー
-        </button>
-
-        {/* 接続ステータス */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1 bg-black/50 rounded-full">
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-          <span className="text-white/70 text-xs">
-            {isConnected ? 'オンライン' : 'オフライン'}
-          </span>
-        </div>
-
         <div className="flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative">
           {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-sm py-[1%] text-center shadow-sm">
-            <span className="text-[2.5%] font-bold text-cyan-600 leading-none" style={{ fontSize: 'min(1.2vh, 2vw)' }}>ONLINE PLO</span>
-            <span className="text-gray-400 mx-[0.5%]" style={{ fontSize: 'min(1vh, 1.7vw)' }}>|</span>
-            <span className="font-semibold text-gray-600" style={{ fontSize: 'min(1.1vh, 1.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
+          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-white/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              style={{ fontSize: 'min(1.8vh, 3vw)' }}
+            >
+              ← ロビー
+            </button>
+            <div className="flex items-center">
+              <span className="font-bold text-cyan-600 leading-none" style={{ fontSize: 'min(1.8vh, 3vw)' }}>PLO</span>
+              <span className="text-gray-400 mx-[1%]" style={{ fontSize: 'min(1.6vh, 2.6vw)' }}>|</span>
+              <span className="font-semibold text-gray-600" style={{ fontSize: 'min(1.7vh, 2.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
+            </div>
+            {/* 設定ボタン */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                style={{ fontSize: 'min(2vh, 3.4vw)' }}
+              >
+                ⚙
+              </button>
+              {showSettingsMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg py-2 min-w-[120px] z-50">
+                  <button
+                    onClick={() => {
+                      setShowAnalysis(!showAnalysis);
+                      setShowSettingsMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                  >
+                    <span>分析表示</span>
+                    <span className={showAnalysis ? 'text-cyan-500' : 'text-gray-400'}>
+                      {showAnalysis ? '✓' : ''}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* 分析ボタン */}
-          <button
-            onClick={() => setShowAnalysis(!showAnalysis)}
-            className={`absolute z-40 rounded-full flex items-center justify-center font-bold transition-colors ${
-              showAnalysis
-                ? 'bg-blue-500 text-white'
-                : 'bg-black/50 text-gray-300 hover:bg-black/70'
-            }`}
-            style={{ top: '2%', right: '2%', width: '7%', height: 'calc(7% * 9 / 16)', fontSize: 'min(2vh, 3.5vw)' }}
-          >
-            i
-          </button>
 
           <PokerTable
             state={gameState}
