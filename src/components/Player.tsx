@@ -18,11 +18,11 @@ interface PlayerProps {
 
 function formatChips(amount: number): string {
   if (amount >= 1000000) {
-    return `${(amount / 1000000).toFixed(1)}M`;
+    return `$${(amount / 1000000).toFixed(1)}M`;
   } else if (amount >= 1000) {
-    return `${(amount / 1000).toFixed(1)}K`;
+    return `$${(amount / 1000).toFixed(1)}K`;
   }
-  return amount.toString();
+  return `$${amount}`;
 }
 
 function formatAction(action: Action, amount: number): string {
@@ -155,21 +155,21 @@ export function Player({
             <circle
               cx="50"
               cy="50"
-              r="46"
+              r="44"
               fill="none"
               stroke="rgba(0,0,0,0.3)"
-              strokeWidth="6"
+              strokeWidth="12"
             />
             {/* Progress circle */}
             <circle
               cx="50"
               cy="50"
-              r="46"
+              r="44"
               fill="none"
               stroke={timerProgress > 0.3 ? '#22c55e' : timerProgress > 0.1 ? '#eab308' : '#ef4444'}
-              strokeWidth="6"
+              strokeWidth="12"
               strokeLinecap="round"
-              strokeDasharray={`${timerProgress * 289} 289`}
+              strokeDasharray={`${timerProgress * 276} 276`}
               className="transition-all duration-100"
             />
           </svg>
@@ -178,9 +178,9 @@ export function Player({
           className={`
             w-[22cqw] h-[22cqw] rounded-full
             bg-gradient-to-br from-gray-500 to-gray-700
-            border-[0.9cqw] flex items-center justify-center
+            border-[1.4cqw] flex items-center justify-center
             text-[8cqw] relative overflow-hidden
-            ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_4.6cqw_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-gray-600'}
+            ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_4.6cqw_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-white'}
             ${player.folded ? 'opacity-40 grayscale' : ''}
             ${isWinner ? 'border-green-400 shadow-[0_0_6.4cqw_rgba(0,255,0,0.6)]' : ''}
           `}
@@ -200,9 +200,9 @@ export function Player({
       </div>
 
       {/* Player Info */}
-      <div className="bg-black/80 px-[3.1cqw] py-[1.5cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-10">
-        <div className="text-[4.2cqw] text-gray-400 whitespace-nowrap">{player.name}</div>
-        <div className="text-[4.6cqw] font-bold text-white">{formatChips(player.chips)}</div>
+      <div className="bg-black/80 px-[1.5cqw] py-[0.7cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-10">
+        <div className="text-[3.5cqw] text-gray-400 whitespace-nowrap">{player.name}</div>
+        <div className="text-[4cqw] font-bold text-white">{formatChips(player.chips)}</div>
       </div>
 
       {/* Hole Cards (for other players) */}
