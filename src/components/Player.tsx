@@ -148,7 +148,7 @@ export function Player({
         {/* Timer Ring */}
         {timerProgress !== null && (
           <svg
-            className="absolute inset-0 w-[25cqw] h-[25cqw] -m-[1.5cqw] -rotate-90"
+            className="absolute inset-0 w-[25cqw] h-[25cqw] -m-[1.5cqw] rotate-90 -scale-x-100"
             viewBox="0 0 100 100"
           >
             {/* Background circle */}
