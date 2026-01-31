@@ -132,7 +132,7 @@ channel:table:{tableId}       // Pub/Subチャンネル
 ```typescript
 // クライアント → サーバー
 'game:action'     // アクション送信
-'game:fast_fold'  // ファストフォールド
+'game:fold'  // ファストフォールド
 'table:join'      // テーブル参加
 'table:leave'     // テーブル離脱
 

@@ -13,7 +13,7 @@ export interface ClientToServerEvents {
 
   // Game actions
   'game:action': (data: { action: Action; amount?: number }) => void;
-  'game:fast_fold': () => void;
+  'game:fold': () => void;
 
   // Matchmaking pool
   'matchmaking:join': (data: { blinds: string }) => void;
