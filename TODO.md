@@ -67,7 +67,20 @@
   - プレイヤー統計トラッキング
   - 履歴閲覧UI
 
-### 8. Apple OAuth追加
+### 8. プレイヤー統計（Stats）表示
+- **対象**: フロントエンド UI、PlayerStatsテーブル
+- **作業内容**:
+  - 統計データの集計・保存
+    - VPIP (Voluntarily Put In Pot)
+    - PFR (Pre-Flop Raise %)
+    - 3-Bet %
+    - C-Bet %
+    - Aggression Factor
+    - WTSD (Went To ShowDown %)
+  - テーブル上でのHUD表示（プレイヤーアバター近くに表示）
+  - 統計詳細ページの作成
+
+### 9. Apple OAuth追加
 - **現状**: Google/Discordのみ対応
 - **作業内容**: Apple Sign In の実装
 
