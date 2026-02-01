@@ -190,6 +190,12 @@ export function Player({
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
+        {/* Last Action Marker */}
+        {showActionMarker && (
+          <div className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[3.1cqw] py-[1.5cqw] rounded-xl text-[4.2cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
+            {formatAction(lastAction.action, lastAction.amount, formatChips)}
+          </div>
+        )}
       </div>
 
       {/* Player Info */}
@@ -234,13 +240,6 @@ export function Player({
       {player.currentBet > 0 && (
         <div className={`absolute bg-black/70 text-yellow-400 px-[2.4cqw] py-[0.9cqw] rounded-lg text-[4.2cqw] font-bold whitespace-nowrap ${betPositionStyles[positionIndex]}`}>
           {formatChips(player.currentBet)}
-        </div>
-      )}
-
-      {/* Last Action Marker */}
-      {showActionMarker && (
-        <div className={`absolute left-1/2 -translate-x-1/2 top-[-11cqw] px-[3.1cqw] py-[1.5cqw] rounded-xl text-[4.2cqw] font-bold uppercase whitespace-nowrap z-[15] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
-          {formatAction(lastAction.action, lastAction.amount, formatChips)}
         </div>
       )}
 
