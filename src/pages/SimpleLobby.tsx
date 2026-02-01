@@ -59,6 +59,16 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         <div className="mt-8 text-center text-white/40 text-xs">
           <p>NLH, PLO | リアルタイムマルチプレイヤー</p>
         </div>
+
+        {/* Debug link */}
+        <div className="mt-4 text-center">
+          <a
+            href="/debug/player"
+            className="text-white/60 hover:text-white/90 text-sm underline"
+          >
+            🔧 Player Debug
+          </a>
+        </div>
       </div>
     </div>
   );
