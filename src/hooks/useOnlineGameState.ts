@@ -154,6 +154,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [isChangingTable, setIsChangingTable] = useState(false);
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
+  const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -303,11 +304,12 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
       onHoleCards: (cards) => {
-        // 新しいハンドが開始されたらカード配布アニメーション
+        // 新しいハンドが開始されたらカード配布アニメーションとwinnersクリア
         if (cards.length > 0) {
           startDealingAnimation();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
+          setWinners([]); // 新しいハンド開始時にwinnersをクリア
         }
         setMyHoleCards(cards);
       },
@@ -318,10 +320,24 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           recordAction(seat, action, amount);
         }
       },
+      onHandComplete: (serverWinners) => {
+        // playerIdをseat番号に変換
+        if (clientState) {
+          const convertedWinners = serverWinners.map(w => {
+            const seat = clientState.players.findIndex(p => p?.odId === w.playerId);
+            return {
+              playerId: seat >= 0 ? seat : 0,
+              amount: w.amount,
+              handName: w.handName,
+            };
+          });
+          setWinners(convertedWinners);
+        }
+      },
       onFastFoldQueued: () => {
         setIsChangingTable(true);
       },
-      onFastFoldTableAssigned: (newTableId) => {
+      onFastFoldTableAssigned: (newTableId: string) => {
         setTableId(newTableId);
         setIsChangingTable(false);
         setMyHoleCards([]);
@@ -338,8 +354,17 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   // 変換されたGameState
   // ============================================
 
-  const gameState = clientState
+  const baseGameState = clientState
     ? convertClientStateToGameState(clientState, myHoleCards, mySeat)
+    : null;
+
+  const gameState = baseGameState
+    ? {
+        ...baseGameState,
+        winners,
+        // winnersがある場合はisHandCompleteをtrueに
+        isHandComplete: baseGameState.isHandComplete || winners.length > 0,
+      }
     : null;
 
   // 他のプレイヤーのターンかどうか

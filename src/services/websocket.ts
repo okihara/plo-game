@@ -38,6 +38,8 @@ class WebSocketService {
     onMatchmakingTableAssigned?: (tableId: string) => void;
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
+    onFastFoldQueued?: () => void;
+    onFastFoldTableAssigned?: (tableId: string) => void;
   } = {};
 
   connect(): Promise<string> {
