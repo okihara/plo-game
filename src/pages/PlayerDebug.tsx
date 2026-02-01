@@ -15,7 +15,7 @@ const createPlayer = (name: string, overrides: Partial<PlayerType> = {}): Player
   name,
   position: 'BTN',
   chips: 1000,
-  holeCards: [],
+  holeCards: sampleCards,
   currentBet: 0,
   totalBetThisRound: 0,
   folded: false,
@@ -25,381 +25,56 @@ const createPlayer = (name: string, overrides: Partial<PlayerType> = {}): Player
   ...overrides,
 });
 
-export function PlayerDebug() {
-  const [showCards, setShowCards] = useState(false);
-  const [isDealing, setIsDealing] = useState(false);
-  const [actionTimestamps, setActionTimestamps] = useState<Record<string, number>>({});
+type PlayerState = 'normal' | 'current' | 'winner' | 'folded' | 'allin';
+type ActionType = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
 
-  const startDealing = () => {
+export function PlayerDebug() {
+  const [playerState, setPlayerState] = useState<PlayerState>('normal');
+  const [positionIndex, setPositionIndex] = useState<number>(3);
+  const [showCards, setShowCards] = useState(true);
+  const [showBet, setShowBet] = useState(false);
+  const [betAmount, setBetAmount] = useState(250);
+
+  // Animation states
+  const [isDealing, setIsDealing] = useState(false);
+  const [currentAction, setCurrentAction] = useState<ActionType | null>(null);
+  const [actionTimestamp, setActionTimestamp] = useState<number | null>(null);
+  const [isTimerActive, setIsTimerActive] = useState(false);
+  const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
+
+  // Create player based on state
+  const player = createPlayer('Player', {
+    folded: playerState === 'folded',
+    isAllIn: playerState === 'allin',
+    currentBet: showBet ? betAmount : 0,
+  });
+
+  // Determine props based on state
+  const isCurrentPlayer = playerState === 'current' || isTimerActive;
+  const isWinner = playerState === 'winner';
+
+  // Get last action
+  const lastAction = actionTimestamp && currentAction
+    ? {
+        action: currentAction as Action,
+        amount: currentAction === 'call' ? 100 :
+                currentAction === 'bet' ? 200 :
+                currentAction === 'raise' ? 300 :
+                currentAction === 'allin' ? 1000 : 0,
+        timestamp: actionTimestamp,
+      }
+    : null;
+
+  // Animation triggers
+  const triggerDealing = () => {
     setIsDealing(true);
     setTimeout(() => setIsDealing(false), 2000);
   };
 
-  const triggerAction = (demoId: string) => {
-    setActionTimestamps(prev => ({ ...prev, [demoId]: Date.now() }));
+  const triggerAction = (action: ActionType) => {
+    setCurrentAction(action);
+    setActionTimestamp(Date.now());
   };
-
-  return (
-    <GameSettingsProvider>
-      <div className="min-h-screen bg-gray-900 text-white p-8">
-        <div className="max-w-7xl mx-auto">
-          <h1 className="text-4xl font-bold mb-8">Player Component Debug</h1>
-
-          {/* Global Controls */}
-          <div className="mb-8 p-6 bg-gray-800 rounded-lg space-y-4">
-            <h2 className="text-2xl font-semibold mb-4">Global Controls</h2>
-            <div className="flex gap-4 flex-wrap">
-              <button
-                onClick={() => setShowCards(!showCards)}
-                className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition"
-              >
-                {showCards ? 'Hide Cards' : 'Show Cards'}
-              </button>
-              <button
-                onClick={startDealing}
-                className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 transition"
-              >
-                Trigger Dealing Animation (All)
-              </button>
-            </div>
-          </div>
-
-          {/* Player States Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {/* Normal State */}
-            <StateDemo
-              title="Normal State"
-              description="Default player appearance"
-            >
-              <Player
-                player={createPlayer('Normal', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </StateDemo>
-
-            {/* Current Player */}
-            <StateDemo
-              title="Current Player"
-              description="Yellow glow animation when it's their turn"
-            >
-              <Player
-                player={createPlayer('Current', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={true}
-                isWinner={false}
-                lastAction={null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </StateDemo>
-
-            {/* Winner */}
-            <StateDemo
-              title="Winner"
-              description="Green glow when player wins the hand"
-            >
-              <Player
-                player={createPlayer('Winner', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={true}
-                lastAction={null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </StateDemo>
-
-            {/* Folded */}
-            <StateDemo
-              title="Folded"
-              description="Greyscale with reduced opacity"
-            >
-              <Player
-                player={createPlayer('Folded', { holeCards: sampleCards, folded: true })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </StateDemo>
-
-            {/* With Current Bet */}
-            <StateDemo
-              title="With Current Bet"
-              description="Shows bet amount above player"
-            >
-              <Player
-                player={createPlayer('Bettor', { holeCards: sampleCards, currentBet: 250 })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </StateDemo>
-
-            {/* Dealer Button */}
-            <StateDemo
-              title="Dealer Button"
-              description="Shows dealer button (BTN position)"
-            >
-              <Player
-                player={createPlayer('Dealer', { holeCards: sampleCards, position: 'BTN' })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </StateDemo>
-
-            {/* Action: Fold */}
-            <ActionDemo
-              title="Action: Fold"
-              description="Grey action marker"
-              action="fold"
-              amount={0}
-              demoId="fold"
-              actionTimestamp={actionTimestamps['fold']}
-              onTrigger={() => triggerAction('fold')}
-            >
-              <Player
-                player={createPlayer('Folder', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={actionTimestamps['fold'] ? { action: 'fold', amount: 0, timestamp: actionTimestamps['fold'] } : null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </ActionDemo>
-
-            {/* Action: Check */}
-            <ActionDemo
-              title="Action: Check"
-              description="Blue action marker"
-              action="check"
-              amount={0}
-              demoId="check"
-              actionTimestamp={actionTimestamps['check']}
-              onTrigger={() => triggerAction('check')}
-            >
-              <Player
-                player={createPlayer('Checker', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={actionTimestamps['check'] ? { action: 'check', amount: 0, timestamp: actionTimestamps['check'] } : null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </ActionDemo>
-
-            {/* Action: Call */}
-            <ActionDemo
-              title="Action: Call"
-              description="Green action marker with amount"
-              action="call"
-              amount={100}
-              demoId="call"
-              actionTimestamp={actionTimestamps['call']}
-              onTrigger={() => triggerAction('call')}
-            >
-              <Player
-                player={createPlayer('Caller', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={actionTimestamps['call'] ? { action: 'call', amount: 100, timestamp: actionTimestamps['call'] } : null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </ActionDemo>
-
-            {/* Action: Bet */}
-            <ActionDemo
-              title="Action: Bet"
-              description="Orange action marker with amount"
-              action="bet"
-              amount={200}
-              demoId="bet"
-              actionTimestamp={actionTimestamps['bet']}
-              onTrigger={() => triggerAction('bet')}
-            >
-              <Player
-                player={createPlayer('Bettor', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={actionTimestamps['bet'] ? { action: 'bet', amount: 200, timestamp: actionTimestamps['bet'] } : null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </ActionDemo>
-
-            {/* Action: Raise */}
-            <ActionDemo
-              title="Action: Raise"
-              description="Orange action marker with amount"
-              action="raise"
-              amount={300}
-              demoId="raise"
-              actionTimestamp={actionTimestamps['raise']}
-              onTrigger={() => triggerAction('raise')}
-            >
-              <Player
-                player={createPlayer('Raiser', { holeCards: sampleCards })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={actionTimestamps['raise'] ? { action: 'raise', amount: 300, timestamp: actionTimestamps['raise'] } : null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </ActionDemo>
-
-            {/* Action: All-in */}
-            <ActionDemo
-              title="Action: All-in"
-              description="Red action marker"
-              action="allin"
-              amount={1000}
-              demoId="allin"
-              actionTimestamp={actionTimestamps['allin']}
-              onTrigger={() => triggerAction('allin')}
-            >
-              <Player
-                player={createPlayer('All-in', { holeCards: sampleCards, isAllIn: true })}
-                positionIndex={0}
-                isCurrentPlayer={false}
-                isWinner={false}
-                lastAction={actionTimestamps['allin'] ? { action: 'allin', amount: 1000, timestamp: actionTimestamps['allin'] } : null}
-                showCards={showCards}
-                isDealing={isDealing}
-                dealOrder={0}
-              />
-            </ActionDemo>
-
-            {/* With Timer */}
-            <TimerDemo showCards={showCards} isDealing={isDealing} />
-          </div>
-
-          {/* Position Layout Demo */}
-          <div className="mt-12 p-6 bg-gray-800 rounded-lg">
-            <h2 className="text-2xl font-semibold mb-6">Position Layout (6-MAX)</h2>
-            <p className="text-gray-400 mb-4">All 6 positions with various states</p>
-            <div className="relative w-full aspect-[9/16] max-w-md mx-auto bg-gradient-to-br from-green-800 to-green-600 rounded-3xl overflow-hidden">
-              <div className="@container w-full h-full relative">
-                {/* All 6 positions */}
-                {[0, 1, 2, 3, 4, 5].map((pos) => (
-                  <Player
-                    key={pos}
-                    player={createPlayer(`P${pos}`, {
-                      holeCards: sampleCards,
-                      position: pos === 3 ? 'BTN' : ['SB', 'BB', 'UTG', 'HJ', 'CO'][pos] as any,
-                      currentBet: pos % 2 === 0 ? 50 : 0,
-                      avatarId: pos,
-                    })}
-                    positionIndex={pos}
-                    isCurrentPlayer={pos === 1}
-                    isWinner={pos === 4}
-                    lastAction={pos === 2 ? { action: 'raise', amount: 150, timestamp: Date.now() } : null}
-                    showCards={showCards}
-                    isDealing={isDealing}
-                    dealOrder={pos}
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-
-          {/* Back button */}
-          <div className="mt-8 text-center">
-            <a
-              href="/"
-              className="inline-block px-6 py-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
-            >
-              ← Back to Lobby
-            </a>
-          </div>
-        </div>
-      </div>
-    </GameSettingsProvider>
-  );
-}
-
-function StateDemo({ title, description, children }: { title: string; description: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-400 text-sm mb-6">{description}</p>
-      <div className="relative w-full aspect-[4/5] bg-gradient-to-br from-green-800 to-green-600 rounded-2xl overflow-visible">
-        <div className="@container w-full h-full relative">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ActionDemo({
-  title,
-  description,
-  action,
-  onTrigger,
-  children
-}: {
-  title: string;
-  description: string;
-  action: Action;
-  amount: number;
-  demoId: string;
-  actionTimestamp?: number;
-  onTrigger: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-xl font-semibold mb-2">{title}</h3>
-      <p className="text-gray-400 text-sm mb-4">{description}</p>
-      <button
-        onClick={onTrigger}
-        className="w-full mb-4 px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 transition text-sm font-semibold"
-      >
-        ▶ Trigger {action.toUpperCase()}
-      </button>
-      <div className="relative w-full aspect-[4/5] bg-gradient-to-br from-green-800 to-green-600 rounded-2xl overflow-visible">
-        <div className="@container w-full h-full relative">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TimerDemo({ showCards, isDealing }: { showCards: boolean; isDealing: boolean }) {
-  const [isTimerActive, setIsTimerActive] = useState(false);
-  const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
 
   const startTimer = () => {
     const now = Date.now();
@@ -412,36 +87,243 @@ function TimerDemo({ showCards, isDealing }: { showCards: boolean; isDealing: bo
   };
 
   return (
-    <div className="bg-gray-800 rounded-lg p-6">
-      <h3 className="text-xl font-semibold mb-2">Action Timer</h3>
-      <p className="text-gray-400 text-sm mb-4">Progress ring and countdown (15s)</p>
-      <button
-        onClick={startTimer}
-        disabled={isTimerActive}
-        className={`w-full mb-4 px-4 py-2 rounded transition text-sm font-semibold ${
-          isTimerActive
-            ? 'bg-gray-600 cursor-not-allowed'
-            : 'bg-purple-600 hover:bg-purple-700'
-        }`}
-      >
-        {isTimerActive ? '⏱ Timer Running...' : '▶ Start 15s Timer'}
-      </button>
-      <div className="relative w-full aspect-[4/5] bg-gradient-to-br from-green-800 to-green-600 rounded-2xl overflow-visible">
-        <div className="@container w-full h-full relative">
-          <Player
-            player={createPlayer('Timed', { holeCards: sampleCards })}
-            positionIndex={0}
-            isCurrentPlayer={true}
-            isWinner={false}
-            lastAction={null}
-            showCards={showCards}
-            isDealing={isDealing}
-            dealOrder={0}
-            actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
-            actionTimeoutMs={isTimerActive ? 15000 : null}
-          />
+    <GameSettingsProvider>
+      <div className="fixed inset-0 bg-gray-900 text-white overflow-y-auto">
+        <div className="max-w-7xl mx-auto p-8">
+          <h1 className="text-4xl font-bold mb-8">Player Component Debug</h1>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Control Panel */}
+            <div className="lg:col-span-1 space-y-6">
+              {/* Position */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">テーブルポジション</h3>
+                <div className="space-y-2">
+                  {[
+                    { value: 0, label: '0 - 下部中央（自分）' },
+                    { value: 1, label: '1 - 左下' },
+                    { value: 2, label: '2 - 左上' },
+                    { value: 3, label: '3 - 上部中央' },
+                    { value: 4, label: '4 - 右上' },
+                    { value: 5, label: '5 - 右下' },
+                  ].map(({ value, label }) => (
+                    <label key={value} className="flex items-center gap-3 cursor-pointer hover:bg-gray-700 p-2 rounded">
+                      <input
+                        type="radio"
+                        name="position"
+                        value={value}
+                        checked={positionIndex === value}
+                        onChange={(e) => setPositionIndex(Number(e.target.value))}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Player State */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">プレイヤー状態</h3>
+                <div className="space-y-2">
+                  {[
+                    { value: 'normal', label: 'Normal - 通常状態' },
+                    { value: 'current', label: 'Current - 行動中（黄色グロー）' },
+                    { value: 'winner', label: 'Winner - 勝利（緑グロー）' },
+                    { value: 'folded', label: 'Folded - フォールド（グレースケール）' },
+                    { value: 'allin', label: 'All-in - オールイン' },
+                  ].map(({ value, label }) => (
+                    <label key={value} className="flex items-center gap-3 cursor-pointer hover:bg-gray-700 p-2 rounded">
+                      <input
+                        type="radio"
+                        name="playerState"
+                        value={value}
+                        checked={playerState === value}
+                        onChange={(e) => setPlayerState(e.target.value as PlayerState)}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">アクション再生</h3>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => triggerAction('fold')}
+                    className="w-full px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded font-semibold transition text-sm"
+                  >
+                    Fold - フォールド
+                  </button>
+                  <button
+                    onClick={() => triggerAction('check')}
+                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition text-sm"
+                  >
+                    Check - チェック
+                  </button>
+                  <button
+                    onClick={() => triggerAction('call')}
+                    className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition text-sm"
+                  >
+                    Call - コール
+                  </button>
+                  <button
+                    onClick={() => triggerAction('bet')}
+                    className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition text-sm"
+                  >
+                    Bet - ベット
+                  </button>
+                  <button
+                    onClick={() => triggerAction('raise')}
+                    className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition text-sm"
+                  >
+                    Raise - レイズ
+                  </button>
+                  <button
+                    onClick={() => triggerAction('allin')}
+                    className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 rounded font-semibold transition text-sm"
+                  >
+                    All-in - オールイン
+                  </button>
+                </div>
+              </div>
+
+              {/* Display Options */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">表示オプション</h3>
+                <div className="space-y-3">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showCards}
+                      onChange={(e) => setShowCards(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">カードを表示</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showBet}
+                      onChange={(e) => setShowBet(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">ベット額を表示</span>
+                  </label>
+
+                  {showBet && (
+                    <div className="ml-7 mt-2">
+                      <label className="text-sm text-gray-400 block mb-1">ベット額</label>
+                      <input
+                        type="number"
+                        value={betAmount}
+                        onChange={(e) => setBetAmount(Number(e.target.value))}
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                        min="0"
+                        step="50"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Other Animations */}
+              <div className="bg-gray-800 rounded-lg p-6">
+                <h3 className="text-xl font-semibold mb-4">その他アニメーション</h3>
+                <div className="space-y-3">
+                  <button
+                    onClick={triggerDealing}
+                    disabled={isDealing}
+                    className={`w-full px-4 py-3 rounded font-semibold transition ${
+                      isDealing
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-green-600 hover:bg-green-700'
+                    }`}
+                  >
+                    {isDealing ? '配布中...' : '🃏 カード配布'}
+                  </button>
+
+                  <button
+                    onClick={startTimer}
+                    disabled={isTimerActive}
+                    className={`w-full px-4 py-3 rounded font-semibold transition ${
+                      isTimerActive
+                        ? 'bg-gray-600 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
+                    }`}
+                  >
+                    {isTimerActive ? '⏱ タイマー実行中...' : '⏱ タイマー開始（15秒）'}
+                  </button>
+                </div>
+              </div>
+
+              {/* Back Button */}
+              <div className="text-center">
+                <a
+                  href="/"
+                  className="inline-block px-6 py-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+                >
+                  ← ロビーに戻る
+                </a>
+              </div>
+            </div>
+
+            {/* Player Display */}
+            <div className="lg:col-span-2">
+              <div className="bg-gray-800 rounded-lg p-8">
+                <h3 className="text-2xl font-semibold mb-6 text-center">プレビュー</h3>
+                <div className="relative w-full max-w-md mx-auto aspect-[4/5] bg-gradient-to-br from-green-800 to-green-600 rounded-3xl overflow-visible">
+                  <div className="@container w-full h-full relative">
+                    <Player
+                      player={player}
+                      positionIndex={positionIndex}
+                      isCurrentPlayer={isCurrentPlayer}
+                      isWinner={isWinner}
+                      lastAction={lastAction}
+                      showCards={showCards}
+                      isDealing={isDealing}
+                      dealOrder={0}
+                      actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
+                      actionTimeoutMs={isTimerActive ? 15000 : null}
+                    />
+                  </div>
+                </div>
+
+                {/* Current State Info */}
+                <div className="mt-6 p-4 bg-gray-700 rounded text-sm space-y-2">
+                  <div className="font-semibold text-gray-300 mb-3">現在の状態:</div>
+                  <div className="grid grid-cols-2 gap-2 text-gray-400">
+                    <div>ポジション:</div>
+                    <div className="text-white font-mono">{positionIndex}</div>
+
+                    <div>プレイヤー状態:</div>
+                    <div className="text-white font-mono">{playerState}</div>
+
+                    <div>最後のアクション:</div>
+                    <div className="text-white font-mono">{currentAction || 'なし'}</div>
+
+                    <div>カード表示:</div>
+                    <div className="text-white font-mono">{showCards ? 'ON' : 'OFF'}</div>
+
+                    <div>ベット額:</div>
+                    <div className="text-white font-mono">{showBet ? `$${betAmount}` : 'なし'}</div>
+
+                    <div>現在のターン:</div>
+                    <div className="text-white font-mono">{isCurrentPlayer ? 'YES' : 'NO'}</div>
+
+                    <div>勝者:</div>
+                    <div className="text-white font-mono">{isWinner ? 'YES' : 'NO'}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </GameSettingsProvider>
   );
 }
