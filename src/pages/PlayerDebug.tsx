@@ -72,8 +72,15 @@ export function PlayerDebug() {
   };
 
   const triggerAction = (action: ActionType) => {
-    setCurrentAction(action);
-    setActionTimestamp(Date.now());
+    // まずクリアしてから新しいアクションを設定（連続再生を可能にする）
+    setCurrentAction(null);
+    setActionTimestamp(null);
+
+    // 次のフレームで新しいアクションを設定
+    setTimeout(() => {
+      setCurrentAction(action);
+      setActionTimestamp(Date.now());
+    }, 0);
   };
 
   const startTimer = () => {
