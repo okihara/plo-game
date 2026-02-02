@@ -12,6 +12,14 @@ const SERVER_URL = 'http://localhost:3001';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+// Helper function to get cookie value
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
 class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
@@ -51,9 +59,15 @@ class WebSocketService {
         }
       }
 
+      // Get JWT token from cookie
+      const token = getCookie('token');
+
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
+        auth: {
+          token: token || undefined,
+        },
       });
 
       this.socket.on('connection:established', ({ playerId }) => {

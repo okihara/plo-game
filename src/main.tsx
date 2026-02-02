@@ -4,6 +4,7 @@ import { SimpleLobby } from './pages/SimpleLobby';
 import { OnlineGame } from './pages/OnlineGame';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
+import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
 function App() {
@@ -30,8 +31,10 @@ function App() {
 
 createRoot(document.getElementById('app')!).render(
   <StrictMode>
-    <GameSettingsProvider>
-      <App />
-    </GameSettingsProvider>
+    <AuthProvider>
+      <GameSettingsProvider>
+        <App />
+      </GameSettingsProvider>
+    </AuthProvider>
   </StrictMode>
 );

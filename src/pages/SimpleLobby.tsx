@@ -1,3 +1,5 @@
+import { useAuth } from '../contexts/AuthContext';
+
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string) => void;
 }
@@ -19,6 +21,12 @@ const TABLE_OPTIONS: TableOption[] = [
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
+  const { user, loading, logout } = useAuth();
+
+  const handleLogin = (provider: 'google' | 'discord' | 'twitter') => {
+    window.location.href = `http://localhost:3001/api/auth/${provider}`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -26,6 +34,48 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold text-white mb-2">Volt Poker Club</h1>
         </div>
+
+        {/* User Info or Login Buttons */}
+        {loading ? (
+          <div className="text-center text-white/60 mb-6">読み込み中...</div>
+        ) : user ? (
+          <div className="bg-white/10 backdrop-blur rounded-xl p-4 mb-6 border border-white/10">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {user.avatarUrl && (
+                  <img
+                    src={user.avatarUrl}
+                    alt={user.username}
+                    className="w-10 h-10 rounded-full"
+                  />
+                )}
+                <div>
+                  <div className="text-white font-bold">{user.username}</div>
+                  <div className="text-cyan-400 text-sm">${user.balance}</div>
+                </div>
+              </div>
+              <button
+                onClick={logout}
+                className="text-white/60 hover:text-white text-sm"
+              >
+                ログアウト
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white/10 backdrop-blur rounded-xl p-6 mb-6 border border-white/10">
+            <p className="text-white/80 text-center mb-4">ログインしてプレイ</p>
+            <button
+              onClick={() => handleLogin('twitter')}
+              className="w-full py-3 px-4 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-all font-medium flex items-center justify-center gap-2"
+            >
+              <span>🐦</span> Twitterでログイン
+            </button>
+            <p className="text-white/40 text-xs text-center mt-4">
+              またはゲストとしてプレイ
+            </p>
+          </div>
+        )}
 
         {/* Table selection */}
         <div className="space-y-3">

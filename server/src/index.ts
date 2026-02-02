@@ -47,6 +47,29 @@ await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 // Start server and setup Socket.io
 const start = async () => {
   try {
+    // Health check: Database connection
+    console.log('Checking database connection...');
+    try {
+      await prisma.$connect();
+      await prisma.$queryRaw`SELECT 1`;
+      console.log('✅ Database connected');
+    } catch (err) {
+      console.error('❌ Database connection failed. Please start PostgreSQL with: docker-compose up -d');
+      console.error(err);
+      process.exit(1);
+    }
+
+    // Health check: Redis connection
+    console.log('Checking Redis connection...');
+    try {
+      await redis.ping();
+      console.log('✅ Redis connected');
+    } catch (err) {
+      console.error('❌ Redis connection failed. Please start Redis with: docker-compose up -d');
+      console.error(err);
+      process.exit(1);
+    }
+
     // Setup Socket.io on the same server (before listen for admin routes)
     const io = new Server(fastify.server, {
       cors: {
@@ -62,9 +85,9 @@ const start = async () => {
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 
-    console.log(`Server running on http://localhost:${env.PORT}`);
-    console.log(`WebSocket ready on ws://localhost:${env.PORT}`);
-    console.log(`Status dashboard: http://localhost:${env.PORT}/admin/status`);
+    console.log(`✅ Server running on http://localhost:${env.PORT}`);
+    console.log(`✅ WebSocket ready on ws://localhost:${env.PORT}`);
+    console.log(`✅ Status dashboard: http://localhost:${env.PORT}/admin/status`);
   } catch (err) {
     fastify.log.error(err);
     process.exit(1);
