@@ -23,8 +23,8 @@ const TABLE_OPTIONS: TableOption[] = [
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const { user, loading, logout } = useAuth();
 
-  const handleLogin = (provider: 'google' | 'discord' | 'twitter') => {
-    window.location.href = `http://localhost:3001/api/auth/${provider}`;
+  const handleLogin = () => {
+    window.location.href = 'http://localhost:3001/api/auth/twitter';
   };
 
   return (
@@ -66,7 +66,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           <div className="bg-white/10 backdrop-blur rounded-xl p-6 mb-6 border border-white/10">
             <p className="text-white/80 text-center mb-4">ログインしてプレイ</p>
             <button
-              onClick={() => handleLogin('twitter')}
+              onClick={handleLogin}
               className="w-full py-3 px-4 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-all font-medium flex items-center justify-center gap-2"
             >
               <span>🐦</span> Twitterでログイン
