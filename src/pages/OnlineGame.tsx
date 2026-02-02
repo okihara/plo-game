@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
+import { useGameSettings } from '../contexts/GameSettingsContext';
 import {
   PokerTable,
   MyCards,
@@ -8,14 +9,16 @@ import {
   HandAnalysisOverlay,
 } from '../components';
 
+const MIN_LOADING_TIME_MS = 1000; // 最低1秒は接続中画面を表示
+
 interface OnlineGameProps {
+  blinds: string;
   onBack: () => void;
 }
 
-export function OnlineGame({ onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const {
     isConnecting,
-    isConnected,
     connectionError,
     gameState,
     mySeat,
@@ -31,31 +34,71 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
     actionTimeoutMs,
     connect,
     disconnect,
-    joinFastFold,
+    joinMatchmaking,
     handleAction,
     startNextHand,
-  } = useOnlineGameState();
+  } = useOnlineGameState(blinds);
+
+  const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
 
   const [showAnalysis, setShowAnalysis] = useState(false);
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const mountTimeRef = useRef(Date.now());
+
+  // gameStateが変わったらbigBlindを設定
+  useEffect(() => {
+    if (gameState) {
+      setBigBlind(gameState.bigBlind);
+    }
+  }, [gameState, setBigBlind]);
+
+  // 最低表示時間のタイマー
+  useEffect(() => {
+    const elapsed = Date.now() - mountTimeRef.current;
+    const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
+
+    const timer = setTimeout(() => {
+      setMinLoadingComplete(true);
+    }, remaining);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   // 接続と参加
   useEffect(() => {
     connect().then(() => {
-      joinFastFold();
+      joinMatchmaking();
     });
 
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, joinFastFold]);
+  }, [connect, disconnect, joinMatchmaking]);
 
-  // 接続中
-  if (isConnecting) {
+  // ブラインド表示用
+  const blindsLabel = `$${blinds.replace('/', '/$')}`;
+
+  // 接続中（または最低表示時間が経過していない）
+  const showLoadingScreen = isConnecting || !minLoadingComplete;
+
+  if (showLoadingScreen) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-white mx-auto mb-4"></div>
-          <p className="text-white text-lg">サーバーに接続中...</p>
+          <h1 className="text-3xl font-bold text-white mb-2">Volt Poker Club</h1>
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm font-bold rounded">PLO</span>
+            <span className="text-white/60">{blindsLabel}</span>
+          </div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400 mx-auto mb-4"></div>
+          <p className="text-white/70">テーブルに接続中...</p>
+          <button
+            onClick={onBack}
+            className="mt-6 text-white/40 hover:text-white/60 text-sm transition-colors"
+          >
+            キャンセル
+          </button>
         </div>
       </div>
     );
@@ -64,14 +107,14 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
   // 接続エラー
   if (connectionError) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+      <div className="min-h-screen w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
         <div className="text-center bg-white/10 rounded-2xl p-8 max-w-sm">
           <div className="text-red-400 text-5xl mb-4">!</div>
           <h2 className="text-white text-xl font-bold mb-2">接続エラー</h2>
           <p className="text-white/70 mb-6">{connectionError}</p>
           <div className="space-y-3">
             <button
-              onClick={() => connect().then(() => joinFastFold())}
+              onClick={() => connect().then(() => joinMatchmaking())}
               className="w-full py-3 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-white hover:from-cyan-600 hover:to-blue-600 transition-all"
             >
               再接続
@@ -115,43 +158,63 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
 
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="w-full h-screen flex items-center justify-center bg-gray-100 relative">
-        {/* 戻るボタン */}
-        <button
-          onClick={onBack}
-          className="absolute top-4 left-4 z-50 px-4 py-2 bg-black/50 text-white rounded-lg hover:bg-black/70 transition-colors text-sm"
-        >
-          ← ロビー
-        </button>
-
-        {/* 接続ステータス */}
-        <div className="absolute top-4 right-4 z-50 flex items-center gap-2 px-3 py-1 bg-black/50 rounded-full">
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-red-400'}`} />
-          <span className="text-white/70 text-xs">
-            {isConnected ? 'オンライン' : 'オフライン'}
-          </span>
-        </div>
-
-        <div className="flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative">
+      <div className="w-full h-screen flex items-center justify-center bg-gray-900 relative">
+        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-100">
           {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 bg-white/90 backdrop-blur-sm py-[1%] text-center shadow-sm">
-            <span className="text-[2.5%] font-bold text-cyan-600 leading-none" style={{ fontSize: 'min(1.2vh, 2vw)' }}>ONLINE PLO</span>
-            <span className="text-gray-400 mx-[0.5%]" style={{ fontSize: 'min(1vh, 1.7vw)' }}>|</span>
-            <span className="font-semibold text-gray-600" style={{ fontSize: 'min(1.1vh, 1.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
+          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-white/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
+            <button
+              onClick={onBack}
+              className="text-gray-500 hover:text-gray-700 transition-colors"
+              style={{ fontSize: 'min(1.8vh, 3vw)' }}
+            >
+              ← ロビー
+            </button>
+            <div className="flex items-center">
+              <span className="font-bold text-cyan-600 leading-none" style={{ fontSize: 'min(1.8vh, 3vw)' }}>PLO</span>
+              <span className="text-gray-400 mx-[1%]" style={{ fontSize: 'min(1.6vh, 2.6vw)' }}>|</span>
+              <span className="font-semibold text-gray-600" style={{ fontSize: 'min(1.7vh, 2.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
+            </div>
+            {/* 設定ボタン */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSettingsMenu(!showSettingsMenu)}
+                className="text-gray-500 hover:text-gray-700 transition-colors"
+                style={{ fontSize: 'min(2vh, 3.4vw)' }}
+              >
+                ⚙
+              </button>
+              {showSettingsMenu && (
+                <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg py-2 min-w-[120px] z-50">
+                  <button
+                    onClick={() => {
+                      setShowAnalysis(!showAnalysis);
+                      setShowSettingsMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                  >
+                    <span>分析表示</span>
+                    <span className={showAnalysis ? 'text-cyan-500' : 'text-gray-400'}>
+                      {showAnalysis ? '✓' : ''}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setUseBBNotation(!settings.useBBNotation);
+                      setShowSettingsMenu(false);
+                    }}
+                    className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                  >
+                    <span>BB表記</span>
+                    <span className={settings.useBBNotation ? 'text-cyan-500' : 'text-gray-400'}>
+                      {settings.useBBNotation ? '✓' : ''}
+                    </span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
-
-          {/* 分析ボタン */}
-          <button
-            onClick={() => setShowAnalysis(!showAnalysis)}
-            className={`absolute z-40 rounded-full flex items-center justify-center font-bold transition-colors ${
-              showAnalysis
-                ? 'bg-blue-500 text-white'
-                : 'bg-black/50 text-gray-300 hover:bg-black/70'
-            }`}
-            style={{ top: '2%', right: '2%', width: '7%', height: 'calc(7% * 9 / 16)', fontSize: 'min(2vh, 3.5vw)' }}
-          >
-            i
-          </button>
 
           <PokerTable
             state={gameState}
@@ -164,14 +227,12 @@ export function OnlineGame({ onBack }: OnlineGameProps) {
             actionTimeoutMs={actionTimeoutMs}
           />
 
-          {humanPlayer && (
-            <MyCards
-              cards={myHoleCards}
-              communityCards={gameState.communityCards}
-              isDealing={isDealingCards}
-              dealOrder={humanDealOrder}
-            />
-          )}
+          <MyCards
+            cards={myHoleCards}
+            communityCards={gameState.communityCards}
+            isDealing={isDealingCards}
+            dealOrder={humanDealOrder}
+          />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
 

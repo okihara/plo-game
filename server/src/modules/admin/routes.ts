@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { Server } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
-import { FastFoldPool } from '../fastfold/FastFoldPool.js';
+import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { redis } from '../../config/redis.js';
 import { prisma } from '../../config/database.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
@@ -9,7 +9,7 @@ import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 interface AdminDependencies {
   io: Server;
   tableManager: TableManager;
-  fastFoldPool: FastFoldPool;
+  matchmakingPool: MatchmakingPool;
 }
 
 interface TableStats {
@@ -74,7 +74,7 @@ interface ServerStats {
 const startTime = Date.now();
 
 export function adminRoutes(deps: AdminDependencies) {
-  const { io, tableManager, fastFoldPool } = deps;
+  const { io, tableManager, matchmakingPool } = deps;
 
   return async function (fastify: FastifyInstance) {
     // JSON API for stats
@@ -125,7 +125,7 @@ export function adminRoutes(deps: AdminDependencies) {
       const blindLevels = ['1/3', '2/5', '5/10'];
       const fastFoldQueues = blindLevels.map(blinds => ({
         blinds,
-        ...fastFoldPool.getQueueStatus(blinds),
+        ...matchmakingPool.getQueueStatus(blinds),
       }));
 
       // Database check
@@ -320,12 +320,22 @@ function getDashboardHTML(): string {
     }
     .player-chips { color: #fbbf24; font-size: 11px; }
     .player-status { font-size: 10px; color: #64748b; }
+    .table-footer {
+      display: flex;
+      gap: 12px;
+      margin-top: 12px;
+    }
     .pending-action {
       background: #422006;
       border: 1px solid #f59e0b;
       border-radius: 8px;
       padding: 12px;
-      margin-top: 12px;
+      flex: 0 0 200px;
+      min-height: 60px;
+    }
+    .pending-action:empty {
+      border-color: #334155;
+      background: #1e293b;
     }
     .pending-action-header {
       display: flex;
@@ -362,7 +372,7 @@ function getDashboardHTML(): string {
       background: #0f172a;
       border-radius: 8px;
       padding: 12px;
-      margin-top: 12px;
+      flex: 1;
       max-height: 200px;
       overflow-y: auto;
     }
@@ -617,7 +627,7 @@ function getDashboardHTML(): string {
         }).join('');
 
         // Pending action section
-        let pendingActionHtml = '';
+        let pendingActionHtml = '<div class="pending-action"></div>';
         if (table.pendingAction) {
           const pa = table.pendingAction;
           const elapsed = Date.now() - pa.requestedAt;
@@ -643,7 +653,7 @@ function getDashboardHTML(): string {
         }
 
         // Message log section
-        let messageLogHtml = '';
+        let messageLogHtml = '<div class="message-log"><div class="message-log-title">直近のメッセージ</div></div>';
         if (table.recentMessages && table.recentMessages.length > 0) {
           const messagesHtml = table.recentMessages.slice().reverse().map(msg => {
             const time = new Date(msg.timestamp).toLocaleTimeString('ja-JP');
@@ -676,8 +686,7 @@ function getDashboardHTML(): string {
             '</div>' +
           '</div>' +
           '<div class="players-grid">' + playersHtml + '</div>' +
-          pendingActionHtml +
-          messageLogHtml +
+          '<div class="table-footer">' + pendingActionHtml + messageLogHtml + '</div>' +
         '</div>';
       }).join('');
 

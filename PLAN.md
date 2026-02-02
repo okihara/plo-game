@@ -25,7 +25,7 @@
 ┌─────────────────────────────────────────────────────────────┐
 │                 Game Server (Node.js + Fastify)              │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐         │
-│  │TableManager │  │FastFoldPool │  │ GameEngine  │         │
+│  │TableManager │  │MatchmakingPool│  │ GameEngine  │         │
 │  │ (テーブル管理)│  │(キュー管理) │  │ (既存ロジック)│         │
 │  └─────────────┘  └─────────────┘  └─────────────┘         │
 └─────────────────────────────┬───────────────────────────────┘
@@ -122,7 +122,7 @@ plo-game/
 // キー設計
 session:{sessionId}           // セッションデータ
 table:state:{tableId}         // ゲーム状態
-fastfold:queue:{blinds}       // ファストフォールドキュー（Sorted Set）
+matchmaking:queue:{blinds}    // マッチメイキングキュー（Sorted Set）
 player:table:{odId}          // プレイヤーの現在テーブル
 channel:table:{tableId}       // Pub/Subチャンネル
 ```
@@ -132,7 +132,7 @@ channel:table:{tableId}       // Pub/Subチャンネル
 ```typescript
 // クライアント → サーバー
 'game:action'     // アクション送信
-'game:fast_fold'  // ファストフォールド
+'game:fold'  // ファストフォールド
 'table:join'      // テーブル参加
 'table:leave'     // テーブル離脱
 
@@ -140,8 +140,8 @@ channel:table:{tableId}       // Pub/Subチャンネル
 'table:state'         // ゲーム状態更新
 'game:hole_cards'     // ホールカード配布
 'game:action_required'// アクション要求（タイマー付き）
-'fastfold:queued'     // キュー位置通知
-'fastfold:table_assigned' // 新テーブル割当
+'matchmaking:queued'     // キュー位置通知
+'matchmaking:table_assigned' // 新テーブル割当
 ```
 
 ## データベース（主要テーブル）
@@ -178,7 +178,7 @@ hand_histories (id, table_id, hand_number, community_cards,
 - [x] アクションタイマー実装
 
 ### Phase 3: ファストフォールドプール ✅
-- [x] FastFoldPool 実装
+- [x] MatchmakingPool 実装
 - [x] Redis キュー管理（Sorted Set）
 - [x] テーブル間移動ロジック
 - [x] CPU補充ロジック（プレイヤー不足時）

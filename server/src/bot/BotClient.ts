@@ -9,7 +9,12 @@ interface BotConfig {
   serverUrl: string;
   name: string;
   avatarUrl: string | null;
+  disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
+  defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
 }
+
+// デフォルト: 2% の確率で切断（約50ハンドに1回）
+const DEFAULT_DISCONNECT_CHANCE = 0.02;
 
 export class BotClient {
   private socket: Socket | null = null;
@@ -20,6 +25,7 @@ export class BotClient {
   private config: BotConfig;
   private isConnected = false;
   private tableId: string | null = null;
+  private currentBlinds: string | null = null; // 現在のブラインド設定（再キューイング用）
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -71,6 +77,16 @@ export class BotClient {
         console.log(`[${this.config.name}] Left table`);
         this.tableId = null;
         this.seatNumber = -1;
+        // 自動的に再度マッチメイキングに参加
+        this.rejoinMatchmaking();
+      });
+
+      this.socket.on('table:closed', () => {
+        console.log(`[${this.config.name}] Table closed`);
+        this.tableId = null;
+        this.seatNumber = -1;
+        // 自動的に再度マッチメイキングに参加
+        this.rejoinMatchmaking();
       });
 
       this.socket.on('table:error', (data: { message: string }) => {
@@ -99,14 +115,17 @@ export class BotClient {
       this.socket.on('game:hand_complete', () => {
         // Reset for next hand
         this.holeCards = [];
+
+        // 一定確率で意図的に切断（人間らしさを演出）
+        this.maybeDisconnectRandomly();
       });
 
-      this.socket.on('fastfold:queued', (data: { position: number }) => {
-        console.log(`[${this.config.name}] Queued in Fast Fold pool (position: ${data.position})`);
+      this.socket.on('matchmaking:queued', (data: { position: number }) => {
+        console.log(`[${this.config.name}] Queued in matchmaking pool (position: ${data.position})`);
       });
 
-      this.socket.on('fastfold:table_assigned', (data: { tableId: string }) => {
-        console.log(`[${this.config.name}] Assigned to Fast Fold table ${data.tableId}`);
+      this.socket.on('matchmaking:table_assigned', (data: { tableId: string }) => {
+        console.log(`[${this.config.name}] Assigned to table ${data.tableId}`);
       });
 
       // Timeout for connection
@@ -243,18 +262,45 @@ export class BotClient {
     this.socket.emit('game:action', { action, amount });
   }
 
-  async joinFastFoldPool(blinds: string): Promise<void> {
+  async joinMatchmaking(blinds: string): Promise<void> {
     if (!this.socket || !this.isConnected) {
       throw new Error('Not connected to server');
     }
 
-    console.log(`[${this.config.name}] Joining Fast Fold pool (${blinds})`);
-    this.socket.emit('fastfold:join', { blinds });
+    this.currentBlinds = blinds;
+    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds})`);
+    this.socket.emit('matchmaking:join', { blinds });
   }
 
-  async leaveFastFoldPool(blinds: string): Promise<void> {
+  private rejoinMatchmaking(): void {
+    const blinds = this.currentBlinds ?? this.config.defaultBlinds ?? '1/3';
+    // 少し遅延して再参加（サーバー側の状態更新を待つ）
+    setTimeout(() => {
+      if (this.isConnected && this.socket && !this.tableId) {
+        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds})`);
+        this.socket.emit('matchmaking:join', { blinds });
+      }
+    }, 500);
+  }
+
+  async leaveMatchmaking(blinds: string): Promise<void> {
     if (!this.socket) return;
-    this.socket.emit('fastfold:leave', { blinds });
+    this.socket.emit('matchmaking:leave', { blinds });
+  }
+
+  private maybeDisconnectRandomly(): void {
+    const chance = this.config.disconnectChance ?? DEFAULT_DISCONNECT_CHANCE;
+    if (Math.random() < chance) {
+      // 少し遅延してから切断（自然な感じに）
+      const delay = 1000 + Math.random() * 3000; // 1-4秒後
+      console.log(`[${this.config.name}] Will disconnect in ${Math.round(delay)}ms (simulating player leave)`);
+      setTimeout(() => {
+        if (this.isConnected) {
+          console.log(`[${this.config.name}] Intentionally disconnecting`);
+          this.disconnect();
+        }
+      }, delay);
+    }
   }
 
   disconnect(): void {

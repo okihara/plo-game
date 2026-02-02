@@ -12,6 +12,14 @@ const SERVER_URL = 'http://localhost:3001';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+// Helper function to get cookie value
+function getCookie(name: string): string | null {
+  const value = `; ${document.cookie}`;
+  const parts = value.split(`; ${name}=`);
+  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+  return null;
+}
+
 class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
@@ -34,10 +42,12 @@ class WebSocketService {
     onStreetChanged?: (street: string, communityCards: Card[]) => void;
     onShowdown?: (winners: { playerId: string; amount: number; handName: string; cards: Card[] }[]) => void;
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
-    onFastFoldQueued?: (position: number) => void;
-    onFastFoldTableAssigned?: (tableId: string) => void;
+    onMatchmakingQueued?: (position: number) => void;
+    onMatchmakingTableAssigned?: (tableId: string) => void;
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
+    onFastFoldQueued?: () => void;
+    onFastFoldTableAssigned?: (tableId: string) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -49,9 +59,15 @@ class WebSocketService {
         }
       }
 
+      // Get JWT token from cookie
+      const token = getCookie('token');
+
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
+        auth: {
+          token: token || undefined,
+        },
       });
 
       this.socket.on('connection:established', ({ playerId }) => {
@@ -119,13 +135,13 @@ class WebSocketService {
         this.listeners.onHandComplete?.(winners);
       });
 
-      // Fast fold events
-      this.socket.on('fastfold:queued', ({ position }) => {
-        this.listeners.onFastFoldQueued?.(position);
+      // Matchmaking events
+      this.socket.on('matchmaking:queued', ({ position }) => {
+        this.listeners.onMatchmakingQueued?.(position);
       });
 
-      this.socket.on('fastfold:table_assigned', ({ tableId }) => {
-        this.listeners.onFastFoldTableAssigned?.(tableId);
+      this.socket.on('matchmaking:table_assigned', ({ tableId }) => {
+        this.listeners.onMatchmakingTableAssigned?.(tableId);
       });
 
       // Timeout for initial connection
@@ -178,13 +194,13 @@ class WebSocketService {
     this.socket?.emit('game:action', { action, amount });
   }
 
-  // Fast fold pool
-  joinFastFoldPool(blinds: string): void {
-    this.socket?.emit('fastfold:join', { blinds });
+  // Matchmaking pool
+  joinMatchmaking(blinds: string): void {
+    this.socket?.emit('matchmaking:join', { blinds });
   }
 
-  leaveFastFoldPool(): void {
-    this.socket?.emit('fastfold:leave');
+  leaveMatchmaking(): void {
+    this.socket?.emit('matchmaking:leave');
   }
 }
 

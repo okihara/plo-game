@@ -45,7 +45,7 @@ export class TableInstance {
   private io: Server;
   private actionTimer: NodeJS.Timeout | null = null;
   private streetTransitionTimer: NodeJS.Timeout | null = null;
-  private readonly ACTION_TIMEOUT_MS = 30000;
+  private readonly ACTION_TIMEOUT_MS = 10000;
   private readonly STREET_TRANSITION_DELAY_MS = 2000;
   private isHandInProgress = false;
   private pendingStartHand = false;
@@ -162,6 +162,8 @@ export class TableInstance {
 
     const seat = this.seats[seatIndex];
     if (seat?.socket) {
+      // プレイヤーにテーブルを離れたことを通知
+      seat.socket.emit('table:left');
       seat.socket.leave(this.roomName);
     }
 
@@ -331,11 +333,11 @@ export class TableInstance {
       }
     }
 
-    // Emit event for FastFoldPool to handle re-queuing
+    // Emit event for MatchmakingPool to handle re-queuing
     const seat = this.seats[seatIndex];
     if (seat?.socket) {
-      seat.socket.emit('fastfold:ready_for_new_table');
-      this.logMessage('fastfold:ready_for_new_table', odId, {});
+      seat.socket.emit('matchmaking:ready_for_new_table');
+      this.logMessage('matchmaking:ready_for_new_table', odId, {});
     }
   }
 
@@ -385,6 +387,10 @@ export class TableInstance {
 
   private startNewHand(): void {
     if (this.isHandInProgress) return;
+
+    // Re-check player count (players may have disconnected during the delay)
+    const playerCount = this.getPlayerCount();
+    if (playerCount < 2) return;
 
     this.isHandInProgress = true;
 

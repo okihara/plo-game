@@ -42,8 +42,8 @@ export interface OnlineGameHookResult {
   // アクション
   connect: () => Promise<void>;
   disconnect: () => void;
-  joinFastFold: () => void;
-  leaveFastFold: () => void;
+  joinMatchmaking: () => void;
+  leaveMatchmaking: () => void;
   handleAction: (action: Action, amount: number) => void;
   startNextHand: () => void;
 }
@@ -135,7 +135,7 @@ function convertClientStateToGameState(
 // メインフック
 // ============================================
 
-export function useOnlineGameState(): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -154,6 +154,7 @@ export function useOnlineGameState(): OnlineGameHookResult {
   const [isChangingTable, setIsChangingTable] = useState(false);
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
+  const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -234,15 +235,15 @@ export function useOnlineGameState(): OnlineGameHookResult {
   }, []);
 
   // ============================================
-  // Fast Fold
+  // Matchmaking
   // ============================================
 
-  const joinFastFold = useCallback(() => {
-    wsService.joinFastFoldPool('1/3'); // $1/$3 blinds
-  }, []);
+  const joinMatchmaking = useCallback(() => {
+    wsService.joinMatchmaking(blinds);
+  }, [blinds]);
 
-  const leaveFastFold = useCallback(() => {
-    wsService.leaveFastFoldPool();
+  const leaveMatchmaking = useCallback(() => {
+    wsService.leaveMatchmaking();
   }, []);
 
   // ============================================
@@ -303,11 +304,12 @@ export function useOnlineGameState(): OnlineGameHookResult {
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
       onHoleCards: (cards) => {
-        // 新しいハンドが開始されたらカード配布アニメーション
+        // 新しいハンドが開始されたらカード配布アニメーションとwinnersクリア
         if (cards.length > 0) {
           startDealingAnimation();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
+          setWinners([]); // 新しいハンド開始時にwinnersをクリア
         }
         setMyHoleCards(cards);
       },
@@ -318,10 +320,24 @@ export function useOnlineGameState(): OnlineGameHookResult {
           recordAction(seat, action, amount);
         }
       },
+      onHandComplete: (serverWinners) => {
+        // playerIdをseat番号に変換
+        if (clientState) {
+          const convertedWinners = serverWinners.map(w => {
+            const seat = clientState.players.findIndex(p => p?.odId === w.playerId);
+            return {
+              playerId: seat >= 0 ? seat : 0,
+              amount: w.amount,
+              handName: w.handName,
+            };
+          });
+          setWinners(convertedWinners);
+        }
+      },
       onFastFoldQueued: () => {
         setIsChangingTable(true);
       },
-      onFastFoldTableAssigned: (newTableId) => {
+      onFastFoldTableAssigned: (newTableId: string) => {
         setTableId(newTableId);
         setIsChangingTable(false);
         setMyHoleCards([]);
@@ -338,8 +354,17 @@ export function useOnlineGameState(): OnlineGameHookResult {
   // 変換されたGameState
   // ============================================
 
-  const gameState = clientState
+  const baseGameState = clientState
     ? convertClientStateToGameState(clientState, myHoleCards, mySeat)
+    : null;
+
+  const gameState = baseGameState
+    ? {
+        ...baseGameState,
+        winners,
+        // winnersがある場合はisHandCompleteをtrueに
+        isHandComplete: baseGameState.isHandComplete || winners.length > 0,
+      }
     : null;
 
   // 他のプレイヤーのターンかどうか
@@ -374,8 +399,8 @@ export function useOnlineGameState(): OnlineGameHookResult {
     actionTimeoutMs,
     connect,
     disconnect,
-    joinFastFold,
-    leaveFastFold,
+    joinMatchmaking,
+    leaveMatchmaking,
     handleAction,
     startNextHand,
   };

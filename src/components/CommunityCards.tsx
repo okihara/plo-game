@@ -10,7 +10,7 @@ export function CommunityCards({ cards, newCardsCount }: CommunityCardsProps) {
   const emptySlots = 5 - cards.length;
 
   return (
-    <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-[0.5vh] z-[5]">
+    <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-[0.7cqw] z-[5]">
       {cards.map((card, index) => {
         const isNew = index >= cards.length - newCardsCount && newCardsCount > 0;
         return <Card key={index} card={card} size="md" isNew={isNew} />;

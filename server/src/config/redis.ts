@@ -21,7 +21,7 @@ redis.on('error', (err) => {
 export const REDIS_KEYS = {
   session: (sessionId: string) => `session:${sessionId}`,
   tableState: (tableId: string) => `table:state:${tableId}`,
-  fastfoldQueue: (blinds: string) => `fastfold:queue:${blinds}`,
+  matchmakingQueue: (blinds: string) => `matchmaking:queue:${blinds}`,
   playerTable: (userId: string) => `player:table:${userId}`,
   tableChannel: (tableId: string) => `channel:table:${tableId}`,
 } as const;

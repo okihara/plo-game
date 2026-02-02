@@ -13,11 +13,11 @@ export interface ClientToServerEvents {
 
   // Game actions
   'game:action': (data: { action: Action; amount?: number }) => void;
-  'game:fast_fold': () => void;
+  'game:fold': () => void;
 
-  // Fast fold pool
-  'fastfold:join': (data: { blinds: string }) => void;
-  'fastfold:leave': () => void;
+  // Matchmaking pool
+  'matchmaking:join': (data: { blinds: string }) => void;
+  'matchmaking:leave': () => void;
 }
 
 // ========== Server -> Client Events ==========
@@ -53,9 +53,9 @@ export interface ServerToClientEvents {
   }) => void;
   'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[] }) => void;
 
-  // Fast fold
-  'fastfold:queued': (data: { position: number }) => void;
-  'fastfold:table_assigned': (data: { tableId: string }) => void;
+  // Matchmaking
+  'matchmaking:queued': (data: { position: number }) => void;
+  'matchmaking:table_assigned': (data: { tableId: string }) => void;
 }
 
 // ========== Shared Types ==========

@@ -87,6 +87,7 @@ export class BotManager {
       serverUrl: this.config.serverUrl,
       name,
       avatarUrl: BOT_AVATARS[avatarIndex],
+      defaultBlinds: this.config.blinds,
     });
 
     try {
@@ -97,8 +98,8 @@ export class BotManager {
         this.bots.set(playerId, bot);
         this.usedNames.add(name);
 
-        // Join Fast Fold pool
-        await bot.joinFastFoldPool(this.config.blinds);
+        // Join matchmaking pool
+        await bot.joinMatchmaking(this.config.blinds);
 
         return bot;
       }

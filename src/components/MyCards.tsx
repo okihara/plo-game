@@ -9,13 +9,12 @@ interface MyCardsProps {
 }
 
 export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
-  if (cards.length === 0) return null;
-
   return (
     <div
-      className="flex flex-col items-center py-[1.5vh] bg-gradient-to-b from-transparent to-black/30"
+      className="@container flex flex-col items-center justify-center h-[24cqw] bg-gradient-to-b from-transparent to-black/30"
     >
-      <div className="flex gap-[0.8vh] justify-center">
+      {cards.length > 0 && (
+      <div className="flex gap-[2cqw] justify-center">
         {cards.map((card, cardIndex) => {
           // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
           const dealDelay = (cardIndex * 6 + dealOrder) * 40;
@@ -35,6 +34,7 @@ export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
           );
         })}
       </div>
+      )}
     </div>
   );
 }
