@@ -8,6 +8,7 @@ interface SeatInfo {
   odId: string;
   odName: string;
   avatarId: number;
+  avatarUrl: string | null;  // Twitter/OAuth profile image URL
   socket: Socket | null;
   chips: number;
   buyIn: number;
@@ -106,6 +107,7 @@ export class TableInstance {
     odName: string,
     socket: Socket,
     buyIn: number,
+    avatarUrl?: string | null,
     preferredSeat?: number
   ): number | null {
     // Find available seat
@@ -120,13 +122,14 @@ export class TableInstance {
 
     if (seatIndex === -1) return null;
 
-    // ランダムなアバターIDを割り当て (0-14)
+    // ランダムなアバターIDを割り当て (0-14) - avatarUrlがない場合のフォールバック用
     const avatarId = Math.floor(Math.random() * 15);
 
     this.seats[seatIndex] = {
       odId,
       odName,
       avatarId,
+      avatarUrl: avatarUrl ?? null,
       socket,
       chips: buyIn,
       buyIn,
@@ -627,6 +630,7 @@ export class TableInstance {
             odId: seat.odId,
             odName: seat.odName,
             avatarId: seat.avatarId,
+            avatarUrl: seat.avatarUrl,
             seatNumber: i,
             chips: seat.chips, // buyIn時のチップを表示
             currentBet: 0,
@@ -640,6 +644,7 @@ export class TableInstance {
           odId: seat.odId,
           odName: seat.odName,
           avatarId: seat.avatarId,
+          avatarUrl: seat.avatarUrl,
           seatNumber: i,
           chips: player?.chips ?? seat.chips,
           currentBet: player?.currentBet ?? 0,
@@ -676,6 +681,7 @@ export class TableInstance {
         odId: seat.odId,
         odName: seat.odName,
         avatarId: seat.avatarId,
+        avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
         chips: seat.chips,
         currentBet: 0,
@@ -690,6 +696,7 @@ export class TableInstance {
       odId: seat.odId,
       odName: seat.odName,
       avatarId: seat.avatarId,
+      avatarUrl: seat.avatarUrl,
       seatNumber: seatIndex,
       chips: player?.chips ?? seat.chips,
       currentBet: player?.currentBet ?? 0,

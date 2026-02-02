@@ -20,6 +20,7 @@ export interface Player {
   isAllIn: boolean;
   hasActed: boolean;
   avatarId?: number;
+  avatarUrl?: string | null;  // Twitter/OAuth profile image URL
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';

@@ -103,10 +103,12 @@ export function Player({
   const { formatChips } = useGameSettings();
   // positionIndex === 0 が自分の位置
   const isMe = positionIndex === 0;
-  // avatarIdがあればそれを使用、なければオフラインモードのフォールバック
-  const avatarImage = player.avatarId !== undefined
-    ? getAvatarImage(player.avatarId)
-    : (isMe ? '/images/icons/avatar0.png' : cpuAvatars[player.name]);
+  // avatarUrlがあればそれを優先（Twitterプロフィール画像）、なければavatarIdまたはオフラインモードのフォールバック
+  const avatarImage = player.avatarUrl
+    ? player.avatarUrl
+    : (player.avatarId !== undefined
+      ? getAvatarImage(player.avatarId)
+      : (isMe ? '/images/icons/avatar0.png' : cpuAvatars[player.name]));
   const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
 
   // タイマー表示用の残り時間

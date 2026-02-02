@@ -114,7 +114,8 @@ export class MatchmakingPool {
         player.odId,
         player.odName,
         player.socket,
-        player.chips
+        player.chips,
+        player.odAvatarUrl
       );
 
       if (seatNumber !== null) {

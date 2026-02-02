@@ -139,7 +139,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           socket.odId!,
           socket.odName!,
           socket,
-          buyIn
+          buyIn,
+          socket.odAvatarUrl
         );
 
         if (seatNumber !== null) {

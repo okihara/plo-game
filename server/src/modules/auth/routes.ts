@@ -44,12 +44,17 @@ export async function authRoutes(fastify: FastifyInstance) {
         const data = await response.json() as any;
         const twitterUser = data.data;
 
+        // プロフィール画像を高解像度版に変換 (_normal -> _400x400)
+        const avatarUrl = twitterUser.profile_image_url
+          ? twitterUser.profile_image_url.replace('_normal', '_400x400')
+          : null;
+
         const user = await findOrCreateUser({
           provider: 'twitter',
           providerId: twitterUser.id,
           email: `${twitterUser.username}@twitter.placeholder`,
           username: twitterUser.username,
-          avatarUrl: twitterUser.profile_image_url || null,
+          avatarUrl,
         });
 
         const jwt = fastify.jwt.sign({ userId: user.id }, { expiresIn: '7d' });
@@ -200,10 +205,13 @@ async function findOrCreateUser(data: {
       },
     });
   } else {
-    // Update last login
-    await prisma.user.update({
+    // Update last login and avatar URL (in case it changed)
+    user = await prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date() },
+      data: {
+        lastLoginAt: new Date(),
+        avatarUrl: data.avatarUrl,
+      },
     });
   }
 

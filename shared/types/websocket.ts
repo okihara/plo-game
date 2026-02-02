@@ -64,6 +64,7 @@ export interface OnlinePlayer {
   odId: string;
   odName: string;
   avatarId: number;
+  avatarUrl?: string | null;  // Twitter/OAuth profile image URL
   seatNumber: number;
   chips: number;
   currentBet: number;
