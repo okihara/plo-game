@@ -1,4 +1,6 @@
+import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { ProfilePopup } from '../components/ProfilePopup';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string) => void;
@@ -22,13 +24,14 @@ const TABLE_OPTIONS: TableOption[] = [
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const { user, loading, logout } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
 
   const handleLogin = () => {
     window.location.href = 'http://localhost:3001/api/auth/twitter';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4 relative">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -46,7 +49,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   <img
                     src={user.avatarUrl}
                     alt={user.username}
-                    className="w-10 h-10 rounded-full"
+                    className="w-10 h-10 rounded-full cursor-pointer hover:ring-2 hover:ring-white/50 transition-all"
+                    onClick={() => setShowProfile(true)}
                   />
                 )}
                 <div>
@@ -120,6 +124,17 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           </a>
         </div>
       </div>
+
+      {/* Profile Popup Container */}
+      {showProfile && user && (
+        <div className="@container absolute inset-0 w-full h-full">
+          <ProfilePopup
+            name={user.username}
+            avatarUrl={user.avatarUrl}
+            onClose={() => setShowProfile(false)}
+          />
+        </div>
+      )}
     </div>
   );
 }

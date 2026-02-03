@@ -15,6 +15,7 @@ interface PlayerProps {
   dealOrder: number; // SBからの配布順序（0-5）
   actionTimeoutAt?: ActionTimeoutAt | null;
   actionTimeoutMs?: number | null;
+  onAvatarClick?: () => void;
 }
 
 function formatAction(action: Action, amount: number, formatChips: (n: number) => string): string {
@@ -99,6 +100,7 @@ export function Player({
   dealOrder,
   actionTimeoutAt,
   actionTimeoutMs,
+  onAvatarClick,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   // positionIndex === 0 が自分の位置
@@ -170,11 +172,12 @@ export function Player({
           </svg>
         )}
         <div
+          onClick={onAvatarClick}
           className={`
             w-[22cqw] h-[22cqw] rounded-full
             bg-gradient-to-br from-gray-500 to-gray-700
             border-[1.4cqw] flex items-center justify-center
-            text-[8cqw] relative overflow-hidden
+            text-[8cqw] relative overflow-hidden cursor-pointer
             ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_4.6cqw_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-white'}
             ${player.folded ? 'opacity-40 grayscale' : ''}
             ${isWinner ? 'border-green-400 shadow-[0_0_6.4cqw_rgba(0,255,0,0.6)]' : ''}

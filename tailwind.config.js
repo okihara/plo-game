@@ -22,6 +22,7 @@ export default {
         'deal-card': 'deal-card 0.4s ease-out forwards',
         'flip-card': 'flip-card 0.6s ease forwards',
         'fade-in': 'fade-in 0.3s ease',
+        'scale-in': 'scale-in 0.2s ease-out forwards',
       },
       keyframes: {
         'pulse-glow': {
@@ -49,6 +50,10 @@ export default {
         'fade-in': {
           'from': { opacity: '0' },
           'to': { opacity: '1' },
+        },
+        'scale-in': {
+          '0%': { opacity: '0', transform: 'scale(0.9)' },
+          '100%': { opacity: '1', transform: 'scale(1)' },
         },
       },
     },

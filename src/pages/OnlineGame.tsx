@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { Player as PlayerType } from '../logic';
 import {
   PokerTable,
   MyCards,
@@ -8,6 +9,7 @@ import {
   ResultOverlay,
   HandAnalysisOverlay,
 } from '../components';
+import { ProfilePopup } from '../components/ProfilePopup';
 
 const MIN_LOADING_TIME_MS = 1000; // 最低1秒は接続中画面を表示
 
@@ -44,6 +46,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
+  const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const mountTimeRef = useRef(Date.now());
 
   // gameStateが変わったらbigBlindを設定
@@ -225,6 +228,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             humanIndex={humanPlayerIdx}
             actionTimeoutAt={actionTimeoutAt}
             actionTimeoutMs={actionTimeoutMs}
+            onPlayerClick={setSelectedPlayer}
           />
 
           <MyCards
@@ -269,6 +273,16 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                 </p>
               </div>
             </div>
+          )}
+
+          {/* Profile Popup */}
+          {selectedPlayer && (
+            <ProfilePopup
+              name={selectedPlayer.name}
+              avatarUrl={selectedPlayer.avatarUrl}
+              avatarId={selectedPlayer.avatarId}
+              onClose={() => setSelectedPlayer(null)}
+            />
           )}
         </div>
       </div>

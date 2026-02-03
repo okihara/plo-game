@@ -1,4 +1,4 @@
-import { GameState } from '../logic';
+import { GameState, Player as PlayerType } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -14,6 +14,7 @@ interface PokerTableProps {
   humanIndex?: number;
   actionTimeoutAt?: ActionTimeoutAt | null;
   actionTimeoutMs?: number | null;
+  onPlayerClick?: (player: PlayerType) => void;
 }
 
 export function PokerTable({
@@ -25,6 +26,7 @@ export function PokerTable({
   humanIndex = 0,
   actionTimeoutAt,
   actionTimeoutMs,
+  onPlayerClick,
 }: PokerTableProps) {
   const { formatChips } = useGameSettings();
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
@@ -75,6 +77,7 @@ export function PokerTable({
               dealOrder={getDealOrder(playerIdx)}
               actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}
               actionTimeoutMs={isCurrentPlayer ? actionTimeoutMs : null}
+              onAvatarClick={() => onPlayerClick?.(player)}
             />
           );
         })}
