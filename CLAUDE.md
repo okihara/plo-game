@@ -58,6 +58,7 @@ npm run dev:server
 
 ### インフラ
 - Docker Compose (PostgreSQL, Redis)
+- Railway (本番デプロイ)
 
 ## Architecture
 
@@ -86,3 +87,52 @@ npm run dev:server
 - **Immutable state**: GameStateは不変として扱い、新しい状態を返す
 - **Pure functions**: ゲームロジックはUIから独立
 - **Async CPU**: `scheduleNextCPUAction()`で思考時間をシミュレート（800-2000ms）
+
+## Deployment (Railway)
+
+### 構成
+
+1つのWebサービスとしてデプロイ。Fastifyサーバーがフロントエンドの静的ファイルも配信する。
+
+```
+Railway Project
+├── Web Service (Fastify + 静的ファイル配信)
+├── PostgreSQL (アドオン)
+└── Redis (アドオン)
+```
+
+### ビルド・起動
+
+```bash
+npm run build:all   # フロントビルド + サーバーのprisma generate
+npm run start       # 本番サーバー起動 (cd server && node --import tsx src/index.ts)
+```
+
+`railway.toml` でビルド・起動コマンドを設定済み。
+
+### Railway セットアップ手順
+
+1. Railway でプロジェクト作成、GitHubリポジトリを接続
+2. PostgreSQL アドオン追加 → `DATABASE_URL` が自動設定される
+3. Redis アドオン追加 → `REDIS_URL` が自動設定される
+4. 環境変数を設定:
+
+| 変数名 | 値 | 備考 |
+|--------|-----|------|
+| `NODE_ENV` | `production` | 必須 |
+| `JWT_SECRET` | ランダム文字列 | 32文字以上、必須 |
+| `CLIENT_URL` | `https://<app>.up.railway.app` | デプロイ先URL |
+| `TWITTER_CLIENT_ID` | Twitter Developer Portalから | OAuth用 |
+| `TWITTER_CLIENT_SECRET` | Twitter Developer Portalから | OAuth用 |
+| `DATABASE_URL` | (自動) | PostgreSQLアドオンから |
+| `REDIS_URL` | (自動) | Redisアドオンから |
+| `PORT` | (自動) | Railwayが`$PORT`で提供 |
+
+5. デプロイ実行（GitHub pushで自動デプロイ）
+6. `https://<app>.up.railway.app/health` でヘルスチェック確認
+
+### 環境変数の仕組み
+
+- フロントエンド: `VITE_SERVER_URL` で接続先を制御。本番では未設定（空文字 = 同一オリジン）
+- 開発時: `.env.development` で `VITE_SERVER_URL=http://localhost:3001` を設定
+- サーバー: `server/.env` または Railway の環境変数で設定

@@ -7,8 +7,8 @@ import type {
 } from '../../shared/types/websocket';
 import type { Card, Action } from '../logic/types';
 
-// サーバーURL（本番環境では環境変数から取得）
-const SERVER_URL = 'http://localhost:3001';
+// 本番では同一オリジン（空文字）、開発ではlocalhost:3001
+const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 

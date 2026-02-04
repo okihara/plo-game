@@ -2,7 +2,10 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import jwt from '@fastify/jwt';
+import fastifyStatic from '@fastify/static';
 import { Server } from 'socket.io';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { prisma } from './config/database.js';
 import { redis } from './config/redis.js';
@@ -10,6 +13,9 @@ import { authRoutes } from './modules/auth/routes.js';
 import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
 import { adminRoutes } from './modules/admin/routes.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({
   logger: env.NODE_ENV === 'development',
@@ -43,6 +49,23 @@ fastify.get('/health', async () => {
 // API Routes
 await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
+
+// 本番環境：フロントエンドの静的ファイルを配信
+if (env.NODE_ENV === 'production') {
+  const distPath = path.join(__dirname, '../../dist');
+  await fastify.register(fastifyStatic, {
+    root: distPath,
+    prefix: '/',
+  });
+
+  // SPA フォールバック（API・admin以外のルートはindex.htmlを返す）
+  fastify.setNotFoundHandler(async (request, reply) => {
+    if (request.url.startsWith('/api/') || request.url.startsWith('/health') || request.url.startsWith('/admin/')) {
+      return reply.status(404).send({ error: 'Not found' });
+    }
+    return reply.sendFile('index.html');
+  });
+}
 
 // Start server and setup Socket.io
 const start = async () => {

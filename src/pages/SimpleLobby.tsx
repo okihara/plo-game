@@ -27,7 +27,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [showProfile, setShowProfile] = useState(false);
 
   const handleLogin = () => {
-    window.location.href = 'http://localhost:3001/api/auth/twitter';
+    const apiBase = import.meta.env.VITE_SERVER_URL || '';
+    window.location.href = `${apiBase}/api/auth/twitter`;
   };
 
   return (
