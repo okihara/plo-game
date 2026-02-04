@@ -8,7 +8,7 @@
     "dev:server": "cd server && npm run dev",
     "build": "tsc && vite build",
     "build:server": "cd server && npm run build",
-    "build:all": "npm run build && cd server && npm install && npm run build && npx prisma db push --schema=./prisma/schema.prisma",
+    "build:all": "npm run build && cd server && npm install && npm run build",
     "start": "cd server && npm run start",
     "preview": "vite preview",
     "setup": "npm install && cd server && npm install"
