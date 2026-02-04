@@ -19,7 +19,7 @@ export async function authRoutes(fastify: FastifyInstance) {
 
     await fastify.register(oauth2, {
       name: 'twitterOAuth2',
-      scope: ['tweet.read', 'users.read', 'offline.access'],
+      scope: ['users.read', 'offline.access'],
       credentials: {
         client: {
           id: env.TWITTER_CLIENT_ID,
