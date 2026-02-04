@@ -13,6 +13,10 @@ interface OAuthUserInfo {
 export async function authRoutes(fastify: FastifyInstance) {
   // Twitter OAuth
   if (env.TWITTER_CLIENT_ID && env.TWITTER_CLIENT_SECRET) {
+    const serverBaseUrl = env.NODE_ENV === 'production'
+      ? env.CLIENT_URL
+      : `http://localhost:${env.PORT}`;
+
     await fastify.register(oauth2, {
       name: 'twitterOAuth2',
       scope: ['tweet.read', 'users.read', 'offline.access'],
@@ -29,7 +33,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         },
       },
       startRedirectPath: '/twitter',
-      callbackUri: 'http://localhost:3001/api/auth/twitter/callback',
+      callbackUri: `${serverBaseUrl}/api/auth/twitter/callback`,
       pkce: 'S256', // Twitter OAuth 2.0 requires PKCE
     });
 
