@@ -8,7 +8,6 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { env } from './config/env.js';
 import { prisma } from './config/database.js';
-import { redis } from './config/redis.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
@@ -38,9 +37,8 @@ await fastify.register(jwt, {
   },
 });
 
-// Decorate fastify with prisma and redis
+// Decorate fastify with prisma
 fastify.decorate('prisma', prisma);
-fastify.decorate('redis', redis);
 
 // Health check
 fastify.get('/health', async () => {
@@ -83,17 +81,6 @@ const start = async () => {
       process.exit(1);
     }
 
-    // Health check: Redis connection
-    console.log('Checking Redis connection...');
-    try {
-      await redis.ping();
-      console.log('✅ Redis connected');
-    } catch (err) {
-      console.error('❌ Redis connection failed. Please start Redis with: docker-compose up -d');
-      console.error(err);
-      process.exit(1);
-    }
-
     // Setup Socket.io on the same server (before listen for admin routes)
     const io = new Server(fastify.server, {
       cors: {
@@ -123,7 +110,6 @@ const shutdown = async () => {
   console.log('Shutting down...');
   await fastify.close();
   await prisma.$disconnect();
-  redis.disconnect();
   process.exit(0);
 };
 

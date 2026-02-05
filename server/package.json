@@ -23,7 +23,6 @@
     "@prisma/client": "^6.2.1",
     "dotenv": "^17.2.3",
     "fastify": "^5.2.0",
-    "ioredis": "^5.4.2",
     "nanoid": "^5.0.9",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",

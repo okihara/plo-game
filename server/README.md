@@ -8,7 +8,6 @@
 - **Socket.io** - リアルタイム通信
 - **PostgreSQL** - データベース
 - **Prisma** - ORM
-- **Redis** - セッション、ファストフォールドキュー
 
 ## セットアップ
 
@@ -31,9 +30,6 @@ cp .env.example .env
 # Database (PostgreSQLの接続URL)
 DATABASE_URL="postgresql://postgres:postgres@localhost:5433/plo_game?schema=public"
 
-# Redis
-REDIS_URL="redis://localhost:6379"
-
 # JWT (32文字以上の秘密鍵)
 JWT_SECRET="your-secret-key-at-least-32-characters-long"
 
@@ -53,7 +49,6 @@ docker-compose up -d
 
 これにより以下が起動:
 - PostgreSQL: `localhost:5433`
-- Redis: `localhost:6379`
 
 ### 4. データベースのセットアップ
 
@@ -90,8 +85,7 @@ server/
 ├── src/
 │   ├── config/
 │   │   ├── env.ts       # 環境変数バリデーション
-│   │   ├── database.ts  # Prismaクライアント
-│   │   └── redis.ts     # Redis接続
+│   │   └── database.ts  # Prismaクライアント
 │   ├── modules/
 │   │   ├── auth/
 │   │   │   ├── routes.ts    # OAuth2認証ルート
@@ -174,11 +168,3 @@ npm run db:studio
 ```
 
 ブラウザで `http://localhost:5555` が開き、データを確認できます。
-
-### Redis確認
-
-```bash
-docker exec -it plo-redis redis-cli
-> KEYS *
-> GET session:xxx
-```

@@ -1,5 +1,4 @@
 import { Server, Socket } from 'socket.io';
-import { redis, REDIS_KEYS } from '../../config/redis.js';
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
 
@@ -62,13 +61,6 @@ export class MatchmakingPool {
 
     queue.push(player);
 
-    // Also store in Redis for persistence
-    await redis.zadd(
-      REDIS_KEYS.matchmakingQueue(blinds),
-      player.queuedAt,
-      JSON.stringify({ odId, odName, odAvatarUrl, chips })
-    );
-
     // Notify player of queue position
     socket.emit('matchmaking:queued', { position: queue.length });
 
@@ -125,14 +117,6 @@ export class MatchmakingPool {
         // Notify player
         player.socket.emit('matchmaking:table_assigned', { tableId: table.id });
         player.socket.emit('table:joined', { tableId: table.id, seat: seatNumber });
-
-        // Remove from Redis
-        await redis.zrem(REDIS_KEYS.matchmakingQueue(blinds), JSON.stringify({
-          odId: player.odId,
-          odName: player.odName,
-          odAvatarUrl: player.odAvatarUrl,
-          chips: player.chips,
-        }));
       }
     }
 

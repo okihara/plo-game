@@ -24,7 +24,7 @@ npm run preview  # 本番ビルドのプレビュー
 
 ```bash
 # 初回セットアップ
-docker-compose up -d              # PostgreSQL + Redis起動
+docker-compose up -d              # PostgreSQL起動
 cd server && npm install          # 依存関係インストール
 npm run db:push                   # データベーススキーマ反映
 
@@ -54,10 +54,9 @@ npm run dev:server
 - Fastify + TypeScript
 - Socket.io (リアルタイム通信)
 - PostgreSQL + Prisma (データベース)
-- Redis (セッション、キュー)
 
 ### インフラ
-- Docker Compose (PostgreSQL, Redis)
+- Docker Compose (PostgreSQL)
 - Railway (本番デプロイ)
 
 ## Architecture
@@ -97,8 +96,7 @@ npm run dev:server
 ```
 Railway Project
 ├── Web Service (Fastify + 静的ファイル配信)
-├── PostgreSQL (アドオン)
-└── Redis (アドオン)
+└── PostgreSQL (アドオン)
 ```
 
 ### ビルド・起動
@@ -114,8 +112,7 @@ npm run start       # 本番サーバー起動 (cd server && node --import tsx s
 
 1. Railway でプロジェクト作成、GitHubリポジトリを接続
 2. PostgreSQL アドオン追加 → `DATABASE_URL` が自動設定される
-3. Redis アドオン追加 → `REDIS_URL` が自動設定される
-4. 環境変数を設定:
+3. 環境変数を設定:
 
 | 変数名 | 値 | 備考 |
 |--------|-----|------|
@@ -125,7 +122,6 @@ npm run start       # 本番サーバー起動 (cd server && node --import tsx s
 | `TWITTER_CLIENT_ID` | Twitter Developer Portalから | OAuth用 |
 | `TWITTER_CLIENT_SECRET` | Twitter Developer Portalから | OAuth用 |
 | `DATABASE_URL` | (自動) | PostgreSQLアドオンから |
-| `REDIS_URL` | (自動) | Redisアドオンから |
 | `PORT` | (自動) | Railwayが`$PORT`で提供 |
 
 5. デプロイ実行（GitHub pushで自動デプロイ）

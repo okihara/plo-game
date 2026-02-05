@@ -2,7 +2,6 @@ import { FastifyInstance } from 'fastify';
 import { Server } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
 import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
-import { redis } from '../../config/redis.js';
 import { prisma } from '../../config/database.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 
@@ -59,9 +58,6 @@ interface ServerStats {
   database: {
     connected: boolean;
     userCount: number;
-  };
-  redis: {
-    connected: boolean;
   };
   memory: {
     heapUsed: number;
@@ -138,15 +134,6 @@ export function adminRoutes(deps: AdminDependencies) {
         dbConnected = false;
       }
 
-      // Redis check
-      let redisConnected = false;
-      try {
-        await redis.ping();
-        redisConnected = true;
-      } catch {
-        redisConnected = false;
-      }
-
       const memUsage = process.memoryUsage();
 
       return {
@@ -168,9 +155,6 @@ export function adminRoutes(deps: AdminDependencies) {
         database: {
           connected: dbConnected,
           userCount,
-        },
-        redis: {
-          connected: redisConnected,
         },
         memory: {
           heapUsed: memUsage.heapUsed,
@@ -473,10 +457,6 @@ function getDashboardHTML(): string {
           <span class="stat-value" id="dbStatus">-</span>
         </div>
         <div class="stat-row">
-          <span class="stat-label">Redis</span>
-          <span class="stat-value" id="redisStatus">-</span>
-        </div>
-        <div class="stat-row">
           <span class="stat-label">登録ユーザー数</span>
           <span class="stat-value" id="userCount">-</span>
         </div>
@@ -570,9 +550,6 @@ function getDashboardHTML(): string {
       document.getElementById('dbStatus').textContent = data.database.connected ? '接続中' : 'エラー';
       document.getElementById('dbStatus').className =
         'stat-value ' + (data.database.connected ? 'success' : 'error');
-      document.getElementById('redisStatus').textContent = data.redis.connected ? '接続中' : 'エラー';
-      document.getElementById('redisStatus').className =
-        'stat-value ' + (data.redis.connected ? 'success' : 'error');
       document.getElementById('userCount').textContent = data.database.userCount.toLocaleString();
 
       // Memory
