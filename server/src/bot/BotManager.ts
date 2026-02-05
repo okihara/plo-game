@@ -2,11 +2,11 @@ import { BotClient } from './BotClient.js';
 
 const BOT_NAMES = ['Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka', 'Yuki', 'Sora', 'Ren', 'Ai', 'Taro'];
 const BOT_AVATARS = [
-  '/avatars/cpu-1.png',
-  '/avatars/cpu-2.png',
-  '/avatars/cpu-3.png',
-  '/avatars/cpu-4.png',
-  '/avatars/cpu-5.png',
+  '/images/icons/avatar1.png',
+  '/images/icons/avatar2.png',
+  '/images/icons/avatar3.png',
+  '/images/icons/avatar4.png',
+  '/images/icons/avatar5.png',
 ];
 
 interface BotManagerConfig {

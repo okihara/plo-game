@@ -106,12 +106,6 @@ export function ResultOverlay({ state, mySeat, onNextHand }: ResultOverlayProps)
             </div>
           </>
         )}
-        <button
-          onClick={onNextHand}
-          className="py-[2vh] px-[7vh] text-[2.2vh] font-bold bg-gradient-to-b from-green-500 to-green-700 text-white border-none rounded-full cursor-pointer uppercase tracking-wider shadow-[0_0.5vh_1.5vh_rgba(76,175,80,0.4)] min-w-[25vh] active:scale-95 transition-transform"
-        >
-          次のハンド
-        </button>
       </div>
     </div>
   );

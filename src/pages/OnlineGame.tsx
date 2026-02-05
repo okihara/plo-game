@@ -26,7 +26,6 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     mySeat,
     myHoleCards,
     lastActions,
-    isProcessingCPU,
     isDealingCards,
     newCommunityCardsCount,
     isChangingTable,
@@ -222,7 +221,6 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
           <PokerTable
             state={gameState}
             lastActions={lastActions}
-            isProcessingCPU={isProcessingCPU}
             isDealingCards={isDealingCards}
             newCommunityCardsCount={newCommunityCardsCount}
             humanIndex={humanPlayerIdx}
@@ -236,6 +234,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             communityCards={gameState.communityCards}
             isDealing={isDealingCards}
             dealOrder={humanDealOrder}
+            folded={humanPlayer?.folded}
           />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />

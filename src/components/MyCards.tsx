@@ -6,12 +6,13 @@ interface MyCardsProps {
   communityCards: CardType[];
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
+  folded?: boolean;
 }
 
-export function MyCards({ cards, isDealing, dealOrder }: MyCardsProps) {
+export function MyCards({ cards, isDealing, dealOrder, folded = false }: MyCardsProps) {
   return (
     <div
-      className="@container flex flex-col items-center justify-center h-[24cqw] bg-gradient-to-b from-transparent to-black/30"
+      className={`@container flex flex-col items-center justify-center h-[24cqw] bg-gradient-to-b from-transparent to-black/30 transition-all duration-300 ${folded ? 'opacity-40' : ''}`}
     >
       {cards.length > 0 && (
       <div className="flex gap-[2cqw] justify-center">
