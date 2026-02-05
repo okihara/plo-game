@@ -1,6 +1,6 @@
 // WebSocket event types shared between client and server
 
-import type { Action, Card } from '../../server/src/shared/logic/types.js';
+import type { Action, Card } from '../logic/types.js';
 
 // ========== Client -> Server Events ==========
 

@@ -4,7 +4,7 @@ import type {
   ServerToClientEvents,
   ClientGameState,
   OnlinePlayer
-} from '../../shared/types/websocket';
+} from '../../server/src/shared/types/websocket';
 import type { Card, Action } from '../logic/types';
 
 // 本番では同一オリジン（空文字）、開発ではlocalhost:3001

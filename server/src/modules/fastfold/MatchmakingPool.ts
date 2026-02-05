@@ -16,7 +16,7 @@ export class MatchmakingPool {
   private io: Server;
   private tableManager: TableManager;
   private queues: Map<string, QueuedPlayer[]> = new Map(); // blinds -> players
-  private processingInterval: NodeJS.Timer | null = null;
+  private processingInterval: ReturnType<typeof setInterval> | null = null;
 
   constructor(io: Server, tableManager: TableManager) {
     this.io = io;

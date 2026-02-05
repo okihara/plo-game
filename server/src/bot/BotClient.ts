@@ -1,7 +1,7 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
 import { GameState, Card, Action, Player, Position } from '../shared/logic/types.js';
-import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
+import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 

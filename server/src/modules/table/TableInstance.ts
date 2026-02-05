@@ -1,7 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action, Card, Player } from '../../shared/logic/types.js';
 import { createInitialGameState, startNewHand, applyAction, getValidActions, getActivePlayers, determineWinner } from '../../shared/logic/gameEngine.js';
-import { OnlinePlayer, ClientGameState } from '../../../../shared/types/websocket.js';
+import { OnlinePlayer, ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
 
 interface SeatInfo {

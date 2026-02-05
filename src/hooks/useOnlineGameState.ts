@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
-import type { ClientGameState, OnlinePlayer } from '../../shared/types/websocket';
+import type { ClientGameState, OnlinePlayer } from '../../server/src/shared/types/websocket';
 import type { Card, Action, GameState, Player, Position } from '../logic/types';
 
 // ============================================
