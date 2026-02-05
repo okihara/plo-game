@@ -37,7 +37,6 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     disconnect,
     joinMatchmaking,
     handleAction,
-    startNextHand,
   } = useOnlineGameState(blinds);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
@@ -239,7 +238,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
 
-          <ResultOverlay state={gameState} mySeat={humanPlayerIdx} onNextHand={startNextHand} />
+          <ResultOverlay state={gameState} mySeat={humanPlayerIdx} />
 
           {humanPlayer && (
             <HandAnalysisOverlay

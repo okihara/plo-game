@@ -5,10 +5,9 @@ import { useGameSettings } from '../contexts/GameSettingsContext';
 interface ResultOverlayProps {
   state: GameState;
   mySeat: number;
-  onNextHand: () => void;
 }
 
-export function ResultOverlay({ state, mySeat, onNextHand }: ResultOverlayProps) {
+export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
   const { formatChips } = useGameSettings();
   const [displayedAmount, setDisplayedAmount] = useState(0);
   const [animationComplete, setAnimationComplete] = useState(false);
