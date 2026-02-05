@@ -112,7 +112,7 @@ export function FaceDownCard({ size = 'sm' }: FaceDownCardProps) {
     <div
       className={`
         bg-gradient-to-br from-blue-800 to-blue-950
-        border border-blue-500 rounded-lg shadow-md
+        border border-blue-500 rounded shadow-md
         relative overflow-hidden
         ${faceDownSizeStyles[size]}
       `}

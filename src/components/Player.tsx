@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Player as PlayerType, Action } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
@@ -87,6 +87,16 @@ const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = 
   5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
 };
 
+// チップがプレイヤーアバターからbet位置へ飛ぶ方向（開始位置のオフセット）
+const chipFromOffsets: Record<number, { x: string; y: string }> = {
+  0: { x: '0', y: '8cqw' },       // 下: 下から上へ
+  1: { x: '15cqw', y: '0' },      // 左下: 左から右へ
+  2: { x: '18cqw', y: '-6cqw' },  // 左上: 左上から右下へ
+  3: { x: '0', y: '-8cqw' },      // 上: 上から下へ
+  4: { x: '-18cqw', y: '-6cqw' }, // 右上: 右上から左下へ
+  5: { x: '-15cqw', y: '0' },     // 右下: 右から左へ
+};
+
 // CPUアバター画像マッピング（オフラインモード用フォールバック）
 const cpuAvatars: Record<string, string> = {
   'Miko': '/images/icons/avatar1.png',
@@ -115,6 +125,19 @@ export function Player({
   const { formatChips } = useGameSettings();
   // positionIndex === 0 が自分の位置
   const isMe = positionIndex === 0;
+
+  // チップアニメーション用: currentBetが変化したときにアニメーションを再トリガー
+  const prevBetRef = useRef(player.currentBet);
+  const [chipAnimKey, setChipAnimKey] = useState(0);
+
+  useEffect(() => {
+    // currentBetが増加した時のみアニメーションをトリガー（0→正、または増額時）
+    if (player.currentBet > prevBetRef.current) {
+      setChipAnimKey(k => k + 1);
+    }
+    prevBetRef.current = player.currentBet;
+  }, [player.currentBet]);
+
   // avatarUrlがあればそれを優先（Twitterプロフィール画像）、なければavatarIdまたはオフラインモードのフォールバック
   const avatarImage = player.avatarUrl
     ? player.avatarUrl
@@ -270,7 +293,14 @@ export function Player({
 
       {/* Current Bet */}
       {player.currentBet > 0 && (
-        <div className={`absolute bg-black/70 text-yellow-400 px-[2.4cqw] py-[0.9cqw] rounded-lg text-[4.2cqw] font-bold whitespace-nowrap ${betPositionStyles[positionIndex]}`}>
+        <div
+          key={chipAnimKey}
+          className={`absolute bg-black/70 text-yellow-400 px-[2.4cqw] py-[0.9cqw] rounded-lg text-[4.2cqw] font-bold whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
+          style={{
+            '--chip-from-x': chipFromOffsets[positionIndex].x,
+            '--chip-from-y': chipFromOffsets[positionIndex].y,
+          } as React.CSSProperties}
+        >
           {formatChips(player.currentBet)}
         </div>
       )}

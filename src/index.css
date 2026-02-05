@@ -171,3 +171,23 @@ body {
 .animate-fold-card {
   animation: fold-card 0.4s ease-in forwards;
 }
+
+/* Chip bet animation - chips fly from player to bet position */
+@keyframes chip-bet {
+  0% {
+    opacity: 0;
+    transform: translate(var(--chip-from-x, 0), var(--chip-from-y, 0)) scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(calc(var(--chip-from-x, 0) * 0.3), calc(var(--chip-from-y, 0) * 0.3)) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+}
+
+.animate-chip-bet {
+  animation: chip-bet 0.4s ease-out forwards;
+}
