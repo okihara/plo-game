@@ -260,9 +260,9 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
           {/* 他のプレイヤーを待っている状態のオーバーレイ */}
           {isWaitingForPlayers && !isChangingTable && (
-            <div className="absolute inset-0 z-45 flex items-center justify-center bg-black/60 pointer-events-none">
+            <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 pointer-events-none">
               <div className="text-center">
-                <div className="animate-pulse text-5xl mb-4">⏳</div>
+                <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
                 <p className="text-white font-bold mb-2" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
                   他のプレイヤーを待っています...
                 </p>
