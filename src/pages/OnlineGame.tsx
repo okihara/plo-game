@@ -162,42 +162,42 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
       <div className="w-full h-screen flex items-center justify-center bg-gray-900 relative">
-        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-100">
+        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-900">
           {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-white/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
+          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-gray-800/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
             <button
               onClick={onBack}
-              className="text-gray-500 hover:text-gray-700 transition-colors"
+              className="text-gray-400 hover:text-gray-200 transition-colors"
               style={{ fontSize: 'min(1.8vh, 3vw)' }}
             >
               ← ロビー
             </button>
             <div className="flex items-center">
-              <span className="font-bold text-cyan-600 leading-none" style={{ fontSize: 'min(1.8vh, 3vw)' }}>PLO</span>
-              <span className="text-gray-400 mx-[1%]" style={{ fontSize: 'min(1.6vh, 2.6vw)' }}>|</span>
-              <span className="font-semibold text-gray-600" style={{ fontSize: 'min(1.7vh, 2.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
+              <span className="font-bold text-emerald-400 leading-none" style={{ fontSize: 'min(1.8vh, 3vw)' }}>PLO</span>
+              <span className="text-gray-500 mx-[1%]" style={{ fontSize: 'min(1.6vh, 2.6vw)' }}>|</span>
+              <span className="font-semibold text-gray-300" style={{ fontSize: 'min(1.7vh, 2.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
             </div>
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="text-gray-500 hover:text-gray-700 transition-colors"
+                className="text-gray-400 hover:text-gray-200 transition-colors"
                 style={{ fontSize: 'min(2vh, 3.4vw)' }}
               >
                 ⚙
               </button>
               {showSettingsMenu && (
-                <div className="absolute top-full right-0 mt-1 bg-white rounded-lg shadow-lg py-2 min-w-[120px] z-50">
+                <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 min-w-[120px] z-50">
                   <button
                     onClick={() => {
                       setShowAnalysis(!showAnalysis);
                       setShowSettingsMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
                     style={{ fontSize: 'min(1.2vh, 2vw)' }}
                   >
                     <span>分析表示</span>
-                    <span className={showAnalysis ? 'text-cyan-500' : 'text-gray-400'}>
+                    <span className={showAnalysis ? 'text-emerald-400' : 'text-gray-500'}>
                       {showAnalysis ? '✓' : ''}
                     </span>
                   </button>
@@ -206,11 +206,11 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                       setUseBBNotation(!settings.useBBNotation);
                       setShowSettingsMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center justify-between"
+                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
                     style={{ fontSize: 'min(1.2vh, 2vw)' }}
                   >
                     <span>BB表記</span>
-                    <span className={settings.useBBNotation ? 'text-cyan-500' : 'text-gray-400'}>
+                    <span className={settings.useBBNotation ? 'text-emerald-400' : 'text-gray-500'}>
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
                   </button>

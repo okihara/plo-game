@@ -50,7 +50,7 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
               absolute inset-0
               flex flex-col items-center justify-center
               bg-gradient-to-br from-white to-gray-100
-              rounded shadow-md
+              rounded-lg shadow-md
               ${suitColor}
             `}
             style={{ backfaceVisibility: 'hidden' }}
@@ -60,7 +60,7 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
           </div>
           {/* 裏面 */}
           <div
-            className="absolute inset-0 bg-gradient-to-br from-blue-800 to-blue-950 border border-blue-500 rounded shadow-md overflow-hidden"
+            className="absolute inset-0 bg-gradient-to-br from-blue-800 to-blue-950 border border-blue-500 rounded-lg shadow-md overflow-hidden"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
             <div
@@ -86,7 +86,7 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
       className={`
         flex flex-col items-center justify-center
         bg-gradient-to-br from-white to-gray-100
-        rounded shadow-md relative
+        rounded-lg shadow-md relative
         ${styles.card}
         ${suitColor}
       `}
@@ -112,7 +112,7 @@ export function FaceDownCard({ size = 'sm' }: FaceDownCardProps) {
     <div
       className={`
         bg-gradient-to-br from-blue-800 to-blue-950
-        border border-blue-500 rounded shadow-md
+        border border-blue-500 rounded-lg shadow-md
         relative overflow-hidden
         ${faceDownSizeStyles[size]}
       `}

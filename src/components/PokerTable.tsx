@@ -52,10 +52,10 @@ export function PokerTable({
     <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
       <ThinkingIndicator playerName={currentPlayer?.name || ''} visible={isOtherPlayerTurn && isProcessingCPU} />
 
-      <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#166534_0%,#14532d_50%,#052e16_100%)] rounded-[45%] border-[1.4cqw] border-[#fbbf24] shadow-[0_0_0_0.8cqw_#f59e0b,0_0_3cqw_rgba(0,0,0,0.3),inset_0_0_6cqw_rgba(255,255,255,0.1)] relative">
+      <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#2a2520] shadow-[0_0_0_0.8cqw_#1a1815,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
         {/* Pot Display */}
-        <div className="absolute top-[65%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[2cqw] rounded-full text-[5cqw] font-bold text-yellow-400 drop-shadow-[0_0_2cqw_rgba(255,215,0,0.5)] z-10">
-          POT: {formatChips(state.pot)}
+        <div className="absolute top-[65%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-emerald-700/90 px-[4cqw] py-[2cqw] rounded-full text-[5cqw] font-bold text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)] z-10">
+          Total Pot : {formatChips(state.pot)}
         </div>
 
         {/* Community Cards */}

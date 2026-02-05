@@ -77,6 +77,16 @@ const dealFromOffsets: Record<number, { x: string; y: string }> = {
   5: { x: '-31cqw', y: '-22cqw' },   // 右下 ← 中央から右下へ
 };
 
+// フォールド時にカードがテーブル中央へ飛んでいく方向（dealFromOffsetsの逆）
+const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = {
+  0: { x: '0', y: '-30cqw', rotate: '-20deg' },
+  1: { x: '20cqw', y: '-15cqw', rotate: '15deg' },
+  2: { x: '20cqw', y: '15cqw', rotate: '-15deg' },
+  3: { x: '0', y: '30cqw', rotate: '20deg' },
+  4: { x: '-20cqw', y: '15cqw', rotate: '15deg' },
+  5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
+};
+
 // CPUアバター画像マッピング（オフラインモード用フォールバック）
 const cpuAvatars: Record<string, string> = {
   'Miko': '/images/icons/avatar1.png',
@@ -142,10 +152,20 @@ export function Player({
     <div className={`absolute flex flex-col items-center transition-all duration-300 ${positionStyles[positionIndex]}`}>
       {/* Avatar with Timer Ring */}
       <div className="relative">
+        {/* Current Player Glow Ring */}
+        {isCurrentPlayer && (
+          <div className="absolute inset-0 w-[22cqw] h-[22cqw] rounded-full animate-ping bg-amber-400/40" />
+        )}
+        {isCurrentPlayer && (
+          <div className="absolute inset-[-2cqw] w-[26cqw] h-[26cqw] rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-spin opacity-70" style={{ animationDuration: '3s' }} />
+        )}
+        {isCurrentPlayer && (
+          <div className="absolute inset-[-1cqw] w-[24cqw] h-[24cqw] rounded-full bg-gray-900" />
+        )}
         {/* Timer Ring */}
         {timerProgress !== null && (
           <svg
-            className="absolute inset-0 w-[25cqw] h-[25cqw] -m-[1.5cqw] rotate-90 -scale-x-100"
+            className="absolute inset-0 w-[25cqw] h-[25cqw] -m-[1.5cqw] rotate-90 -scale-x-100 z-10"
             viewBox="0 0 100 100"
           >
             {/* Background circle */}
@@ -154,8 +174,8 @@ export function Player({
               cy="50"
               r="44"
               fill="none"
-              stroke="rgba(0,0,0,0.3)"
-              strokeWidth="12"
+              stroke="rgba(0,0,0,0.5)"
+              strokeWidth="10"
             />
             {/* Progress circle */}
             <circle
@@ -164,7 +184,7 @@ export function Player({
               r="44"
               fill="none"
               stroke={timerProgress > 0.3 ? '#22c55e' : timerProgress > 0.1 ? '#eab308' : '#ef4444'}
-              strokeWidth="12"
+              strokeWidth="10"
               strokeLinecap="round"
               strokeDasharray={`${timerProgress * 276} 276`}
               className="transition-all duration-100"
@@ -176,9 +196,9 @@ export function Player({
           className={`
             w-[22cqw] h-[22cqw] rounded-full
             bg-gradient-to-br from-gray-500 to-gray-700
-            border-[1.4cqw] flex items-center justify-center
-            text-[8cqw] relative overflow-hidden cursor-pointer
-            ${isCurrentPlayer ? 'border-yellow-400 shadow-[0_0_4.6cqw_rgba(255,215,0,0.6)] animate-pulse-glow' : 'border-white'}
+            border-[0.7cqw] flex items-center justify-center
+            text-[8cqw] relative overflow-hidden cursor-pointer z-10
+            ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
             ${player.folded ? 'opacity-40 grayscale' : ''}
             ${isWinner ? 'border-green-400 shadow-[0_0_6.4cqw_rgba(0,255,0,0.6)]' : ''}
           `}
@@ -206,12 +226,12 @@ export function Player({
       {/* Player Info */}
       <div className="bg-black/80 px-[1.5cqw] py-[0.7cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-10">
         <div className="text-[3.5cqw] text-gray-400 whitespace-nowrap">{player.name}</div>
-        <div className="text-[4cqw] font-bold text-white">{formatChips(player.chips)}</div>
+        <div className="text-[4cqw] font-bold text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
       {/* Hole Cards (for other players) */}
       {positionIndex !== 0 && (
-        <div className={`flex mt-[1.5cqw] ${player.folded ? 'invisible' : ''}`}>
+        <div className={`flex mt-[1.5cqw]`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
                 <div key={i} className={i > 0 ? '-ml-[7cqw]' : ''}>
@@ -223,15 +243,22 @@ export function Player({
                 // dealOrder: SBからの順番(0-5)
                 // 各カードの配布タイミング = (周回 * 6人 + 配布順) * 間隔
                 const dealDelay = (cardIndex * 6 + dealOrder) * 40;
+                const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
+                const foldOffset = foldToOffsets[positionIndex];
                 return (
                   <div
                     key={cardIndex}
-                    className={`${cardIndex > 0 ? '-ml-[7cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''}`}
+                    className={`${cardIndex > 0 ? '-ml-[7cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''} ${player.folded && !isFolding ? 'invisible' : ''}`}
                     style={isDealing ? {
                       opacity: 0,
                       animationDelay: `${dealDelay}ms`,
                       '--deal-from-x': dealFromOffsets[positionIndex].x,
                       '--deal-from-y': dealFromOffsets[positionIndex].y,
+                    } as React.CSSProperties : isFolding ? {
+                      animationDelay: `${cardIndex * 50}ms`,
+                      '--fold-to-x': foldOffset.x,
+                      '--fold-to-y': foldOffset.y,
+                      '--fold-rotate': `${parseInt(foldOffset.rotate) + cardIndex * 10}deg`,
                     } as React.CSSProperties : {}}
                   >
                     <FaceDownCard />

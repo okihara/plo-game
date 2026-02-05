@@ -155,3 +155,19 @@ body {
 .animate-screen-flash-red {
   animation: screen-flash-red 0.5s ease-out forwards;
 }
+
+/* Fold card animation - cards fly to table center and fade out */
+@keyframes fold-card {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--fold-to-x, 0), var(--fold-to-y, -10cqw)) scale(0.5) rotate(var(--fold-rotate, 15deg));
+  }
+}
+
+.animate-fold-card {
+  animation: fold-card 0.4s ease-in forwards;
+}

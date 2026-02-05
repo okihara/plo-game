@@ -83,8 +83,8 @@ export function ResultOverlay({ state, mySeat, onNextHand }: ResultOverlayProps)
       <div className="text-center p-[2.5vh] bg-black/80 rounded-2xl mx-[2.5vh] backdrop-blur-sm">
         {iWon ? (
           <>
-            <div className="text-[3.5vh] font-black mb-[2vh] uppercase text-green-400 animate-win-bounce animate-win-glow">
-              YOU WIN!
+            <div className="text-[4vh] font-black mb-[2vh] uppercase text-amber-400 animate-win-bounce drop-shadow-[0_0_10px_rgba(251,191,36,0.8)]">
+              WIN
             </div>
             {winnerInfo.handName && (
               <div className="text-[2vh] text-gray-300 mb-[2.5vh]">{winnerInfo.handName}</div>
