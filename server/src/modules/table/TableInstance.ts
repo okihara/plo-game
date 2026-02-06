@@ -199,7 +199,7 @@ export class TableInstance {
         this.requestNextAction();
       });
     } else {
-      // Request next action then broadcast (so pendingAction is set)
+      // 次のアクション要求後に状態をブロードキャスト（pendingActionがセットされている状態で送信するため）
       this.requestNextAction();
       this.broadcastGameState();
     }
