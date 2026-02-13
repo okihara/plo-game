@@ -13,6 +13,7 @@ import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
 import { adminRoutes } from './modules/admin/routes.js';
 import { handHistoryRoutes } from './modules/history/routes.js';
+import { statsRoutes } from './modules/stats/routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -50,6 +51,7 @@ fastify.get('/health', async () => {
 await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
+await fastify.register(statsRoutes, { prefix: '/api/stats' });
 
 // 本番環境：フロントエンドの静的ファイルを配信
 if (env.NODE_ENV === 'production') {

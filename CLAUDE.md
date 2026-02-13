@@ -88,6 +88,15 @@ npm run dev:server
 - **HandHistory.tsx** (`src/pages/HandHistory.tsx`) - 履歴一覧・詳細閲覧UI（`/history`）
 - 認証済みユーザーのみ保存対象（guest/botは除外）
 - Prismaモデル: `HandHistory` + `HandHistoryPlayer`
+- アクション履歴にはストリート情報（`street`）とディーラー位置（`dealerPosition`）を含む
+
+### プレイヤースタッツ
+
+- **computeStats.ts** (`server/src/modules/stats/computeStats.ts`) - ハンド履歴からスタッツを集計計算
+- **stats/routes.ts** (`server/src/modules/stats/routes.ts`) - `GET /api/stats/:userId`（認証不要、60秒キャッシュ）
+- **ProfilePopup.tsx** (`src/components/ProfilePopup.tsx`) - プレイヤークリック時にスタッツ表示
+- 表示スタッツ: VPIP, PFR, 3Bet, AFq, CBet, Fold to CBet, Fold to 3Bet, WTSD, W$SD, 勝率, 損益
+- 直近1000ハンドから計算、ストリート情報のない旧データはハンド数・勝率のみ
 
 ### 設計パターン
 

@@ -147,6 +147,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           <ProfilePopup
             name={user.username}
             avatarUrl={user.avatarUrl}
+            userId={user.id}
             onClose={() => setShowProfile(false)}
           />
         </div>

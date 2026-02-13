@@ -28,6 +28,7 @@ export interface GameAction {
   playerId: number;
   action: Action;
   amount: number;
+  street?: Street;
 }
 
 export interface HandRank {

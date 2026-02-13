@@ -95,6 +95,7 @@ function convertOnlinePlayerToPlayer(
     position: POSITIONS[posIndex],
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
+    odId: online.odId,
   };
 }
 

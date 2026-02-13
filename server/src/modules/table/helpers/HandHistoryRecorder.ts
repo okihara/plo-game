@@ -54,13 +54,14 @@ export class HandHistoryRecorder {
     if (!hasAuthUser) return;
 
     try {
-      // アクション履歴を odId/odName 付きに変換
+      // アクション履歴を odId/odName/street 付きに変換
       const actions = gameState.handHistory.map((a: GameAction) => ({
         seatIndex: a.playerId,
         odId: seats[a.playerId]?.odId ?? `unknown_${a.playerId}`,
         odName: seats[a.playerId]?.odName ?? `Seat ${a.playerId}`,
         action: a.action,
         amount: a.amount,
+        street: a.street,
       }));
 
       // 勝者の odId リスト
@@ -101,6 +102,7 @@ export class HandHistoryRecorder {
           potSize: gameState.pot,
           winners: winnerOdIds,
           actions,
+          dealerPosition: gameState.dealerPosition,
           players: {
             create: playerRecords,
           },

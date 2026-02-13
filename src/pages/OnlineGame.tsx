@@ -279,6 +279,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
               name={selectedPlayer.name}
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
+              userId={selectedPlayer.odId}
               onClose={() => setSelectedPlayer(null)}
             />
           )}

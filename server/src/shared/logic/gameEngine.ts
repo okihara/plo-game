@@ -368,7 +368,7 @@ export function applyAction(state: GameState, playerIndex: number, action: Actio
   }
 
   // アクション履歴に記録
-  newState.handHistory.push({ playerId: playerIndex, action, amount });
+  newState.handHistory.push({ playerId: playerIndex, action, amount, street: state.currentStreet });
 
   // === 次のアクションを決定 ===
   const nextResult = determineNextAction(newState);

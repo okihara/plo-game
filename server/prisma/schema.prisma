@@ -68,6 +68,7 @@ model HandHistory {
   potSize        Int
   winners        String[] // Array of winner user IDs
   actions        Json     // Full action history
+  dealerPosition Int      @default(-1)  // -1 = unknown (legacy data)
   createdAt      DateTime @default(now())
 
   players HandHistoryPlayer[]
