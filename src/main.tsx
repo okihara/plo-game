@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { SimpleLobby } from './pages/SimpleLobby';
 import { OnlineGame } from './pages/OnlineGame';
 import { PlayerDebug } from './pages/PlayerDebug';
+import { HandHistory } from './pages/HandHistory';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
@@ -20,6 +21,15 @@ function App() {
   // Debug pages
   if (currentPath === '/debug/player') {
     return <PlayerDebug />;
+  }
+
+  if (currentPath === '/history') {
+    return (
+      <HandHistory onBack={() => {
+        window.history.pushState({}, '', '/');
+        setCurrentPath('/');
+      }} />
+    );
   }
 
   if (blinds) {

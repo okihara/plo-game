@@ -12,6 +12,7 @@ import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { FoldProcessor } from './helpers/FoldProcessor.js';
+import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 
 // 型の再エクスポート（後方互換性のため）
 export type { MessageLog, PendingAction };
@@ -33,6 +34,7 @@ export class TableInstance {
   private readonly broadcast: BroadcastService;
   private readonly foldProcessor: FoldProcessor;
   private readonly actionController: ActionController;
+  private readonly historyRecorder: HandHistoryRecorder;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false) {
     this.id = nanoid(12);
@@ -49,6 +51,7 @@ export class TableInstance {
     this.broadcast = new BroadcastService(io, roomName);
     this.foldProcessor = new FoldProcessor(this.broadcast);
     this.actionController = new ActionController(this.broadcast);
+    this.historyRecorder = new HandHistoryRecorder();
   }
 
   // Get room name for this table
@@ -338,6 +341,9 @@ export class TableInstance {
       }
     }
 
+    // ハンドヒストリー用スナップショット記録
+    this.historyRecorder.recordHandStart(seats, this.gameState);
+
     // Request first action then broadcast (so pendingAction is set)
     this.requestNextAction();
     this.broadcastGameState();
@@ -385,8 +391,16 @@ export class TableInstance {
     // Clear pending action
     this.actionController.clearTimers();
 
-    // Broadcast winners
+    // ハンドヒストリー保存 (fire-and-forget)
     const seats = this.playerManager.getSeats();
+    this.historyRecorder.recordHandComplete(
+      this.id,
+      this.blinds,
+      this.gameState,
+      seats
+    ).catch(err => console.error('Hand history save failed:', err));
+
+    // Broadcast winners
     const handCompleteData = {
       winners: this.gameState.winners.map(w => ({
         playerId: seats[w.playerId]?.odId || '',

@@ -81,6 +81,14 @@ npm run dev:server
 5. 勝者決定・ポット分配
 6. ディーラーボタン回転して次のハンド
 
+### ハンド履歴
+
+- **HandHistoryRecorder** (`server/src/modules/table/helpers/HandHistoryRecorder.ts`) - ハンド完了時にDB保存（fire-and-forget）
+- **history/routes.ts** (`server/src/modules/history/routes.ts`) - `GET /api/history`（一覧）, `GET /api/history/:handId`（詳細）
+- **HandHistory.tsx** (`src/pages/HandHistory.tsx`) - 履歴一覧・詳細閲覧UI（`/history`）
+- 認証済みユーザーのみ保存対象（guest/botは除外）
+- Prismaモデル: `HandHistory` + `HandHistoryPlayer`
+
 ### 設計パターン
 
 - **Immutable state**: GameStateは不変として扱い、新しい状態を返す

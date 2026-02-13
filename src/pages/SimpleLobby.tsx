@@ -110,6 +110,21 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           ))}
         </div>
 
+        {/* ハンド履歴リンク（ログイン時のみ） */}
+        {user && (
+          <div className="mt-4">
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/history');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="w-full py-3 px-5 bg-white/5 backdrop-blur rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all border border-white/5 hover:border-white/15 text-sm"
+            >
+              ハンド履歴を見る
+            </button>
+          </div>
+        )}
+
         {/* Footer info */}
         <div className="mt-8 text-center text-white/40 text-xs">
           <p>NLH, PLO | リアルタイムマルチプレイヤー</p>
