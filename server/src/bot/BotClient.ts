@@ -1,7 +1,9 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
-import { GameState, Card, Action, Player, Position } from '../shared/logic/types.js';
+import { GameState, Card, Action, Player, Position, GameAction } from '../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
+import { AIContext } from '../shared/logic/ai/types.js';
+import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
@@ -26,6 +28,8 @@ export class BotClient {
   private isConnected = false;
   private tableId: string | null = null;
   private currentBlinds: string | null = null; // 現在のブラインド設定（再キューイング用）
+  private handActions: GameAction[] = []; // 現ハンドのアクション履歴
+  private opponentModel = new SimpleOpponentModel(); // ハンド間で統計を蓄積
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -102,6 +106,15 @@ export class BotClient {
         this.gameState = data.state;
       });
 
+      this.socket.on('game:action_taken', (data: { playerId: string; action: Action; amount: number; seat: number }) => {
+        // 現ハンドのアクション履歴を蓄積
+        this.handActions.push({
+          playerId: data.seat,
+          action: data.action,
+          amount: data.amount,
+        });
+      });
+
       this.socket.on('game:action_required', (data: {
         playerId: string;
         validActions: { action: Action; minAmount: number; maxAmount: number }[];
@@ -113,8 +126,17 @@ export class BotClient {
       });
 
       this.socket.on('game:hand_complete', () => {
+        // 相手モデルを更新（ハンド間の統計蓄積）
+        if (this.handActions.length > 0 && this.gameState) {
+          const activePlayers = Object.keys(this.gameState.players)
+            .map(Number)
+            .filter(seat => this.gameState!.players[seat]);
+          this.opponentModel.updateFromActions(this.handActions, activePlayers);
+        }
+
         // Reset for next hand
         this.holeCards = [];
+        this.handActions = [];
 
         // 一定確率で意図的に切断（人間らしさを演出）
         this.maybeDisconnectRandomly();
@@ -165,8 +187,12 @@ export class BotClient {
       return;
     }
 
-    // Get AI decision
-    const aiDecision = getCPUAction(aiGameState, this.seatNumber);
+    // Get AI decision with context (new AI modules)
+    const aiDecision = getCPUAction(aiGameState, this.seatNumber, {
+      botName: this.config.name,
+      opponentModel: this.opponentModel,
+      handActions: this.handActions,
+    });
 
     // Validate action against valid actions
     const validAction = data.validActions.find(a => a.action === aiDecision.action);
@@ -249,7 +275,7 @@ export class BotClient {
       smallBlind: this.gameState.smallBlind,
       bigBlind: this.gameState.bigBlind,
       lastRaiserIndex: -1,
-      handHistory: [],
+      handHistory: this.handActions,
       isHandComplete: false,
       winners: [],
     };
