@@ -46,8 +46,13 @@ export class TableInstance {
   private io: Server;
   private actionTimer: NodeJS.Timeout | null = null;
   private streetTransitionTimer: NodeJS.Timeout | null = null;
+  private runOutTimer: NodeJS.Timeout | null = null;
+  private isRunOutInProgress = false;
   private readonly ACTION_TIMEOUT_MS = 10000;
-  private readonly STREET_TRANSITION_DELAY_MS = 2000;
+  private readonly STREET_TRANSITION_DELAY_MS = 1500;
+  private readonly HAND_COMPLETE_DELAY_MS = 3500; // 通常のハンド完了（全員フォールド等）
+  private readonly SHOWDOWN_DELAY_MS = 5000; // ショーダウン時（カードを見る時間）
+  private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
   private isHandInProgress = false;
   private pendingStartHand = false;
 
@@ -210,7 +215,7 @@ export class TableInstance {
 
   // Advance game to next player after a fold
   private advanceToNextPlayer(): void {
-    if (!this.gameState || this.gameState.isHandComplete) return;
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return;
 
     // Find next active player
     const activePlayers = getActivePlayers(this.gameState);
@@ -252,7 +257,7 @@ export class TableInstance {
 
   // Handle player action
   public handleAction(odId: string, action: Action, amount: number): boolean {
-    if (!this.gameState || this.gameState.isHandComplete) return false;
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return false;
 
     const seatIndex = this.seats.findIndex(s => s?.odId === odId);
     if (seatIndex === -1) return false;
@@ -276,8 +281,9 @@ export class TableInstance {
     }
     this.pendingAction = null;
 
-    // ストリート変更検出用に現在のストリートを保存
+    // ストリート変更・ランアウト検出用に現在の状態を保存
     const previousStreet = this.gameState.currentStreet;
+    const previousCardCount = this.gameState.communityCards.length;
 
     // Apply action
     this.gameState = applyAction(this.gameState, seatIndex, action, amount);
@@ -289,16 +295,23 @@ export class TableInstance {
 
     // Check if hand is complete
     if (this.gameState.isHandComplete) {
-      this.broadcastGameState();
-      this.handleHandComplete();
+      const finalCardCount = this.gameState.communityCards.length;
+      if (finalCardCount > previousCardCount) {
+        // オールインでのランアウト: ストリートごとに段階的にカードを表示
+        this.handleAllInRunOut(this.gameState, previousCardCount);
+      } else {
+        // 通常のハンド完了（全員フォールド or リバーベッティング終了）
+        this.broadcastGameState();
+        this.handleHandComplete();
+      }
     } else {
       // ストリートが変わった場合は遅延後に次のアクションを要求
       const streetChanged = this.gameState.currentStreet !== previousStreet;
       if (streetChanged) {
-        // 先にゲーム状態をブロードキャスト（コミュニティカードを表示）
-        // 遅延後に次のアクションを要求
+        // コミュニティカードを即座に表示
+        this.broadcastGameState();
+        // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
         this.streetTransitionTimer = setTimeout(() => {
-          this.broadcastGameState();
           this.streetTransitionTimer = null;
           this.requestNextAction();
         }, this.STREET_TRANSITION_DELAY_MS);
@@ -373,7 +386,7 @@ export class TableInstance {
 
   // Private methods
 
-  private maybeStartHand(): void {
+  private maybeStartHand(wasShowdown: boolean = false): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
 
     const playerCount = this.getPlayerCount();
@@ -381,11 +394,12 @@ export class TableInstance {
 
     this.pendingStartHand = true;
 
-    // Delay before starting new hand
+    // ショーダウン時はカードを確認する時間を長めに取る
+    const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
     setTimeout(() => {
       this.startNewHand();
       this.pendingStartHand = false;
-    }, 2000);
+    }, delay);
   }
 
   private startNewHand(): void {
@@ -529,6 +543,62 @@ export class TableInstance {
     }, this.ACTION_TIMEOUT_MS);
   }
 
+  /**
+   * オールイン時のランアウト: コミュニティカードをストリートごとに段階的に表示する
+   * @param finalState 全カード配布済み＆勝者決定済みの最終ゲーム状態
+   * @param previousCardCount ランアウト開始前のコミュニティカード枚数
+   */
+  private handleAllInRunOut(finalState: GameState, previousCardCount: number): void {
+    const allCards = [...finalState.communityCards];
+
+    // 表示ステージを構築（フロップ→ターン→リバーの順）
+    const stages: { cardCount: number; street: 'flop' | 'turn' | 'river' }[] = [];
+    if (previousCardCount < 3) {
+      stages.push({ cardCount: 3, street: 'flop' });
+    }
+    if (previousCardCount < 4) {
+      stages.push({ cardCount: 4, street: 'turn' });
+    }
+    if (previousCardCount < 5) {
+      stages.push({ cardCount: 5, street: 'river' });
+    }
+
+    this.isRunOutInProgress = true;
+    let currentStageIndex = 0;
+
+    const revealNextStage = () => {
+      this.runOutTimer = null;
+
+      if (currentStageIndex >= stages.length) {
+        // 全カード表示完了 → 最終結果を表示
+        this.isRunOutInProgress = false;
+        this.gameState = finalState;
+        this.broadcastGameState();
+        this.handleHandComplete();
+        return;
+      }
+
+      const stage = stages[currentStageIndex];
+
+      // 中間状態を作成（このストリートまでのカードだけ見せる）
+      const intermediateState = JSON.parse(JSON.stringify(finalState)) as GameState;
+      intermediateState.communityCards = allCards.slice(0, stage.cardCount);
+      intermediateState.isHandComplete = false;
+      intermediateState.winners = [];
+      intermediateState.currentStreet = stage.street;
+      intermediateState.currentPlayerIndex = -1;
+
+      this.gameState = intermediateState;
+      this.broadcastGameState();
+
+      currentStageIndex++;
+      this.runOutTimer = setTimeout(revealNextStage, this.RUNOUT_STREET_DELAY_MS);
+    };
+
+    // 最初のステージを即座に表示開始
+    revealNextStage();
+  }
+
   private handleHandComplete(): void {
     if (!this.gameState) return;
 
@@ -571,6 +641,9 @@ export class TableInstance {
 
     this.isHandInProgress = false;
 
+    // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
+    const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
+
     // Remove busted players
     for (let i = 0; i < 6; i++) {
       const seat = this.seats[i];
@@ -582,7 +655,7 @@ export class TableInstance {
     }
 
     // Start next hand if enough players
-    this.maybeStartHand();
+    this.maybeStartHand(wasShowdown);
   }
 
   private broadcastGameState(): void {
