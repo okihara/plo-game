@@ -606,6 +606,7 @@ export class TableInstance {
         players: this.seats.map((_, i) => this.getOnlinePlayer(i)),
         communityCards: [],
         pot: 0,
+        sidePots: [],
         currentStreet: 'preflop',
         dealerSeat: 0,
         currentPlayerSeat: null,
@@ -656,6 +657,10 @@ export class TableInstance {
       }),
       communityCards: this.gameState.communityCards,
       pot: this.gameState.pot,
+      sidePots: (this.gameState.sidePots || []).map(sp => ({
+        amount: sp.amount,
+        eligiblePlayerSeats: sp.eligiblePlayers,
+      })),
       currentStreet: this.gameState.currentStreet,
       dealerSeat: this.gameState.dealerPosition,
       currentPlayerSeat: this.gameState.isHandComplete ? null : this.gameState.currentPlayerIndex,
