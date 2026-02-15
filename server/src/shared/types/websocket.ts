@@ -80,6 +80,7 @@ export interface ClientGameState {
   players: (OnlinePlayer | null)[];
   communityCards: Card[];
   pot: number;
+  sidePots: { amount: number; eligiblePlayerSeats: number[] }[];
   currentStreet: string;
   dealerSeat: number;
   currentPlayerSeat: number | null;

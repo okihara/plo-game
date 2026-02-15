@@ -74,6 +74,7 @@ export class StateTransformer {
         ),
         communityCards: [],
         pot: 0,
+        sidePots: [],
         currentStreet: 'preflop',
         dealerSeat: 0,
         currentPlayerSeat: null,
@@ -94,6 +95,10 @@ export class StateTransformer {
       ),
       communityCards: gameState.communityCards,
       pot: gameState.pot,
+      sidePots: (gameState.sidePots || []).map(sp => ({
+        amount: sp.amount,
+        eligiblePlayerSeats: sp.eligiblePlayers,
+      })),
       currentStreet: gameState.currentStreet,
       dealerSeat: gameState.dealerPosition,
       currentPlayerSeat: gameState.isHandComplete ? null : gameState.currentPlayerIndex,

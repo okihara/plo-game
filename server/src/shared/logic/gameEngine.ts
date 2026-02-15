@@ -525,7 +525,48 @@ function runOutBoard(state: GameState): GameState {
 }
 
 /**
+ * プレイヤーの投入額からサイドポットを計算する
+ * 各プレイヤーのtotalBetThisRoundを元に、オールインレベルごとにポットを分割する
+ */
+export function calculateSidePots(players: Player[]): { amount: number; eligiblePlayers: number[] }[] {
+  // フォールドしていないプレイヤーのユニークな投入額レベルを取得（昇順）
+  const nonFoldedLevels = [...new Set(
+    players.filter(p => !p.folded).map(p => p.totalBetThisRound)
+  )].sort((a, b) => a - b);
+
+  const sidePots: { amount: number; eligiblePlayers: number[] }[] = [];
+  let prevLevel = 0;
+
+  for (const level of nonFoldedLevels) {
+    if (level <= prevLevel) continue;
+
+    let potAmount = 0;
+    const eligiblePlayers: number[] = [];
+
+    for (const player of players) {
+      // このレベル区間に対するプレイヤーの貢献額
+      const contribution = Math.min(player.totalBetThisRound, level) - Math.min(player.totalBetThisRound, prevLevel);
+      potAmount += contribution;
+
+      // フォールドしておらず、このレベル以上投入しているプレイヤーが対象
+      if (!player.folded && player.totalBetThisRound >= level) {
+        eligiblePlayers.push(player.id);
+      }
+    }
+
+    if (potAmount > 0) {
+      sidePots.push({ amount: potAmount, eligiblePlayers });
+    }
+
+    prevLevel = level;
+  }
+
+  return sidePots;
+}
+
+/**
  * 勝者を決定し、ポットを分配する
+ * サイドポットを考慮して、各ポットごとに勝者を決定する
  */
 export function determineWinner(state: GameState): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
@@ -558,36 +599,66 @@ export function determineWinner(state: GameState): GameState {
     }
   }
 
+  // === サイドポット計算 ===
+  const sidePots = calculateSidePots(newState.players);
+  newState.sidePots = sidePots;
+
   // === PLOハンド評価 ===
   // PLOルール: ホールカードから必ず2枚、コミュニティカードから必ず3枚使用
-  const playerHands = activePlayers.map(p => ({
-    player: p,
-    hand: evaluatePLOHand(p.holeCards, newState.communityCards)
-  }));
+  const playerHandMap = new Map<number, ReturnType<typeof evaluatePLOHand>>();
+  for (const player of activePlayers) {
+    playerHandMap.set(player.id, evaluatePLOHand(player.holeCards, newState.communityCards));
+  }
 
-  // ハンドの強さでソート（降順）
-  playerHands.sort((a, b) => compareHands(b.hand, a.hand));
+  // === 各サイドポットの勝者を決定 ===
+  const winnerAmounts = new Map<number, { amount: number; handName: string }>();
 
-  // 同点チェック（タイの場合は複数人が勝者）
-  const winners: typeof playerHands = [playerHands[0]];
-  for (let i = 1; i < playerHands.length; i++) {
-    if (compareHands(playerHands[i].hand, playerHands[0].hand) === 0) {
-      winners.push(playerHands[i]);
-    } else {
-      break;  // ソート済みなので、差がついたら以降は負け
+  for (const pot of sidePots) {
+    // このポットの対象プレイヤーのハンドを取得
+    const eligibleHands = pot.eligiblePlayers
+      .filter(id => playerHandMap.has(id))
+      .map(id => ({ playerId: id, hand: playerHandMap.get(id)! }));
+
+    if (eligibleHands.length === 0) continue;
+
+    // ハンドの強さでソート（降順）
+    eligibleHands.sort((a, b) => compareHands(b.hand, a.hand));
+
+    // 同点チェック（タイの場合は複数人が勝者）
+    const potWinners = [eligibleHands[0]];
+    for (let i = 1; i < eligibleHands.length; i++) {
+      if (compareHands(eligibleHands[i].hand, eligibleHands[0].hand) === 0) {
+        potWinners.push(eligibleHands[i]);
+      } else {
+        break;
+      }
+    }
+
+    // ポットを分配（均等分配、端数は最初の勝者に付与）
+    const winAmount = Math.floor(pot.amount / potWinners.length);
+    const remainder = pot.amount % potWinners.length;
+
+    for (let i = 0; i < potWinners.length; i++) {
+      const amount = winAmount + (i === 0 ? remainder : 0);
+      const existing = winnerAmounts.get(potWinners[i].playerId);
+      if (existing) {
+        existing.amount += amount;
+      } else {
+        winnerAmounts.set(potWinners[i].playerId, {
+          amount,
+          handName: potWinners[i].hand.name,
+        });
+      }
     }
   }
 
-  // === ポットを分配 ===
-  const winAmount = Math.floor(newState.pot / winners.length);  // 均等分配
-  const remainder = newState.pot % winners.length;  // 端数（最初の勝者に付与）
-
-  newState.winners = winners.map((w, i) => {
-    const amount = winAmount + (i === 0 ? remainder : 0);
-    const playerInState = newState.players.find(p => p.id === w.player.id)!;
-    playerInState.chips += amount;
-    return { playerId: w.player.id, amount, handName: w.hand.name };
-  });
+  // === チップ付与 & winners配列構築 ===
+  newState.winners = [];
+  for (const [playerId, { amount, handName }] of winnerAmounts) {
+    const player = newState.players.find(p => p.id === playerId)!;
+    player.chips += amount;
+    newState.winners.push({ playerId, amount, handName });
+  }
 
   return newState;
 }

@@ -47,7 +47,18 @@ export function PokerTable({
       <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#2a2520] shadow-[0_0_0_0.8cqw_#1a1815,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
         {/* Pot Display */}
         <div className="absolute top-[65%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[2cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10">
-          Pot: {formatChips(state.pot)}
+          {state.sidePots.length > 1 ? (
+            <div className="flex flex-col items-center gap-[0.5cqw]">
+              <span>Pot: {formatChips(state.pot)}</span>
+              <div className="flex gap-[2cqw] text-[3.5cqw] text-yellow-300/80">
+                {state.sidePots.map((sp, i) => (
+                  <span key={i}>{i === 0 ? 'Main' : `Side${state.sidePots.length > 2 ? i : ''}`}: {formatChips(sp.amount)}</span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <span>Pot: {formatChips(state.pot)}</span>
+          )}
         </div>
 
         {/* Community Cards */}

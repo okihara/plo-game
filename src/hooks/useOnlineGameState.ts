@@ -118,7 +118,10 @@ function convertClientStateToGameState(
     deck: [],
     communityCards: clientState.communityCards,
     pot: clientState.pot,
-    sidePots: [],
+    sidePots: (clientState.sidePots || []).map(sp => ({
+      amount: sp.amount,
+      eligiblePlayers: sp.eligiblePlayerSeats,
+    })),
     currentStreet: clientState.currentStreet as 'preflop' | 'flop' | 'turn' | 'river',
     currentBet: clientState.currentBet,
     minRaise: clientState.minRaise,
