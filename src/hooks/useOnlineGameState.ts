@@ -55,6 +55,11 @@ export interface OnlineGameHookResult {
 const ACTION_MARKER_DISPLAY_TIME = 1000;
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
+// ショウダウン演出タイミング (ms)
+const SHOWDOWN_REVEAL_DELAY = 2000;   // ショウダウン → カード公開までの待機
+const SHOWDOWN_WINNERS_DELAY = 2000;  // カード公開 → WIN表示までの待機
+const FOLD_WIN_DELAY = 1000;          // フォールド勝ち → WIN表示までの待機
+
 // ============================================
 // ヘルパー関数
 // ============================================
@@ -376,7 +381,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
             // ショウダウンなし（フォールド勝ち等）→ 1s後に表示
             winnersDisplayTimerRef.current = setTimeout(() => {
               setWinners(convertedWinners);
-            }, 1000);
+            }, FOLD_WIN_DELAY);
           }
         }
       },
@@ -388,19 +393,19 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         }
         isShowdownPendingRef.current = true;
 
-        // 2s後にカードを公開
+        // カードを公開
         showdownRevealTimerRef.current = setTimeout(() => {
           setShowdownCards(cardsMap);
 
-          // カードreveal後2s待ってからWIN表示
+          // カードreveal後、WIN表示
           winnersDisplayTimerRef.current = setTimeout(() => {
             if (pendingWinnersRef.current) {
               setWinners(pendingWinnersRef.current);
               pendingWinnersRef.current = null;
             }
             isShowdownPendingRef.current = false;
-          }, 2000);
-        }, 2000);
+          }, SHOWDOWN_WINNERS_DELAY);
+        }, SHOWDOWN_REVEAL_DELAY);
       },
       onFastFoldQueued: () => {
         setIsChangingTable(true);
