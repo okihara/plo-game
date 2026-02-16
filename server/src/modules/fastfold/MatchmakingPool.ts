@@ -117,6 +117,11 @@ export class MatchmakingPool {
         // Notify player
         player.socket.emit('matchmaking:table_assigned', { tableId: table.id });
         player.socket.emit('table:joined', { tableId: table.id, seat: seatNumber });
+      } else {
+        // Seating failed - re-queue the player
+        console.log(`[MatchmakingPool] Seating failed for ${player.odId}, re-queuing`);
+        queue.push(player);
+        break; // Exit loop to avoid infinite retry
       }
     }
 

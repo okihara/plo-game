@@ -30,6 +30,8 @@ export class BotClient {
   private currentBlinds: string | null = null; // 現在のブラインド設定（再キューイング用）
   private handActions: GameAction[] = []; // 現ハンドのアクション履歴
   private opponentModel = new SimpleOpponentModel(); // ハンド間で統計を蓄積
+  private stuckCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private lastInGameTime: number = 0; // 最後にゲームに参加していた時刻
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -55,6 +57,7 @@ export class BotClient {
       this.socket.on('connection:established', (data: { playerId: string }) => {
         this.playerId = data.playerId;
         console.log(`[${this.config.name}] Authenticated as ${this.playerId}`);
+        this.startStuckCheck();
         resolve();
       });
 
@@ -68,12 +71,14 @@ export class BotClient {
         this.isConnected = false;
         this.tableId = null;
         this.seatNumber = -1;
+        this.stopStuckCheck();
       });
 
       // Game events
       this.socket.on('table:joined', (data: { tableId: string; seat: number }) => {
         this.tableId = data.tableId;
         this.seatNumber = data.seat;
+        this.lastInGameTime = Date.now();
         console.log(`[${this.config.name}] Joined table ${data.tableId} at seat ${data.seat}`);
       });
 
@@ -329,7 +334,36 @@ export class BotClient {
     }
   }
 
+  // ゲームに参加できていない状態が続いたら自動で再マッチメイキング
+  private startStuckCheck(): void {
+    this.stopStuckCheck();
+    this.lastInGameTime = Date.now();
+    this.stuckCheckInterval = setInterval(() => {
+      if (!this.isConnected) return;
+      if (this.tableId) {
+        // ゲームに参加中 → 時刻を更新
+        this.lastInGameTime = Date.now();
+        return;
+      }
+      // ゲーム未参加が15秒以上続いたら再マッチメイキング
+      const stuckDuration = Date.now() - this.lastInGameTime;
+      if (stuckDuration > 15000) {
+        console.log(`[${this.config.name}] Stuck without game for ${Math.round(stuckDuration / 1000)}s, rejoining matchmaking`);
+        this.lastInGameTime = Date.now(); // リセットして連続発火を防ぐ
+        this.rejoinMatchmaking();
+      }
+    }, 5000);
+  }
+
+  private stopStuckCheck(): void {
+    if (this.stuckCheckInterval) {
+      clearInterval(this.stuckCheckInterval);
+      this.stuckCheckInterval = null;
+    }
+  }
+
   disconnect(): void {
+    this.stopStuckCheck();
     if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
