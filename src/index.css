@@ -213,3 +213,17 @@ body {
 .animate-win-pop {
   animation: win-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }
+
+/* Showdown card reveal animation - flip from face-down to face-up */
+@keyframes reveal-card {
+  0% {
+    transform: rotateY(180deg);
+  }
+  100% {
+    transform: rotateY(0deg);
+  }
+}
+
+.animate-reveal-card {
+  animation: reveal-card 0.6s ease both;
+}

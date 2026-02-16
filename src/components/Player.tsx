@@ -116,6 +116,20 @@ export function Player({
   // positionIndex === 0 が自分の位置
   const isMe = positionIndex === 0;
 
+  // ショウダウン時のカード公開アニメーション
+  const [isRevealing, setIsRevealing] = useState(false);
+
+  useEffect(() => {
+    const shouldShowCards = showCards && !player.folded && player.holeCards.length > 0;
+    if (shouldShowCards) {
+      setIsRevealing(true);
+      const timer = setTimeout(() => setIsRevealing(false), 1200);
+      return () => clearTimeout(timer);
+    } else {
+      setIsRevealing(false);
+    }
+  }, [showCards, player.folded, player.holeCards.length]);
+
   // チップアニメーション用: currentBetが変化したときにアニメーションを再トリガー
   const prevBetRef = useRef(player.currentBet);
   const [chipAnimKey, setChipAnimKey] = useState(0);
@@ -263,7 +277,26 @@ export function Player({
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
                 <div key={i} className={i > 0 ? '-ml-[7cqw]' : ''}>
-                  <Card card={card} />
+                  {isRevealing ? (
+                    <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
+                      <div
+                        className="w-full h-full animate-reveal-card"
+                        style={{
+                          transformStyle: 'preserve-3d',
+                          animationDelay: `${i * 120}ms`,
+                        }}
+                      >
+                        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
+                          <Card card={card} />
+                        </div>
+                        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
+                          <FaceDownCard />
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <Card card={card} />
+                  )}
                 </div>
               ))
             : Array(4).fill(null).map((_, cardIndex) => {
