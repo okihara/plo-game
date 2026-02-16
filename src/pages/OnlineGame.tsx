@@ -141,9 +141,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     return (
       <div className="h-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-pulse text-6xl mb-4">🎰</div>
-          <p className="text-white text-lg mb-2">テーブルを探しています...</p>
-          <p className="text-white/50 text-sm">ファストフォールドモード</p>
+          <p className="text-white text-lg mb-2">テーブルを検索中...</p>
           <button
             onClick={onBack}
             className="mt-8 py-2 px-6 bg-white/20 rounded-xl text-white hover:bg-white/30 transition-all"
