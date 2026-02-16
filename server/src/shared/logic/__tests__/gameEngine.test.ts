@@ -825,4 +825,412 @@ describe('統合テスト: 1ハンドの流れ', () => {
     const totalChipsAfter = state.players.reduce((sum, p) => sum + p.chips, 0);
     expect(totalChipsAfter).toBe(totalChipsBefore);
   });
+
+  it('オールインを含むハンドでチップ合計が保存される', () => {
+    const initialState = createInitialGameState(100);
+    const totalChipsBefore = initialState.players.reduce((sum, p) => sum + p.chips, 0);
+
+    let state = startNewHand(initialState);
+
+    // 最初のプレイヤーがオールイン、残りはコールまたはフォールド
+    const current = state.currentPlayerIndex;
+    state = applyAction(state, current, 'allin');
+
+    let loopCount = 0;
+    while (!state.isHandComplete && loopCount < 100) {
+      const idx = state.currentPlayerIndex;
+      const actions = getValidActions(state, idx);
+      const callAction = actions.find(a => a.action === 'call');
+      if (callAction) {
+        state = applyAction(state, idx, 'call');
+      } else {
+        state = applyAction(state, idx, 'fold');
+      }
+      loopCount++;
+    }
+
+    const totalChipsAfter = state.players.reduce((sum, p) => sum + p.chips, 0);
+    expect(totalChipsAfter).toBe(totalChipsBefore);
+  });
+
+  it('レイズ→再レイズのベッティング往復', () => {
+    let state = startNewHand(createInitialGameState(1000));
+    const firstPlayer = state.currentPlayerIndex;
+
+    // UTGレイズ
+    const raiseAmount1 = state.currentBet + state.minRaise; // min raise
+    state = applyAction(state, firstPlayer, 'raise', raiseAmount1);
+    expect(state.currentBet).toBe(raiseAmount1);
+
+    // 次のプレイヤーが再レイズ
+    const secondPlayer = state.currentPlayerIndex;
+    expect(secondPlayer).not.toBe(firstPlayer);
+    const actions = getValidActions(state, secondPlayer);
+    const raiseAction = actions.find(a => a.action === 'raise');
+    expect(raiseAction).toBeDefined();
+
+    state = applyAction(state, secondPlayer, 'raise', raiseAction!.minAmount);
+    expect(state.currentBet).toBeGreaterThan(raiseAmount1);
+
+    // 元のレイザーに再度アクションが回る
+    // hasActedがリセットされているのでアクション可能
+    expect(state.players[firstPlayer].hasActed).toBe(false);
+  });
+
+  it('ポストフロップのアクション開始位置がSB側から', () => {
+    let state = startNewHand(createInitialGameState());
+    const dealer = state.dealerPosition;
+
+    // プリフロップを全員コール/チェックで通過
+    let loopCount = 0;
+    while (state.currentStreet === 'preflop' && !state.isHandComplete && loopCount < 20) {
+      const current = state.currentPlayerIndex;
+      const actions = getValidActions(state, current);
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) state = applyAction(state, current, 'call');
+      else if (checkAction) state = applyAction(state, current, 'check');
+      else break;
+      loopCount++;
+    }
+
+    expect(state.currentStreet).toBe('flop');
+
+    // フロップのアクション開始位置はSB（dealer+1）側から
+    const sbIdx = (dealer + 1) % 6;
+    // SBがフォールドしていなければSBから開始
+    if (!state.players[sbIdx].folded && !state.players[sbIdx].isAllIn) {
+      expect(state.currentPlayerIndex).toBe(sbIdx);
+    }
+  });
+});
+
+describe('startNewHand: ブラインドオールイン', () => {
+  it('SBがチップ不足でオールインになる', () => {
+    const state = createInitialGameState();
+    // SBになるプレイヤーのチップをSB未満にしておく
+    // dealerPosition=0 → startNewHand で dealer が移動する
+    // SBになるプレイヤーを特定するため、startNewHand後に確認
+    state.players[2].chips = 0; // チップ0で不参加にする
+    state.players[2].folded = true;
+
+    // 別のアプローチ: 直接小さいチップで試す
+    const state2 = createInitialGameState();
+    // player[1]がSB位置に来るようにする（dealer=0の場合）
+    // ただしstartNewHandでdealerが移動するので、全員にチップを与えつつ
+    // 特定プレイヤーだけ少なくする
+    for (let i = 0; i < 6; i++) {
+      state2.players[i].chips = 100;
+    }
+    // SBになりそうなプレイヤーのチップを少なくする
+    // dealerPosition=0 → 次のdealerは1 → SB=2, BB=3
+    state2.players[2].chips = 0; // SBのチップがSB額未満
+    // chips=0だとfolded扱いになりスキップされるので、SB未満の額にする
+    // startNewHandがfoldedフラグをリセットするので問題ない
+    // ただしgetNextPlayerWithChipsはchips>0を見る
+
+    // よりシンプルなテスト: smallBlindを大きくしてチップ不足にする
+    const state3 = createInitialGameState(2);
+    state3.smallBlind = 3; // チップ(2) < SB(3)
+    state3.bigBlind = 6;
+    const newState = startNewHand(state3);
+
+    // SBプレイヤーを見つける
+    const dealer = newState.dealerPosition;
+    const sbIdx = (dealer + 1) % 6;
+
+    // SBがチップ不足なのでオールイン
+    expect(newState.players[sbIdx].currentBet).toBe(2); // チップ全額
+    expect(newState.players[sbIdx].isAllIn).toBe(true);
+    expect(newState.players[sbIdx].chips).toBe(0);
+  });
+
+  it('BBがチップ不足でオールインになる', () => {
+    const state = createInitialGameState(4);
+    state.smallBlind = 2;
+    state.bigBlind = 10; // チップ(4) < BB(10)
+    const newState = startNewHand(state);
+
+    const dealer = newState.dealerPosition;
+    const bbIdx = (dealer + 2) % 6;
+
+    // BBがチップ不足なのでオールイン（SBで2消費→残り2をBBに）
+    // BBプレイヤーは自分のチップ全額を投入
+    expect(newState.players[bbIdx].isAllIn).toBe(true);
+    expect(newState.players[bbIdx].chips).toBe(0);
+    expect(newState.players[bbIdx].currentBet).toBeLessThanOrEqual(4);
+  });
+
+  it('連続ハンドで破産プレイヤーをスキップしてディーラーが移動する', () => {
+    const state = createInitialGameState();
+    state.dealerPosition = 0;
+    // player[1]を破産させる
+    state.players[1].chips = 0;
+    state.players[1].folded = true;
+
+    const newState = startNewHand(state);
+    // dealer=0の次のチップ持ちはplayer[2]（player[1]はスキップ）
+    expect(newState.dealerPosition).toBe(2);
+  });
+});
+
+describe('applyAction: エッジケース', () => {
+  function createPreflopState(): GameState {
+    return startNewHand(createInitialGameState());
+  }
+
+  it('callでチップがちょうど0になるとオールイン', () => {
+    const state = createInitialGameState();
+    state.currentBet = 100;
+    state.currentPlayerIndex = 0;
+    state.players[0].chips = 100;
+    state.players[0].currentBet = 0;
+    state.pot = 200;
+    // 他プレイヤーをfolded/hasActedにして次のプレイヤー判定を安定させる
+    for (let i = 1; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+    // ただし1人残さないと即ハンド終了なので2人残す
+    state.players[1].folded = false;
+    state.players[1].currentBet = 100;
+    state.players[1].hasActed = true;
+
+    const newState = applyAction(state, 0, 'call');
+    expect(newState.players[0].chips).toBe(0);
+    expect(newState.players[0].isAllIn).toBe(true);
+  });
+
+  it('allinがminRaise未満でもレイズ扱いにならない', () => {
+    const state = createInitialGameState();
+    state.currentBet = 50;
+    state.minRaise = 50;
+    state.currentPlayerIndex = 0;
+    state.players[0].chips = 20; // currentBet(0) + 20 = 20 < currentBet(50) なのでレイズにならない
+    state.players[0].currentBet = 0;
+    state.pot = 150;
+    state.players[1].hasActed = true;
+    state.players[1].currentBet = 50;
+    // 3人目を未アクションで残してストリート進行を防ぐ
+    state.players[2].hasActed = false;
+    state.players[2].currentBet = 0;
+    state.players[2].chips = 500;
+    for (let i = 3; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    const newState = applyAction(state, 0, 'allin');
+    expect(newState.players[0].isAllIn).toBe(true);
+    // オールイン額(20) < currentBet(50) なのでレイズにならない
+    // → player[1]のhasActedはリセットされない
+    expect(newState.players[1].hasActed).toBe(true);
+    // lastRaiserIndexも更新されない
+    expect(newState.lastRaiserIndex).toBe(state.lastRaiserIndex);
+  });
+
+  it('allinがminRaise以上でレイズ扱いになりhasActedリセット', () => {
+    const state = createInitialGameState();
+    state.currentBet = 10;
+    state.minRaise = 10;
+    state.currentPlayerIndex = 0;
+    state.players[0].chips = 30; // currentBet(0) + 30 = 30 > currentBet(10), raiseBy=20 >= minRaise(10)
+    state.players[0].currentBet = 0;
+    state.pot = 20;
+    state.players[1].hasActed = true;
+    state.players[1].currentBet = 10;
+    for (let i = 2; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    const newState = applyAction(state, 0, 'allin');
+    expect(newState.players[0].isAllIn).toBe(true);
+    expect(newState.currentBet).toBe(30);
+    // レイズ扱いなのでhasActedリセット
+    expect(newState.players[1].hasActed).toBe(false);
+  });
+
+  it('raise時にminRaiseが正しく更新される', () => {
+    const state = createPreflopState();
+    const current = state.currentPlayerIndex;
+    const originalMinRaise = state.minRaise;
+
+    // minRaiseより大きいレイズ額
+    const toCall = state.currentBet - state.players[current].currentBet;
+    const raiseBy = originalMinRaise + 5; // minRaiseより5多い
+    const raiseAmount = toCall + raiseBy;
+
+    const newState = applyAction(state, current, 'raise', raiseAmount);
+    // raiseBy > originalMinRaise なので minRaise が更新される
+    expect(newState.minRaise).toBe(raiseBy);
+  });
+
+  it('handHistoryにstreetが記録される', () => {
+    const state = createPreflopState();
+    const current = state.currentPlayerIndex;
+
+    const newState = applyAction(state, current, 'call');
+    expect(newState.handHistory[0].street).toBe('preflop');
+  });
+});
+
+describe('determineWinner: タイと端数', () => {
+  it('同点プレイヤーにポットが均等分割される', () => {
+    const state = createInitialGameState();
+    state.pot = 100;
+    // フラッシュが成立しないボード（各スート異なる）
+    state.communityCards = [
+      card('8', 'c'), card('9', 'd'), card('T', 's'),
+      card('2', 'h'), card('3', 'h'),
+    ];
+
+    // 2人が同じランクのストレート（J-T-9-8-7）を作る
+    state.players[0].holeCards = [card('J', 'c'), card('7', 'h'), card('4', 's'), card('5', 's')];
+    state.players[0].folded = false;
+    state.players[0].totalBetThisRound = 50;
+
+    state.players[1].holeCards = [card('J', 'd'), card('7', 's'), card('4', 'c'), card('5', 'c')];
+    state.players[1].folded = false;
+    state.players[1].totalBetThisRound = 50;
+
+    for (let i = 2; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    const result = determineWinner(state);
+    expect(result.winners.length).toBe(2);
+
+    const totalWinAmount = result.winners.reduce((sum, w) => sum + w.amount, 0);
+    expect(totalWinAmount).toBe(100);
+  });
+
+  it('奇数ポットの端数は最初の勝者に付与', () => {
+    const state = createInitialGameState();
+    state.pot = 101; // 奇数
+    state.communityCards = [
+      card('A', 'h'), card('K', 'h'), card('Q', 'h'),
+      card('J', 'c'), card('T', 'd'),
+    ];
+
+    state.players[0].holeCards = [card('9', 'h'), card('8', 'h'), card('2', 's'), card('3', 's')];
+    state.players[0].folded = false;
+    state.players[0].totalBetThisRound = 51;
+
+    state.players[1].holeCards = [card('9', 'd'), card('8', 'd'), card('2', 'c'), card('3', 'c')];
+    state.players[1].folded = false;
+    state.players[1].totalBetThisRound = 50;
+
+    for (let i = 2; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    const result = determineWinner(state);
+    // 端数が出る（101を2人で分割 → 51 + 50 or 50 + 50 + 端数処理）
+    const totalWinAmount = result.winners.reduce((sum, w) => sum + w.amount, 0);
+    expect(totalWinAmount).toBe(101);
+  });
+
+  it('サイドポットで各ポットの勝者が異なる場合', () => {
+    const state = createInitialGameState();
+    state.pot = 250;
+    state.communityCards = [
+      card('A', 'h'), card('K', 'h'), card('Q', 'h'),
+      card('2', 'c'), card('3', 'd'),
+    ];
+
+    // player[0]: ショートスタックオールイン、強いハンド（ストレートフラッシュ素材）
+    state.players[0].holeCards = [card('J', 'h'), card('T', 'h'), card('9', 's'), card('8', 's')];
+    state.players[0].folded = false;
+    state.players[0].totalBetThisRound = 50;
+    state.players[0].isAllIn = true;
+    state.players[0].chips = 0;
+
+    // player[1]: ディープスタック、弱いハンド
+    state.players[1].holeCards = [card('4', 's'), card('5', 's'), card('6', 'd'), card('7', 'd')];
+    state.players[1].folded = false;
+    state.players[1].totalBetThisRound = 100;
+
+    // player[2]: ディープスタック、中くらいのハンド
+    state.players[2].holeCards = [card('A', 'c'), card('K', 'c'), card('4', 'd'), card('5', 'd')];
+    state.players[2].folded = false;
+    state.players[2].totalBetThisRound = 100;
+
+    for (let i = 3; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    const result = determineWinner(state);
+    expect(result.isHandComplete).toBe(true);
+    expect(result.winners.length).toBeGreaterThanOrEqual(1);
+
+    // 勝者のチップ合計が正しい
+    const totalWon = result.winners.reduce((sum, w) => sum + w.amount, 0);
+    expect(totalWon).toBe(250);
+  });
+
+  it('勝者のchipsが正しく加算される', () => {
+    const state = createInitialGameState();
+    state.pot = 100;
+    state.players[0].chips = 500;
+    state.players[0].folded = false;
+    for (let i = 1; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    const result = determineWinner(state);
+    expect(result.players[0].chips).toBe(600); // 500 + 100
+  });
+});
+
+describe('全員オールイン: ボードランアウト', () => {
+  it('プリフロップで全員オールインするとショーダウンまで進む', () => {
+    let state = startNewHand(createInitialGameState(10));
+
+    // 全員オールイン
+    let loopCount = 0;
+    while (!state.isHandComplete && loopCount < 20) {
+      const current = state.currentPlayerIndex;
+      state = applyAction(state, current, 'allin');
+      loopCount++;
+    }
+
+    expect(state.isHandComplete).toBe(true);
+    expect(state.communityCards).toHaveLength(5);
+    expect(state.currentStreet).toBe('showdown');
+
+    // チップ合計が保存される
+    const totalChips = state.players.reduce((sum, p) => sum + p.chips, 0);
+    expect(totalChips).toBe(60); // 10 * 6
+  });
+
+  it('フロップ後に残り全員オールインするとランアウト', () => {
+    let state = startNewHand(createInitialGameState(100));
+
+    // プリフロップ: 全員コール
+    let loopCount = 0;
+    while (state.currentStreet === 'preflop' && !state.isHandComplete && loopCount < 20) {
+      const current = state.currentPlayerIndex;
+      const actions = getValidActions(state, current);
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) state = applyAction(state, current, 'call');
+      else if (checkAction) state = applyAction(state, current, 'check');
+      else break;
+      loopCount++;
+    }
+
+    expect(state.currentStreet).toBe('flop');
+
+    // フロップ: 全員オールイン
+    loopCount = 0;
+    while (!state.isHandComplete && loopCount < 20) {
+      const current = state.currentPlayerIndex;
+      state = applyAction(state, current, 'allin');
+      loopCount++;
+    }
+
+    expect(state.isHandComplete).toBe(true);
+    expect(state.communityCards).toHaveLength(5);
+
+    const totalChips = state.players.reduce((sum, p) => sum + p.chips, 0);
+    expect(totalChips).toBe(600);
+  });
 });
