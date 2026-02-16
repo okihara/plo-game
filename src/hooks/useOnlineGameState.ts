@@ -176,6 +176,12 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ショウダウン演出タイミング用Refs
+  const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const winnersDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingWinnersRef = useRef<{ playerId: number; amount: number; handName: string }[] | null>(null);
+  const isShowdownPendingRef = useRef(false);
+
   // ============================================
   // アクションマーカー管理
   // ============================================
@@ -320,6 +326,18 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       onHoleCards: (cards) => {
         // 新しいハンドが開始されたらカード配布アニメーションとwinnersクリア
         if (cards.length > 0) {
+          // ショウダウン演出タイマーをクリア
+          if (showdownRevealTimerRef.current) {
+            clearTimeout(showdownRevealTimerRef.current);
+            showdownRevealTimerRef.current = null;
+          }
+          if (winnersDisplayTimerRef.current) {
+            clearTimeout(winnersDisplayTimerRef.current);
+            winnersDisplayTimerRef.current = null;
+          }
+          pendingWinnersRef.current = null;
+          isShowdownPendingRef.current = false;
+
           startDealingAnimation();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
@@ -350,16 +368,39 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
               handName: w.handName,
             };
           });
-          setWinners(convertedWinners);
+
+          if (isShowdownPendingRef.current) {
+            // ショウダウン演出中 → winnersはカードreveal後に遅延表示
+            pendingWinnersRef.current = convertedWinners;
+          } else {
+            // ショウダウンなし（フォールド勝ち等）→ 1s後に表示
+            winnersDisplayTimerRef.current = setTimeout(() => {
+              setWinners(convertedWinners);
+            }, 1000);
+          }
         }
       },
       onShowdown: ({ players: showdownPlayers }) => {
-        // ショウダウン時に全アクティブプレイヤーのカードをセット
+        // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
         const cardsMap = new Map<number, Card[]>();
         for (const p of showdownPlayers) {
           cardsMap.set(p.seatIndex, p.cards);
         }
-        setShowdownCards(cardsMap);
+        isShowdownPendingRef.current = true;
+
+        // 2s後にカードを公開
+        showdownRevealTimerRef.current = setTimeout(() => {
+          setShowdownCards(cardsMap);
+
+          // カードreveal後2s待ってからWIN表示
+          winnersDisplayTimerRef.current = setTimeout(() => {
+            if (pendingWinnersRef.current) {
+              setWinners(pendingWinnersRef.current);
+              pendingWinnersRef.current = null;
+            }
+            isShowdownPendingRef.current = false;
+          }, 2000);
+        }, 2000);
       },
       onFastFoldQueued: () => {
         setIsChangingTable(true);

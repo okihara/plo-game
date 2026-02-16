@@ -30,7 +30,7 @@ export class TableInstance {
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private readonly HAND_COMPLETE_DELAY_MS = 3500; // 通常のハンド完了（全員フォールド等）
-  private readonly SHOWDOWN_DELAY_MS = 5000; // ショーダウン時（カードを見る時間）
+  private readonly SHOWDOWN_DELAY_MS = 7000; // ショーダウン時（カードを見る時間）
   private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
   private isHandInProgress = false;
   private pendingStartHand = false;
@@ -481,17 +481,7 @@ export class TableInstance {
       seats
     ).catch(err => console.error('Hand history save failed:', err));
 
-    // Broadcast winners
-    const handCompleteData = {
-      winners: this.gameState.winners.map(w => ({
-        playerId: seats[w.playerId]?.odId || '',
-        amount: w.amount,
-        handName: w.handName,
-      })),
-    };
-    this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
-
-    // Showdown - reveal cards for ALL active players
+    // Showdown - reveal cards for ALL active players (showdownをhand_completeより先に送信)
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1) {
       const activePlayers = getActivePlayers(this.gameState);
       const showdownPlayers = activePlayers.map(p => {
@@ -521,6 +511,16 @@ export class TableInstance {
       };
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }
+
+    // Broadcast winners
+    const handCompleteData = {
+      winners: this.gameState.winners.map(w => ({
+        playerId: seats[w.playerId]?.odId || '',
+        amount: w.amount,
+        handName: w.handName,
+      })),
+    };
+    this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 
     // Update seat chips
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
