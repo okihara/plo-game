@@ -3,6 +3,7 @@
 import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
+import { evaluatePLOHand } from '../../../shared/logic/handEvaluator.js';
 
 function serializeCard(card: Card): string {
   return `${card.rank}${card.suit}`;
@@ -79,14 +80,28 @@ export class HandHistoryRecorder {
           const endChip = gameState.players[seatIndex].chips;
           const profit = endChip - startChip;
 
+          const player = gameState.players[seatIndex];
           const winnerEntry = gameState.winners.find(w => w.playerId === seatIndex);
+
+          // ショーダウンに参加した全プレイヤーの役名を評価
+          let finalHand: string | null = null;
+          if (winnerEntry?.handName) {
+            finalHand = winnerEntry.handName;
+          } else if (!player.folded && player.holeCards.length === 4 && gameState.communityCards.length === 5) {
+            try {
+              const result = evaluatePLOHand(player.holeCards, gameState.communityCards);
+              finalHand = result.name || null;
+            } catch {
+              // 評価失敗時はnull
+            }
+          }
 
           return {
             userId: isAuthenticatedUser(seat.odId) ? seat.odId : null,
             username: seat.odName,
             seatPosition: seatIndex,
-            holeCards: serializeCards(gameState.players[seatIndex].holeCards),
-            finalHand: winnerEntry?.handName || null,
+            holeCards: serializeCards(player.holeCards),
+            finalHand,
             profit,
           };
         })

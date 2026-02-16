@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { evaluatePLOHand } from '../logic/handEvaluator';
+import type { Card } from '../logic/types';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
@@ -116,6 +118,19 @@ function getPositionName(seatPosition: number, dealerPosition: number, allSeatPo
 }
 
 
+function parseCard(s: string): Card {
+  return { rank: s.slice(0, -1) as Card['rank'], suit: s.slice(-1) as Card['suit'] };
+}
+
+function getHandName(holeCards: string[], communityCards: string[]): string {
+  if (holeCards.length !== 4 || communityCards.length !== 5) return '';
+  try {
+    return evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)).name;
+  } catch {
+    return '';
+  }
+}
+
 function formatAction(action: string): string {
   const map: Record<string, string> = {
     fold: 'Fold', check: 'Check', call: 'Call',
@@ -142,7 +157,7 @@ function HandSummaryCard({
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
-            return pos ? <span className="text-white/50 text-xs font-bold">{pos}</span> : null;
+            return pos ? <span className="bg-white/10 text-white/60 text-xs font-bold px-1.5 py-0.5 rounded">{pos}</span> : null;
           })()}
           <span className="text-white/70 text-sm">{hand.blinds}</span>
           <span className="text-white/40 text-xs">Pot {hand.potSize}</span>
@@ -174,121 +189,171 @@ function HandSummaryCard({
   );
 }
 
-function HandDetailView({
+function HandDetailDialog({
   hand,
-  onBack,
+  onClose,
 }: {
   hand: HandDetail;
-  onBack: () => void;
+  onClose: () => void;
 }) {
   return (
-    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black overflow-y-auto">
-      {/* ヘッダー */}
-      <div className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center z-10">
-        <button onClick={onBack} className="text-white/70 hover:text-white mr-3 text-sm">
-          &larr; 戻る
-        </button>
-        <h1 className="text-white font-bold">
-          Hand #{hand.handNumber}
-        </h1>
-        <span className="ml-2 text-white/50 text-sm">{hand.blinds}</span>
-      </div>
-
-      <div className="p-4 space-y-4">
-        {/* プレイヤー */}
-        <div className="space-y-2">
-          <div className="text-white/50 text-xs">プレイヤー</div>
-          {hand.players
-            .sort((a, b) => (a.isCurrentUser ? -1 : b.isCurrentUser ? 1 : 0))
-            .map((p, i) => {
-              const allSeats = hand.players.map(pl => pl.seatPosition);
-              const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
-              return (
-              <div
-                key={i}
-                className={`bg-white/5 rounded-lg p-3 border ${
-                  p.isCurrentUser ? 'border-cyan-500/30' : 'border-white/10'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
-                    {p.avatarUrl && (
-                      <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full" />
-                    )}
-                    <span className={`text-sm font-medium ${p.isCurrentUser ? 'text-cyan-400' : 'text-white/80'}`}>
-                      {p.username}
-                    </span>
-                    {pos && <span className="text-white/40 text-xs font-bold">{pos}</span>}
-                  </div>
-                  <ProfitDisplay profit={p.profit} />
-                </div>
-                <div className="flex items-center gap-1">
-                  {p.holeCards.map((c, j) => (
-                    <MiniCard key={j} cardStr={c} />
-                  ))}
-                  {p.finalHand && (
-                    <span className="ml-2 text-yellow-400/80 text-xs">{p.finalHand}</span>
-                  )}
-                </div>
-              </div>
-            );
-            })}
+    <div className="absolute inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/60" />
+      <div
+        className="relative w-[95%] max-h-[85%] bg-gray-900 rounded-2xl border border-white/20 overflow-y-auto shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* ヘッダー */}
+        <div className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+          <div className="flex items-center gap-2">
+            <h1 className="text-white font-bold text-lg">
+              Hand #{hand.handNumber}
+            </h1>
+            <span className="text-white/50">{hand.blinds}</span>
+            <span className="text-white/30 text-sm">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
+          </div>
+          <button onClick={onClose} className="text-white/50 hover:text-white text-2xl leading-none">&times;</button>
         </div>
 
-        {/* アクション履歴（ストリートごと） */}
-        <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-          <div className="text-white/50 text-xs mb-2">アクション</div>
-          <div className="space-y-1 text-sm">
-            {(() => {
-              const streets = ['preflop', 'flop', 'turn', 'river'];
-              const streetLabels: Record<string, string> = {
-                preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River',
-              };
-              const cc = hand.communityCards;
-              const streetCards: Record<string, string[]> = {
-                flop: cc.slice(0, 3),
-                turn: cc.slice(3, 4),
-                river: cc.slice(4, 5),
-              };
-              let lastStreet = '';
-              return hand.actions.map((a, i) => {
-                const street = a.street || 'preflop';
-                const showHeader = street !== lastStreet && streets.includes(street);
-                lastStreet = street;
+        <div className="p-3 space-y-3">
+          {/* プレイヤー */}
+          <div className="space-y-1.5">
+            {hand.players
+              .sort((a, b) => (a.isCurrentUser ? -1 : b.isCurrentUser ? 1 : 0))
+              .map((p, i) => {
+                const allSeats = hand.players.map(pl => pl.seatPosition);
+                const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
                 return (
-                  <div key={i}>
-                    {showHeader && (
-                      <div className="flex items-center gap-2 mt-2 mb-1 first:mt-0">
-                        <span className="text-white/50 text-xs font-bold">{streetLabels[street] || street}</span>
-                        {streetCards[street]?.length > 0 && (
-                          <div className="flex gap-0.5">
-                            {streetCards[street].map((c, j) => (
-                              <MiniCard key={j} cardStr={c} />
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    <div className="flex items-center gap-2">
-                      <span className="text-white/60 w-20 truncate">{a.odName}</span>
-                      <span className="text-white/90">{formatAction(a.action)}</span>
-                      {a.amount > 0 && (
-                        <span className="text-white/50">{a.amount}</span>
+                <div
+                  key={i}
+                  className={`bg-white/5 rounded-lg px-3 py-2 border ${
+                    p.isCurrentUser ? 'border-cyan-500/30' : 'border-white/10'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-1.5">
+                      {pos && <span className="bg-white/10 text-white/60 text-sm font-bold px-1.5 py-0.5 rounded">{pos}</span>}
+                      {p.avatarUrl && (
+                        <img src={p.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
                       )}
+                      <span className={`font-medium ${p.isCurrentUser ? 'text-cyan-400' : 'text-white/80'}`}>
+                        {p.username}
+                      </span>
                     </div>
+                    <ProfitDisplay profit={p.profit} />
+                  </div>
+                  <div className="flex items-center gap-1">
+                    {p.holeCards.map((c, j) => (
+                      <MiniCard key={j} cardStr={c} />
+                    ))}
+                    {p.finalHand && (
+                      <span className="ml-2 text-yellow-400/80 text-sm">{p.finalHand}</span>
+                    )}
+                  </div>
+                </div>
+              );
+              })}
+          </div>
+
+          {/* アクション履歴（ストリートごと） */}
+          <div className="bg-white/5 rounded-xl px-3 py-3 border border-white/10">
+            <div className="space-y-0.5">
+              {(() => {
+                const streets = ['preflop', 'flop', 'turn', 'river'];
+                const streetLabels: Record<string, string> = {
+                  preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River',
+                };
+                const cc = hand.communityCards;
+                const streetCards: Record<string, string[]> = {
+                  flop: cc.slice(0, 3),
+                  turn: cc.slice(3, 4),
+                  river: cc.slice(4, 5),
+                };
+                // ストリート開始時のポット額を計算
+                const streetStartPot: Record<string, number> = {};
+                let cumPot = 0;
+                let prevStreet = '';
+                for (const a of hand.actions) {
+                  const s = a.street || 'preflop';
+                  if (s !== prevStreet) {
+                    streetStartPot[s] = cumPot;
+                    prevStreet = s;
+                  }
+                  cumPot += a.amount;
+                }
+                let lastStreet = '';
+                let isFirstHeader = true;
+                return hand.actions.map((a, i) => {
+                  const street = a.street || 'preflop';
+                  const showHeader = street !== lastStreet && streets.includes(street);
+                  lastStreet = street;
+                  const headerMargin = showHeader && !isFirstHeader;
+                  if (showHeader) isFirstHeader = false;
+                  return (
+                    <div key={i}>
+                      {showHeader && (
+                        <div className={headerMargin ? 'mt-4 mb-1' : 'mb-1'}>
+                          <div className="flex items-center gap-2">
+                            <span className="text-white/50 text-sm font-bold">{streetLabels[street] || street}</span>
+                            {streetStartPot[street] > 0 && (
+                              <span className="text-white/30 text-sm">Pot {streetStartPot[street]}</span>
+                            )}
+                          </div>
+                          {streetCards[street]?.length > 0 && (
+                            <div className="flex gap-0.5 mt-0.5">
+                              {streetCards[street].map((c, j) => (
+                                <MiniCard key={j} cardStr={c} />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-center py-0.5">
+                        <span className="w-10 shrink-0">
+                          {(() => {
+                            const allSeats = hand.players.map(pl => pl.seatPosition);
+                            const aPos = getPositionName(a.seatIndex, hand.dealerPosition, allSeats);
+                            return aPos ? <span className="bg-white/10 text-white/60 text-xs font-bold px-1 py-0.5 rounded">{aPos}</span> : null;
+                          })()}
+                        </span>
+                        <span className="w-24 shrink-0 text-white/60 truncate">{a.odName}</span>
+                        <span className="w-20 shrink-0 text-white/90">{formatAction(a.action)}</span>
+                        <span className="text-white/50">{a.amount > 0 ? a.amount : ''}</span>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+            {/* Result */}
+            <div className="mt-4 mb-1">
+              <span className="text-white/50 text-sm font-bold">Result</span>
+              <span className="text-white/30 text-sm ml-2">Pot {hand.potSize}</span>
+            </div>
+            {(() => {
+              const foldedSeats = new Set(
+                hand.actions.filter(a => a.action === 'fold').map(a => a.seatIndex)
+              );
+              return hand.players
+                .filter(p => !foldedSeats.has(p.seatPosition))
+                .sort((a, b) => b.profit - a.profit);
+            })()
+              .map((p, i) => {
+                const allSeats = hand.players.map(pl => pl.seatPosition);
+                const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
+                return (
+                  <div key={`result-${i}`} className="flex items-center py-0.5">
+                    <span className="w-10 shrink-0">
+                      {pos && <span className="bg-white/10 text-white/60 text-xs font-bold px-1 py-0.5 rounded">{pos}</span>}
+                    </span>
+                    <span className="w-24 shrink-0 text-white/60 truncate">{p.username}</span>
+                    <span className="w-20 shrink-0 text-yellow-400/80 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
+                    <ProfitDisplay profit={p.profit} />
                   </div>
                 );
-              });
-            })()}
+              })}
           </div>
-          <div className="text-right text-white/40 text-xs mt-2">
-            Pot {hand.potSize}
-          </div>
-        </div>
 
-        {/* 日時 */}
-        <div className="text-center text-white/30 text-xs">
-          {new Date(hand.createdAt).toLocaleString('ja-JP')}
         </div>
       </div>
     </div>
@@ -357,11 +422,8 @@ export function HandHistory({ onBack }: HandHistoryProps) {
     );
   }
 
-  if (selectedHand) {
-    return <HandDetailView hand={selectedHand} onBack={() => setSelectedHand(null)} />;
-  }
-
   return (
+    <div className="h-full relative">
     <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black overflow-y-auto">
       {/* ヘッダー */}
       <div className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center z-10">
@@ -404,6 +466,11 @@ export function HandHistory({ onBack }: HandHistoryProps) {
             </div>
           )}
         </>
+      )}
+
+    </div>
+      {selectedHand && (
+        <HandDetailDialog hand={selectedHand} onClose={() => setSelectedHand(null)} />
       )}
     </div>
   );
