@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { FastifyInstance } from 'fastify';
 import { TableManager } from '../table/TableManager.js';
+import { TableInstance } from '../table/TableInstance.js';
 import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
@@ -17,9 +18,34 @@ interface GameSocketDependencies {
   matchmakingPool: MatchmakingPool;
 }
 
+// テーブル離脱時のキャッシュアウト処理
+async function cashOutPlayer(odId: string, chips: number, tableId?: string): Promise<void> {
+  if (odId.startsWith('guest_') || chips <= 0) return;
+  try {
+    await prisma.bankroll.update({
+      where: { userId: odId },
+      data: { balance: { increment: chips } },
+    });
+    await prisma.transaction.create({
+      data: { userId: odId, type: 'CASH_OUT', amount: chips, tableId },
+    });
+  } catch (e) {
+    console.error('Cash-out failed:', odId, chips, e);
+  }
+}
+
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
   const matchmakingPool = new MatchmakingPool(io, tableManager);
+
+  // テーブルから離席してキャッシュアウトする共通処理
+  async function unseatAndCashOut(table: TableInstance, odId: string, isBot: boolean): Promise<void> {
+    const result = table.unseatPlayer(odId);
+    tableManager.removePlayerFromTracking(odId);
+    if (result && !isBot) {
+      await cashOutPlayer(result.odId, result.chips, table.id);
+    }
+  }
 
   // Create default tables
   tableManager.createTable('1/3', false); // Regular table
@@ -112,11 +138,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           return;
         }
 
-        // Leave current table if any
+        // Leave current table if any (with cashout)
         const currentTable = tableManager.getPlayerTable(socket.odId!);
         if (currentTable) {
-          currentTable.unseatPlayer(socket.odId!);
-          tableManager.removePlayerFromTracking(socket.odId!);
+          await unseatAndCashOut(currentTable, socket.odId!, socket.odIsBot === true);
         }
 
         // Deduct buy-in from balance
@@ -164,10 +189,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('table:leave', async () => {
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
-        // Get remaining chips
-        // Note: Would need to add method to get player chips from table
-        table.unseatPlayer(socket.odId!);
-        tableManager.removePlayerFromTracking(socket.odId!);
+        await unseatAndCashOut(table, socket.odId!, socket.odIsBot === true);
         socket.emit('table:left');
       }
     });
@@ -230,11 +252,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           });
         }
 
-        // Leave current table if any
+        // Leave current table if any (with cashout)
         const currentTable = tableManager.getPlayerTable(socket.odId!);
         if (currentTable) {
-          currentTable.unseatPlayer(socket.odId!);
-          tableManager.removePlayerFromTracking(socket.odId!);
+          await unseatAndCashOut(currentTable, socket.odId!, socket.odIsBot === true);
         }
 
         // Queue player (guests and bots get default buy-in)
@@ -257,11 +278,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('matchmaking:leave', async (data: { blinds: string }) => {
       await matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
 
-      // Leave current table too
+      // Leave current table too (with cashout)
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
-        table.unseatPlayer(socket.odId!);
-        tableManager.removePlayerFromTracking(socket.odId!);
+        await unseatAndCashOut(table, socket.odId!, socket.odIsBot === true);
       }
     });
 
@@ -271,15 +291,16 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
+        const odId = socket.odId!;
+        const isBot = socket.odIsBot === true;
         // Give some time for reconnection before removing
-        setTimeout(() => {
+        setTimeout(async () => {
           // Check if player reconnected
           const stillConnected = Array.from(io.sockets.sockets.values())
-            .some((s: AuthenticatedSocket) => s.odId === socket.odId);
+            .some((s: AuthenticatedSocket) => s.odId === odId);
 
           if (!stillConnected) {
-            table.unseatPlayer(socket.odId!);
-            tableManager.removePlayerFromTracking(socket.odId!);
+            await unseatAndCashOut(table, odId, isBot);
           }
         }, 30000); // 30 second grace period
       }

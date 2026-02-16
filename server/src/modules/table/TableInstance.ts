@@ -123,11 +123,18 @@ export class TableInstance {
   }
 
   // Remove a player from the table
-  public unseatPlayer(odId: string): void {
+  public unseatPlayer(odId: string): { odId: string; chips: number } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return;
+    if (seatIndex === -1) return null;
 
     const seat = this.playerManager.getSeat(seatIndex);
+
+    // チップ数を取得（ハンド中はgameStateの値が最新）
+    let chips = seat?.chips ?? 0;
+    if (this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
+      chips = this.gameState.players[seatIndex].chips;
+    }
+
     if (seat?.socket) {
       // プレイヤーにテーブルを離れたことを通知
       seat.socket.emit('table:left');
@@ -157,6 +164,8 @@ export class TableInstance {
         this.advanceToNextPlayer();
       }
     }
+
+    return { odId, chips };
   }
 
   // Advance game to next player after a fold
