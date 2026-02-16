@@ -32,74 +32,74 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   };
 
   return (
-    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4 relative overflow-y-auto">
-      <div className="w-full max-w-md">
+    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-[4cqw] relative overflow-y-auto">
+      <div className="w-[90%]">
         {/* Logo */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-white mb-2">Volt Poker Club</h1>
+        <div className="text-center mb-[6cqw]">
+          <h1 className="text-[7cqw] font-bold text-white mb-[1.5cqw]">Volt Poker Club</h1>
         </div>
 
         {/* User Info or Login Buttons */}
         {loading ? (
-          <div className="text-center text-white/60 mb-6">読み込み中...</div>
+          <div className="text-center text-white/60 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
         ) : user ? (
-          <div className="bg-white/10 backdrop-blur rounded-xl p-4 mb-6 border border-white/10">
+          <div className="bg-white/10 backdrop-blur rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-white/10">
             <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-[2.5cqw]">
                 {user.avatarUrl && (
                   <img
                     src={user.avatarUrl}
                     alt={user.username}
-                    className="w-10 h-10 rounded-full cursor-pointer hover:ring-2 hover:ring-white/50 transition-all"
+                    className="w-[10cqw] h-[10cqw] rounded-full cursor-pointer hover:ring-2 hover:ring-white/50 transition-all"
                     onClick={() => setShowProfile(true)}
                   />
                 )}
                 <div>
-                  <div className="text-white font-bold">{user.username}</div>
-                  <div className="text-cyan-400 text-sm">${user.balance}</div>
+                  <div className="text-[3.5cqw] text-white font-bold">{user.username}</div>
+                  <div className="text-[3cqw] text-cyan-400">${user.balance}</div>
                 </div>
               </div>
               <button
                 onClick={logout}
-                className="text-white/60 hover:text-white text-sm"
+                className="text-[3cqw] text-white/60 hover:text-white"
               >
                 ログアウト
               </button>
             </div>
           </div>
         ) : (
-          <div className="bg-white/10 backdrop-blur rounded-xl p-6 mb-6 border border-white/10">
-            <p className="text-white/80 text-center mb-4">ログインしてプレイ</p>
+          <div className="bg-white/10 backdrop-blur rounded-[2.5cqw] p-[5cqw] mb-[5cqw] border border-white/10">
+            <p className="text-[3.5cqw] text-white/80 text-center mb-[3cqw]">ログインしてプレイ</p>
             <button
               onClick={handleLogin}
-              className="w-full py-3 px-4 bg-sky-500 text-white rounded-lg hover:bg-sky-600 transition-all font-medium flex items-center justify-center gap-2"
+              className="w-full py-[2.5cqw] px-[3.5cqw] text-[3.5cqw] bg-sky-500 text-white rounded-[2cqw] hover:bg-sky-600 transition-all font-medium flex items-center justify-center gap-[2cqw]"
             >
               <span>🐦</span> Twitterでログイン
             </button>
-            <p className="text-white/40 text-xs text-center mt-4">
+            <p className="text-[2.5cqw] text-white/40 text-center mt-[3cqw]">
               またはゲストとしてプレイ
             </p>
           </div>
         )}
 
         {/* Table selection */}
-        <div className="space-y-3">
+        <div className="space-y-[2.5cqw]">
           {TABLE_OPTIONS.map((table) => (
             <button
               key={table.id}
               onClick={() => onPlayOnline(table.blinds)}
-              className="w-full py-4 px-5 bg-white/10 backdrop-blur rounded-xl text-white hover:bg-white/20 transition-all border border-white/10 hover:border-white/30"
+              className="w-full py-[3.5cqw] px-[4cqw] bg-white/10 backdrop-blur rounded-[2.5cqw] text-white hover:bg-white/20 transition-all border border-white/10 hover:border-white/30"
             >
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-[3cqw]">
                   {/* Game type badge */}
-                  <span className="px-2 py-1 bg-cyan-500/20 text-cyan-400 text-xs font-bold rounded">
+                  <span className="px-[2cqw] py-[0.8cqw] bg-cyan-500/20 text-cyan-400 text-[2.5cqw] font-bold rounded-[1cqw]">
                     {table.gameLabel}
                   </span>
                   {/* Blinds */}
-                  <span className="text-lg font-bold">{table.blindsLabel}</span>
+                  <span className="text-[4.5cqw] font-bold">{table.blindsLabel}</span>
                 </div>
-                <div className="flex items-center gap-4 text-sm text-white/60">
+                <div className="flex items-center gap-[3cqw] text-[3cqw] text-white/60">
                   {/* Buy-in */}
                   <span>バイイン ${table.buyIn}</span>
                   {/* Player count */}
@@ -112,13 +112,13 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
 
         {/* ハンド履歴リンク（ログイン時のみ） */}
         {user && (
-          <div className="mt-4">
+          <div className="mt-[3cqw]">
             <button
               onClick={() => {
                 window.history.pushState({}, '', '/history');
                 window.dispatchEvent(new PopStateEvent('popstate'));
               }}
-              className="w-full py-3 px-5 bg-white/5 backdrop-blur rounded-xl text-white/70 hover:bg-white/10 hover:text-white transition-all border border-white/5 hover:border-white/15 text-sm"
+              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] bg-white/5 backdrop-blur rounded-[2.5cqw] text-white/70 hover:bg-white/10 hover:text-white transition-all border border-white/5 hover:border-white/15"
             >
               ハンド履歴を見る
             </button>
@@ -126,15 +126,15 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         )}
 
         {/* Footer info */}
-        <div className="mt-8 text-center text-white/40 text-xs">
+        <div className="mt-[6cqw] text-center text-white/40 text-[2.5cqw]">
           <p>NLH, PLO | リアルタイムマルチプレイヤー</p>
         </div>
 
         {/* Debug link */}
-        <div className="mt-4 text-center">
+        <div className="mt-[3cqw] text-center">
           <a
             href="/debug/player"
-            className="text-white/60 hover:text-white/90 text-sm underline"
+            className="text-[3cqw] text-white/60 hover:text-white/90 underline"
           >
             🔧 Player Debug
           </a>
