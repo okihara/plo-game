@@ -212,11 +212,13 @@ export class TableInstance {
         this.handleHandComplete();
       }
     } else if (result.streetChanged) {
-      // コミュニティカードを即座に表示
-      this.broadcastGameState();
-      // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
-      this.actionController.scheduleStreetTransition(() => {
-        this.requestNextAction();
+      // アクション演出を待ってからコミュニティカードを表示
+      this.actionController.scheduleActionAnimation(() => {
+        this.broadcastGameState();
+        // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
+        this.actionController.scheduleStreetTransition(() => {
+          this.requestNextAction();
+        });
       });
     } else {
       // 次のアクション要求後に状態をブロードキャスト（pendingActionがセットされている状態で送信するため）

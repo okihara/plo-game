@@ -387,6 +387,15 @@ export function applyAction(state: GameState, playerIndex: number, action: Actio
 }
 
 /**
+ * アクションを適用した結果、次のストリートに進むかどうかを判定する（immutable）
+ * 元の state は変更しない
+ */
+export function wouldAdvanceStreet(state: GameState, playerIndex: number, action: Action, amount: number = 0): boolean {
+  const resultState = applyAction(state, playerIndex, action, amount);
+  return resultState.currentStreet !== state.currentStreet;
+}
+
+/**
  * 次にアクションすべきプレイヤーを決定する
  * @returns nextPlayerIndex: 次のプレイヤー（-1なら終了）, moveToNextStreet: 次のストリートに進むか
  */

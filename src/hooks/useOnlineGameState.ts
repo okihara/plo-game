@@ -128,7 +128,7 @@ function convertClientStateToGameState(
     dealerPosition: clientState.dealerSeat,
     smallBlind: clientState.smallBlind,
     bigBlind: clientState.bigBlind,
-    currentPlayerIndex: clientState.currentPlayerSeat ?? 0,
+    currentPlayerIndex: clientState.currentPlayerSeat ?? -1,
     lastRaiserIndex: -1,
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
@@ -319,6 +319,10 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         setMyHoleCards(cards);
       },
       onActionTaken: ({ playerId, action, amount }) => {
+        // アクション完了 → タイマーリング＆アクション待ちグローを即座にクリア
+        setActionTimeoutAt(null);
+        setClientState(prev => prev ? { ...prev, currentPlayerSeat: null } : prev);
+
         // playerIdからシート番号を取得
         const seat = clientState?.players.findIndex(p => p?.odId === playerId);
         if (seat !== undefined && seat >= 0) {

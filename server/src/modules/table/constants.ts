@@ -8,7 +8,8 @@ export const TABLE_CONSTANTS = {
 
   // タイミング
   ACTION_TIMEOUT_MS: 10000,
-  STREET_TRANSITION_DELAY_MS: 2000,
+  ACTION_ANIMATION_DELAY_MS: 2000,    // ストリート変更前のアクション演出待ち
+  STREET_TRANSITION_DELAY_MS: 800,    // コミュニティカード確認時間
   HAND_START_DELAY_MS: 2000,
 
   // ダッシュボード

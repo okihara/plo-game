@@ -1,7 +1,7 @@
 // アクションフロー制御・タイマー管理
 
 import { GameState, Action } from '../../../shared/logic/types.js';
-import { getValidActions, getActivePlayers, applyAction, determineWinner } from '../../../shared/logic/gameEngine.js';
+import { getValidActions, getActivePlayers, applyAction, determineWinner, wouldAdvanceStreet } from '../../../shared/logic/gameEngine.js';
 import { SeatInfo, PendingAction } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
 import { BroadcastService } from './BroadcastService.js';
@@ -85,23 +85,24 @@ export class ActionController {
     // タイマークリア
     this.clearActionTimer();
 
-    // ストリート変更検出用に現在のストリートを保存
-    const previousStreet = gameState.currentStreet;
+    // ストリート変更を事前検出（applyAction前に判定）
+    const willAdvanceStreet = wouldAdvanceStreet(gameState, seatIndex, action, amount);
 
     // アクション適用
     const newState = applyAction(gameState, seatIndex, action, amount);
 
-    // アクションをブロードキャスト
+    // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {
       playerId: odId,
       action,
       amount,
+      streetChanged: willAdvanceStreet,
     });
 
     return {
       success: true,
       gameState: newState,
-      streetChanged: newState.currentStreet !== previousStreet,
+      streetChanged: willAdvanceStreet,
       handComplete: newState.isHandComplete,
     };
   }
@@ -219,9 +220,25 @@ export class ActionController {
   }
 
   /**
-   * ストリート遷移の遅延処理
+   * アクション演出待ちの遅延処理（ストリート変更前の一拍）
+   */
+  scheduleActionAnimation(callback: () => void): void {
+    if (this.streetTransitionTimer) {
+      clearTimeout(this.streetTransitionTimer);
+    }
+    this.streetTransitionTimer = setTimeout(() => {
+      this.streetTransitionTimer = null;
+      callback();
+    }, TABLE_CONSTANTS.ACTION_ANIMATION_DELAY_MS);
+  }
+
+  /**
+   * ストリート遷移の遅延処理（コミュニティカード確認時間）
    */
   scheduleStreetTransition(callback: () => void): void {
+    if (this.streetTransitionTimer) {
+      clearTimeout(this.streetTransitionTimer);
+    }
     this.streetTransitionTimer = setTimeout(() => {
       this.streetTransitionTimer = null;
       callback();
