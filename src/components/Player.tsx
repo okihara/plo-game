@@ -273,10 +273,10 @@ export function Player({
 
       {/* Hole Cards (for other players, or all players in spectator mode) */}
       {(positionIndex !== 0 || isSpectator) && (
-        <div className={`absolute flex z-[15] ${cardPositionStyle}`}>
+        <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
-                <div key={i} className={i > 0 ? '-ml-[7cqw]' : ''}>
+                <div key={i} className={i > 0 ? '-ml-[2cqw]' : ''}>
                   {isRevealing ? (
                     <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
                       <div
