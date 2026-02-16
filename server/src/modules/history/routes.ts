@@ -38,6 +38,19 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
               potSize: true,
               winners: true,
               createdAt: true,
+              players: {
+                select: {
+                  userId: true,
+                  username: true,
+                  seatPosition: true,
+                  holeCards: true,
+                  finalHand: true,
+                  profit: true,
+                  user: {
+                    select: { avatarUrl: true },
+                  },
+                },
+              },
             },
           },
         },
@@ -56,6 +69,15 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       holeCards: ph.holeCards,
       isWinner: ph.handHistory.winners.includes(userId),
       createdAt: ph.handHistory.createdAt,
+      players: ph.handHistory.players.map(p => ({
+        username: p.username || `Seat ${p.seatPosition + 1}`,
+        avatarUrl: p.user?.avatarUrl ?? null,
+        seatPosition: p.seatPosition,
+        holeCards: p.holeCards,
+        finalHand: p.finalHand,
+        profit: p.profit,
+        isCurrentUser: p.userId === userId,
+      })),
     }));
 
     return { hands, total, limit: take, offset: skip };
@@ -79,7 +101,13 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       where: { id: handId },
       include: {
         players: {
-          include: {
+          select: {
+            userId: true,
+            username: true,
+            seatPosition: true,
+            holeCards: true,
+            finalHand: true,
+            profit: true,
             user: {
               select: { username: true, avatarUrl: true },
             },
@@ -102,8 +130,8 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       actions: hand.actions,
       createdAt: hand.createdAt,
       players: hand.players.map(p => ({
-        username: p.user.username,
-        avatarUrl: p.user.avatarUrl,
+        username: p.username || p.user?.username || `Seat ${p.seatPosition + 1}`,
+        avatarUrl: p.user?.avatarUrl ?? null,
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
         finalHand: p.finalHand,

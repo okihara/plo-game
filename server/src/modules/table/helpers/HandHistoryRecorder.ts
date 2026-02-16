@@ -69,10 +69,10 @@ export class HandHistoryRecorder {
         .map(w => seats[w.playerId]?.odId ?? '')
         .filter(Boolean);
 
-      // 認証済みユーザーの HandHistoryPlayer レコードを準備
+      // 全プレイヤーの HandHistoryPlayer レコードを準備
       const playerRecords = seats
         .map((seat, seatIndex) => {
-          if (!seat || !isAuthenticatedUser(seat.odId)) return null;
+          if (!seat) return null;
           if (!this.startChips.has(seatIndex)) return null;
 
           const startChip = this.startChips.get(seatIndex)!;
@@ -82,7 +82,8 @@ export class HandHistoryRecorder {
           const winnerEntry = gameState.winners.find(w => w.playerId === seatIndex);
 
           return {
-            userId: seat.odId,
+            userId: isAuthenticatedUser(seat.odId) ? seat.odId : null,
+            username: seat.odName,
             seatPosition: seatIndex,
             holeCards: serializeCards(gameState.players[seatIndex].holeCards),
             finalHand: winnerEntry?.handName || null,

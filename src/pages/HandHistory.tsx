@@ -8,7 +8,7 @@ const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
 const SUIT_COLORS: Record<string, string> = {
-  h: 'text-red-500', d: 'text-blue-400', c: 'text-green-400', s: 'text-gray-300',
+  h: 'text-red-500', d: 'text-blue-400', c: 'text-green-700', s: 'text-gray-800',
 };
 
 interface HandSummary {
@@ -22,6 +22,7 @@ interface HandSummary {
   holeCards: string[];
   isWinner: boolean;
   createdAt: string;
+  players: HandDetailPlayer[];
 }
 
 interface HandDetailPlayer {
@@ -65,7 +66,7 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const color = SUIT_COLORS[suit] || 'text-white';
 
   return (
-    <span className={`inline-flex items-center justify-center w-7 h-9 bg-white/90 rounded text-xs font-bold shadow-sm ${color}`}>
+    <span className={`inline-flex items-center justify-center w-9 h-12 bg-white/90 rounded text-sm font-bold shadow-sm ${color}`}>
       {rank}{symbol}
     </span>
   );
@@ -125,10 +126,20 @@ function HandSummaryCard({
         {hand.holeCards.map((c, i) => (
           <MiniCard key={i} cardStr={c} />
         ))}
-        {hand.finalHand && (
-          <span className="ml-2 text-yellow-400/80 text-xs">{hand.finalHand}</span>
+        {hand.communityCards.length > 0 && (
+          <>
+            <span className="text-white/20 mx-1">|</span>
+            {hand.communityCards.map((c, i) => (
+              <MiniCard key={`cc-${i}`} cardStr={c} />
+            ))}
+          </>
         )}
       </div>
+      {hand.finalHand && (
+        <div className="mt-1">
+          <span className="text-yellow-400/80 text-xs">{hand.finalHand}</span>
+        </div>
+      )}
     </button>
   );
 }

@@ -31,7 +31,7 @@ interface HandData {
   winners: string[];
   blinds: string;
   communityCards: string[];
-  players: { userId: string; seatPosition: number; profit: number; finalHand?: string | null }[];
+  players: { userId: string | null; seatPosition: number; profit: number; finalHand?: string | null }[];
 }
 
 /** 6-max テーブルでSBのシート位置を返す */

@@ -78,16 +78,17 @@ model HandHistory {
 }
 
 model HandHistoryPlayer {
-  id            String @id @default(cuid())
+  id            String  @id @default(cuid())
   handHistoryId String
-  userId        String
+  userId        String?
+  username      String  @default("")
   seatPosition  Int
   holeCards     String[] // Array of card strings
   finalHand     String?  // e.g., "Full House, Aces full of Kings"
   profit        Int      // Can be negative for losses
 
   handHistory HandHistory @relation(fields: [handHistoryId], references: [id], onDelete: Cascade)
-  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([handHistoryId])
