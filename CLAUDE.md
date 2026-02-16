@@ -33,6 +33,10 @@ cd server && npm run dev          # サーバー起動 (localhost:3001)
 
 # TypeScriptチェック
 cd server && npx tsc --noEmit
+
+# テスト
+cd server && npm test             # 全テスト実行 (vitest)
+cd server && npm run test:watch   # ウォッチモード
 ```
 
 ### 全体起動 (2ターミナル必要)
