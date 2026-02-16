@@ -218,6 +218,7 @@ export class TableInstance {
         // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
         this.actionController.scheduleStreetTransition(() => {
           this.requestNextAction();
+          this.broadcastGameState();
         });
       });
     } else {
