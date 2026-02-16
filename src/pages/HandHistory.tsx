@@ -21,6 +21,7 @@ interface HandSummary {
   finalHand: string | null;
   holeCards: string[];
   isWinner: boolean;
+  dealerPosition: number;
   createdAt: string;
   players: HandDetailPlayer[];
 }
@@ -41,6 +42,7 @@ interface HandDetailAction {
   odName: string;
   action: string;
   amount: number;
+  street?: string;
 }
 
 interface HandDetail {
@@ -51,6 +53,7 @@ interface HandDetail {
   potSize: number;
   winners: string[];
   actions: HandDetailAction[];
+  dealerPosition: number;
   createdAt: string;
   players: HandDetailPlayer[];
 }
@@ -91,6 +94,28 @@ function formatDate(dateStr: string): string {
   return `${month}/${day} ${hours}:${mins}`;
 }
 
+function getPositionName(seatPosition: number, dealerPosition: number, allSeatPositions: number[]): string {
+  if (dealerPosition < 0) return '';
+  const sorted = [...allSeatPositions].sort((a, b) => {
+    const offsetA = (a - dealerPosition + 6) % 6;
+    const offsetB = (b - dealerPosition + 6) % 6;
+    return offsetA - offsetB;
+  });
+  const index = sorted.indexOf(seatPosition);
+  const count = sorted.length;
+  if (count <= 1) return '';
+  if (count === 2) return index === 0 ? 'SB' : 'BB';
+  const posMap: Record<number, string[]> = {
+    3: ['BTN', 'SB', 'BB'],
+    4: ['BTN', 'SB', 'BB', 'CO'],
+    5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+    6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
+  };
+  const positions = posMap[count] || posMap[6]!;
+  return positions[index] || '';
+}
+
+
 function formatAction(action: string): string {
   const map: Record<string, string> = {
     fold: 'Fold', check: 'Check', call: 'Call',
@@ -114,6 +139,11 @@ function HandSummaryCard({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-white/50 text-xs">#{hand.handNumber}</span>
+          {(() => {
+            const me = hand.players.find(p => p.isCurrentUser);
+            const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
+            return pos ? <span className="text-white/50 text-xs font-bold">{pos}</span> : null;
+          })()}
           <span className="text-white/70 text-sm">{hand.blinds}</span>
           <span className="text-white/40 text-xs">Pot {hand.potSize}</span>
         </div>
@@ -165,25 +195,15 @@ function HandDetailView({
       </div>
 
       <div className="p-4 space-y-4">
-        {/* コミュニティカード */}
-        <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-          <div className="text-white/50 text-xs mb-2">ボード</div>
-          <div className="flex gap-1.5 justify-center">
-            {hand.communityCards.map((c, i) => (
-              <MiniCard key={i} cardStr={c} />
-            ))}
-          </div>
-          <div className="text-center text-white/50 text-sm mt-2">
-            Pot {hand.potSize}
-          </div>
-        </div>
-
         {/* プレイヤー */}
         <div className="space-y-2">
           <div className="text-white/50 text-xs">プレイヤー</div>
           {hand.players
             .sort((a, b) => (a.isCurrentUser ? -1 : b.isCurrentUser ? 1 : 0))
-            .map((p, i) => (
+            .map((p, i) => {
+              const allSeats = hand.players.map(pl => pl.seatPosition);
+              const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
+              return (
               <div
                 key={i}
                 className={`bg-white/5 rounded-lg p-3 border ${
@@ -198,7 +218,7 @@ function HandDetailView({
                     <span className={`text-sm font-medium ${p.isCurrentUser ? 'text-cyan-400' : 'text-white/80'}`}>
                       {p.username}
                     </span>
-                    <span className="text-white/30 text-xs">Seat {p.seatPosition + 1}</span>
+                    {pos && <span className="text-white/40 text-xs font-bold">{pos}</span>}
                   </div>
                   <ProfitDisplay profit={p.profit} />
                 </div>
@@ -211,22 +231,58 @@ function HandDetailView({
                   )}
                 </div>
               </div>
-            ))}
+            );
+            })}
         </div>
 
-        {/* アクション履歴 */}
+        {/* アクション履歴（ストリートごと） */}
         <div className="bg-white/5 rounded-xl p-4 border border-white/10">
           <div className="text-white/50 text-xs mb-2">アクション</div>
           <div className="space-y-1 text-sm">
-            {hand.actions.map((a, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="text-white/60 w-20 truncate">{a.odName}</span>
-                <span className="text-white/90">{formatAction(a.action)}</span>
-                {a.amount > 0 && (
-                  <span className="text-white/50">{a.amount}</span>
-                )}
-              </div>
-            ))}
+            {(() => {
+              const streets = ['preflop', 'flop', 'turn', 'river'];
+              const streetLabels: Record<string, string> = {
+                preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River',
+              };
+              const cc = hand.communityCards;
+              const streetCards: Record<string, string[]> = {
+                flop: cc.slice(0, 3),
+                turn: cc.slice(3, 4),
+                river: cc.slice(4, 5),
+              };
+              let lastStreet = '';
+              return hand.actions.map((a, i) => {
+                const street = a.street || 'preflop';
+                const showHeader = street !== lastStreet && streets.includes(street);
+                lastStreet = street;
+                return (
+                  <div key={i}>
+                    {showHeader && (
+                      <div className="flex items-center gap-2 mt-2 mb-1 first:mt-0">
+                        <span className="text-white/50 text-xs font-bold">{streetLabels[street] || street}</span>
+                        {streetCards[street]?.length > 0 && (
+                          <div className="flex gap-0.5">
+                            {streetCards[street].map((c, j) => (
+                              <MiniCard key={j} cardStr={c} />
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <span className="text-white/60 w-20 truncate">{a.odName}</span>
+                      <span className="text-white/90">{formatAction(a.action)}</span>
+                      {a.amount > 0 && (
+                        <span className="text-white/50">{a.amount}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+          <div className="text-right text-white/40 text-xs mt-2">
+            Pot {hand.potSize}
           </div>
         </div>
 

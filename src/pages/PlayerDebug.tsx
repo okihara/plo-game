@@ -264,6 +264,7 @@ export function PlayerDebug() {
                         positionIndex={posIndex}
                         isCurrentPlayer={isCurrentPlayer}
                         isWinner={isWinner}
+                        winAmount={isWinner ? 500 : undefined}
                         lastAction={lastAction}
                         showCards={showCards}
                         isDealing={isDealing}

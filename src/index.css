@@ -172,22 +172,44 @@ body {
   animation: fold-card 0.4s ease-in forwards;
 }
 
-/* Chip bet animation - chips fly from player to bet position */
+/* Chip bet animation - scale down from large to normal */
 @keyframes chip-bet {
   0% {
     opacity: 0;
-    transform: translate(var(--chip-from-x, 0), var(--chip-from-y, 0)) scale(0.3);
-  }
-  50% {
-    opacity: 1;
-    transform: translate(calc(var(--chip-from-x, 0) * 0.3), calc(var(--chip-from-y, 0) * 0.3)) scale(1.1);
+    transform: scale(1.8);
   }
   100% {
     opacity: 1;
-    transform: translate(0, 0) scale(1);
+    transform: scale(1);
   }
 }
 
 .animate-chip-bet {
   animation: chip-bet 0.4s ease-out forwards;
+}
+
+/* Win amount pop animation */
+@keyframes win-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 0) scale(0.3);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.4);
+  }
+  60% {
+    transform: translate(-50%, 0) scale(0.9);
+  }
+  80% {
+    transform: translate(-50%, 0) scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.animate-win-pop {
+  animation: win-pop 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
 }

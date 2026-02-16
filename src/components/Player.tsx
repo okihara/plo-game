@@ -9,6 +9,7 @@ interface PlayerProps {
   positionIndex: number;
   isCurrentPlayer: boolean;
   isWinner: boolean;
+  winAmount?: number;
   lastAction: LastAction | null;
   showCards: boolean;
   isDealing: boolean;
@@ -83,15 +84,6 @@ const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = 
   5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
 };
 
-// チップがプレイヤーアバターからbet位置へ飛ぶ方向（開始位置のオフセット）
-const chipFromOffsets: Record<number, { x: string; y: string }> = {
-  0: { x: '0', y: '8cqw' },       // 下: 下から上へ
-  1: { x: '15cqw', y: '0' },      // 左下: 左から右へ
-  2: { x: '18cqw', y: '-6cqw' },  // 左上: 左上から右下へ
-  3: { x: '0', y: '-8cqw' },      // 上: 上から下へ
-  4: { x: '-18cqw', y: '-6cqw' }, // 右上: 右上から左下へ
-  5: { x: '-15cqw', y: '0' },     // 右下: 右から左へ
-};
 
 // CPUアバター画像マッピング（オフラインモード用フォールバック）
 const cpuAvatars: Record<string, string> = {
@@ -110,6 +102,7 @@ export function Player({
   positionIndex,
   isCurrentPlayer,
   isWinner,
+  winAmount,
   lastAction,
   showCards,
   isDealing,
@@ -170,6 +163,15 @@ export function Player({
 
   return (
     <div className={`absolute flex flex-col items-center transition-all duration-300 ${positionStyles[positionIndex]}`}>
+      {/* Win Amount Display */}
+      {isWinner && winAmount !== undefined && winAmount > 0 && (
+        <div className="absolute top-[-12cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
+          <span className="text-[7cqw] font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_0_4px_rgba(255,200,0,0.6)]">
+            WIN +{formatChips(winAmount)}
+          </span>
+        </div>
+      )}
+
       {/* Avatar with Timer Ring */}
       <div className="relative">
         {/* Current Player Glow Ring */}
@@ -220,7 +222,7 @@ export function Player({
             text-[8cqw] relative overflow-hidden cursor-pointer z-10
             ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
             ${player.folded ? 'opacity-40 grayscale' : ''}
-            ${isWinner ? 'border-green-400 shadow-[0_0_6.4cqw_rgba(0,255,0,0.6)]' : ''}
+            ${isWinner ? 'border-yellow-400 shadow-[0_0_10cqw_rgba(255,200,0,0.8),0_0_20cqw_rgba(255,150,0,0.4)] animate-pulse' : ''}
           `}
         >
           {avatarImage ? (
@@ -237,7 +239,7 @@ export function Player({
         )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
-          <div className="absolute -bottom-[1.5cqw] left-1/2 -translate-x-1/2 bg-black/80 px-[2.4cqw] py-[0.7cqw] rounded text-[3.7cqw] font-bold text-white z-20">
+          <div className="absolute -bottom-[1.5cqw] left-1/2 -translate-x-1/2 w-[10cqw] h-[6cqw] bg-black/80 rounded flex items-center justify-center text-[4.8cqw] font-bold text-white z-[35] leading-none">
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
@@ -250,9 +252,9 @@ export function Player({
       </div>
 
       {/* Player Info */}
-      <div className="bg-black/80 px-[1.5cqw] py-[0.7cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20]">
-        <div className="text-[3.5cqw] text-gray-400 whitespace-nowrap">{player.name}</div>
-        <div className="text-[4cqw] font-bold text-emerald-400">{formatChips(player.chips)}</div>
+      <div className="bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20]">
+        <div className="text-[3.5cqw] text-white-400 whitespace-nowrap">{player.name}</div>
+        <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
       {/* Hole Cards (for other players, or all players in spectator mode) */}
@@ -299,10 +301,6 @@ export function Player({
         <div
           key={chipAnimKey}
           className={`absolute bg-black/70 text-yellow-400 px-[2.4cqw] py-[0.9cqw] rounded-lg text-[4.2cqw] font-bold whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
-          style={{
-            '--chip-from-x': chipFromOffsets[positionIndex].x,
-            '--chip-from-y': chipFromOffsets[positionIndex].y,
-          } as React.CSSProperties}
         >
           {formatChips(player.currentBet)}
         </div>

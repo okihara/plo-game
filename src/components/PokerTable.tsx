@@ -76,6 +76,7 @@ export function PokerTable({
               positionIndex={posIndex}
               isCurrentPlayer={isCurrentPlayer}
               isWinner={state.winners.some(w => w.playerId === player.id)}
+              winAmount={state.winners.find(w => w.playerId === player.id)?.amount}
               lastAction={lastActions.get(player.id) || null}
               showCards={isSpectator || isShowdown}
               isDealing={isDealingCards}
