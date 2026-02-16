@@ -17,9 +17,9 @@ interface TableOption {
 }
 
 const TABLE_OPTIONS: TableOption[] = [
-  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '$1/$3', buyIn: 300, playerCount: 0 },
-  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '$2/$5', buyIn: 500, playerCount: 0 },
-  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '$5/$10', buyIn: 1000, playerCount: 0 },
+  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, playerCount: 0 },
+  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, playerCount: 0 },
+  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, playerCount: 0 },
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
@@ -76,7 +76,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 <div>
                   <div className="text-[3.5cqw] text-white font-bold">{user.username}</div>
                   <div className="text-[3cqw] text-cyan-400 flex items-center gap-[1.5cqw]">
-                    <span>${user.balance}</span>
+                    <span>{user.balance}</span>
                     {import.meta.env.DEV && (
                       <button
                         onClick={handleDebugAddChips}
@@ -131,7 +131,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 </div>
                 <div className="flex items-center gap-[3cqw] text-[3cqw] text-white/60">
                   {/* Buy-in */}
-                  <span>バイイン ${table.buyIn}</span>
+                  <span>バイイン {table.buyIn}</span>
                   {/* Player count */}
                   <span className="text-cyan-400">{table.playerCount}人</span>
                 </div>

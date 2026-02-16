@@ -49,14 +49,7 @@ const betPositionStyles: Record<number, string> = {
   5: 'top-0 left-[-19cqw]',
 };
 
-const dealerButtonStyles: Record<number, string> = {
-  0: 'top-[-15cqw] left-[29cqw]',
-  1: 'top-[-1.5cqw] right-[-12.5cqw]',
-  2: 'top-[-1.5cqw] right-[-12.5cqw]',
-  3: 'bottom-[-12.5cqw] right-[22cqw]',
-  4: 'top-[-1.5cqw] left-[-12.5cqw]',
-  5: 'top-[-1.5cqw] left-[-12.5cqw]',
-};
+const dealerButtonStyle = 'top-[-5cqw] right-[-5cqw]';
 
 const actionColorStyles: Record<Action, string> = {
   fold: 'bg-gray-600',
@@ -234,6 +227,12 @@ export function Player({
             isMe ? '👤' : '🤖'
           )}
         </div>
+        {/* Dealer Button */}
+        {player.position === 'BTN' && (
+          <div className={`absolute w-[13cqw] h-[13cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[1cqw] border-yellow-700 rounded-full flex items-center justify-center text-[6.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
+            D
+          </div>
+        )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
           <div className="absolute -bottom-[1.5cqw] left-1/2 -translate-x-1/2 bg-black/80 px-[2.4cqw] py-[0.7cqw] rounded text-[3.7cqw] font-bold text-white z-20">
@@ -307,12 +306,6 @@ export function Player({
         </div>
       )}
 
-      {/* Dealer Button */}
-      {player.position === 'BTN' && (
-        <div className={`absolute w-[9.5cqw] h-[9.5cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.7cqw] border-yellow-700 rounded-full flex items-center justify-center text-[4.6cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyles[positionIndex]}`}>
-          D
-        </div>
-      )}
     </div>
   );
 }

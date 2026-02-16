@@ -317,7 +317,7 @@ export function PlayerDebug() {
                     <div className="text-white font-mono">{showCards ? 'ON' : 'OFF'}</div>
 
                     <div>ベット額:</div>
-                    <div className="text-white font-mono">{showBet ? `$${betAmount}` : 'なし'}</div>
+                    <div className="text-white font-mono">{showBet ? `${betAmount}` : 'なし'}</div>
 
                     <div>現在のターン:</div>
                     <div className="text-white font-mono">{isCurrentPlayer ? 'YES' : 'NO'}</div>

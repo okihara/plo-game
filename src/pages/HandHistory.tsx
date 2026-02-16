@@ -73,12 +73,12 @@ function MiniCard({ cardStr }: { cardStr: string }) {
 
 function ProfitDisplay({ profit }: { profit: number }) {
   if (profit > 0) {
-    return <span className="text-green-400 font-bold">+${profit}</span>;
+    return <span className="text-green-400 font-bold">+{profit}</span>;
   }
   if (profit < 0) {
-    return <span className="text-red-400 font-bold">-${Math.abs(profit)}</span>;
+    return <span className="text-red-400 font-bold">-{Math.abs(profit)}</span>;
   }
-  return <span className="text-white/40">$0</span>;
+  return <span className="text-white/40">0</span>;
 }
 
 function formatDate(dateStr: string): string {
@@ -113,8 +113,8 @@ function HandSummaryCard({
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <span className="text-white/50 text-xs">#{hand.handNumber}</span>
-          <span className="text-white/70 text-sm">${hand.blinds}</span>
-          <span className="text-white/40 text-xs">Pot ${hand.potSize}</span>
+          <span className="text-white/70 text-sm">{hand.blinds}</span>
+          <span className="text-white/40 text-xs">Pot {hand.potSize}</span>
         </div>
         <div className="flex items-center gap-2">
           <ProfitDisplay profit={hand.profit} />
@@ -150,7 +150,7 @@ function HandDetailView({
         <h1 className="text-white font-bold">
           Hand #{hand.handNumber}
         </h1>
-        <span className="ml-2 text-white/50 text-sm">${hand.blinds}</span>
+        <span className="ml-2 text-white/50 text-sm">{hand.blinds}</span>
       </div>
 
       <div className="p-4 space-y-4">
@@ -163,7 +163,7 @@ function HandDetailView({
             ))}
           </div>
           <div className="text-center text-white/50 text-sm mt-2">
-            Pot ${hand.potSize}
+            Pot {hand.potSize}
           </div>
         </div>
 
@@ -212,7 +212,7 @@ function HandDetailView({
                 <span className="text-white/60 w-20 truncate">{a.odName}</span>
                 <span className="text-white/90">{formatAction(a.action)}</span>
                 {a.amount > 0 && (
-                  <span className="text-white/50">${a.amount}</span>
+                  <span className="text-white/50">{a.amount}</span>
                 )}
               </div>
             ))}

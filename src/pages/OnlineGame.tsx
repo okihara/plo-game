@@ -78,7 +78,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   }, [connect, disconnect, joinMatchmaking]);
 
   // ブラインド表示用
-  const blindsLabel = `$${blinds.replace('/', '/$')}`;
+  const blindsLabel = blinds;
 
   // 接続中（または最低表示時間が経過していない）
   const showLoadingScreen = isConnecting || !minLoadingComplete;

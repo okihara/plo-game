@@ -61,11 +61,11 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
     }
 
     if (amount >= 1000000) {
-      return `$${(amount / 1000000).toFixed(1)}M`;
+      return `${(amount / 1000000).toFixed(1)}M`;
     } else if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(1)}K`;
+      return `${(amount / 1000).toFixed(1)}K`;
     }
-    return `$${amount}`;
+    return `${amount}`;
   };
 
   const value: GameSettingsContextValue = {
