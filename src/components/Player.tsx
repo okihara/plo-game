@@ -49,6 +49,8 @@ const betPositionStyles: Record<number, string> = {
   5: 'top-0 left-[-19cqw]',
 };
 
+const cardPositionStyle = 'top-[12cqw] left-1/2 -translate-x-1/2';
+
 const dealerButtonStyle = 'top-[-5cqw] right-[-5cqw]';
 
 const actionColorStyles: Record<Action, string> = {
@@ -248,14 +250,14 @@ export function Player({
       </div>
 
       {/* Player Info */}
-      <div className="bg-black/80 px-[1.5cqw] py-[0.7cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-10">
+      <div className="bg-black/80 px-[1.5cqw] py-[0.7cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20]">
         <div className="text-[3.5cqw] text-gray-400 whitespace-nowrap">{player.name}</div>
         <div className="text-[4cqw] font-bold text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
       {/* Hole Cards (for other players, or all players in spectator mode) */}
       {(positionIndex !== 0 || isSpectator) && (
-        <div className={`flex mt-[1.5cqw]`}>
+        <div className={`absolute flex z-[15] ${cardPositionStyle}`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
                 <div key={i} className={i > 0 ? '-ml-[7cqw]' : ''}>
