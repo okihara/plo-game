@@ -50,9 +50,9 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="w-full h-screen flex items-center justify-center bg-gray-900 relative">
-        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-900">
+    <div className="min-h-[100dvh] bg-gray-900 flex items-center justify-center">
+      <div className="w-full h-[100dvh] flex items-center justify-center bg-gray-900 relative">
+        <div className="@container flex flex-col w-full h-full max-w-[calc(100dvh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-900">
           {page}
         </div>
       </div>
