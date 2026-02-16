@@ -31,10 +31,16 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
   const maxRaise = Math.min(myPlayer.chips, maxPotRaise);
 
   const [sliderValue, setSliderValue] = useState(minRaise);
+  const [actionSent, setActionSent] = useState(false);
 
   useEffect(() => {
     setSliderValue(minRaise);
   }, [minRaise]);
+
+  // サーバーからのstate更新でターンが変わったらリセット
+  useEffect(() => {
+    setActionSent(false);
+  }, [isMyTurn]);
 
   const handlePreset = useCallback((preset: number) => {
     const potAfterCall = state.pot + toCall;
@@ -52,13 +58,14 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
     } else if (action === 'allin') {
       amount = myPlayer.chips;
     }
+    setActionSent(true);
     onAction(action, amount);
   }, [toCall, myPlayer.chips, sliderValue, onAction]);
 
   return (
     <div className="bg-gradient-to-b from-gray-800/95 to-gray-900/95 px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw] border-t-2 border-gray-600 backdrop-blur-sm">
       {/* Preset Buttons & Bet Slider */}
-      <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn) ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="w-1/2 flex gap-[0.9cqw]">
           {[
             { label: '1/3', value: 0.33 },
@@ -69,7 +76,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
             <button
               key={label}
               onClick={() => handlePreset(value)}
-              disabled={!canRaise || !isMyTurn}
+              disabled={!canRaise || !isMyTurn || actionSent}
               className="flex-1 py-[1.8cqw] px-[0.9cqw] border-2 border-gray-500 rounded-md bg-gray-700 text-gray-200 text-[2.3cqw] font-bold transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
             >
               {label}
@@ -87,7 +94,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
             value={sliderValue}
             step={1}
             onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
-            disabled={!canRaise || !isMyTurn}
+            disabled={!canRaise || !isMyTurn || actionSent}
             className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[5.4cqw] [&::-webkit-slider-thumb]:h-[5.4cqw] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
           />
         </div>
@@ -97,14 +104,14 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
       <div className="grid grid-cols-3 gap-[1.8cqw]">
         <button
           onClick={() => handleAction('fold')}
-          disabled={!isMyTurn}
+          disabled={!isMyTurn || actionSent}
           className="py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
         >
           フォールド
         </button>
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
-          disabled={!isMyTurn}
+          disabled={!isMyTurn || actionSent}
           className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
@@ -115,7 +122,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
         </button>
         <button
           onClick={() => handleAction(state.currentBet === 0 ? 'bet' : 'raise')}
-          disabled={!canRaise || !isMyTurn}
+          disabled={!canRaise || !isMyTurn || actionSent}
           className="py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-md"
         >
           {state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
