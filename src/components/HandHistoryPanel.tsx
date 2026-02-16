@@ -363,6 +363,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
   const { user } = useAuth();
   const [hands, setHands] = useState<HandSummary[]>([]);
   const [selectedHand, setSelectedHand] = useState<HandDetail | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [total, setTotal] = useState(0);
@@ -391,6 +392,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
   };
 
   const fetchHandDetail = async (handId: string) => {
+    setLoadingDetail(true);
     try {
       const res = await fetch(`${API_BASE}/api/history/${handId}`, {
         credentials: 'include',
@@ -400,6 +402,8 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
       setSelectedHand(data);
     } catch (err) {
       console.error('Failed to fetch hand detail:', err);
+    } finally {
+      setLoadingDetail(false);
     }
   };
 
@@ -467,6 +471,12 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
           </>
         )}
       </div>
+      {loadingDetail && (
+        <div className="absolute inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/60" />
+          <div className="w-8 h-8 border-2 border-white/30 border-t-white rounded-full animate-spin relative z-10" />
+        </div>
+      )}
       {selectedHand && (
         <HandDetailDialog hand={selectedHand} onClose={() => setSelectedHand(null)} />
       )}

@@ -90,15 +90,6 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
     const { userId } = request.user as { userId: string };
     const { handId } = request.params as { handId: string };
 
-    // ユーザーがこのハンドに参加しているか確認
-    const playerEntry = await prisma.handHistoryPlayer.findFirst({
-      where: { handHistoryId: handId, userId },
-    });
-
-    if (!playerEntry) {
-      return reply.code(404).send({ error: 'Hand not found' });
-    }
-
     const hand = await prisma.handHistory.findUnique({
       where: { id: handId },
       include: {
