@@ -19,6 +19,7 @@ model User {
   lastLoginAt   DateTime?
 
   bankroll      Bankroll?
+  statsCache    PlayerStatsCache?
   transactions  Transaction[]
   handHistories HandHistoryPlayer[]
 
@@ -92,6 +93,33 @@ model HandHistoryPlayer {
 
   @@index([userId])
   @@index([handHistoryId])
+}
+
+model PlayerStatsCache {
+  id                   String   @id @default(cuid())
+  userId               String   @unique
+  handsPlayed          Int      @default(0)
+  winCount             Int      @default(0)
+  totalProfit          Int      @default(0)
+  detailedHands        Int      @default(0)
+  vpipCount            Int      @default(0)
+  pfrCount             Int      @default(0)
+  threeBetCount        Int      @default(0)
+  threeBetOpportunity  Int      @default(0)
+  foldTo3BetCount      Int      @default(0)
+  faced3BetCount       Int      @default(0)
+  aggressiveActions    Int      @default(0)
+  totalPostflopActions Int      @default(0)
+  cbetCount            Int      @default(0)
+  cbetOpportunity      Int      @default(0)
+  foldToCbetCount      Int      @default(0)
+  facedCbetCount       Int      @default(0)
+  sawFlopCount         Int      @default(0)
+  wtsdCount            Int      @default(0)
+  wsdCount             Int      @default(0)
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DailyBonus {

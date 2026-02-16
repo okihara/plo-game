@@ -4,6 +4,7 @@ import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
 import { evaluatePLOHand } from '../../../shared/logic/handEvaluator.js';
+import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
 
 function serializeCard(card: Card): string {
   return `${card.rank}${card.suit}`;
@@ -124,6 +125,11 @@ export class HandHistoryRecorder {
           },
         },
       });
+
+      // スタッツキャッシュ更新 (fire-and-forget)
+      updatePlayerStats(gameState, seats, this.startChips).catch(err =>
+        console.error('Stats cache update failed:', err)
+      );
     } catch (error) {
       console.error('Failed to save hand history:', error);
     }
