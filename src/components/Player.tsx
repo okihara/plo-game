@@ -16,6 +16,7 @@ interface PlayerProps {
   actionTimeoutAt?: ActionTimeoutAt | null;
   actionTimeoutMs?: number | null;
   onAvatarClick?: () => void;
+  isSpectator?: boolean;
 }
 
 function formatAction(action: Action, amount: number, formatChips: (n: number) => string): string {
@@ -121,6 +122,7 @@ export function Player({
   actionTimeoutAt,
   actionTimeoutMs,
   onAvatarClick,
+  isSpectator = false,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   // positionIndex === 0 が自分の位置
@@ -252,8 +254,8 @@ export function Player({
         <div className="text-[4cqw] font-bold text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
-      {/* Hole Cards (for other players) */}
-      {positionIndex !== 0 && (
+      {/* Hole Cards (for other players, or all players in spectator mode) */}
+      {(positionIndex !== 0 || isSpectator) && (
         <div className={`flex mt-[1.5cqw]`}>
           {showCards && !player.folded
             ? player.holeCards.map((card, i) => (

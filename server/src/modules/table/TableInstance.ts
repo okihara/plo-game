@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action } from '../../shared/logic/types.js';
+import { GameState, Action, Card } from '../../shared/logic/types.js';
 import { createInitialGameState, startNewHand, getActivePlayers } from '../../shared/logic/gameEngine.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
@@ -33,6 +33,7 @@ export class TableInstance {
   private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
   private isHandInProgress = false;
   private pendingStartHand = false;
+  private spectators: Set<Socket> = new Set();
 
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
@@ -358,6 +359,9 @@ export class TableInstance {
       }
     }
 
+    // スペクテーターに全員のホールカードを送信
+    this.broadcastAllHoleCardsToSpectators();
+
     // ハンドヒストリー用スナップショット記録
     this.historyRecorder.recordHandStart(seats, this.gameState);
 
@@ -529,6 +533,60 @@ export class TableInstance {
 
     const clientState = this.getClientGameState();
     this.broadcast.emitToRoom('game:state', { state: clientState });
+  }
+
+  // ============================================
+  // スペクテーター管理
+  // ============================================
+
+  public addSpectator(socket: Socket): void {
+    this.spectators.add(socket);
+    socket.join(this.roomName);
+    socket.on('disconnect', () => {
+      this.spectators.delete(socket);
+    });
+  }
+
+  public sendAllHoleCardsToSpectator(socket: Socket): void {
+    if (!this.gameState || !this.isHandInProgress) return;
+
+    const seats = this.playerManager.getSeats();
+    const players: { seatIndex: number; cards: Card[] }[] = [];
+
+    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+      if (seats[i] && this.gameState.players[i].holeCards.length > 0) {
+        players.push({
+          seatIndex: i,
+          cards: this.gameState.players[i].holeCards,
+        });
+      }
+    }
+
+    if (players.length > 0) {
+      socket.emit('game:all_hole_cards', { players });
+    }
+  }
+
+  private broadcastAllHoleCardsToSpectators(): void {
+    if (!this.gameState || this.spectators.size === 0) return;
+
+    const seats = this.playerManager.getSeats();
+    const players: { seatIndex: number; cards: Card[] }[] = [];
+
+    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+      if (seats[i] && this.gameState.players[i].holeCards.length > 0) {
+        players.push({
+          seatIndex: i,
+          cards: this.gameState.players[i].holeCards,
+        });
+      }
+    }
+
+    if (players.length > 0) {
+      for (const socket of this.spectators) {
+        socket.emit('game:all_hole_cards', { players });
+      }
+    }
   }
 
   public getClientGameState(): ClientGameState {

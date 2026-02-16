@@ -3,6 +3,7 @@ import { Server } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
 import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
+import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 
 interface AdminDependencies {
@@ -168,12 +169,14 @@ export function adminRoutes(deps: AdminDependencies) {
     // HTML Dashboard
     fastify.get('/admin/status', async (request, reply) => {
       reply.type('text/html');
-      return getDashboardHTML();
+      return getDashboardHTML(env.CLIENT_URL);
     });
   };
 }
 
-function getDashboardHTML(): string {
+function getDashboardHTML(clientUrl: string): string {
+  // 開発環境ではCLIENT_URL（Vite dev server）を使う、本番では相対パス
+  const spectateBaseUrl = clientUrl || '';
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -494,6 +497,7 @@ function getDashboardHTML(): string {
   </div>
 
   <script>
+    var SPECTATE_BASE_URL = '${spectateBaseUrl}';
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -658,6 +662,7 @@ function getDashboardHTML(): string {
               (table.isHandInProgress ? '<span class="badge badge-active">' + streetLabel + '</span>' : '<span class="badge badge-waiting">待機中</span>') +
             '</div>' +
             '<div>' +
+              '<a href="' + SPECTATE_BASE_URL + '/spectate/' + table.id + '" target="_blank" style="color:#60a5fa;font-size:12px;margin-right:12px">👁 観戦</a>' +
               '<span style="color:#fbbf24;font-weight:600">Pot: ' + formatChips(table.pot) + '</span>' +
               '<span style="color:#64748b;margin-left:12px">' + table.playerCount + '/' + table.maxPlayers + '人</span>' +
             '</div>' +

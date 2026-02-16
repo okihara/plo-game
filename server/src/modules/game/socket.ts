@@ -290,6 +290,25 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       const tables = tableManager.getTablesInfo();
       socket.emit('lobby:tables', { tables });
     });
+
+    // Handle spectator join
+    socket.on('table:spectate', (data: { tableId: string }) => {
+      const { tableId } = data;
+      const table = tableManager.getTable(tableId);
+      if (!table) {
+        socket.emit('table:error', { message: 'Table not found' });
+        return;
+      }
+
+      table.addSpectator(socket);
+
+      const clientState = table.getClientGameState();
+      socket.emit('game:state', { state: clientState });
+
+      table.sendAllHoleCardsToSpectator(socket);
+
+      socket.emit('table:spectating', { tableId });
+    });
   });
 
   return { tableManager, matchmakingPool };

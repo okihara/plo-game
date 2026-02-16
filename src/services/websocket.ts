@@ -48,6 +48,8 @@ class WebSocketService {
     onPlayerLeft?: (seat: number, playerId: string) => void;
     onFastFoldQueued?: () => void;
     onFastFoldTableAssigned?: (tableId: string) => void;
+    onSpectating?: (tableId: string) => void;
+    onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -144,6 +146,15 @@ class WebSocketService {
         this.listeners.onMatchmakingTableAssigned?.(tableId);
       });
 
+      // Spectator events
+      this.socket.on('table:spectating', ({ tableId }) => {
+        this.listeners.onSpectating?.(tableId);
+      });
+
+      this.socket.on('game:all_hole_cards', ({ players }) => {
+        this.listeners.onAllHoleCards?.(players);
+      });
+
       // Timeout for initial connection
       setTimeout(() => {
         if (!this.playerId) {
@@ -201,6 +212,11 @@ class WebSocketService {
 
   leaveMatchmaking(): void {
     this.socket?.emit('matchmaking:leave');
+  }
+
+  // Spectator
+  spectateTable(tableId: string): void {
+    this.socket?.emit('table:spectate', { tableId });
   }
 }
 

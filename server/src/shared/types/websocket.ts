@@ -10,6 +10,7 @@ export interface ClientToServerEvents {
   'table:leave': () => void;
   'table:sit': (data: { seatNumber: number }) => void;
   'table:stand': () => void;
+  'table:spectate': (data: { tableId: string }) => void;
 
   // Game actions
   'game:action': (data: { action: Action; amount?: number }) => void;
@@ -56,6 +57,12 @@ export interface ServerToClientEvents {
   // Matchmaking
   'matchmaking:queued': (data: { position: number }) => void;
   'matchmaking:table_assigned': (data: { tableId: string }) => void;
+
+  // Spectator
+  'table:spectating': (data: { tableId: string }) => void;
+  'game:all_hole_cards': (data: {
+    players: { seatIndex: number; cards: Card[] }[];
+  }) => void;
 }
 
 // ========== Shared Types ==========
