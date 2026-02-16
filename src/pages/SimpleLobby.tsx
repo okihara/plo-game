@@ -23,8 +23,27 @@ const TABLE_OPTIONS: TableOption[] = [
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
+  const [addingChips, setAddingChips] = useState(false);
+
+  const handleDebugAddChips = async () => {
+    const apiBase = import.meta.env.VITE_SERVER_URL || '';
+    setAddingChips(true);
+    try {
+      const res = await fetch(`${apiBase}/api/bankroll/debug-add`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        await refreshUser();
+      }
+    } catch (err) {
+      console.error('Failed to add debug chips:', err);
+    } finally {
+      setAddingChips(false);
+    }
+  };
 
   const handleLogin = () => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -56,7 +75,18 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 )}
                 <div>
                   <div className="text-[3.5cqw] text-white font-bold">{user.username}</div>
-                  <div className="text-[3cqw] text-cyan-400">${user.balance}</div>
+                  <div className="text-[3cqw] text-cyan-400 flex items-center gap-[1.5cqw]">
+                    <span>${user.balance}</span>
+                    {import.meta.env.DEV && (
+                      <button
+                        onClick={handleDebugAddChips}
+                        disabled={addingChips}
+                        className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-yellow-500/80 text-black font-bold rounded-[1cqw] hover:bg-yellow-400 disabled:opacity-50"
+                      >
+                        +10,000
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
               <button

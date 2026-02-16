@@ -3,6 +3,7 @@ import { prisma } from '../../config/database.js';
 
 const DAILY_BONUS = 1000;
 const LOGIN_BONUS = 500;
+const DEBUG_ADD_AMOUNT = 10000;
 
 export async function bankrollRoutes(fastify: FastifyInstance) {
   // Auth middleware
@@ -130,4 +131,30 @@ export async function bankrollRoutes(fastify: FastifyInstance) {
       newBalance: updated.balance,
     };
   });
+
+  // Debug: add chips (development only)
+  if (process.env.NODE_ENV !== 'production') {
+    fastify.post('/debug-add', async (request: FastifyRequest) => {
+      const { userId } = request.user as { userId: string };
+
+      const bankroll = await prisma.bankroll.update({
+        where: { userId },
+        data: { balance: { increment: DEBUG_ADD_AMOUNT } },
+      });
+
+      await prisma.transaction.create({
+        data: {
+          userId,
+          type: 'LOGIN_BONUS',
+          amount: DEBUG_ADD_AMOUNT,
+        },
+      });
+
+      return {
+        success: true,
+        amount: DEBUG_ADD_AMOUNT,
+        newBalance: bankroll.balance,
+      };
+    });
+  }
 }
