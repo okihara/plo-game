@@ -30,7 +30,6 @@ type ActionType = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
 
 export function PlayerDebug() {
   const [playerState, setPlayerState] = useState<PlayerState>('normal');
-  const [positionIndex, setPositionIndex] = useState<number>(3);
   const [showCards, setShowCards] = useState(true);
   const [showBet, setShowBet] = useState(false);
   const [betAmount, setBetAmount] = useState(250);
@@ -102,33 +101,6 @@ export function PlayerDebug() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Control Panel */}
             <div className="lg:col-span-1 space-y-6">
-              {/* Position */}
-              <div className="bg-gray-800 rounded-lg p-6">
-                <h3 className="text-xl font-semibold mb-4">テーブルポジション</h3>
-                <div className="space-y-2">
-                  {[
-                    { value: 0, label: '0 - 下部中央（自分）' },
-                    { value: 1, label: '1 - 左下' },
-                    { value: 2, label: '2 - 左上' },
-                    { value: 3, label: '3 - 上部中央' },
-                    { value: 4, label: '4 - 右上' },
-                    { value: 5, label: '5 - 右下' },
-                  ].map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-3 cursor-pointer hover:bg-gray-700 p-2 rounded">
-                      <input
-                        type="radio"
-                        name="position"
-                        value={value}
-                        checked={positionIndex === value}
-                        onChange={(e) => setPositionIndex(Number(e.target.value))}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm">{label}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
               {/* Player State */}
               <div className="bg-gray-800 rounded-lg p-6">
                 <h3 className="text-xl font-semibold mb-4">プレイヤー状態</h3>
@@ -283,20 +255,24 @@ export function PlayerDebug() {
             <div className="lg:col-span-2">
               <div className="bg-gray-800 rounded-lg p-8">
                 <h3 className="text-2xl font-semibold mb-6 text-center">プレビュー</h3>
-                <div className="relative w-full max-w-md mx-auto aspect-[4/5] bg-gradient-to-br from-green-800 to-green-600 rounded-3xl overflow-visible">
+                <div className="relative w-full max-w-md mx-auto aspect-[4/5] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[3px] border-[#2a2520] overflow-visible">
                   <div className="@container w-full h-full relative">
-                    <Player
-                      player={player}
-                      positionIndex={positionIndex}
-                      isCurrentPlayer={isCurrentPlayer}
-                      isWinner={isWinner}
-                      lastAction={lastAction}
-                      showCards={showCards}
-                      isDealing={isDealing}
-                      dealOrder={0}
-                      actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
-                      actionTimeoutMs={isTimerActive ? 15000 : null}
-                    />
+                    {[0, 1, 2, 3, 4, 5].map((posIndex) => (
+                      <Player
+                        key={posIndex}
+                        player={player}
+                        positionIndex={posIndex}
+                        isCurrentPlayer={isCurrentPlayer}
+                        isWinner={isWinner}
+                        lastAction={lastAction}
+                        showCards={showCards}
+                        isDealing={isDealing}
+                        dealOrder={posIndex}
+                        actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
+                        actionTimeoutMs={isTimerActive ? 15000 : null}
+                        isSpectator={posIndex === 0}
+                      />
+                    ))}
                   </div>
                 </div>
 
@@ -304,9 +280,6 @@ export function PlayerDebug() {
                 <div className="mt-6 p-4 bg-gray-700 rounded text-sm space-y-2">
                   <div className="font-semibold text-gray-300 mb-3">現在の状態:</div>
                   <div className="grid grid-cols-2 gap-2 text-gray-400">
-                    <div>ポジション:</div>
-                    <div className="text-white font-mono">{positionIndex}</div>
-
                     <div>プレイヤー状態:</div>
                     <div className="text-white font-mono">{playerState}</div>
 
