@@ -51,7 +51,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   };
 
   return (
-    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-[4cqw] relative overflow-y-auto">
+    <div className="h-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center p-[4cqw] relative overflow-y-auto">
       <div className="w-[90%]">
         {/* Logo */}
         <div className="text-center mb-[6cqw]">

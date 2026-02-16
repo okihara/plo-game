@@ -85,7 +85,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   if (showLoadingScreen) {
     return (
-      <div className="h-full w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+      <div className="h-full w-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center p-4">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">Volt Poker Club</h1>
           <div className="flex items-center justify-center gap-3 mb-8">
@@ -108,7 +108,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   // 接続エラー
   if (connectionError) {
     return (
-      <div className="h-full w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+      <div className="h-full w-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center p-4">
         <div className="text-center bg-white/10 rounded-2xl p-8 max-w-sm">
           <div className="text-red-400 text-5xl mb-4">!</div>
           <h2 className="text-white text-xl font-bold mb-2">接続エラー</h2>
@@ -135,7 +135,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   // テーブル待機中
   if (!gameState) {
     return (
-      <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
+      <div className="h-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-pulse text-6xl mb-4">🎰</div>
           <p className="text-white text-lg mb-2">テーブルを探しています...</p>
