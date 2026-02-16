@@ -7,9 +7,10 @@ interface MyCardsProps {
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
   folded?: boolean;
+  handName?: string;
 }
 
-export function MyCards({ cards, isDealing, dealOrder, folded = false }: MyCardsProps) {
+export function MyCards({ cards, isDealing, dealOrder, folded = false, handName }: MyCardsProps) {
   return (
     <div
       className={`@container flex flex-col items-center justify-center h-[24cqw] bg-gradient-to-b from-transparent to-black/30 transition-all duration-300 ${folded ? 'opacity-40' : ''}`}
@@ -35,6 +36,11 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false }: MyCards
           );
         })}
       </div>
+      )}
+      {handName && !folded && (
+        <div className="text-[3.5cqw] font-bold text-amber-300 mt-[1cqw]">
+          {handName}
+        </div>
       )}
     </div>
   );

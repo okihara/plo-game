@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';
+import { ChevronLeft, Settings } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
@@ -163,27 +164,21 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   return (
     <>
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-gray-800/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
+          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-transparent px-[2%] flex items-center justify-between">
             <button
               onClick={onBack}
               className="text-gray-400 hover:text-gray-200 transition-colors"
-              style={{ fontSize: 'min(1.8vh, 3vw)' }}
             >
-              ← ロビー
+              <ChevronLeft style={{ width: 'min(2.4vh, 4vw)', height: 'min(2.4vh, 4vw)' }} />
             </button>
-            <div className="flex items-center">
-              <span className="font-bold text-emerald-400 leading-none" style={{ fontSize: 'min(1.8vh, 3vw)' }}>PLO</span>
-              <span className="text-gray-500 mx-[1%]" style={{ fontSize: 'min(1.6vh, 2.6vw)' }}>|</span>
-              <span className="font-semibold text-gray-300" style={{ fontSize: 'min(1.7vh, 2.8vw)' }}>{gameState.smallBlind}/{gameState.bigBlind}</span>
-            </div>
+            <div />
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
                 className="text-gray-400 hover:text-gray-200 transition-colors"
-                style={{ fontSize: 'min(2vh, 3.4vw)' }}
               >
-                ⚙
+                <Settings style={{ width: 'min(2vh, 3.4vw)', height: 'min(2vh, 3.4vw)' }} />
               </button>
               {showSettingsMenu && (
                 <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 min-w-[120px] z-50">
@@ -247,6 +242,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             isDealing={isDealingCards}
             dealOrder={humanDealOrder}
             folded={humanPlayer?.folded}
+            handName={showdownHandNames.get(humanPlayerIdx)}
           />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />

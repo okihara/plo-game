@@ -38,7 +38,7 @@ const positionStyles: Record<number, string> = {
   0: 'bottom-[-12%] left-1/2 -translate-x-1/2',
   1: 'bottom-[5%] left-[-15%]',
   2: 'top-[18%] left-[-15%]',
-  3: 'top-[-8%] left-1/2 -translate-x-1/2',
+  3: 'top-[-4%] left-1/2 -translate-x-1/2',
   4: 'top-[18%] right-[-15%]',
   5: 'bottom-[5%] right-[-15%]',
 };
@@ -335,7 +335,7 @@ export function Player({
 
       {/* Hand Name (showdown) */}
       {(positionIndex !== 0 || isSpectator) && (showdownHandName || winHandName) && !player.folded && (
-        <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap animate-win-pop`} style={{ top: '28cqw' }}>
+        <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap`} style={{ top: '28cqw' }}>
           <span className={`text-[3.5cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
             {showdownHandName || winHandName}
           </span>
