@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -182,6 +182,21 @@ function formatProfit(profit: number): string {
   return `${sign}${profit.toLocaleString()}`;
 }
 
+const statInfo: Record<string, { desc: string; formula: string }> = {
+  Hands:       { desc: 'プレイしたハンド数', formula: '参加ハンドの合計' },
+  'Win Rate':  { desc: '勝利したハンドの割合', formula: '勝利数 ÷ 総ハンド数 × 100' },
+  Profit:      { desc: '総損益（チップ）', formula: '全ハンドの獲得チップ合計' },
+  VPIP:        { desc: '自発的にポットに参加した割合', formula: '(コール+レイズ) ÷ 総ハンド数 × 100' },
+  PFR:         { desc: 'プリフロップでレイズした割合', formula: 'PFレイズ数 ÷ 総ハンド数 × 100' },
+  '3Bet':      { desc: 'プリフロップで3ベットした割合', formula: '3ベット数 ÷ 3ベット機会数 × 100' },
+  AFq:         { desc: 'ポストフロップのアグレッション頻度', formula: '(ベット+レイズ) ÷ (ベット+レイズ+コール+フォールド) × 100' },
+  CBet:        { desc: 'PFレイザーがフロップでベットした割合', formula: 'Cベット数 ÷ Cベット機会数 × 100' },
+  'Fold to CB': { desc: 'Cベットに対してフォールドした割合', formula: 'CB被フォールド数 ÷ CB被回数 × 100' },
+  'Fold to 3B': { desc: '3ベットに対してフォールドした割合', formula: '3B被フォールド数 ÷ 3B被回数 × 100' },
+  WTSD:        { desc: 'フロップ参加後ショウダウンまで行った割合', formula: 'SD到達数 ÷ フロップ参加数 × 100' },
+  'W$SD':      { desc: 'ショウダウンで勝利した割合', formula: 'SD勝利数 ÷ SD到達数 × 100' },
+};
+
 interface StatItemProps {
   label: string;
   value: string;
@@ -190,12 +205,54 @@ interface StatItemProps {
 }
 
 function StatItem({ label, value, isPlaceholder, color }: StatItemProps) {
+  const [showTooltip, setShowTooltip] = useState(false);
+  const tooltipRef = useRef<HTMLDivElement>(null);
+  const info = statInfo[label];
+
+  useEffect(() => {
+    if (!showTooltip) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (tooltipRef.current && !tooltipRef.current.contains(e.target as Node)) {
+        setShowTooltip(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [showTooltip]);
+
   return (
-    <div className="text-center">
+    <div className="text-center relative">
       <div className={`text-[4.5cqw] font-bold ${isPlaceholder ? 'text-white/20' : color || 'text-white'}`}>
         {value}
       </div>
-      <div className="text-white/50 text-[2.5cqw]">{label}</div>
+      <div className="text-white/50 text-[2.5cqw] flex items-center justify-center gap-[1cqw]">
+        {label}
+        {info && !isPlaceholder && (
+          <span
+            onClick={(e) => { e.stopPropagation(); setShowTooltip(v => !v); }}
+            className="inline-flex items-center justify-center w-[3.5cqw] h-[3.5cqw] rounded-full border border-white/30 text-white/40 text-[2cqw] leading-none cursor-pointer hover:text-white/70 hover:border-white/50 shrink-0"
+          >
+            i
+          </span>
+        )}
+      </div>
+      {showTooltip && info && (
+        <div
+          ref={tooltipRef}
+          className="absolute z-[300] bottom-full left-1/2 -translate-x-1/2 mb-[1.5cqw] w-[55cqw] bg-gray-900 border border-white/20 rounded-[2cqw] p-[3cqw] shadow-xl"
+        >
+          <div className="text-white text-[2.8cqw] font-semibold mb-[1.5cqw]">{label}</div>
+          <div className="text-white/70 text-[2.5cqw] mb-[1.5cqw]">{info.desc}</div>
+          <div className="text-cyan-400/80 text-[2.2cqw] bg-black/30 rounded-[1.5cqw] px-[2cqw] py-[1.5cqw]">
+            {info.formula}
+          </div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[2cqw] border-r-[2cqw] border-t-[2cqw] border-l-transparent border-r-transparent border-t-white/20" />
+        </div>
+      )}
     </div>
   );
 }
