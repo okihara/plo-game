@@ -34,6 +34,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     seatedPlayerCount,
     actionTimeoutAt,
     actionTimeoutMs,
+    showdownHandNames,
     connect,
     disconnect,
     joinMatchmaking,
@@ -237,6 +238,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             actionTimeoutAt={actionTimeoutAt}
             actionTimeoutMs={actionTimeoutMs}
             onPlayerClick={setSelectedPlayer}
+            showdownHandNames={showdownHandNames}
           />
 
           <MyCards

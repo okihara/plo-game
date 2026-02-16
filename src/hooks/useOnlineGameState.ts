@@ -38,6 +38,7 @@ export interface OnlineGameHookResult {
   seatedPlayerCount: number;
   actionTimeoutAt: ActionTimeoutAt | null;
   actionTimeoutMs: number | null;
+  showdownHandNames: Map<number, string>;
 
   // アクション
   connect: () => Promise<void>;
@@ -174,6 +175,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
   const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
+  const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -185,6 +187,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const winnersDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingWinnersRef = useRef<{ playerId: number; amount: number; handName: string }[] | null>(null);
+  const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
   const isShowdownPendingRef = useRef(false);
 
   // ============================================
@@ -341,6 +344,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
             winnersDisplayTimerRef.current = null;
           }
           pendingWinnersRef.current = null;
+          pendingShowdownHandNamesRef.current = null;
           isShowdownPendingRef.current = false;
 
           startDealingAnimation();
@@ -348,6 +352,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           prevCardCountRef.current = 0;
           setWinners([]); // 新しいハンド開始時にwinnersをクリア
           setShowdownCards(new Map()); // ショウダウンカードもクリア
+          setShowdownHandNames(new Map()); // ショウダウン役名もクリア
         }
         setMyHoleCards(cards);
       },
@@ -388,20 +393,29 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       onShowdown: ({ players: showdownPlayers }) => {
         // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
         const cardsMap = new Map<number, Card[]>();
+        const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
           cardsMap.set(p.seatIndex, p.cards);
+          if (p.handName) {
+            handNamesMap.set(p.seatIndex, p.handName);
+          }
         }
         isShowdownPendingRef.current = true;
+        pendingShowdownHandNamesRef.current = handNamesMap;
 
         // カードを公開
         showdownRevealTimerRef.current = setTimeout(() => {
           setShowdownCards(cardsMap);
 
-          // カードreveal後、WIN表示
+          // カードreveal後、WIN表示 + 役名表示
           winnersDisplayTimerRef.current = setTimeout(() => {
             if (pendingWinnersRef.current) {
               setWinners(pendingWinnersRef.current);
               pendingWinnersRef.current = null;
+            }
+            if (pendingShowdownHandNamesRef.current) {
+              setShowdownHandNames(pendingShowdownHandNamesRef.current);
+              pendingShowdownHandNamesRef.current = null;
             }
             isShowdownPendingRef.current = false;
           }, SHOWDOWN_WINNERS_DELAY);
@@ -470,6 +484,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
     seatedPlayerCount,
     actionTimeoutAt,
     actionTimeoutMs,
+    showdownHandNames,
     connect,
     disconnect,
     joinMatchmaking,

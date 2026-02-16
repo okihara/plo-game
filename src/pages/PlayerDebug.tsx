@@ -40,6 +40,7 @@ export function PlayerDebug() {
   const [actionTimestamp, setActionTimestamp] = useState<number | null>(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
+  const [showHandName, setShowHandName] = useState(false);
 
   // Create player based on state
   const player = createPlayer('Player', {
@@ -194,6 +195,16 @@ export function PlayerDebug() {
                     <span className="text-sm">ベット額を表示</span>
                   </label>
 
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showHandName}
+                      onChange={(e) => setShowHandName(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">役名を表示</span>
+                  </label>
+
                   {showBet && (
                     <div className="ml-7 mt-2">
                       <label className="text-sm text-gray-400 block mb-1">ベット額</label>
@@ -265,6 +276,8 @@ export function PlayerDebug() {
                         isCurrentPlayer={isCurrentPlayer}
                         isWinner={isWinner}
                         winAmount={isWinner ? 500 : undefined}
+                        winHandName={isWinner ? 'フルハウス' : undefined}
+                        showdownHandName={showHandName ? 'フルハウス' : undefined}
                         lastAction={lastAction}
                         showCards={showCards}
                         isDealing={isDealing}

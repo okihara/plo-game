@@ -14,6 +14,7 @@ interface PokerTableProps {
   actionTimeoutMs?: number | null;
   onPlayerClick?: (player: PlayerType) => void;
   isSpectator?: boolean;
+  showdownHandNames?: Map<number, string>;
 }
 
 export function PokerTable({
@@ -26,6 +27,7 @@ export function PokerTable({
   actionTimeoutMs,
   onPlayerClick,
   isSpectator = false,
+  showdownHandNames,
 }: PokerTableProps) {
   const { formatChips } = useGameSettings();
   const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
@@ -77,6 +79,8 @@ export function PokerTable({
               isCurrentPlayer={isCurrentPlayer}
               isWinner={state.winners.some(w => w.playerId === player.id)}
               winAmount={state.winners.find(w => w.playerId === player.id)?.amount}
+              winHandName={state.winners.find(w => w.playerId === player.id)?.handName}
+              showdownHandName={showdownHandNames?.get(playerIdx)}
               lastAction={lastActions.get(player.id) || null}
               showCards={isSpectator || isShowdown}
               isDealing={isDealingCards}

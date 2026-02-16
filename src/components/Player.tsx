@@ -10,6 +10,8 @@ interface PlayerProps {
   isCurrentPlayer: boolean;
   isWinner: boolean;
   winAmount?: number;
+  winHandName?: string;
+  showdownHandName?: string;
   lastAction: LastAction | null;
   showCards: boolean;
   isDealing: boolean;
@@ -103,6 +105,8 @@ export function Player({
   isCurrentPlayer,
   isWinner,
   winAmount,
+  winHandName,
+  showdownHandName,
   lastAction,
   showCards,
   isDealing,
@@ -326,6 +330,15 @@ export function Player({
                   </div>
                 );
               })}
+        </div>
+      )}
+
+      {/* Hand Name (showdown) */}
+      {(positionIndex !== 0 || isSpectator) && (showdownHandName || winHandName) && !player.folded && (
+        <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap animate-win-pop`} style={{ top: '28cqw' }}>
+          <span className={`text-[3.5cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
+            {showdownHandName || winHandName}
+          </span>
         </div>
       )}
 
