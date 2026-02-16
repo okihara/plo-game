@@ -54,7 +54,7 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
 
   if (showLoadingScreen) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+      <div className="h-full w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-white mb-2">SPECTATOR MODE</h1>
           <p className="text-white/50 text-sm mb-6">Table: {tableId}</p>
@@ -73,7 +73,7 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
 
   if (connectionError) {
     return (
-      <div className="min-h-screen w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
+      <div className="h-full w-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4">
         <div className="text-center bg-white/10 rounded-2xl p-8 max-w-sm">
           <div className="text-red-400 text-5xl mb-4">!</div>
           <h2 className="text-white text-xl font-bold mb-2">接続エラー</h2>
@@ -99,7 +99,7 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
 
   if (!gameState) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
+      <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
         <div className="text-center">
           <div className="animate-pulse text-6xl mb-4">👁</div>
           <p className="text-white text-lg mb-2">テーブルの状態を取得中...</p>
@@ -116,10 +116,8 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <div className="w-full h-screen flex items-center justify-center bg-gray-900 relative">
-        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-900">
-          {/* ヘッダー */}
+    <>
+      {/* ヘッダー */}
           <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-gray-800/90 backdrop-blur-sm px-[2%] shadow-sm flex items-center justify-between">
             <button
               onClick={onBack}
@@ -168,8 +166,6 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
               onClose={() => setSelectedPlayer(null)}
             />
           )}
-        </div>
-      </div>
-    </div>
+    </>
   );
 }

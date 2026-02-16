@@ -141,7 +141,7 @@ function HandDetailView({
   onBack: () => void;
 }) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black">
+    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black overflow-y-auto">
       {/* ヘッダー */}
       <div className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center z-10">
         <button onClick={onBack} className="text-white/70 hover:text-white mr-3 text-sm">
@@ -279,7 +279,7 @@ export function HandHistory({ onBack }: HandHistoryProps) {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
+      <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center">
         <div className="text-center">
           <p className="text-white/60 mb-4">ログインするとハンド履歴を確認できます</p>
           <button onClick={onBack} className="text-cyan-400 hover:text-cyan-300">
@@ -295,7 +295,7 @@ export function HandHistory({ onBack }: HandHistoryProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black">
+    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black overflow-y-auto">
       {/* ヘッダー */}
       <div className="sticky top-0 bg-gray-900/95 backdrop-blur border-b border-white/10 px-4 py-3 flex items-center z-10">
         <button onClick={onBack} className="text-white/70 hover:text-white mr-3 text-sm">

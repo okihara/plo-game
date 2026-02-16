@@ -32,7 +32,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4 relative">
+    <div className="h-full bg-gradient-to-br from-purple-900 via-blue-900 to-black flex items-center justify-center p-4 relative overflow-y-auto">
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
@@ -141,16 +141,14 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         </div>
       </div>
 
-      {/* Profile Popup Container */}
+      {/* Profile Popup */}
       {showProfile && user && (
-        <div className="@container absolute inset-0 w-full h-full">
-          <ProfilePopup
-            name={user.username}
-            avatarUrl={user.avatarUrl}
-            userId={user.id}
-            onClose={() => setShowProfile(false)}
-          />
-        </div>
+        <ProfilePopup
+          name={user.username}
+          avatarUrl={user.avatarUrl}
+          userId={user.id}
+          onClose={() => setShowProfile(false)}
+        />
       )}
     </div>
   );

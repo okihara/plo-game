@@ -19,14 +19,15 @@ function App() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
-  // Debug pages
+  // PlayerDebug は独自の wide レイアウトのためコンテナ外
   if (currentPath === '/debug/player') {
     return <PlayerDebug />;
   }
 
+  let page;
   if (currentPath.startsWith('/spectate/')) {
     const tableId = currentPath.replace('/spectate/', '');
-    return (
+    page = (
       <SpectatorView
         tableId={tableId}
         onBack={() => {
@@ -35,22 +36,28 @@ function App() {
         }}
       />
     );
-  }
-
-  if (currentPath === '/history') {
-    return (
+  } else if (currentPath === '/history') {
+    page = (
       <HandHistory onBack={() => {
         window.history.pushState({}, '', '/');
         setCurrentPath('/');
       }} />
     );
+  } else if (blinds) {
+    page = <OnlineGame blinds={blinds} onBack={() => setBlinds(null)} />;
+  } else {
+    page = <SimpleLobby onPlayOnline={(selectedBlinds) => setBlinds(selectedBlinds)} />;
   }
 
-  if (blinds) {
-    return <OnlineGame blinds={blinds} onBack={() => setBlinds(null)} />;
-  }
-
-  return <SimpleLobby onPlayOnline={(selectedBlinds) => setBlinds(selectedBlinds)} />;
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="w-full h-screen flex items-center justify-center bg-gray-900 relative">
+        <div className="@container flex flex-col w-full h-full max-w-[calc(100vh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative bg-gray-900">
+          {page}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 createRoot(document.getElementById('app')!).render(
