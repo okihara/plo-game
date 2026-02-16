@@ -156,5 +156,20 @@ export async function bankrollRoutes(fastify: FastifyInstance) {
         newBalance: bankroll.balance,
       };
     });
+
+    fastify.post('/debug-set', async (request: FastifyRequest) => {
+      const { userId } = request.user as { userId: string };
+      const { amount } = request.body as { amount: number };
+
+      const bankroll = await prisma.bankroll.update({
+        where: { userId },
+        data: { balance: amount },
+      });
+
+      return {
+        success: true,
+        newBalance: bankroll.balance,
+      };
+    });
   }
 }
