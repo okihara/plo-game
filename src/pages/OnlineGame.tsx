@@ -10,6 +10,7 @@ import {
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { HandHistoryPanel } from '../components/HandHistoryPanel';
 
 const MIN_LOADING_TIME_MS = 1000; // 最低1秒は接続中画面を表示
 
@@ -45,6 +46,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
+  const [showHandHistory, setShowHandHistory] = useState(false);
   const mountTimeRef = useRef(Date.now());
 
   // gameStateが変わったらbigBlindを設定
@@ -210,6 +212,17 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
                   </button>
+                  <div className="border-t border-gray-700 my-1" />
+                  <button
+                    onClick={() => {
+                      setShowSettingsMenu(false);
+                      setShowHandHistory(true);
+                    }}
+                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700"
+                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                  >
+                    ハンド履歴
+                  </button>
                 </div>
               )}
             </div>
@@ -280,6 +293,13 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
               userId={selectedPlayer.odId}
               onClose={() => setSelectedPlayer(null)}
             />
+          )}
+
+          {/* ハンド履歴オーバーレイ */}
+          {showHandHistory && (
+            <div className="absolute inset-0 z-[200] bg-gradient-to-br from-green-950 via-emerald-950 to-black">
+              <HandHistoryPanel onClose={() => setShowHandHistory(false)} />
+            </div>
           )}
     </>
   );
