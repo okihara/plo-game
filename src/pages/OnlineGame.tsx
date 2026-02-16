@@ -6,7 +6,7 @@ import {
   PokerTable,
   MyCards,
   ActionPanel,
-  ResultOverlay,
+  // ResultOverlay,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -236,7 +236,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
 
-          <ResultOverlay state={gameState} mySeat={humanPlayerIdx} />
+          {/* <ResultOverlay state={gameState} mySeat={humanPlayerIdx} /> */}
 
           {humanPlayer && (
             <HandAnalysisOverlay
