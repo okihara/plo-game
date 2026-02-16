@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action, Card } from '../../shared/logic/types.js';
 import { createInitialGameState, startNewHand, getActivePlayers } from '../../shared/logic/gameEngine.js';
+import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
 
@@ -490,8 +491,25 @@ export class TableInstance {
     };
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 
-    // Showdown - reveal cards
+    // Showdown - reveal cards for ALL active players
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1) {
+      const activePlayers = getActivePlayers(this.gameState);
+      const showdownPlayers = activePlayers.map(p => {
+        const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
+        let handName = winnerEntry?.handName || '';
+        if (!handName && this.gameState!.communityCards.length === 5) {
+          try {
+            const result = evaluatePLOHand(p.holeCards, this.gameState!.communityCards);
+            handName = result.name;
+          } catch { /* ignore */ }
+        }
+        return {
+          seatIndex: p.id,
+          odId: seats[p.id]?.odId || '',
+          cards: p.holeCards,
+          handName,
+        };
+      });
       const showdownData = {
         winners: this.gameState.winners.map(w => ({
           playerId: seats[w.playerId]?.odId || '',
@@ -499,6 +517,7 @@ export class TableInstance {
           handName: w.handName,
           cards: this.gameState!.players[w.playerId].holeCards,
         })),
+        players: showdownPlayers,
       };
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }

@@ -51,6 +51,7 @@ export interface ServerToClientEvents {
   'game:street_changed': (data: { street: string; communityCards: Card[] }) => void;
   'game:showdown': (data: {
     winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
+    players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
   'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[] }) => void;
 

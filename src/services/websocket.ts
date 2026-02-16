@@ -40,7 +40,10 @@ class WebSocketService {
     }) => void;
     onActionTaken?: (data: { playerId: string; action: Action; amount: number }) => void;
     onStreetChanged?: (street: string, communityCards: Card[]) => void;
-    onShowdown?: (winners: { playerId: string; amount: number; handName: string; cards: Card[] }[]) => void;
+    onShowdown?: (data: {
+      winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
+      players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
+    }) => void;
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
     onMatchmakingQueued?: (position: number) => void;
     onMatchmakingTableAssigned?: (tableId: string) => void;
@@ -129,8 +132,8 @@ class WebSocketService {
         this.listeners.onStreetChanged?.(street, communityCards);
       });
 
-      this.socket.on('game:showdown', ({ winners }) => {
-        this.listeners.onShowdown?.(winners);
+      this.socket.on('game:showdown', ({ winners, players }) => {
+        this.listeners.onShowdown?.({ winners, players });
       });
 
       this.socket.on('game:hand_complete', ({ winners }) => {

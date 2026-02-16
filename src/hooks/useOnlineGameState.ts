@@ -102,7 +102,8 @@ function convertOnlinePlayerToPlayer(
 function convertClientStateToGameState(
   clientState: ClientGameState,
   myHoleCards: Card[],
-  mySeat: number | null
+  mySeat: number | null,
+  showdownCards: Map<number, Card[]>
 ): GameState {
   const players = clientState.players.map((p, i) =>
     convertOnlinePlayerToPlayer(p, i, clientState.dealerSeat)
@@ -111,6 +112,13 @@ function convertClientStateToGameState(
   // 自分のホールカードを設定
   if (mySeat !== null && players[mySeat]) {
     players[mySeat].holeCards = myHoleCards;
+  }
+
+  // ショウダウン時の他プレイヤーのカードを設定
+  for (const [seatIndex, cards] of showdownCards) {
+    if (players[seatIndex] && seatIndex !== mySeat) {
+      players[seatIndex].holeCards = cards;
+    }
   }
 
   return {
@@ -160,6 +168,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
   const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
+  const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -315,6 +324,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
           setWinners([]); // 新しいハンド開始時にwinnersをクリア
+          setShowdownCards(new Map()); // ショウダウンカードもクリア
         }
         setMyHoleCards(cards);
       },
@@ -343,6 +353,14 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           setWinners(convertedWinners);
         }
       },
+      onShowdown: ({ players: showdownPlayers }) => {
+        // ショウダウン時に全アクティブプレイヤーのカードをセット
+        const cardsMap = new Map<number, Card[]>();
+        for (const p of showdownPlayers) {
+          cardsMap.set(p.seatIndex, p.cards);
+        }
+        setShowdownCards(cardsMap);
+      },
       onFastFoldQueued: () => {
         setIsChangingTable(true);
       },
@@ -364,7 +382,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   // ============================================
 
   const baseGameState = clientState
-    ? convertClientStateToGameState(clientState, myHoleCards, mySeat)
+    ? convertClientStateToGameState(clientState, myHoleCards, mySeat, showdownCards)
     : null;
 
   const gameState = baseGameState
