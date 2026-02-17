@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 
@@ -13,13 +13,13 @@ interface TableOption {
   blinds: string;
   blindsLabel: string;
   buyIn: number;
-  playerCount: number; // TODO: サーバーから取得
+  enabled: boolean;
 }
 
 const TABLE_OPTIONS: TableOption[] = [
-  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, playerCount: 0 },
-  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, playerCount: 0 },
-  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, playerCount: 0 },
+  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true },
+  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, enabled: false },
+  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, enabled: false },
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
@@ -27,6 +27,25 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [showProfile, setShowProfile] = useState(false);
   const [addingChips, setAddingChips] = useState(false);
   const [claimingBonus, setClaimingBonus] = useState(false);
+  const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_SERVER_URL || '';
+    const fetchCounts = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/lobby/tables`);
+        if (res.ok) {
+          const data: { blinds: string; playerCount: number }[] = await res.json();
+          const counts: Record<string, number> = {};
+          for (const d of data) counts[d.blinds] = d.playerCount;
+          setPlayerCounts(counts);
+        }
+      } catch { /* ignore */ }
+    };
+    fetchCounts();
+    const interval = setInterval(fetchCounts, 10000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleClaimLoginBonus = async () => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -161,30 +180,40 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           <div className="w-[8cqw] h-[0.4cqw] bg-black mt-[0.8cqw]" />
         </div>
         <div className="space-y-[2.5cqw]">
-          {TABLE_OPTIONS.map((table) => (
-            <button
-              key={table.id}
-              onClick={() => onPlayOnline(table.blinds)}
-              className="w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] text-black hover:bg-black/[0.03] transition-all border border-black/20 hover:border-black/40 shadow-sm hover:shadow-md"
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-[3cqw]">
-                  {/* Game type badge */}
-                  <span className="px-[2cqw] py-[0.8cqw] bg-black text-white text-[2.5cqw] font-bold rounded-[1cqw]">
-                    {table.gameLabel}
-                  </span>
-                  {/* Blinds */}
-                  <span className="text-[5cqw] font-bold">{table.blindsLabel}</span>
+          {TABLE_OPTIONS.map((table) => {
+            const count = playerCounts[table.blinds] ?? 0;
+            return (
+              <button
+                key={table.id}
+                onClick={() => table.enabled && onPlayOnline(table.blinds)}
+                disabled={!table.enabled}
+                className={`w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] transition-all border shadow-sm ${
+                  table.enabled
+                    ? 'text-black hover:bg-black/[0.03] border-black/20 hover:border-black/40 hover:shadow-md'
+                    : 'text-black/30 border-black/10 cursor-not-allowed'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-[3cqw]">
+                    <span className={`px-[2cqw] py-[0.8cqw] text-[2.5cqw] font-bold rounded-[1cqw] ${
+                      table.enabled ? 'bg-black text-white' : 'bg-black/20 text-black/40'
+                    }`}>
+                      {table.gameLabel}
+                    </span>
+                    <span className="text-[5cqw] font-bold">{table.blindsLabel}</span>
+                  </div>
+                  <div className="flex items-center gap-[3cqw] text-[3cqw]">
+                    <span className={table.enabled ? 'text-black/50' : 'text-black/25'}>buy-in: {table.buyIn}</span>
+                    {table.enabled ? (
+                      <span className="text-black/70">{count}人</span>
+                    ) : (
+                      <span className="text-[2.5cqw] text-black/30">準備中</span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-[3cqw] text-[3cqw] text-black/50">
-                  {/* Buy-in */}
-                  <span>バイイン {table.buyIn}</span>
-                  {/* Player count */}
-                  <span className="text-black/70">{table.playerCount}人</span>
-                </div>
-              </div>
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
 
         {/* Footer info */}
@@ -198,7 +227,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             href="/debug/player"
             className="text-[3cqw] text-black/40 hover:text-black/70 underline"
           >
-            Player Debug
+            Debug: Player Component
           </a>
         </div>
       </div>

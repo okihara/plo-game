@@ -12,6 +12,7 @@ import { authRoutes } from './modules/auth/routes.js';
 import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
 import { adminRoutes } from './modules/admin/routes.js';
+import { lobbyRoutes } from './modules/lobby/routes.js';
 import { handHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
 
@@ -97,6 +98,7 @@ const start = async () => {
 
     // Register admin routes (needs io, tableManager, matchmakingPool)
     await fastify.register(adminRoutes({ io, tableManager, matchmakingPool }));
+    await fastify.register(lobbyRoutes({ tableManager, matchmakingPool }));
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 
