@@ -8,7 +8,7 @@
     "start": "node --import tsx src/index.ts",
     "bot": "tsx src/bot/index.ts",
     "bot:dev": "tsx watch src/bot/index.ts",
-    "bot:prod": "SERVER_URL=https://plo-game-production.up.railway.app tsx src/bot/index.ts",
+    "bot:prod": "SERVER_URL=https://baby-plo.up.railway.app tsx src/bot/index.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
