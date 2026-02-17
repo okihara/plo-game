@@ -82,7 +82,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         {loading ? (
           <div className="text-center text-black/40 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
         ) : user ? (
-          <div className="rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-black/10 shadow-sm">
+          <div className="rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-black/20 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-[2.5cqw]">
                 {user.avatarUrl && (
@@ -127,7 +127,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             </div>
           </div>
         ) : (
-          <div className="rounded-[2.5cqw] p-[5cqw] mb-[5cqw] border border-black/10">
+          <div className="rounded-[2.5cqw] p-[5cqw] mb-[5cqw] border border-black/20">
             <p className="text-[3.5cqw] text-black/60 text-center mb-[3cqw]">ログインしてプレイ</p>
             <button
               onClick={handleLogin}
@@ -151,7 +151,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             <button
               key={table.id}
               onClick={() => onPlayOnline(table.blinds)}
-              className="w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] text-black hover:bg-black/[0.03] transition-all border border-black/10 hover:border-black/20 shadow-sm hover:shadow-md"
+              className="w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] text-black hover:bg-black/[0.03] transition-all border border-black/20 hover:border-black/40 shadow-sm hover:shadow-md"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[3cqw]">
@@ -181,7 +181,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 window.history.pushState({}, '', '/history');
                 window.dispatchEvent(new PopStateEvent('popstate'));
               }}
-              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] rounded-[2.5cqw] text-black/50 hover:bg-black/5 hover:text-black transition-all border border-black/5 hover:border-black/15"
+              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] rounded-[2.5cqw] text-black/50 hover:bg-black/5 hover:text-black transition-all border border-black/15 hover:border-black/30"
             >
               ハンド履歴を見る
             </button>

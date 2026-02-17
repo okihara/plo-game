@@ -71,7 +71,7 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const color = SUIT_COLORS[suit] || 'text-white';
 
   return (
-    <span className={`inline-flex items-center justify-center w-9 h-12 bg-white rounded text-sm font-bold shadow border border-black/10 ${color}`}>
+    <span className={`inline-flex items-center justify-center w-9 h-12 bg-white rounded text-sm font-bold shadow border border-black/20 ${color}`}>
       {rank}{symbol}
     </span>
   );
@@ -148,7 +148,7 @@ function HandSummaryCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left hover:bg-black/[0.03] rounded-xl p-3 border border-black/8 hover:border-black/15 transition-all shadow-sm hover:shadow-md"
+      className="w-full text-left hover:bg-black/[0.03] rounded-xl p-3 border border-black/20 hover:border-black/30 transition-all shadow-sm hover:shadow-md"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -172,7 +172,7 @@ function HandSummaryCard({
         ))}
         {hand.communityCards.length > 0 && (
           <>
-            <span className="text-black/15 mx-1">|</span>
+            <span className="text-black/30 mx-1">|</span>
             {hand.communityCards.map((c, i) => (
               <MiniCard key={`cc-${i}`} cardStr={c} />
             ))}
@@ -199,7 +199,7 @@ function HandDetailDialog({
     <div className="absolute inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/40" />
       <div
-        className="relative w-[95%] max-h-[85%] bg-white rounded-2xl border border-black/10 overflow-y-auto shadow-2xl"
+        className="relative w-[95%] max-h-[85%] bg-white rounded-2xl border border-black/20 overflow-y-auto shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
         {/* ヘッダー */}
@@ -226,7 +226,7 @@ function HandDetailDialog({
                 <div
                   key={i}
                   className={`rounded-lg px-3 py-2 border shadow-sm ${
-                    p.isCurrentUser ? 'border-black/15 bg-black/[0.03]' : 'border-black/8'
+                    p.isCurrentUser ? 'border-black/25 bg-black/[0.03]' : 'border-black/8'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
@@ -255,7 +255,7 @@ function HandDetailDialog({
           </div>
 
           {/* アクション履歴（ストリートごと） */}
-          <div className="rounded-xl px-3 py-3 border border-black/8">
+          <div className="rounded-xl px-3 py-3 border border-black/20">
             <div className="space-y-0.5">
               {(() => {
                 const streets = ['preflop', 'flop', 'turn', 'river'];
@@ -439,7 +439,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-black/15 border-t-black rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-black/25 border-t-black rounded-full animate-spin" />
           </div>
         ) : hands.length === 0 ? (
           <div className="text-center text-black/30 py-20">
@@ -462,7 +462,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
-                  className="w-full py-3 text-black/50 hover:text-black hover:bg-black/5 rounded-xl transition-all text-sm border border-black/8"
+                  className="w-full py-3 text-black/50 hover:text-black hover:bg-black/5 rounded-xl transition-all text-sm border border-black/20"
                 >
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>
@@ -474,7 +474,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
       {loadingDetail && (
         <div className="absolute inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/30" />
-          <div className="w-8 h-8 border-2 border-black/15 border-t-black rounded-full animate-spin relative z-10" />
+          <div className="w-8 h-8 border-2 border-black/25 border-t-black rounded-full animate-spin relative z-10" />
         </div>
       )}
       {selectedHand && (
