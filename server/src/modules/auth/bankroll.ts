@@ -2,8 +2,31 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 
 const DAILY_BONUS = 1000;
-const LOGIN_BONUS = 500;
+const LOGIN_BONUS_TARGET = 600;
 const DEBUG_ADD_AMOUNT = 10000;
+
+/** 直近の JST 7:00 (= UTC 22:00) の境界を返す */
+function getJst7amBoundary(): Date {
+  const now = new Date();
+  const today22utc = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 22, 0, 0,
+  ));
+  return now < today22utc
+    ? new Date(today22utc.getTime() - 24 * 60 * 60 * 1000)
+    : today22utc;
+}
+
+/** ログインボーナスが取得可能かチェック */
+export async function isLoginBonusAvailable(userId: string): Promise<boolean> {
+  const bankroll = await prisma.bankroll.findUnique({ where: { userId } });
+  if (!bankroll || bankroll.balance >= LOGIN_BONUS_TARGET) return false;
+
+  const boundary = getJst7amBoundary();
+  const existing = await prisma.transaction.findFirst({
+    where: { userId, type: 'LOGIN_BONUS', createdAt: { gte: boundary } },
+  });
+  return !existing;
+}
 
 export async function bankrollRoutes(fastify: FastifyInstance) {
   // Auth middleware
@@ -87,6 +110,35 @@ export async function bankrollRoutes(fastify: FastifyInstance) {
     });
 
     return { transactions };
+  });
+
+  // Login bonus: top up to 600 (once per day, resets at JST 7:00)
+  fastify.post('/login-bonus', async (request: FastifyRequest) => {
+    const { userId } = request.user as { userId: string };
+
+    const available = await isLoginBonusAvailable(userId);
+    if (!available) {
+      return { success: false, message: 'Login bonus not available' };
+    }
+
+    const bankroll = await prisma.bankroll.findUnique({ where: { userId } });
+    const currentBalance = bankroll?.balance ?? 0;
+    const topUpAmount = LOGIN_BONUS_TARGET - currentBalance;
+
+    const updated = await prisma.bankroll.update({
+      where: { userId },
+      data: { balance: LOGIN_BONUS_TARGET },
+    });
+
+    await prisma.transaction.create({
+      data: { userId, type: 'LOGIN_BONUS', amount: topUpAmount },
+    });
+
+    return {
+      success: true,
+      amount: topUpAmount,
+      newBalance: updated.balance,
+    };
   });
 
   // Refill chips (when balance is low)

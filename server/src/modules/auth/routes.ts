@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
+import { isLoginBonusAvailable } from './bankroll.js';
 
 // --- OAuth 1.0a helpers ---
 
@@ -258,12 +259,15 @@ export async function authRoutes(fastify: FastifyInstance) {
       return { error: 'User not found' };
     }
 
+    const loginBonusAvailable = await isLoginBonusAvailable(user.id);
+
     return {
       id: user.id,
       email: user.email,
       username: user.username,
       avatarUrl: user.avatarUrl,
       balance: user.bankroll?.balance ?? 0,
+      loginBonusAvailable,
     };
   });
 

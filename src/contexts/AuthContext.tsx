@@ -6,6 +6,7 @@ interface User {
   username: string;
   avatarUrl: string | null;
   balance: number;
+  loginBonusAvailable: boolean;
 }
 
 interface AuthContextType {
