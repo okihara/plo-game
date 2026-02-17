@@ -7,6 +7,20 @@ import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
+export type BotState = 'disconnected' | 'matchmaking' | 'playing';
+
+export interface BotStatus {
+  name: string;
+  playerId: string | null;
+  isConnected: boolean;
+  state: BotState;
+  tableId: string | null;
+  seatNumber: number;
+  handsPlayed: number;
+  connectedAt: number | null;
+  lastActionAt: number | null;
+}
+
 interface BotConfig {
   serverUrl: string;
   name: string;
@@ -32,6 +46,9 @@ export class BotClient {
   private opponentModel = new SimpleOpponentModel(); // ハンド間で統計を蓄積
   private stuckCheckInterval: ReturnType<typeof setInterval> | null = null;
   private lastInGameTime: number = 0; // 最後にゲームに参加していた時刻
+  private handsPlayed: number = 0;
+  private connectedAt: number | null = null;
+  private lastActionAt: number | null = null;
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -52,6 +69,7 @@ export class BotClient {
       this.socket.on('connect', () => {
         console.log(`[${this.config.name}] Connected to server`);
         this.isConnected = true;
+        this.connectedAt = Date.now();
       });
 
       this.socket.on('connection:established', (data: { playerId: string }) => {
@@ -69,6 +87,7 @@ export class BotClient {
       this.socket.on('disconnect', () => {
         console.log(`[${this.config.name}] Disconnected from server`);
         this.isConnected = false;
+        this.connectedAt = null;
         this.tableId = null;
         this.seatNumber = -1;
         this.stopStuckCheck();
@@ -140,6 +159,7 @@ export class BotClient {
         }
 
         // Reset for next hand
+        this.handsPlayed++;
         this.holeCards = [];
         this.handActions = [];
 
@@ -290,6 +310,7 @@ export class BotClient {
     if (!this.socket || !this.isConnected) return;
 
     console.log(`[${this.config.name}] Action: ${action}${amount > 0 ? ` $${amount}` : ''}`);
+    this.lastActionAt = Date.now();
     this.socket.emit('game:action', { action, amount });
   }
 
@@ -390,5 +411,23 @@ export class BotClient {
 
   isInGame(): boolean {
     return this.tableId !== null && this.seatNumber !== -1;
+  }
+
+  getStatus(): BotStatus {
+    let state: BotState = 'disconnected';
+    if (this.isConnected) {
+      state = this.tableId ? 'playing' : 'matchmaking';
+    }
+    return {
+      name: this.config.name,
+      playerId: this.playerId,
+      isConnected: this.isConnected,
+      state,
+      tableId: this.tableId,
+      seatNumber: this.seatNumber,
+      handsPlayed: this.handsPlayed,
+      connectedAt: this.connectedAt,
+      lastActionAt: this.lastActionAt,
+    };
   }
 }

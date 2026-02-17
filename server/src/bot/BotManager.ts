@@ -1,4 +1,4 @@
-import { BotClient } from './BotClient.js';
+import { BotClient, BotStatus } from './BotClient.js';
 
 const BOT_NAMES = ['Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka', 'Yuki', 'Sora', 'Ren', 'Ai', 'Taro'];
 const BOT_AVATARS = [
@@ -196,6 +196,32 @@ export class BotManager {
       total: this.getBotCount(),
       active: this.getActiveBotCount(),
       inGame: this.getInGameBotCount(),
+    };
+  }
+
+  getDetailedStats(): { summary: { total: number; connected: number; playing: number; matchmaking: number; disconnected: number; targetCount: number }; bots: BotStatus[] } {
+    const bots: BotStatus[] = [];
+    let connected = 0, playing = 0, matchmaking = 0, disconnected = 0;
+
+    for (const bot of this.bots.values()) {
+      const status = bot.getStatus();
+      bots.push(status);
+      if (status.state === 'playing') playing++;
+      else if (status.state === 'matchmaking') matchmaking++;
+      else disconnected++;
+      if (status.isConnected) connected++;
+    }
+
+    return {
+      summary: {
+        total: this.bots.size,
+        connected,
+        playing,
+        matchmaking,
+        disconnected,
+        targetCount: this.config.botCount,
+      },
+      bots,
     };
   }
 }
