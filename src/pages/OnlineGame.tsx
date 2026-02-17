@@ -89,18 +89,19 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   if (showLoadingScreen) {
     return (
-      <div className="h-full w-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center p-4">
+      <div className="h-full w-full bg-white flex items-center justify-center p-4">
         <div className="text-center">
-          <h1 className="text-3xl font-bold text-white mb-2">Volt Poker Club</h1>
+          <h1 className="text-3xl font-bold text-black mb-1">Volt Poker Club</h1>
+          <div className="w-12 h-0.5 bg-black mx-auto mb-6"></div>
           <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="px-3 py-1 bg-cyan-500/20 text-cyan-400 text-sm font-bold rounded">PLO</span>
-            <span className="text-white/60">{blindsLabel}</span>
+            <span className="bg-black text-white text-sm font-bold px-3 py-1 rounded">PLO</span>
+            <span className="text-black/50">{blindsLabel}</span>
           </div>
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-cyan-400 mx-auto mb-4"></div>
-          <p className="text-white/70">テーブルに接続中...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-black/20 border-t-black mx-auto mb-4"></div>
+          <p className="text-black/50">サーバーに接続中...</p>
           <button
             onClick={onBack}
-            className="mt-6 text-white/40 hover:text-white/60 text-sm transition-colors"
+            className="mt-6 text-black/30 hover:text-black/60 text-sm transition-colors"
           >
             キャンセル
           </button>
@@ -112,21 +113,21 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   // 接続エラー
   if (connectionError) {
     return (
-      <div className="h-full w-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center p-4">
-        <div className="text-center bg-white/10 rounded-2xl p-8 max-w-sm">
-          <div className="text-red-400 text-5xl mb-4">!</div>
-          <h2 className="text-white text-xl font-bold mb-2">接続エラー</h2>
-          <p className="text-white/70 mb-6">{connectionError}</p>
+      <div className="h-full w-full bg-white flex items-center justify-center p-4">
+        <div className="text-center border border-black/20 rounded-2xl p-8 max-w-sm shadow-2xl">
+          <div className="text-red-500 text-5xl mb-4">!</div>
+          <h2 className="text-black text-xl font-bold mb-2">接続エラー</h2>
+          <p className="text-black/50 mb-6">{connectionError}</p>
           <div className="space-y-3">
             <button
               onClick={() => connect().then(() => joinMatchmaking())}
-              className="w-full py-3 px-6 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl font-bold text-white hover:from-cyan-600 hover:to-blue-600 transition-all"
+              className="w-full py-3 px-6 bg-black text-white rounded-xl font-bold hover:bg-black/80 transition-all shadow-md"
             >
               再接続
             </button>
             <button
               onClick={onBack}
-              className="w-full py-3 px-6 bg-white/20 rounded-xl font-bold text-white hover:bg-white/30 transition-all"
+              className="w-full py-3 px-6 border border-black/20 rounded-xl font-bold text-black/70 hover:border-black/40 transition-all"
             >
               ロビーに戻る
             </button>
@@ -139,12 +140,14 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   // テーブル待機中
   if (!gameState) {
     return (
-      <div className="h-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center">
+      <div className="h-full bg-white flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white text-lg mb-2">テーブルを検索中...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-black/20 border-t-black mx-auto mb-4"></div>
+          <p className="text-black text-lg font-bold mb-1">テーブルを検索中...</p>
+          <p className="text-black/40 text-sm">{blindsLabel}</p>
           <button
             onClick={onBack}
-            className="mt-8 py-2 px-6 bg-white/20 rounded-xl text-white hover:bg-white/30 transition-all"
+            className="mt-8 py-2 px-6 border border-black/20 rounded-xl text-black/50 hover:text-black hover:border-black/40 transition-all text-sm"
           >
             キャンセル
           </button>

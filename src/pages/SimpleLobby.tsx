@@ -190,7 +190,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
 
         {/* Footer info */}
         <div className="mt-[6cqw] text-center text-black/30 text-[2.5cqw]">
-          <p>NLH, PLO | リアルタイムマルチプレイヤー</p>
+          <p>Powered by <a href="https://x.com/okkichan3" className="text-black/70 hover:text-black underline">@okkichan3</a></p>
         </div>
 
         {/* Debug link */}

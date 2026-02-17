@@ -292,14 +292,14 @@ function HandDetailDialog({
                     <div key={i}>
                       {showHeader && (
                         <div className={headerMargin ? 'mt-4 mb-1' : 'mb-1'}>
-                          <div className="flex items-center gap-2">
-                            <span className="bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">{streetLabels[street] || street}</span>
+                          <div className="flex items-center gap-2 border-b-2 border-black pb-1">
+                            <span className="text-black font-bold text-sm">{streetLabels[street] || street}</span>
                             {streetStartPot[street] > 0 && (
                               <span className="text-black/25 text-sm">Pot {streetStartPot[street]}</span>
                             )}
                           </div>
                           {streetCards[street]?.length > 0 && (
-                            <div className="flex gap-0.5 mt-0.5">
+                            <div className="flex gap-0.5 mt-1">
                               {streetCards[street].map((c, j) => (
                                 <MiniCard key={j} cardStr={c} />
                               ))}
@@ -326,8 +326,10 @@ function HandDetailDialog({
             </div>
             {/* Result */}
             <div className="mt-4 mb-1">
-              <span className="bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">Result</span>
-              <span className="text-black/40 text-base font-bold ml-2">Pot {hand.potSize}</span>
+              <div className="flex items-center gap-2 border-b-2 border-black pb-1">
+                <span className="text-black font-bold text-sm">Result</span>
+                <span className="text-black/40 text-base font-bold">Pot {hand.potSize}</span>
+              </div>
             </div>
             {(() => {
               const foldedSeats = new Set(
