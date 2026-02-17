@@ -12,6 +12,9 @@ import {
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
+import { ConnectingScreen } from '../components/ConnectingScreen';
+import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
+import { SearchingTableScreen } from '../components/SearchingTableScreen';
 
 const MIN_LOADING_TIME_MS = 1000; // 最低1秒は接続中画面を表示
 
@@ -88,72 +91,23 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const showLoadingScreen = isConnecting || !minLoadingComplete;
 
   if (showLoadingScreen) {
-    return (
-      <div className="h-full w-full bg-white flex items-center justify-center p-4">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-black mb-1">Volt Poker Club</h1>
-          <div className="w-12 h-0.5 bg-black mx-auto mb-6"></div>
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <span className="bg-black text-white text-sm font-bold px-3 py-1 rounded">PLO</span>
-            <span className="text-black/50">{blindsLabel}</span>
-          </div>
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-black/20 border-t-black mx-auto mb-4"></div>
-          <p className="text-black/50">サーバーに接続中...</p>
-          <button
-            onClick={onBack}
-            className="mt-6 text-black/30 hover:text-black/60 text-sm transition-colors"
-          >
-            キャンセル
-          </button>
-        </div>
-      </div>
-    );
+    return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }
 
   // 接続エラー
   if (connectionError) {
     return (
-      <div className="h-full w-full bg-white flex items-center justify-center p-4">
-        <div className="text-center border border-black/20 rounded-2xl p-8 max-w-sm shadow-2xl">
-          <div className="text-red-500 text-5xl mb-4">!</div>
-          <h2 className="text-black text-xl font-bold mb-2">接続エラー</h2>
-          <p className="text-black/50 mb-6">{connectionError}</p>
-          <div className="space-y-3">
-            <button
-              onClick={() => connect().then(() => joinMatchmaking())}
-              className="w-full py-3 px-6 bg-black text-white rounded-xl font-bold hover:bg-black/80 transition-all shadow-md"
-            >
-              再接続
-            </button>
-            <button
-              onClick={onBack}
-              className="w-full py-3 px-6 border border-black/20 rounded-xl font-bold text-black/70 hover:border-black/40 transition-all"
-            >
-              ロビーに戻る
-            </button>
-          </div>
-        </div>
-      </div>
+      <ConnectionErrorScreen
+        error={connectionError}
+        onRetry={() => connect().then(() => joinMatchmaking())}
+        onBack={onBack}
+      />
     );
   }
 
   // テーブル待機中
   if (!gameState) {
-    return (
-      <div className="h-full bg-white flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-10 w-10 border-2 border-black/20 border-t-black mx-auto mb-4"></div>
-          <p className="text-black text-lg font-bold mb-1">テーブルを検索中...</p>
-          <p className="text-black/40 text-sm">{blindsLabel}</p>
-          <button
-            onClick={onBack}
-            className="mt-8 py-2 px-6 border border-black/20 rounded-xl text-black/50 hover:text-black hover:border-black/40 transition-all text-sm"
-          >
-            キャンセル
-          </button>
-        </div>
-      </div>
-    );
+    return <SearchingTableScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }
 
   // ゲーム画面
