@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';
-import { ChevronLeft, Settings } from 'lucide-react';
+import { DoorOpen, Settings, History } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
@@ -124,16 +124,24 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
               onClick={onBack}
               className="text-gray-400 hover:text-gray-200 transition-colors"
             >
-              <ChevronLeft style={{ width: 'min(2.4vh, 4vw)', height: 'min(2.4vh, 4vw)' }} />
+              <DoorOpen style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
             </button>
             <div />
+            <div className="flex items-center gap-[1.5vw]">
+            {/* ハンド履歴ボタン */}
+            <button
+              onClick={() => setShowHandHistory(true)}
+              className="text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              <History style={{ width: 'min(3.2vh, 5.4vw)', height: 'min(3.2vh, 5.4vw)' }} />
+            </button>
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
                 className="text-gray-400 hover:text-gray-200 transition-colors"
               >
-                <Settings style={{ width: 'min(2vh, 3.4vw)', height: 'min(2vh, 3.4vw)' }} />
+                <Settings style={{ width: 'min(3.2vh, 5.4vw)', height: 'min(3.2vh, 5.4vw)' }} />
               </button>
               {showSettingsMenu && (
                 <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 min-w-[120px] z-50">
@@ -176,6 +184,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                   </button>
                 </div>
               )}
+            </div>
             </div>
           </div>
 
@@ -250,8 +259,14 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
           {/* ハンド履歴オーバーレイ */}
           {showHandHistory && (
-            <div className="absolute inset-0 z-[200] bg-gradient-to-br from-green-950 via-emerald-950 to-black">
-              <HandHistoryPanel onClose={() => setShowHandHistory(false)} />
+            <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={() => setShowHandHistory(false)}>
+              <div className="absolute inset-0 bg-black/50" />
+              <div
+                className="relative w-[92%] h-[80%] bg-white rounded-2xl shadow-2xl overflow-hidden"
+                onClick={e => e.stopPropagation()}
+              >
+                <HandHistoryPanel onClose={() => setShowHandHistory(false)} />
+              </div>
             </div>
           )}
     </>
