@@ -97,15 +97,13 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   <div className="text-[4cqw] text-black font-bold">{user.username}</div>
                   <div className="text-[3cqw] text-black/60 flex items-center gap-[1.5cqw]">
                     <span>{user.balance}</span>
-                    {user.loginBonusAvailable && (
-                      <button
-                        onClick={handleClaimLoginBonus}
-                        disabled={claimingBonus}
-                        className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-black text-white font-bold rounded-[1cqw] hover:bg-black/80 disabled:opacity-50"
-                      >
-                        {claimingBonus ? '...' : '600まで補填'}
-                      </button>
-                    )}
+                    <button
+                      onClick={handleClaimLoginBonus}
+                      disabled={claimingBonus || !user.loginBonusAvailable}
+                      className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-black text-white font-bold rounded-[1cqw] hover:bg-black/80 disabled:opacity-50"
+                    >
+                      {claimingBonus ? '...' : user.loginBonusAvailable ? '600まで補填' : '受取済み'}
+                    </button>
                     {import.meta.env.DEV && (
                       <button
                         onClick={handleDebugAddChips}
@@ -141,6 +139,21 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           </div>
         )}
 
+        {/* ハンド履歴リンク（ログイン時のみ） */}
+        {user && (
+          <div className="mb-[4cqw]">
+            <button
+              onClick={() => {
+                window.history.pushState({}, '', '/history');
+                window.dispatchEvent(new PopStateEvent('popstate'));
+              }}
+              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] rounded-[2.5cqw] text-black/50 hover:bg-black/5 hover:text-black transition-all border border-black/15 hover:border-black/30"
+            >
+              ハンド履歴を見る
+            </button>
+          </div>
+        )}
+
         {/* Table selection */}
         <div className="mb-[2.5cqw]">
           <h2 className="text-[4cqw] font-bold text-black tracking-tight">Tables</h2>
@@ -172,21 +185,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             </button>
           ))}
         </div>
-
-        {/* ハンド履歴リンク（ログイン時のみ） */}
-        {user && (
-          <div className="mt-[3cqw]">
-            <button
-              onClick={() => {
-                window.history.pushState({}, '', '/history');
-                window.dispatchEvent(new PopStateEvent('popstate'));
-              }}
-              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] rounded-[2.5cqw] text-black/50 hover:bg-black/5 hover:text-black transition-all border border-black/15 hover:border-black/30"
-            >
-              ハンド履歴を見る
-            </button>
-          </div>
-        )}
 
         {/* Footer info */}
         <div className="mt-[6cqw] text-center text-black/30 text-[2.5cqw]">
