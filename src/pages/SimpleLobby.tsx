@@ -70,37 +70,37 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   };
 
   return (
-    <div className="h-full bg-gradient-to-br from-green-950 via-emerald-950 to-black flex items-center justify-center p-[4cqw] relative overflow-y-auto">
+    <div className="h-full bg-white flex items-center justify-center p-[4cqw] relative overflow-y-auto">
       <div className="w-[90%]">
         {/* Logo */}
         <div className="text-center mb-[6cqw]">
-          <h1 className="text-[7cqw] font-bold text-white mb-[1.5cqw]">Volt Poker Club</h1>
+          <h1 className="text-[7cqw] font-bold text-black tracking-tight mb-[1.5cqw]">Volt Poker Club</h1>
         </div>
 
         {/* User Info or Login Buttons */}
         {loading ? (
-          <div className="text-center text-white/60 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
+          <div className="text-center text-black/40 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
         ) : user ? (
-          <div className="bg-white/10 backdrop-blur rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-white/10">
+          <div className="rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-black/10">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-[2.5cqw]">
                 {user.avatarUrl && (
                   <img
                     src={user.avatarUrl}
                     alt={user.username}
-                    className="w-[10cqw] h-[10cqw] rounded-full cursor-pointer hover:ring-2 hover:ring-white/50 transition-all"
+                    className="w-[10cqw] h-[10cqw] rounded-full cursor-pointer hover:ring-2 hover:ring-black/20 transition-all"
                     onClick={() => setShowProfile(true)}
                   />
                 )}
                 <div>
-                  <div className="text-[3.5cqw] text-white font-bold">{user.username}</div>
-                  <div className="text-[3cqw] text-cyan-400 flex items-center gap-[1.5cqw]">
+                  <div className="text-[3.5cqw] text-black font-bold">{user.username}</div>
+                  <div className="text-[3cqw] text-black/60 flex items-center gap-[1.5cqw]">
                     <span>{user.balance}</span>
                     {user.loginBonusAvailable && (
                       <button
                         onClick={handleClaimLoginBonus}
                         disabled={claimingBonus}
-                        className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-green-500/80 text-white font-bold rounded-[1cqw] hover:bg-green-400 disabled:opacity-50"
+                        className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-black text-white font-bold rounded-[1cqw] hover:bg-black/80 disabled:opacity-50"
                       >
                         {claimingBonus ? '...' : '600まで補填'}
                       </button>
@@ -109,7 +109,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       <button
                         onClick={handleDebugAddChips}
                         disabled={addingChips}
-                        className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-yellow-500/80 text-black font-bold rounded-[1cqw] hover:bg-yellow-400 disabled:opacity-50"
+                        className="px-[1.5cqw] py-[0.3cqw] text-[2.5cqw] bg-black/10 text-black font-bold rounded-[1cqw] hover:bg-black/20 disabled:opacity-50"
                       >
                         +10,000
                       </button>
@@ -119,22 +119,22 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               </div>
               <button
                 onClick={logout}
-                className="text-[3cqw] text-white/60 hover:text-white"
+                className="text-[3cqw] text-black/40 hover:text-black"
               >
                 ログアウト
               </button>
             </div>
           </div>
         ) : (
-          <div className="bg-white/10 backdrop-blur rounded-[2.5cqw] p-[5cqw] mb-[5cqw] border border-white/10">
-            <p className="text-[3.5cqw] text-white/80 text-center mb-[3cqw]">ログインしてプレイ</p>
+          <div className="rounded-[2.5cqw] p-[5cqw] mb-[5cqw] border border-black/10">
+            <p className="text-[3.5cqw] text-black/60 text-center mb-[3cqw]">ログインしてプレイ</p>
             <button
               onClick={handleLogin}
-              className="w-full py-[2.5cqw] px-[3.5cqw] text-[3.5cqw] bg-sky-500 text-white rounded-[2cqw] hover:bg-sky-600 transition-all font-medium flex items-center justify-center gap-[2cqw]"
+              className="w-full py-[2.5cqw] px-[3.5cqw] text-[3.5cqw] bg-black text-white rounded-[2cqw] hover:bg-black/80 transition-all font-medium flex items-center justify-center gap-[2cqw]"
             >
-              <span>🐦</span> Twitterでログイン
+              Twitterでログイン
             </button>
-            <p className="text-[2.5cqw] text-white/40 text-center mt-[3cqw]">
+            <p className="text-[2.5cqw] text-black/30 text-center mt-[3cqw]">
               またはゲストとしてプレイ
             </p>
           </div>
@@ -146,22 +146,22 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             <button
               key={table.id}
               onClick={() => onPlayOnline(table.blinds)}
-              className="w-full py-[3.5cqw] px-[4cqw] bg-white/10 backdrop-blur rounded-[2.5cqw] text-white hover:bg-white/20 transition-all border border-white/10 hover:border-white/30"
+              className="w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] text-black hover:bg-black/5 transition-all border border-black/10 hover:border-black/25"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[3cqw]">
                   {/* Game type badge */}
-                  <span className="px-[2cqw] py-[0.8cqw] bg-cyan-500/20 text-cyan-400 text-[2.5cqw] font-bold rounded-[1cqw]">
+                  <span className="px-[2cqw] py-[0.8cqw] bg-black/5 text-black/60 text-[2.5cqw] font-bold rounded-[1cqw]">
                     {table.gameLabel}
                   </span>
                   {/* Blinds */}
                   <span className="text-[4.5cqw] font-bold">{table.blindsLabel}</span>
                 </div>
-                <div className="flex items-center gap-[3cqw] text-[3cqw] text-white/60">
+                <div className="flex items-center gap-[3cqw] text-[3cqw] text-black/50">
                   {/* Buy-in */}
                   <span>バイイン {table.buyIn}</span>
                   {/* Player count */}
-                  <span className="text-cyan-400">{table.playerCount}人</span>
+                  <span className="text-black/70">{table.playerCount}人</span>
                 </div>
               </div>
             </button>
@@ -176,7 +176,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 window.history.pushState({}, '', '/history');
                 window.dispatchEvent(new PopStateEvent('popstate'));
               }}
-              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] bg-white/5 backdrop-blur rounded-[2.5cqw] text-white/70 hover:bg-white/10 hover:text-white transition-all border border-white/5 hover:border-white/15"
+              className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] rounded-[2.5cqw] text-black/50 hover:bg-black/5 hover:text-black transition-all border border-black/5 hover:border-black/15"
             >
               ハンド履歴を見る
             </button>
@@ -184,7 +184,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         )}
 
         {/* Footer info */}
-        <div className="mt-[6cqw] text-center text-white/40 text-[2.5cqw]">
+        <div className="mt-[6cqw] text-center text-black/30 text-[2.5cqw]">
           <p>NLH, PLO | リアルタイムマルチプレイヤー</p>
         </div>
 
@@ -192,9 +192,9 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         <div className="mt-[3cqw] text-center">
           <a
             href="/debug/player"
-            className="text-[3cqw] text-white/60 hover:text-white/90 underline"
+            className="text-[3cqw] text-black/40 hover:text-black/70 underline"
           >
-            🔧 Player Debug
+            Player Debug
           </a>
         </div>
       </div>
