@@ -7,7 +7,7 @@ export function ConnectingScreen({ blindsLabel, onCancel }: ConnectingScreenProp
   return (
     <div className="h-full w-full bg-white flex items-center justify-center p-4">
       <div className="text-center">
-        <h1 className="text-3xl font-bold text-black mb-1">Volt Poker Club</h1>
+        <h1 className="text-3xl font-bold text-black mb-1">Baby PLO</h1>
         <div className="w-12 h-0.5 bg-black mx-auto mb-6"></div>
         <div className="flex items-center justify-center gap-3 mb-8">
           <span className="bg-black text-white text-sm font-bold px-3 py-1 rounded">PLO</span>
