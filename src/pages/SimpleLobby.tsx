@@ -74,7 +74,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
       <div className="w-[90%]">
         {/* Logo */}
         <div className="text-center mb-[6cqw]">
-          <h1 className="text-[8cqw] font-bold text-black tracking-tight mb-[1.5cqw]">Volt Poker Club</h1>
+          <img src="/images/image.png" alt="Baby PLO" className="w-[50cqw] mx-auto mb-[3cqw]" />
+          <h1 className="text-[8cqw] font-bold text-black tracking-tight mb-[1.5cqw]">Baby PLO</h1>
           <div className="w-[12cqw] h-[0.5cqw] bg-black mx-auto" />
         </div>
 
