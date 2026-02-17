@@ -71,7 +71,7 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const color = SUIT_COLORS[suit] || 'text-white';
 
   return (
-    <span className={`inline-flex items-center justify-center w-9 h-12 bg-white rounded text-sm font-bold shadow-sm border border-black/10 ${color}`}>
+    <span className={`inline-flex items-center justify-center w-9 h-12 bg-white rounded text-sm font-bold shadow border border-black/10 ${color}`}>
       {rank}{symbol}
     </span>
   );
@@ -79,10 +79,10 @@ function MiniCard({ cardStr }: { cardStr: string }) {
 
 function ProfitDisplay({ profit }: { profit: number }) {
   if (profit > 0) {
-    return <span className="text-green-600 font-bold">+{profit}</span>;
+    return <span className="text-green-600 font-bold text-base">+{profit}</span>;
   }
   if (profit < 0) {
-    return <span className="text-red-500 font-bold">-{Math.abs(profit)}</span>;
+    return <span className="text-red-500 font-bold text-base">-{Math.abs(profit)}</span>;
   }
   return <span className="text-black/30">0</span>;
 }
@@ -148,17 +148,17 @@ function HandSummaryCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left hover:bg-black/[0.03] rounded-xl p-3 border border-black/8 hover:border-black/15 transition-all"
+      className="w-full text-left hover:bg-black/[0.03] rounded-xl p-3 border border-black/8 hover:border-black/15 transition-all shadow-sm hover:shadow-md"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-black/35 text-xs">#{hand.handNumber}</span>
+          <span className="text-black/40 text-sm font-medium">#{hand.handNumber}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
-            return pos ? <span className="bg-black/5 text-black/50 text-xs font-bold px-1.5 py-0.5 rounded">{pos}</span> : null;
+            return pos ? <span className="bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">{pos}</span> : null;
           })()}
-          <span className="text-black/60 text-sm">{hand.blinds}</span>
+          <span className="text-black/70 text-base font-bold">{hand.blinds}</span>
           <span className="text-black/30 text-xs">Pot {hand.potSize}</span>
         </div>
         <div className="flex items-center gap-2">
@@ -203,9 +203,9 @@ function HandDetailDialog({
         onClick={e => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-black/8 px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b-2 border-black px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
           <div className="flex items-center gap-2">
-            <h1 className="text-black font-bold text-lg">
+            <h1 className="text-black font-bold text-xl tracking-tight">
               Hand #{hand.handNumber}
             </h1>
             <span className="text-black/40">{hand.blinds}</span>
@@ -225,17 +225,17 @@ function HandDetailDialog({
                 return (
                 <div
                   key={i}
-                  className={`rounded-lg px-3 py-2 border ${
+                  className={`rounded-lg px-3 py-2 border shadow-sm ${
                     p.isCurrentUser ? 'border-black/15 bg-black/[0.03]' : 'border-black/8'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
-                      {pos && <span className="bg-black/5 text-black/50 text-sm font-bold px-1.5 py-0.5 rounded">{pos}</span>}
+                      {pos && <span className="bg-black text-white text-sm font-bold px-1.5 py-0.5 rounded">{pos}</span>}
                       {p.avatarUrl && (
                         <img src={p.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
                       )}
-                      <span className={`font-medium ${p.isCurrentUser ? 'text-black' : 'text-black/70'}`}>
+                      <span className={`font-bold text-base ${p.isCurrentUser ? 'text-black underline decoration-2 underline-offset-2' : 'text-black/70'}`}>
                         {p.username}
                       </span>
                     </div>
@@ -293,7 +293,7 @@ function HandDetailDialog({
                       {showHeader && (
                         <div className={headerMargin ? 'mt-4 mb-1' : 'mb-1'}>
                           <div className="flex items-center gap-2">
-                            <span className="text-black/50 text-sm font-bold">{streetLabels[street] || street}</span>
+                            <span className="bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">{streetLabels[street] || street}</span>
                             {streetStartPot[street] > 0 && (
                               <span className="text-black/25 text-sm">Pot {streetStartPot[street]}</span>
                             )}
@@ -312,12 +312,12 @@ function HandDetailDialog({
                           {(() => {
                             const allSeats = hand.players.map(pl => pl.seatPosition);
                             const aPos = getPositionName(a.seatIndex, hand.dealerPosition, allSeats);
-                            return aPos ? <span className="bg-black/5 text-black/50 text-xs font-bold px-1 py-0.5 rounded">{aPos}</span> : null;
+                            return aPos ? <span className="bg-black text-white text-xs font-bold px-1 py-0.5 rounded">{aPos}</span> : null;
                           })()}
                         </span>
                         <span className="w-24 shrink-0 text-black/50 truncate">{a.odName}</span>
-                        <span className="w-20 shrink-0 text-black/80">{formatAction(a.action)}</span>
-                        <span className="text-black/40">{a.amount > 0 ? a.amount : ''}</span>
+                        <span className="w-20 shrink-0 text-black/80 font-bold">{formatAction(a.action)}</span>
+                        <span className="text-black/50 font-medium">{a.amount > 0 ? a.amount : ''}</span>
                       </div>
                     </div>
                   );
@@ -326,8 +326,8 @@ function HandDetailDialog({
             </div>
             {/* Result */}
             <div className="mt-4 mb-1">
-              <span className="text-black/50 text-sm font-bold">Result</span>
-              <span className="text-black/25 text-sm ml-2">Pot {hand.potSize}</span>
+              <span className="bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">Result</span>
+              <span className="text-black/40 text-base font-bold ml-2">Pot {hand.potSize}</span>
             </div>
             {(() => {
               const foldedSeats = new Set(
@@ -343,7 +343,7 @@ function HandDetailDialog({
                 return (
                   <div key={`result-${i}`} className="flex items-center py-0.5">
                     <span className="w-10 shrink-0">
-                      {pos && <span className="bg-black/5 text-black/50 text-xs font-bold px-1 py-0.5 rounded">{pos}</span>}
+                      {pos && <span className="bg-black text-white text-xs font-bold px-1 py-0.5 rounded">{pos}</span>}
                     </span>
                     <span className="w-24 shrink-0 text-black/50 truncate">{p.username}</span>
                     <span className="w-20 shrink-0 text-black/50 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
@@ -429,11 +429,11 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
     <div className="h-full relative">
       <div className="h-full overflow-y-auto">
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b border-black/8 px-4 py-3 flex items-center z-10">
+        <div className="sticky top-0 bg-white/95 backdrop-blur border-b-2 border-black px-4 py-3 flex items-center z-10">
           <button onClick={onClose} className="text-black/50 hover:text-black mr-3 text-sm">
             &larr; 戻る
           </button>
-          <h1 className="text-black font-bold text-lg">ハンド履歴</h1>
+          <h1 className="text-black font-bold text-xl tracking-tight">ハンド履歴</h1>
           <span className="ml-auto text-black/40 text-sm">{total}件</span>
         </div>
 

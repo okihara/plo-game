@@ -74,26 +74,27 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
       <div className="w-[90%]">
         {/* Logo */}
         <div className="text-center mb-[6cqw]">
-          <h1 className="text-[7cqw] font-bold text-black tracking-tight mb-[1.5cqw]">Volt Poker Club</h1>
+          <h1 className="text-[8cqw] font-bold text-black tracking-tight mb-[1.5cqw]">Volt Poker Club</h1>
+          <div className="w-[12cqw] h-[0.5cqw] bg-black mx-auto" />
         </div>
 
         {/* User Info or Login Buttons */}
         {loading ? (
           <div className="text-center text-black/40 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
         ) : user ? (
-          <div className="rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-black/10">
+          <div className="rounded-[2.5cqw] p-[3.5cqw] mb-[5cqw] border border-black/10 shadow-sm">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-[2.5cqw]">
                 {user.avatarUrl && (
                   <img
                     src={user.avatarUrl}
                     alt={user.username}
-                    className="w-[10cqw] h-[10cqw] rounded-full cursor-pointer hover:ring-2 hover:ring-black/20 transition-all"
+                    className="w-[10cqw] h-[10cqw] rounded-full cursor-pointer hover:ring-2 hover:ring-black/20 transition-all shadow-sm"
                     onClick={() => setShowProfile(true)}
                   />
                 )}
                 <div>
-                  <div className="text-[3.5cqw] text-black font-bold">{user.username}</div>
+                  <div className="text-[4cqw] text-black font-bold">{user.username}</div>
                   <div className="text-[3cqw] text-black/60 flex items-center gap-[1.5cqw]">
                     <span>{user.balance}</span>
                     {user.loginBonusAvailable && (
@@ -130,7 +131,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             <p className="text-[3.5cqw] text-black/60 text-center mb-[3cqw]">ログインしてプレイ</p>
             <button
               onClick={handleLogin}
-              className="w-full py-[2.5cqw] px-[3.5cqw] text-[3.5cqw] bg-black text-white rounded-[2cqw] hover:bg-black/80 transition-all font-medium flex items-center justify-center gap-[2cqw]"
+              className="w-full py-[2.5cqw] px-[3.5cqw] text-[3.5cqw] bg-black text-white rounded-[2cqw] hover:bg-black/80 transition-all font-medium flex items-center justify-center gap-[2cqw] shadow-md"
             >
               Twitterでログイン
             </button>
@@ -141,21 +142,25 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         )}
 
         {/* Table selection */}
+        <div className="mb-[2.5cqw]">
+          <h2 className="text-[4cqw] font-bold text-black tracking-tight">Tables</h2>
+          <div className="w-[8cqw] h-[0.4cqw] bg-black mt-[0.8cqw]" />
+        </div>
         <div className="space-y-[2.5cqw]">
           {TABLE_OPTIONS.map((table) => (
             <button
               key={table.id}
               onClick={() => onPlayOnline(table.blinds)}
-              className="w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] text-black hover:bg-black/5 transition-all border border-black/10 hover:border-black/25"
+              className="w-full py-[3.5cqw] px-[4cqw] rounded-[2.5cqw] text-black hover:bg-black/[0.03] transition-all border border-black/10 hover:border-black/20 shadow-sm hover:shadow-md"
             >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[3cqw]">
                   {/* Game type badge */}
-                  <span className="px-[2cqw] py-[0.8cqw] bg-black/5 text-black/60 text-[2.5cqw] font-bold rounded-[1cqw]">
+                  <span className="px-[2cqw] py-[0.8cqw] bg-black text-white text-[2.5cqw] font-bold rounded-[1cqw]">
                     {table.gameLabel}
                   </span>
                   {/* Blinds */}
-                  <span className="text-[4.5cqw] font-bold">{table.blindsLabel}</span>
+                  <span className="text-[5cqw] font-bold">{table.blindsLabel}</span>
                 </div>
                 <div className="flex items-center gap-[3cqw] text-[3cqw] text-black/50">
                   {/* Buy-in */}
