@@ -7,7 +7,7 @@ export const TABLE_CONSTANTS = {
   DEFAULT_BUYIN_MULTIPLIER: 200, // bigBlind * 200
 
   // タイミング
-  ACTION_TIMEOUT_MS: 10000,
+  ACTION_TIMEOUT_MS: 20000,
   ACTION_ANIMATION_DELAY_MS: 1200,    // ストリート変更前のアクション演出待ち
   STREET_TRANSITION_DELAY_MS: 800,    // コミュニティカード確認時間
   HAND_START_DELAY_MS: 2000,

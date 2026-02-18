@@ -101,6 +101,14 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             />
           </div>
           <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
+          <div className="mt-[2cqw] px-[3cqw] py-[1.5cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 text-center leading-relaxed">
+            <p className="font-medium">現在テスト中です</p>
+            <ul className="mt-[1cqw] space-y-[0.5cqw] text-amber-600">
+              <li>・データは予告なくリセットされる場合があります</li>
+              <li>・チップに実際の価値はありません</li>
+              <li>・不具合があればお知らせください</li>
+            </ul>
+          </div>
         </div>
 
         {/* User Info or Login */}
@@ -149,6 +157,16 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   ログアウト
                 </button>
               </div>
+              <button
+                onClick={() => {
+                  window.history.pushState({}, '', '/history');
+                  window.dispatchEvent(new PopStateEvent('popstate'));
+                }}
+                className="mt-[3cqw] pt-[3cqw] border-t border-cream-200 w-full flex items-center justify-between text-[3cqw] text-cream-600 hover:text-cream-900 transition-colors"
+              >
+                <span>ハンド履歴を見る</span>
+                <span className="text-cream-400 text-[3.5cqw]">&rsaquo;</span>
+              </button>
             </div>
           ) : (
             <div className="bg-white border border-cream-300 rounded-[4cqw] p-[5cqw] mb-[4cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
@@ -162,22 +180,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               <p className="text-[2.5cqw] text-cream-500 text-center mt-[3cqw]">
                 またはゲストとしてプレイ
               </p>
-            </div>
-          )}
-
-          {/* ハンド履歴リンク（ログイン時のみ） */}
-          {user && (
-            <div className="mb-[4cqw]">
-              <button
-                onClick={() => {
-                  window.history.pushState({}, '', '/history');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
-                className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] text-cream-600 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-[2.5cqw] transition-all border border-cream-300 hover:border-cream-400 flex items-center justify-between"
-              >
-                <span>ハンド履歴を見る</span>
-                <span className="text-cream-400 text-[3.5cqw]">&rsaquo;</span>
-              </button>
             </div>
           )}
 
