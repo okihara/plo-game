@@ -15,6 +15,7 @@ type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
+  private connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Event listeners
   private listeners: {
@@ -58,6 +59,12 @@ class WebSocketService {
         }
       }
 
+      // 前回の接続タイムアウトが残っていたらクリア
+      if (this.connectionTimeoutId) {
+        clearTimeout(this.connectionTimeoutId);
+        this.connectionTimeoutId = null;
+      }
+
       // httpOnly cookieはdocument.cookieで読めないため、
       // サーバー側がhandshake headerからcookieを読み取る
       this.socket = io(SERVER_URL, {
@@ -69,7 +76,10 @@ class WebSocketService {
       let settled = false;
       const settle = () => {
         settled = true;
-        clearTimeout(timeoutId);
+        if (this.connectionTimeoutId) {
+          clearTimeout(this.connectionTimeoutId);
+          this.connectionTimeoutId = null;
+        }
       };
 
       this.socket.on('connection:established', ({ playerId }) => {
@@ -175,9 +185,10 @@ class WebSocketService {
       });
 
       // Timeout for initial connection
-      const timeoutId = setTimeout(() => {
+      this.connectionTimeoutId = setTimeout(() => {
         if (!settled) {
           settled = true;
+          this.connectionTimeoutId = null;
           reject(new Error('Connection timeout'));
         }
       }, 10000);
@@ -185,6 +196,10 @@ class WebSocketService {
   }
 
   disconnect(): void {
+    if (this.connectionTimeoutId) {
+      clearTimeout(this.connectionTimeoutId);
+      this.connectionTimeoutId = null;
+    }
     this.socket?.disconnect();
     this.socket = null;
     this.playerId = null;
