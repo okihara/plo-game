@@ -34,6 +34,7 @@ export interface ServerToClientEvents {
   'table:player_joined': (data: { seat: number; player: OnlinePlayer }) => void;
   'table:player_left': (data: { seat: number; playerId: string }) => void;
   'table:error': (data: { message: string }) => void;
+  'table:busted': (data: { message: string }) => void;
 
   // Game state updates
   'game:state': (data: { state: ClientGameState }) => void;

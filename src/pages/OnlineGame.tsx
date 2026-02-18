@@ -40,6 +40,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     actionTimeoutMs,
     showdownHandNames,
     maintenanceStatus,
+    bustedMessage,
     connect,
     disconnect,
     joinMatchmaking,
@@ -84,6 +85,16 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
       disconnect();
     };
   }, [connect, disconnect, joinMatchmaking]);
+
+  // バスト時にロビーへ戻す
+  useEffect(() => {
+    if (bustedMessage) {
+      const timer = setTimeout(() => {
+        onBack();
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [bustedMessage, onBack]);
 
   // ブラインド表示用
   const blindsLabel = blinds;

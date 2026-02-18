@@ -40,6 +40,7 @@ export interface OnlineGameHookResult {
   actionTimeoutMs: number | null;
   showdownHandNames: Map<number, string>;
   maintenanceStatus: { isActive: boolean; message: string } | null;
+  bustedMessage: string | null;
 
   // アクション
   connect: () => Promise<void>;
@@ -178,6 +179,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [bustedMessage, setBustedMessage] = useState<string | null>(null);
 
   // Refs
   const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
@@ -423,6 +425,9 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           }, SHOWDOWN_WINNERS_DELAY);
         }, SHOWDOWN_REVEAL_DELAY);
       },
+      onBusted: (message) => {
+        setBustedMessage(message);
+      },
       onFastFoldQueued: () => {
         setIsChangingTable(true);
       },
@@ -491,6 +496,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
     actionTimeoutMs,
     showdownHandNames,
     maintenanceStatus,
+    bustedMessage,
     connect,
     disconnect,
     joinMatchmaking,

@@ -49,6 +49,7 @@ class WebSocketService {
     onMatchmakingTableAssigned?: (tableId: string) => void;
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
+    onBusted?: (message: string) => void;
     onFastFoldQueued?: () => void;
     onFastFoldTableAssigned?: (tableId: string) => void;
     onSpectating?: (tableId: string) => void;
@@ -119,6 +120,10 @@ class WebSocketService {
 
       this.socket.on('table:error', ({ message }) => {
         this.listeners.onError?.(message);
+      });
+
+      this.socket.on('table:busted', ({ message }) => {
+        this.listeners.onBusted?.(message);
       });
 
       // Game events

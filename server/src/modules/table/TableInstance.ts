@@ -555,8 +555,8 @@ export class TableInstance {
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
       if (seat && seat.chips <= 0) {
-        // Notify player they're busted
-        seat.socket?.emit('table:error', { message: 'You have run out of chips!' });
+        // Notify player they're busted (table:busted, NOT table:error)
+        seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
         this.unseatPlayer(seat.odId);
       }
     }
