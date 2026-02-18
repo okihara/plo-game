@@ -14,8 +14,8 @@ function serializeCards(cards: Card[]): string[] {
   return cards.map(serializeCard);
 }
 
-function isAuthenticatedUser(odId: string): boolean {
-  return !odId.startsWith('guest_');
+function isAuthenticatedUser(_odId: string): boolean {
+  return true;
 }
 
 export class HandHistoryRecorder {

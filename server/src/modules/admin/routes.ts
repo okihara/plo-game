@@ -43,7 +43,6 @@ interface ServerStats {
   connections: {
     total: number;
     authenticated: number;
-    guests: number;
   };
   tables: {
     total: number;
@@ -94,8 +93,7 @@ export function adminRoutes(deps: AdminDependencies) {
     // JSON API for stats
     fastify.get('/api/admin/stats', async (): Promise<ServerStats> => {
       const sockets = Array.from(io.sockets.sockets.values());
-      const authenticatedCount = sockets.filter((s: any) => s.odId && !s.odId.startsWith('guest_')).length;
-      const guestCount = sockets.filter((s: any) => s.odId?.startsWith('guest_')).length;
+      const authenticatedCount = sockets.filter((s: any) => s.odId).length;
 
       const tablesInfo = tableManager.getTablesInfo();
       const tableDetails: TableStats[] = [];
@@ -160,7 +158,6 @@ export function adminRoutes(deps: AdminDependencies) {
         connections: {
           total: sockets.length,
           authenticated: authenticatedCount,
-          guests: guestCount,
         },
         tables: {
           total: tablesInfo.length,
@@ -582,7 +579,7 @@ function getDashboardHTML(clientUrl: string): string {
       // Connections
       document.getElementById('totalConnections').textContent = data.connections.total;
       document.getElementById('connectionBreakdown').textContent =
-        '認証: ' + data.connections.authenticated + ' / ゲスト: ' + data.connections.guests;
+        '認証済み: ' + data.connections.authenticated;
 
       // Tables
       document.getElementById('totalTables').textContent = data.tables.total;

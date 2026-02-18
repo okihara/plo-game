@@ -21,8 +21,8 @@ function getBBSeat(dealerPosition: number, activeSeatPositions: number[]): numbe
   return sorted[(dealerIdx + 2) % sorted.length];
 }
 
-function isAuthenticatedUser(odId: string): boolean {
-  return !odId.startsWith('guest_');
+function isAuthenticatedUser(_odId: string): boolean {
+  return true;
 }
 
 interface StatsIncrement {

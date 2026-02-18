@@ -213,8 +213,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               return (
                 <button
                   key={table.id}
-                  onClick={() => table.enabled && !maintenance?.isActive && onPlayOnline(table.blinds)}
-                  disabled={!table.enabled || !!maintenance?.isActive}
+                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds)}
+                  disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
                     table.enabled && !maintenance?.isActive
                       ? 'bg-white border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] hover:bg-cream-50 hover:border-cream-400 hover:shadow-[0_4px_16px_rgba(139,126,106,0.15)] active:scale-[0.98]'

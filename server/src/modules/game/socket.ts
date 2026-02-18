@@ -56,7 +56,7 @@ async function findOrCreateBotUser(botName: string, botAvatar: string | null) {
 
 // テーブル離脱時のキャッシュアウト処理
 async function cashOutPlayer(odId: string, chips: number, tableId?: string): Promise<void> {
-  if (odId.startsWith('guest_') || chips <= 0) return;
+  if (chips <= 0) return;
   try {
     await prisma.bankroll.update({
       where: { userId: odId },
@@ -87,7 +87,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   tableManager.createTable('1/3', false); // Regular table
   tableManager.createTable('1/3', true);  // Fast fold table
 
-  // Authentication middleware (allows anonymous guests and bots)
+  // Authentication middleware (requires authentication or bot credentials)
   io.use(async (socket: AuthenticatedSocket, next) => {
     try {
       // Check if this is a bot connection
@@ -110,41 +110,27 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       const token = socket.handshake.auth.token ||
         socket.handshake.headers.cookie?.split('token=')[1]?.split(';')[0];
 
-      if (token) {
-        // Authenticated user
-        const decoded = fastify.jwt.verify<{ userId: string }>(token);
-        const user = await prisma.user.findUnique({
-          where: { id: decoded.userId },
-          include: { bankroll: true },
-        });
-
-        if (user) {
-          socket.odId = user.id;
-          socket.odName = user.username;
-          socket.odAvatarUrl = user.avatarUrl;
-          socket.odIsBot = false;
-          return next();
-        }
+      if (!token) {
+        return next(new Error('認証が必要です'));
       }
 
-      // Anonymous guest - generate temporary ID
-      const guestId = `guest_${socket.id}`;
-      const guestNumber = Math.floor(Math.random() * 9999) + 1;
-      socket.odId = guestId;
-      socket.odName = `Guest${guestNumber}`;
-      socket.odAvatarUrl = null;
-      socket.odIsBot = false;
+      const decoded = fastify.jwt.verify<{ userId: string }>(token);
+      const user = await prisma.user.findUnique({
+        where: { id: decoded.userId },
+        include: { bankroll: true },
+      });
 
-      next();
-    } catch (err) {
-      // On error, fall back to guest mode
-      const guestId = `guest_${socket.id}`;
-      const guestNumber = Math.floor(Math.random() * 9999) + 1;
-      socket.odId = guestId;
-      socket.odName = `Guest${guestNumber}`;
-      socket.odAvatarUrl = null;
+      if (!user) {
+        return next(new Error('ユーザーが見つかりません'));
+      }
+
+      socket.odId = user.id;
+      socket.odName = user.username;
+      socket.odAvatarUrl = user.avatarUrl;
       socket.odIsBot = false;
-      next();
+      return next();
+    } catch (err) {
+      return next(new Error('認証に失敗しました'));
     }
   });
 
@@ -271,37 +257,34 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
 
       const { blinds } = data;
-      const isGuest = socket.odId!.startsWith('guest_');
 
       try {
         const [, bb] = blinds.split('/').map(Number);
         const minBuyIn = bb * 100; // $300 for $1/$3
 
-        if (!isGuest) {
-          // Authenticated user (including bots) - check balance
-          const bankroll = await prisma.bankroll.findUnique({
-            where: { userId: socket.odId },
-          });
+        // Check balance
+        const bankroll = await prisma.bankroll.findUnique({
+          where: { userId: socket.odId },
+        });
 
-          if (!bankroll || bankroll.balance < minBuyIn) {
-            socket.emit('table:error', { message: 'Insufficient balance for minimum buy-in' });
-            return;
-          }
-
-          // Deduct buy-in
-          await prisma.bankroll.update({
-            where: { userId: socket.odId },
-            data: { balance: { decrement: minBuyIn } },
-          });
-
-          await prisma.transaction.create({
-            data: {
-              userId: socket.odId!,
-              type: 'BUY_IN',
-              amount: -minBuyIn,
-            },
-          });
+        if (!bankroll || bankroll.balance < minBuyIn) {
+          socket.emit('table:error', { message: 'Insufficient balance for minimum buy-in' });
+          return;
         }
+
+        // Deduct buy-in
+        await prisma.bankroll.update({
+          where: { userId: socket.odId },
+          data: { balance: { decrement: minBuyIn } },
+        });
+
+        await prisma.transaction.create({
+          data: {
+            userId: socket.odId!,
+            type: 'BUY_IN',
+            amount: -minBuyIn,
+          },
+        });
 
         // Leave current table if any (with cashout)
         const currentTable = tableManager.getPlayerTable(socket.odId!);
@@ -309,7 +292,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           await unseatAndCashOut(currentTable, socket.odId!);
         }
 
-        // Queue player (guests get default buy-in)
+        // Queue player
         await matchmakingPool.queuePlayer(
           socket.odId!,
           socket.odName!,

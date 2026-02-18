@@ -65,14 +65,18 @@ class WebSocketService {
         }
       }
 
-      // Get JWT token from cookie
+      // Get JWT token from cookie - require authentication
       const token = getCookie('token');
+      if (!token) {
+        reject(new Error('ログインが必要です'));
+        return;
+      }
 
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
         auth: {
-          token: token || undefined,
+          token,
         },
       });
 
@@ -85,6 +89,11 @@ class WebSocketService {
       this.socket.on('connection:error', ({ message }) => {
         this.listeners.onError?.(message);
         reject(new Error(message));
+      });
+
+      this.socket.on('connect_error', (err) => {
+        this.listeners.onError?.(err.message);
+        reject(new Error(err.message));
       });
 
       this.socket.on('disconnect', () => {

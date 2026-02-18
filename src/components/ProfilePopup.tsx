@@ -43,7 +43,7 @@ export function ProfilePopup({
 
   // スタッツをAPIから取得
   useEffect(() => {
-    if (!userId || userId.startsWith('guest_') || userId.startsWith('bot_')) return;
+    if (!userId || userId.startsWith('bot_')) return;
 
     setLoading(true);
     fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
