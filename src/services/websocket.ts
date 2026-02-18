@@ -15,6 +15,7 @@ type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
+  private connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
   // Event listeners
   private listeners: {
@@ -58,6 +59,12 @@ class WebSocketService {
         }
       }
 
+      // 前回の接続タイムアウトが残っていたらクリア
+      if (this.connectionTimeoutId) {
+        clearTimeout(this.connectionTimeoutId);
+        this.connectionTimeoutId = null;
+      }
+
       // httpOnly cookieはdocument.cookieで読めないため、
       // サーバー側がhandshake headerからcookieを読み取る
       this.socket = io(SERVER_URL, {
@@ -66,20 +73,34 @@ class WebSocketService {
         withCredentials: true,
       });
 
+      let settled = false;
+      const settle = () => {
+        settled = true;
+        if (this.connectionTimeoutId) {
+          clearTimeout(this.connectionTimeoutId);
+          this.connectionTimeoutId = null;
+        }
+      };
+
       this.socket.on('connection:established', ({ playerId }) => {
         this.playerId = playerId;
         this.listeners.onConnected?.(playerId);
+        settle();
         resolve(playerId);
       });
 
       this.socket.on('connection:error', ({ message }) => {
         this.listeners.onError?.(message);
+        settle();
         reject(new Error(message));
       });
 
       this.socket.on('connect_error', (err) => {
         this.listeners.onError?.(err.message);
-        reject(new Error(err.message));
+        if (!settled) {
+          settle();
+          reject(new Error(err.message));
+        }
       });
 
       this.socket.on('disconnect', () => {
@@ -164,8 +185,10 @@ class WebSocketService {
       });
 
       // Timeout for initial connection
-      setTimeout(() => {
-        if (!this.playerId) {
+      this.connectionTimeoutId = setTimeout(() => {
+        if (!settled) {
+          settled = true;
+          this.connectionTimeoutId = null;
           reject(new Error('Connection timeout'));
         }
       }, 10000);
@@ -173,6 +196,10 @@ class WebSocketService {
   }
 
   disconnect(): void {
+    if (this.connectionTimeoutId) {
+      clearTimeout(this.connectionTimeoutId);
+      this.connectionTimeoutId = null;
+    }
     this.socket?.disconnect();
     this.socket = null;
     this.playerId = null;
