@@ -318,23 +318,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
     });
 
-    // Handle disconnect
-    socket.on('disconnect', () => {
+    // Handle disconnect - immediately unseat and cash out
+    socket.on('disconnect', async () => {
       console.log(`Player disconnected: ${socket.odId} (${socket.odName})`);
 
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
-        const odId = socket.odId!;
-        // Give some time for reconnection before removing
-        setTimeout(async () => {
-          // Check if player reconnected
-          const stillConnected = Array.from(io.sockets.sockets.values())
-            .some((s: AuthenticatedSocket) => s.odId === odId);
-
-          if (!stillConnected) {
-            await unseatAndCashOut(table, odId);
-          }
-        }, 30000); // 30 second grace period
+        await unseatAndCashOut(table, socket.odId!);
       }
     });
 
