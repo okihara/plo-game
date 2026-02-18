@@ -95,7 +95,7 @@ export function PlayerDebug() {
 
   return (
     <GameSettingsProvider>
-      <div className="fixed inset-0 bg-gray-900 text-white overflow-y-auto">
+      <div className="fixed inset-0 bg-cream-100 text-cream-900 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-8">
           <h1 className="text-4xl font-bold mb-8">Player Component Debug</h1>
 
@@ -103,7 +103,7 @@ export function PlayerDebug() {
             {/* Control Panel */}
             <div className="lg:col-span-1 space-y-6">
               {/* Player State */}
-              <div className="bg-gray-800 rounded-lg p-6">
+              <div className="bg-white border border-cream-300 rounded-lg p-6 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
                 <h3 className="text-xl font-semibold mb-4">プレイヤー状態</h3>
                 <div className="space-y-2">
                   {[
@@ -113,7 +113,7 @@ export function PlayerDebug() {
                     { value: 'folded', label: 'Folded - フォールド（グレースケール）' },
                     { value: 'allin', label: 'All-in - オールイン' },
                   ].map(({ value, label }) => (
-                    <label key={value} className="flex items-center gap-3 cursor-pointer hover:bg-gray-700 p-2 rounded">
+                    <label key={value} className="flex items-center gap-3 cursor-pointer hover:bg-cream-100 p-2 rounded">
                       <input
                         type="radio"
                         name="playerState"
@@ -129,42 +129,42 @@ export function PlayerDebug() {
               </div>
 
               {/* Action Buttons */}
-              <div className="bg-gray-800 rounded-lg p-6">
+              <div className="bg-white border border-cream-300 rounded-lg p-6 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
                 <h3 className="text-xl font-semibold mb-4">アクション再生</h3>
                 <div className="space-y-2">
                   <button
                     onClick={() => triggerAction('fold')}
-                    className="w-full px-4 py-3 bg-gray-600 hover:bg-gray-700 rounded font-semibold transition text-sm"
+                    className="w-full px-4 py-3 bg-cream-500 text-white hover:bg-cream-600 rounded font-semibold transition text-sm"
                   >
                     Fold - フォールド
                   </button>
                   <button
                     onClick={() => triggerAction('check')}
-                    className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition text-sm"
+                    className="w-full px-4 py-3 bg-[#2874A6] text-white hover:opacity-90 rounded font-semibold transition text-sm"
                   >
                     Check - チェック
                   </button>
                   <button
                     onClick={() => triggerAction('call')}
-                    className="w-full px-4 py-3 bg-green-600 hover:bg-green-700 rounded font-semibold transition text-sm"
+                    className="w-full px-4 py-3 bg-forest text-white hover:bg-forest-light rounded font-semibold transition text-sm"
                   >
                     Call - コール
                   </button>
                   <button
                     onClick={() => triggerAction('bet')}
-                    className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition text-sm"
+                    className="w-full px-4 py-3 bg-amber-600 text-white hover:bg-amber-700 rounded font-semibold transition text-sm"
                   >
                     Bet - ベット
                   </button>
                   <button
                     onClick={() => triggerAction('raise')}
-                    className="w-full px-4 py-3 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition text-sm"
+                    className="w-full px-4 py-3 bg-amber-600 text-white hover:bg-amber-700 rounded font-semibold transition text-sm"
                   >
                     Raise - レイズ
                   </button>
                   <button
                     onClick={() => triggerAction('allin')}
-                    className="w-full px-4 py-3 bg-red-600 hover:bg-red-700 rounded font-semibold transition text-sm"
+                    className="w-full px-4 py-3 bg-[#C0392B] text-white hover:opacity-90 rounded font-semibold transition text-sm"
                   >
                     All-in - オールイン
                   </button>
@@ -172,7 +172,7 @@ export function PlayerDebug() {
               </div>
 
               {/* Display Options */}
-              <div className="bg-gray-800 rounded-lg p-6">
+              <div className="bg-white border border-cream-300 rounded-lg p-6 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
                 <h3 className="text-xl font-semibold mb-4">表示オプション</h3>
                 <div className="space-y-3">
                   <label className="flex items-center gap-3 cursor-pointer">
@@ -207,12 +207,12 @@ export function PlayerDebug() {
 
                   {showBet && (
                     <div className="ml-7 mt-2">
-                      <label className="text-sm text-gray-400 block mb-1">ベット額</label>
+                      <label className="text-sm text-cream-600 block mb-1">ベット額</label>
                       <input
                         type="number"
                         value={betAmount}
                         onChange={(e) => setBetAmount(Number(e.target.value))}
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                        className="w-full px-3 py-2 bg-cream-100 border border-cream-300 rounded text-sm"
                         min="0"
                         step="50"
                       />
@@ -222,7 +222,7 @@ export function PlayerDebug() {
               </div>
 
               {/* Other Animations */}
-              <div className="bg-gray-800 rounded-lg p-6">
+              <div className="bg-white border border-cream-300 rounded-lg p-6 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
                 <h3 className="text-xl font-semibold mb-4">その他アニメーション</h3>
                 <div className="space-y-3">
                   <button
@@ -230,8 +230,8 @@ export function PlayerDebug() {
                     disabled={isDealing}
                     className={`w-full px-4 py-3 rounded font-semibold transition ${
                       isDealing
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-green-600 hover:bg-green-700'
+                        ? 'bg-cream-400 text-white cursor-not-allowed'
+                        : 'bg-forest text-white hover:bg-forest-light'
                     }`}
                   >
                     {isDealing ? '配布中...' : '🃏 カード配布'}
@@ -242,8 +242,8 @@ export function PlayerDebug() {
                     disabled={isTimerActive}
                     className={`w-full px-4 py-3 rounded font-semibold transition ${
                       isTimerActive
-                        ? 'bg-gray-600 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
+                        ? 'bg-cream-400 text-white cursor-not-allowed'
+                        : 'bg-[#2874A6] text-white hover:opacity-90'
                     }`}
                   >
                     {isTimerActive ? '⏱ タイマー実行中...' : '⏱ タイマー開始（15秒）'}
@@ -255,7 +255,7 @@ export function PlayerDebug() {
               <div className="text-center">
                 <a
                   href="/"
-                  className="inline-block px-6 py-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition"
+                  className="inline-block px-6 py-3 bg-white border border-cream-300 rounded-lg hover:bg-cream-50 transition"
                 >
                   ← ロビーに戻る
                 </a>
@@ -264,7 +264,7 @@ export function PlayerDebug() {
 
             {/* Player Display */}
             <div className="lg:col-span-2">
-              <div className="bg-gray-800 rounded-lg p-8">
+              <div className="bg-white border border-cream-300 rounded-lg p-8 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
                 <h3 className="text-2xl font-semibold mb-6 text-center">プレビュー</h3>
                 <div className="relative w-full max-w-md mx-auto aspect-[4/5] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[3px] border-[#2a2520] overflow-visible">
                   <div className="@container w-full h-full relative">
@@ -291,26 +291,26 @@ export function PlayerDebug() {
                 </div>
 
                 {/* Current State Info */}
-                <div className="mt-6 p-4 bg-gray-700 rounded text-sm space-y-2">
-                  <div className="font-semibold text-gray-300 mb-3">現在の状態:</div>
-                  <div className="grid grid-cols-2 gap-2 text-gray-400">
+                <div className="mt-6 p-4 bg-cream-200 rounded text-sm space-y-2">
+                  <div className="font-semibold text-cream-700 mb-3">現在の状態:</div>
+                  <div className="grid grid-cols-2 gap-2 text-cream-600">
                     <div>プレイヤー状態:</div>
-                    <div className="text-white font-mono">{playerState}</div>
+                    <div className="text-cream-900 font-mono">{playerState}</div>
 
                     <div>最後のアクション:</div>
-                    <div className="text-white font-mono">{currentAction || 'なし'}</div>
+                    <div className="text-cream-900 font-mono">{currentAction || 'なし'}</div>
 
                     <div>カード表示:</div>
-                    <div className="text-white font-mono">{showCards ? 'ON' : 'OFF'}</div>
+                    <div className="text-cream-900 font-mono">{showCards ? 'ON' : 'OFF'}</div>
 
                     <div>ベット額:</div>
-                    <div className="text-white font-mono">{showBet ? `${betAmount}` : 'なし'}</div>
+                    <div className="text-cream-900 font-mono">{showBet ? `${betAmount}` : 'なし'}</div>
 
                     <div>現在のターン:</div>
-                    <div className="text-white font-mono">{isCurrentPlayer ? 'YES' : 'NO'}</div>
+                    <div className="text-cream-900 font-mono">{isCurrentPlayer ? 'YES' : 'NO'}</div>
 
                     <div>勝者:</div>
-                    <div className="text-white font-mono">{isWinner ? 'YES' : 'NO'}</div>
+                    <div className="text-cream-900 font-mono">{isWinner ? 'YES' : 'NO'}</div>
                   </div>
                 </div>
               </div>

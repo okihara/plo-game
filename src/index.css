@@ -250,3 +250,23 @@ body {
 .glass-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 255, 255, 0.2);
 }
+
+/* Light cream background */
+.light-bg {
+  background: #FAF8F5;
+}
+
+/* Light scrollbar for cream theme */
+.light-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.light-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.light-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(139, 126, 106, 0.2);
+  border-radius: 4px;
+}
+.light-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 126, 106, 0.35);
+}

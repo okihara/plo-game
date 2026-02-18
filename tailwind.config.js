@@ -14,6 +14,23 @@ export default {
         },
         'poker-gold': '#ffd700',
         'poker-red': '#e63946',
+        'cream': {
+          50: '#FDFCFA',
+          100: '#FAF8F5',
+          200: '#F5F0EB',
+          300: '#E8E0D4',
+          400: '#D4CCC0',
+          500: '#B8AD9E',
+          600: '#8B7E6A',
+          700: '#6B5E4A',
+          800: '#4A3F30',
+          900: '#1A1A1A',
+        },
+        'forest': {
+          DEFAULT: '#2D5A3D',
+          light: '#3D7A53',
+          dark: '#1D3A27',
+        },
       },
       animation: {
         'pulse-glow': 'pulse-glow 1.5s infinite',

@@ -89,42 +89,37 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   };
 
   return (
-    <div className="h-full w-full glass-bg relative overflow-y-auto">
+    <div className="h-full w-full light-bg relative overflow-y-auto">
       <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[6cqw]">
         {/* Logo */}
         <div className="text-center mb-[5cqw]">
-          {/* <img
-            src="/images/image.png"
-            alt="Baby PLO"
-            className="w-[40cqw] mx-auto mb-[2cqw] drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-          /> */}
-          <h1 className="text-[8cqw] font-bold text-white tracking-tight">Baby PLO</h1>
+          <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
         </div>
 
         {/* User Info or Login */}
         <div className="w-[90%]">
           {loading ? (
-            <div className="text-center text-white/40 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
+            <div className="text-center text-cream-500 text-[3.5cqw] mb-[5cqw]">読み込み中...</div>
           ) : user ? (
-            <div className="bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] rounded-[4cqw] p-[4cqw] mb-[4cqw] shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
+            <div className="bg-white border border-cream-300 rounded-[4cqw] p-[4cqw] mb-[4cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[2.5cqw]">
                   {user.avatarUrl && (
                     <img
                       src={user.avatarUrl}
                       alt={user.username}
-                      className="w-[12cqw] h-[12cqw] rounded-full border-[0.4cqw] border-white/20 cursor-pointer hover:border-emerald-400/50 transition-all"
+                      className="w-[12cqw] h-[12cqw] rounded-full border-[0.4cqw] border-cream-300 cursor-pointer hover:border-forest/50 transition-all"
                       onClick={() => setShowProfile(true)}
                     />
                   )}
                   <div>
-                    <div className="text-[4cqw] text-white font-bold">{user.username}</div>
+                    <div className="text-[4cqw] text-cream-900 font-bold">{user.username}</div>
                     <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">
-                      <span className="text-[3.5cqw] font-bold text-emerald-400">{user.balance}</span>
+                      <span className="text-[3.5cqw] font-bold text-forest">{user.balance}</span>
                       <button
                         onClick={handleClaimLoginBonus}
                         disabled={claimingBonus || !user.loginBonusAvailable}
-                        className="px-[1.5cqw] py-[0.5cqw] text-[2.2cqw] bg-emerald-500/20 text-emerald-400 font-bold rounded-[1cqw] hover:bg-emerald-500/30 disabled:opacity-40 transition-all"
+                        className="px-[1.5cqw] py-[0.5cqw] text-[2.2cqw] bg-forest/10 text-forest font-bold rounded-[1cqw] hover:bg-forest/20 disabled:opacity-40 transition-all"
                       >
                         {claimingBonus ? '...' : user.loginBonusAvailable ? '600まで補填' : '受取済み'}
                       </button>
@@ -132,7 +127,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                         <button
                           onClick={handleDebugAddChips}
                           disabled={addingChips}
-                          className="px-[1.5cqw] py-[0.5cqw] text-[2.2cqw] bg-white/[0.08] text-white/50 font-bold rounded-[1cqw] hover:bg-white/[0.15] disabled:opacity-40 transition-all"
+                          className="px-[1.5cqw] py-[0.5cqw] text-[2.2cqw] bg-cream-200 text-cream-600 font-bold rounded-[1cqw] hover:bg-cream-300 disabled:opacity-40 transition-all"
                         >
                           +10,000
                         </button>
@@ -142,22 +137,22 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 </div>
                 <button
                   onClick={logout}
-                  className="text-[2.8cqw] text-white/30 hover:text-white/60 transition-colors"
+                  className="text-[2.8cqw] text-cream-500 hover:text-cream-700 transition-colors"
                 >
                   ログアウト
                 </button>
               </div>
             </div>
           ) : (
-            <div className="bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] rounded-[4cqw] p-[5cqw] mb-[4cqw] shadow-[0_4px_24px_rgba(0,0,0,0.3)]">
-              <p className="text-[3.5cqw] text-white/50 text-center mb-[3cqw]">ログインしてプレイ</p>
+            <div className="bg-white border border-cream-300 rounded-[4cqw] p-[5cqw] mb-[4cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
+              <p className="text-[3.5cqw] text-cream-600 text-center mb-[3cqw]">ログインしてプレイ</p>
               <button
                 onClick={handleLogin}
-                className="w-full py-[2.5cqw] px-[4cqw] text-[3.5cqw] bg-emerald-500 text-white rounded-[2cqw] hover:bg-emerald-400 transition-all font-bold flex items-center justify-center gap-[2cqw] shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_28px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_10px_rgba(16,185,129,0.3)]"
+                className="w-full py-[2.5cqw] px-[4cqw] text-[3.5cqw] bg-forest text-white rounded-[2cqw] hover:bg-forest-light transition-all font-bold flex items-center justify-center gap-[2cqw] shadow-[0_4px_20px_rgba(45,90,61,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_28px_rgba(45,90,61,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_10px_rgba(45,90,61,0.3)]"
               >
                 Twitterでログイン
               </button>
-              <p className="text-[2.5cqw] text-white/25 text-center mt-[3cqw]">
+              <p className="text-[2.5cqw] text-cream-500 text-center mt-[3cqw]">
                 またはゲストとしてプレイ
               </p>
             </div>
@@ -171,17 +166,17 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   window.history.pushState({}, '', '/history');
                   window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
-                className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] text-white/50 hover:text-white/80 bg-white/[0.05] hover:bg-white/[0.1] rounded-[2.5cqw] transition-all border border-white/[0.1] hover:border-white/[0.2] flex items-center justify-between"
+                className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] text-cream-600 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-[2.5cqw] transition-all border border-cream-300 hover:border-cream-400 flex items-center justify-between"
               >
                 <span>ハンド履歴を見る</span>
-                <span className="text-white/30 text-[3.5cqw]">&rsaquo;</span>
+                <span className="text-cream-400 text-[3.5cqw]">&rsaquo;</span>
               </button>
             </div>
           )}
 
           {/* Tables */}
           <div className="mb-[2.5cqw]">
-            <h2 className="text-[4cqw] font-semibold text-white/80 tracking-wide uppercase">Tables</h2>
+            <h2 className="text-[4cqw] font-semibold text-cream-900 tracking-wide uppercase">Tables</h2>
           </div>
           <div className="space-y-[2.5cqw]">
             {TABLE_OPTIONS.map((table) => {
@@ -191,32 +186,32 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   key={table.id}
                   onClick={() => table.enabled && onPlayOnline(table.blinds)}
                   disabled={!table.enabled}
-                  className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border backdrop-blur-xl ${
+                  className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
                     table.enabled
-                      ? 'bg-white/[0.1] border-white/[0.18] shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:bg-white/[0.15] hover:border-white/[0.25] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] active:scale-[0.98] active:shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
-                      : 'bg-white/[0.03] border-white/[0.06] opacity-40 cursor-not-allowed'
+                      ? 'bg-white border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] hover:bg-cream-50 hover:border-cream-400 hover:shadow-[0_4px_16px_rgba(139,126,106,0.15)] active:scale-[0.98]'
+                      : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-[3cqw]">
                       <span className={`px-[2cqw] py-[0.6cqw] text-[2.5cqw] font-bold rounded-[1cqw] ${
                         table.enabled
-                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/20'
-                          : 'bg-white/[0.05] text-white/30'
+                          ? 'bg-forest/10 text-forest border border-forest/20'
+                          : 'bg-cream-300/50 text-cream-500'
                       }`}>
                         {table.gameLabel}
                       </span>
-                      <span className="text-[5cqw] font-bold text-white">{table.blindsLabel}</span>
+                      <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
                     </div>
                     <div className="flex items-center gap-[2cqw] text-[2.8cqw]">
-                      <span className="text-white/40">buy-in: {table.buyIn}</span>
+                      <span className="text-cream-600">buy-in: {table.buyIn}</span>
                       {table.enabled ? (
                         <>
-                          <span className="text-emerald-400/80">{count}人</span>
-                          <span className="text-white/25 text-[4cqw]">&rsaquo;</span>
+                          <span className="text-forest">{count}人</span>
+                          <span className="text-cream-400 text-[4cqw]">&rsaquo;</span>
                         </>
                       ) : (
-                        <span className="text-white/25">準備中</span>
+                        <span className="text-cream-500">準備中</span>
                       )}
                     </div>
                   </div>
@@ -226,15 +221,15 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           </div>
 
           {/* Footer */}
-          <div className="mt-[6cqw] text-center text-white/25 text-[2.5cqw]">
-            <p>Powered by <a href="https://x.com/okkichan3" className="text-white/40 hover:text-white/60 underline transition-colors">@okkichan3</a></p>
+          <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">
+            <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
           </div>
 
           {/* Debug link */}
           <div className="mt-[2cqw] text-center">
             <a
               href="/debug/player"
-              className="text-[2.5cqw] text-white/20 hover:text-white/40 underline transition-colors"
+              className="text-[2.5cqw] text-cream-400 hover:text-cream-600 underline transition-colors"
             >
               Debug: Player Component
             </a>

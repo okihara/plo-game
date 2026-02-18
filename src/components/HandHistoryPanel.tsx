@@ -10,7 +10,7 @@ const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
 const SUIT_COLORS: Record<string, string> = {
-  h: 'text-red-400', d: 'text-blue-400', c: 'text-emerald-400', s: 'text-white/80',
+  h: 'text-[#C0392B]', d: 'text-[#2874A6]', c: 'text-forest', s: 'text-cream-900',
 };
 
 interface HandSummary {
@@ -68,10 +68,10 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const rank = cardStr.slice(0, -1);
   const suit = cardStr.slice(-1);
   const symbol = SUIT_SYMBOLS[suit] || suit;
-  const color = SUIT_COLORS[suit] || 'text-white/60';
+  const color = SUIT_COLORS[suit] || 'text-cream-600';
 
   return (
-    <span className={`inline-flex items-center justify-center bg-white/[0.08] border border-white/[0.1] rounded px-1.5 py-0.5 text-sm font-mono font-bold ${color}`}>
+    <span className={`inline-flex items-center justify-center bg-cream-200/60 border border-cream-300 rounded px-1.5 py-0.5 text-sm font-mono font-bold ${color}`}>
       {rank}{symbol}
     </span>
   );
@@ -79,12 +79,12 @@ function MiniCard({ cardStr }: { cardStr: string }) {
 
 function ProfitDisplay({ profit }: { profit: number }) {
   if (profit > 0) {
-    return <span className="text-emerald-400 font-bold text-sm">+{profit}</span>;
+    return <span className="text-forest font-bold text-sm">+{profit}</span>;
   }
   if (profit < 0) {
-    return <span className="text-red-400 font-bold text-sm">-{Math.abs(profit)}</span>;
+    return <span className="text-[#C0392B] font-bold text-sm">-{Math.abs(profit)}</span>;
   }
-  return <span className="text-white/30 text-sm">0</span>;
+  return <span className="text-cream-400 text-sm">0</span>;
 }
 
 function formatDate(dateStr: string): string {
@@ -141,7 +141,7 @@ function formatAction(action: string): string {
 function PositionBadge({ position }: { position: string }) {
   if (!position) return null;
   return (
-    <span className="bg-white/[0.1] text-white/70 text-xs font-bold w-8 text-center py-0.5 rounded border border-white/[0.08] shrink-0 inline-block">
+    <span className="bg-cream-200 text-cream-700 text-xs font-bold w-8 text-center py-0.5 rounded border border-cream-300 shrink-0 inline-block">
       {position}
     </span>
   );
@@ -157,22 +157,22 @@ function HandSummaryCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white/[0.1] backdrop-blur-xl border border-white/[0.18] rounded-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 hover:bg-white/[0.15] hover:border-white/[0.25] active:scale-[0.98] active:shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
+      className="w-full text-left bg-white border border-cream-300 rounded-xl p-3 shadow-[0_2px_8px_rgba(139,126,106,0.12)] transition-all duration-200 hover:bg-cream-50 hover:border-cream-400 active:scale-[0.98]"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-white/40 text-sm font-medium">#{hand.handNumber}</span>
+          <span className="text-cream-500 text-sm font-medium">#{hand.handNumber}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
             return pos ? <PositionBadge position={pos} /> : null;
           })()}
-          <span className="text-white/70 text-base font-bold">{hand.blinds}</span>
-          <span className="text-white/25 text-xs">Pot {hand.potSize}</span>
+          <span className="text-cream-800 text-base font-bold">{hand.blinds}</span>
+          <span className="text-cream-400 text-xs">Pot {hand.potSize}</span>
         </div>
         <div className="flex items-center gap-2">
           <ProfitDisplay profit={hand.profit} />
-          <span className="text-white/20 text-xs">{formatDate(hand.createdAt)}</span>
+          <span className="text-cream-400 text-xs">{formatDate(hand.createdAt)}</span>
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -181,7 +181,7 @@ function HandSummaryCard({
         ))}
         {hand.communityCards.length > 0 && (
           <>
-            <span className="text-white/20 mx-1">|</span>
+            <span className="text-cream-400 mx-1">|</span>
             {hand.communityCards.map((c, i) => (
               <MiniCard key={`cc-${i}`} cardStr={c} />
             ))}
@@ -190,7 +190,7 @@ function HandSummaryCard({
       </div>
       {hand.finalHand && (
         <div className="mt-1.5">
-          <span className="text-amber-300/70 text-xs">{hand.finalHand}</span>
+          <span className="text-cream-600 text-xs">{hand.finalHand}</span>
         </div>
       )}
     </button>
@@ -206,26 +206,26 @@ function HandDetailDialog({
 }) {
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
       <div
-        className="relative w-[95%] max-h-[70dvh] flex flex-col bg-white/[0.1] backdrop-blur-2xl border border-white/[0.15] rounded-3xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+        className="relative w-[95%] max-h-[70dvh] flex flex-col bg-white border border-cream-300 rounded-3xl overflow-hidden shadow-[0_8px_40px_rgba(139,126,106,0.2)]"
         onClick={e => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="shrink-0 bg-white/[0.05] border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
+        <div className="shrink-0 bg-cream-100 border-b border-cream-300 px-4 py-3 flex items-center justify-between">
           <div>
-            <h1 className="text-white font-bold text-lg tracking-tight">
+            <h1 className="text-cream-900 font-bold text-lg tracking-tight">
               Hand #{hand.handNumber}
             </h1>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-white/50 text-xs">{hand.blinds}</span>
-              <span className="text-white/25 text-xs">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
+              <span className="text-cream-600 text-xs">{hand.blinds}</span>
+              <span className="text-cream-400 text-xs">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
             </div>
           </div>
-          <button onClick={onClose} className="text-white/30 hover:text-white text-2xl leading-none transition-colors">&times;</button>
+          <button onClick={onClose} className="text-cream-400 hover:text-cream-900 text-2xl leading-none transition-colors">&times;</button>
         </div>
 
-        <div className="p-3 space-y-3 overflow-y-auto min-h-0 flex-1 overscroll-contain glass-scrollbar">
+        <div className="p-3 space-y-3 overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
           {/* プレイヤー */}
           <div className="space-y-1.5">
             {hand.players
@@ -238,17 +238,17 @@ function HandDetailDialog({
                   key={i}
                   className={`rounded-xl px-3 py-2 border ${
                     p.isCurrentUser
-                      ? 'bg-white/[0.08] border-emerald-400/20'
-                      : 'bg-white/[0.03] border-white/[0.06]'
+                      ? 'bg-forest/5 border-forest/20'
+                      : 'bg-cream-100 border-cream-300'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {pos && <PositionBadge position={pos} />}
                       {p.avatarUrl && (
-                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-white/10 shrink-0" />
+                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-cream-300 shrink-0" />
                       )}
-                      <span className={`font-semibold text-sm truncate ${p.isCurrentUser ? 'text-emerald-400' : 'text-white/70'}`}>
+                      <span className={`font-semibold text-sm truncate ${p.isCurrentUser ? 'text-forest' : 'text-cream-800'}`}>
                         {p.username}
                       </span>
                     </div>
@@ -261,7 +261,7 @@ function HandDetailDialog({
                       <MiniCard key={j} cardStr={c} />
                     ))}
                     {p.finalHand && (
-                      <span className="ml-2 text-amber-300/70 text-xs">{p.finalHand}</span>
+                      <span className="ml-2 text-cream-600 text-xs">{p.finalHand}</span>
                     )}
                   </div>
                 </div>
@@ -270,7 +270,7 @@ function HandDetailDialog({
           </div>
 
           {/* アクション履歴（ストリートごと） */}
-          <div className="bg-white/[0.03] rounded-xl px-3 py-3 border border-white/[0.06]">
+          <div className="bg-cream-100 rounded-xl px-3 py-3 border border-cream-300">
             <div className="space-y-0.5">
               {(() => {
                 const streets = ['preflop', 'flop', 'turn', 'river'];
@@ -306,8 +306,8 @@ function HandDetailDialog({
                     <div key={i}>
                       {showHeader && (
                         <div className={headerMargin ? 'mt-3 mb-1' : 'mb-1'}>
-                          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
-                            <span className="text-white/60 text-sm font-bold">{streetLabels[street] || street}</span>
+                          <div className="flex items-center gap-2 border-b border-cream-300 pb-1">
+                            <span className="text-cream-700 text-sm font-bold">{streetLabels[street] || street}</span>
                             {streetCards[street]?.length > 0 && (
                               <div className="flex gap-1">
                                 {streetCards[street].map((c, j) => (
@@ -316,12 +316,12 @@ function HandDetailDialog({
                               </div>
                             )}
                             {streetStartPot[street] > 0 && (
-                              <span className="text-white/30 text-xs ml-auto">Pot {streetStartPot[street]}</span>
+                              <span className="text-cream-500 text-xs ml-auto">Pot {streetStartPot[street]}</span>
                             )}
                           </div>
                         </div>
                       )}
-                      <div className="flex items-center py-0.5 rounded-lg hover:bg-white/[0.03] px-1">
+                      <div className="flex items-center py-0.5 rounded-lg hover:bg-cream-200/50 px-1">
                         <span className="w-10 shrink-0">
                           {(() => {
                             const allSeats = hand.players.map(pl => pl.seatPosition);
@@ -329,9 +329,9 @@ function HandDetailDialog({
                             return aPos ? <PositionBadge position={aPos} /> : null;
                           })()}
                         </span>
-                        <span className="w-24 shrink-0 text-white/40 text-sm truncate">{a.odName}</span>
-                        <span className="w-16 shrink-0 text-white/80 text-sm font-bold">{formatAction(a.action)}</span>
-                        <span className="text-amber-400/80 text-sm font-mono">{a.amount > 0 ? a.amount : ''}</span>
+                        <span className="w-24 shrink-0 text-cream-600 text-sm truncate">{a.odName}</span>
+                        <span className="w-16 shrink-0 text-cream-900 text-sm font-bold">{formatAction(a.action)}</span>
+                        <span className="text-forest text-sm font-mono">{a.amount > 0 ? a.amount : ''}</span>
                       </div>
                     </div>
                   );
@@ -340,9 +340,9 @@ function HandDetailDialog({
             </div>
             {/* Result */}
             <div className="mt-3 mb-1">
-              <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
-                <span className="text-white/60 text-xs font-bold">Result</span>
-                <span className="text-amber-400/80 text-sm font-bold">Pot {hand.potSize}</span>
+              <div className="flex items-center gap-2 border-b border-cream-300 pb-1">
+                <span className="text-cream-700 text-xs font-bold">Result</span>
+                <span className="text-forest text-sm font-bold">Pot {hand.potSize}</span>
               </div>
             </div>
             {(() => {
@@ -361,8 +361,8 @@ function HandDetailDialog({
                     <span className="w-10 shrink-0">
                       {pos && <PositionBadge position={pos} />}
                     </span>
-                    <span className="w-24 shrink-0 text-white/40 text-sm truncate">{p.username}</span>
-                    <span className="w-20 shrink-0 text-amber-300/60 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
+                    <span className="w-24 shrink-0 text-cream-600 text-sm truncate">{p.username}</span>
+                    <span className="w-20 shrink-0 text-cream-600 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
                     <ProfitDisplay profit={p.profit} />
                   </div>
                 );
@@ -430,10 +430,10 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
 
   if (!user) {
     return (
-      <div className="h-full glass-bg flex items-center justify-center">
+      <div className="h-full light-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-white/50 mb-4">ログインするとハンド履歴を確認できます</p>
-          <button onClick={onClose} className="text-white/40 hover:text-white/60 transition-colors">
+          <p className="text-cream-600 mb-4">ログインするとハンド履歴を確認できます</p>
+          <button onClick={onClose} className="text-cream-500 hover:text-cream-700 transition-colors">
             閉じる
           </button>
         </div>
@@ -443,22 +443,22 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
 
   return (
     <div className="h-full relative">
-      <div className="h-full overflow-y-auto glass-scrollbar">
+      <div className="h-full overflow-y-auto light-scrollbar">
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white/[0.05] backdrop-blur-xl border-b border-white/[0.08] px-4 py-3 flex items-center z-10">
-          <button onClick={onClose} className="text-white/50 hover:text-white mr-3 text-sm transition-colors">
+        <div className="sticky top-0 bg-white border-b border-cream-300 px-4 py-3 flex items-center z-10">
+          <button onClick={onClose} className="text-cream-600 hover:text-cream-900 mr-3 text-sm transition-colors">
             &larr; 戻る
           </button>
-          <h1 className="text-white font-bold text-lg tracking-tight">ハンド履歴</h1>
-          <span className="ml-auto text-white/40 text-sm">{total}件</span>
+          <h1 className="text-cream-900 font-bold text-lg tracking-tight">ハンド履歴</h1>
+          <span className="ml-auto text-cream-500 text-sm">{total}件</span>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-white/20 border-t-emerald-400 rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
           </div>
         ) : hands.length === 0 ? (
-          <div className="text-center text-white/30 py-20">
+          <div className="text-center text-cream-500 py-20">
             まだハンド履歴がありません
           </div>
         ) : (
@@ -478,7 +478,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
-                  className="w-full py-3 text-white/50 hover:text-white/80 bg-white/[0.05] hover:bg-white/[0.1] rounded-xl transition-all text-sm border border-white/[0.1] hover:border-white/[0.2] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
+                  className="w-full py-3 text-cream-600 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-xl transition-all text-sm border border-cream-300 hover:border-cream-400"
                 >
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>
@@ -490,7 +490,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
       {loadingDetail && (
         <div className="absolute inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="w-8 h-8 border-2 border-white/20 border-t-emerald-400 rounded-full animate-spin relative z-10" />
+          <div className="w-8 h-8 border-2 border-cream-300 border-t-forest rounded-full animate-spin relative z-10" />
         </div>
       )}
       {selectedHand && (

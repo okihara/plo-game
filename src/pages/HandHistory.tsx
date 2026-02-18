@@ -6,7 +6,7 @@ interface HandHistoryProps {
 
 export function HandHistory({ onBack }: HandHistoryProps) {
   return (
-    <div className="h-full glass-bg">
+    <div className="h-full light-bg">
       <HandHistoryPanel onClose={onBack} />
     </div>
   );

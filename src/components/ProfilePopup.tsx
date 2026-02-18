@@ -78,29 +78,29 @@ export function ProfilePopup({
 
   return (
     <div
-      className="absolute inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[200]"
+      className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200]"
       onClick={handleBackdropClick}
     >
       <div className="@container w-[80cqw]">
-        <div className="bg-gradient-to-br from-gray-800 to-gray-900 rounded-[5cqw] p-[6cqw] border border-white/10 shadow-2xl animate-scale-in relative">
+        <div className="bg-white rounded-[5cqw] p-[6cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.2)] animate-scale-in relative">
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-[3cqw] right-[3cqw] text-white/60 hover:text-white text-[7cqw] leading-none"
+            className="absolute top-[3cqw] right-[3cqw] text-cream-400 hover:text-cream-900 text-[7cqw] leading-none"
           >
             ×
           </button>
 
           {/* Avatar */}
           <div className="flex flex-col items-center mb-[4cqw]">
-            <div className="w-[28cqw] h-[28cqw] rounded-full bg-gradient-to-br from-gray-500 to-gray-700 border-[1.2cqw] border-white/20 overflow-hidden mb-[3cqw]">
+            <div className="w-[28cqw] h-[28cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[1.2cqw] border-cream-300 overflow-hidden mb-[3cqw]">
               {avatarImage ? (
                 <img src={avatarImage} alt={name} className="w-full h-full object-cover" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[10cqw]">👤</div>
               )}
             </div>
-            <h2 className="text-[6cqw] font-bold text-white">{name}</h2>
+            <h2 className="text-[6cqw] font-bold text-cream-900">{name}</h2>
           </div>
 
           {/* Badges Placeholder */}
@@ -117,32 +117,32 @@ export function ProfilePopup({
             ) : (
               // プレースホルダーバッジ
               <>
-                <div className="w-[12cqw] h-[12cqw] rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                  <span className="text-white/20 text-[4cqw]">?</span>
+                <div className="w-[12cqw] h-[12cqw] rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center">
+                  <span className="text-cream-400 text-[4cqw]">?</span>
                 </div>
-                <div className="w-[12cqw] h-[12cqw] rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                  <span className="text-white/20 text-[4cqw]">?</span>
+                <div className="w-[12cqw] h-[12cqw] rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center">
+                  <span className="text-cream-400 text-[4cqw]">?</span>
                 </div>
-                <div className="w-[12cqw] h-[12cqw] rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                  <span className="text-white/20 text-[4cqw]">?</span>
+                <div className="w-[12cqw] h-[12cqw] rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center">
+                  <span className="text-cream-400 text-[4cqw]">?</span>
                 </div>
               </>
             )}
           </div>
 
           {/* Stats */}
-          <div className="bg-black/30 rounded-[4cqw] p-[5cqw]">
-            <h3 className="text-white/60 text-[3cqw] uppercase tracking-wider mb-[3cqw]">統計</h3>
+          <div className="bg-cream-100 rounded-[4cqw] p-[5cqw]">
+            <h3 className="text-cream-600 text-[3cqw] uppercase tracking-wider mb-[3cqw]">統計</h3>
             {loading ? (
               <div className="flex flex-col items-center py-[4cqw]">
-                <div className="w-[6cqw] h-[6cqw] border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                <p className="text-white/40 text-[3cqw] mt-[2cqw]">読み込み中...</p>
+                <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
+                <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
               </div>
             ) : stats ? (
               <div className="grid grid-cols-3 gap-[2.5cqw]">
                 <StatItem label="Hands" value={stats.handsPlayed.toLocaleString()} />
                 <StatItem label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
-                <StatItem label="Profit" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-green-400' : 'text-red-400'} />
+                <StatItem label="Profit" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
                 <StatItem label="VPIP" value={`${stats.vpip.toFixed(1)}%`} />
                 <StatItem label="PFR" value={`${stats.pfr.toFixed(1)}%`} />
                 <StatItem label="3Bet" value={`${stats.threeBet.toFixed(1)}%`} />
@@ -167,7 +167,7 @@ export function ProfilePopup({
 
           {/* No Stats Notice */}
           {!loading && !stats && (
-            <p className="text-white/40 text-[3cqw] text-center mt-[3cqw]">
+            <p className="text-cream-500 text-[3cqw] text-center mt-[3cqw]">
               スタッツはハンドをプレイすると表示されます
             </p>
           )}
@@ -226,15 +226,15 @@ function StatItem({ label, value, isPlaceholder, color }: StatItemProps) {
 
   return (
     <div className="text-center relative">
-      <div className={`text-[4.5cqw] font-bold ${isPlaceholder ? 'text-white/20' : color || 'text-white'}`}>
+      <div className={`text-[4.5cqw] font-bold ${isPlaceholder ? 'text-cream-400' : color || 'text-cream-900'}`}>
         {value}
       </div>
-      <div className="text-white/50 text-[2.5cqw] flex items-center justify-center gap-[1cqw]">
+      <div className="text-cream-600 text-[2.5cqw] flex items-center justify-center gap-[1cqw]">
         {label}
         {info && !isPlaceholder && (
           <span
             onClick={(e) => { e.stopPropagation(); setShowTooltip(v => !v); }}
-            className="inline-flex items-center justify-center w-[3.5cqw] h-[3.5cqw] rounded-full border border-white/30 text-white/40 text-[2cqw] leading-none cursor-pointer hover:text-white/70 hover:border-white/50 shrink-0"
+            className="inline-flex items-center justify-center w-[3.5cqw] h-[3.5cqw] rounded-full border border-cream-400 text-cream-500 text-[2cqw] leading-none cursor-pointer hover:text-cream-700 hover:border-cream-600 shrink-0"
           >
             i
           </span>
@@ -243,14 +243,14 @@ function StatItem({ label, value, isPlaceholder, color }: StatItemProps) {
       {showTooltip && info && (
         <div
           ref={tooltipRef}
-          className="absolute z-[300] bottom-full left-1/2 -translate-x-1/2 mb-[1.5cqw] w-[55cqw] bg-gray-900 border border-white/20 rounded-[2cqw] p-[3cqw] shadow-xl"
+          className="absolute z-[300] bottom-full left-1/2 -translate-x-1/2 mb-[1.5cqw] w-[55cqw] bg-cream-900 border border-cream-700 rounded-[2cqw] p-[3cqw] shadow-xl"
         >
           <div className="text-white text-[2.8cqw] font-semibold mb-[1.5cqw]">{label}</div>
           <div className="text-white/70 text-[2.5cqw] mb-[1.5cqw]">{info.desc}</div>
-          <div className="text-cyan-400/80 text-[2.2cqw] bg-black/30 rounded-[1.5cqw] px-[2cqw] py-[1.5cqw]">
+          <div className="text-emerald-300 text-[2.2cqw] bg-black/30 rounded-[1.5cqw] px-[2cqw] py-[1.5cqw]">
             {info.formula}
           </div>
-          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[2cqw] border-r-[2cqw] border-t-[2cqw] border-l-transparent border-r-transparent border-t-white/20" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-[2cqw] border-r-[2cqw] border-t-[2cqw] border-l-transparent border-r-transparent border-t-cream-700" />
         </div>
       )}
     </div>
