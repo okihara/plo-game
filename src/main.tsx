@@ -53,8 +53,8 @@ function App() {
   }
 
   return (
-    <div className={`min-h-[100dvh] ${bgClass} flex items-center justify-center`}>
-      <div className={`w-full h-[100dvh] flex items-center justify-center ${bgClass} relative`}>
+    <div className="min-h-[100dvh] bg-black flex items-center justify-center">
+      <div className="w-full h-[100dvh] flex items-center justify-center bg-black relative">
         <div className={`@container flex flex-col w-full h-full max-w-[calc(100dvh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative ${bgClass}`}>
           {page}
         </div>
