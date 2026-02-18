@@ -187,10 +187,71 @@ export function adminRoutes(deps: AdminDependencies) {
       return maintenanceService.toggle(active, message || '');
     });
 
+    // Users API
+    fastify.get('/api/admin/users', async (request) => {
+      const query = request.query as Record<string, string>;
+      const page = Math.max(1, parseInt(query.page || '1', 10));
+      const limit = Math.min(100, Math.max(1, parseInt(query.limit || '50', 10)));
+      const search = query.search || '';
+      const sort = query.sort || 'createdAt';
+      const order = query.order === 'asc' ? 'asc' as const : 'desc' as const;
+
+      const where = search
+        ? {
+            OR: [
+              { username: { contains: search, mode: 'insensitive' as const } },
+              { email: { contains: search, mode: 'insensitive' as const } },
+            ],
+          }
+        : {};
+
+      const orderBy = sort === 'balance'
+        ? { bankroll: { balance: order } }
+        : { [sort]: order };
+
+      const [users, total] = await Promise.all([
+        prisma.user.findMany({
+          where,
+          include: {
+            bankroll: true,
+            _count: { select: { handHistories: true } },
+          },
+          orderBy,
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.user.count({ where }),
+      ]);
+
+      return {
+        users: users.map(u => ({
+          id: u.id,
+          username: u.username,
+          email: u.email,
+          avatarUrl: u.avatarUrl,
+          provider: u.provider,
+          balance: u.bankroll?.balance ?? 0,
+          handsPlayed: u._count.handHistories,
+          createdAt: u.createdAt.toISOString(),
+          lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
+        })),
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    });
+
     // HTML Dashboard
     fastify.get('/admin/status', async (request, reply) => {
       reply.type('text/html');
       return getDashboardHTML(env.CLIENT_URL);
+    });
+
+    // Users HTML page
+    fastify.get('/admin/users', async (request, reply) => {
+      reply.type('text/html');
+      return getUsersPageHTML();
     });
   };
 }
@@ -744,6 +805,298 @@ function getDashboardHTML(clientUrl: string): string {
     // Initial fetch and start polling
     fetchStats();
     setInterval(fetchStats, 2000);
+  </script>
+</body>
+</html>`;
+}
+
+function getUsersPageHTML(): string {
+  return `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PLO Users</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      padding: 20px;
+      min-height: 100vh;
+    }
+    .container { max-width: 1400px; margin: 0 auto; }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .nav {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+    .nav a {
+      color: #60a5fa;
+      text-decoration: none;
+      font-size: 14px;
+    }
+    .nav a:hover { text-decoration: underline; }
+    .toolbar {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .search-input {
+      padding: 8px 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      color: #e2e8f0;
+      font-size: 14px;
+      width: 280px;
+    }
+    .search-input::placeholder { color: #64748b; }
+    .summary {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-left: auto;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    thead th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: #e2e8f0; }
+    thead th.sorted { color: #60a5fa; }
+    thead th .arrow { margin-left: 4px; font-size: 10px; }
+    tbody tr {
+      border-bottom: 1px solid #1e293b;
+      transition: background 0.15s;
+    }
+    tbody tr:hover { background: #334155; }
+    tbody td {
+      padding: 10px 16px;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+    .avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+    .username { font-weight: 600; }
+    .provider-badge {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      font-weight: 500;
+      background: #334155;
+      color: #94a3b8;
+    }
+    .provider-badge.twitter { background: #1d4ed8; color: white; }
+    .chips { color: #fbbf24; font-weight: 600; }
+    .hands { color: #a78bfa; }
+    .date { color: #64748b; }
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 16px;
+    }
+    .pagination button {
+      padding: 6px 14px;
+      background: #334155;
+      border: none;
+      border-radius: 6px;
+      color: #e2e8f0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .pagination button:hover:not(:disabled) { background: #475569; }
+    .pagination button:disabled { opacity: 0.3; cursor: default; }
+    .pagination .page-info { font-size: 13px; color: #94a3b8; }
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <a href="status" id="backLink">&larr; ダッシュボードに戻る</a>
+    </div>
+    <h1>ユーザー一覧</h1>
+
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="ユーザー名 / メールで検索...">
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th data-sort="username">ユーザー名 <span class="arrow"></span></th>
+          <th data-sort="email">メール <span class="arrow"></span></th>
+          <th data-sort="provider">認証 <span class="arrow"></span></th>
+          <th data-sort="balance">チップ <span class="arrow"></span></th>
+          <th>ハンド数</th>
+          <th data-sort="lastLoginAt">最終ログイン <span class="arrow"></span></th>
+          <th data-sort="createdAt">登録日 <span class="arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="usersBody">
+        <tr><td colspan="7" class="loading">読み込み中...</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <script>
+    var ADMIN_SECRET = new URLSearchParams(window.location.search).get('secret') || '';
+    var currentPage = 1;
+    var currentSort = 'createdAt';
+    var currentOrder = 'desc';
+    var searchTimeout = null;
+
+    // Preserve secret in nav link
+    if (ADMIN_SECRET) {
+      document.getElementById('backLink').href = 'status?secret=' + encodeURIComponent(ADMIN_SECRET);
+    }
+
+    function apiUrl(path) {
+      return path + (ADMIN_SECRET ? '&secret=' + encodeURIComponent(ADMIN_SECRET) : '');
+    }
+
+    function formatDate(iso) {
+      if (!iso) return '-';
+      var d = new Date(iso);
+      return d.toLocaleDateString('ja-JP') + ' ' + d.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatChips(n) {
+      return '$' + n.toLocaleString();
+    }
+
+    async function fetchUsers() {
+      var search = document.getElementById('searchInput').value;
+      var url = '/api/admin/users?page=' + currentPage +
+        '&sort=' + currentSort +
+        '&order=' + currentOrder +
+        (search ? '&search=' + encodeURIComponent(search) : '');
+      try {
+        var res = await fetch(apiUrl(url));
+        var data = await res.json();
+        renderUsers(data);
+      } catch (err) {
+        document.getElementById('usersBody').innerHTML =
+          '<tr><td colspan="7" class="loading" style="color:#ef4444">読み込みエラー</td></tr>';
+      }
+    }
+
+    function renderUsers(data) {
+      document.getElementById('summary').textContent =
+        data.total + '人中 ' + ((data.page - 1) * data.limit + 1) + '-' +
+        Math.min(data.page * data.limit, data.total) + '人表示';
+
+      var html = data.users.map(function(u) {
+        var avatarHtml = u.avatarUrl
+          ? '<img class="avatar" src="' + u.avatarUrl + '" alt="">'
+          : '';
+        var providerClass = u.provider === 'twitter' ? ' twitter' : '';
+        return '<tr>' +
+          '<td>' + avatarHtml + '<span class="username">' + escapeHtml(u.username) + '</span></td>' +
+          '<td>' + escapeHtml(u.email) + '</td>' +
+          '<td><span class="provider-badge' + providerClass + '">' + u.provider + '</span></td>' +
+          '<td class="chips">' + formatChips(u.balance) + '</td>' +
+          '<td class="hands">' + u.handsPlayed.toLocaleString() + '</td>' +
+          '<td class="date">' + formatDate(u.lastLoginAt) + '</td>' +
+          '<td class="date">' + formatDate(u.createdAt) + '</td>' +
+        '</tr>';
+      }).join('');
+
+      if (data.users.length === 0) {
+        html = '<tr><td colspan="7" class="loading">該当ユーザーなし</td></tr>';
+      }
+
+      document.getElementById('usersBody').innerHTML = html;
+
+      // Pagination
+      var pagHtml = '<button ' + (data.page <= 1 ? 'disabled' : '') + ' onclick="goPage(' + (data.page - 1) + ')">前へ</button>' +
+        '<span class="page-info">' + data.page + ' / ' + data.totalPages + '</span>' +
+        '<button ' + (data.page >= data.totalPages ? 'disabled' : '') + ' onclick="goPage(' + (data.page + 1) + ')">次へ</button>';
+      document.getElementById('pagination').innerHTML = pagHtml;
+
+      // Update sort headers
+      document.querySelectorAll('thead th[data-sort]').forEach(function(th) {
+        var s = th.getAttribute('data-sort');
+        th.classList.toggle('sorted', s === currentSort);
+        th.querySelector('.arrow').textContent = s === currentSort ? (currentOrder === 'asc' ? '▲' : '▼') : '';
+      });
+    }
+
+    function escapeHtml(str) {
+      var div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    function goPage(p) {
+      currentPage = p;
+      fetchUsers();
+    }
+
+    // Sort click
+    document.querySelectorAll('thead th[data-sort]').forEach(function(th) {
+      th.addEventListener('click', function() {
+        var s = th.getAttribute('data-sort');
+        if (currentSort === s) {
+          currentOrder = currentOrder === 'desc' ? 'asc' : 'desc';
+        } else {
+          currentSort = s;
+          currentOrder = 'desc';
+        }
+        currentPage = 1;
+        fetchUsers();
+      });
+    });
+
+    // Search
+    document.getElementById('searchInput').addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(function() {
+        currentPage = 1;
+        fetchUsers();
+      }, 300);
+    });
+
+    fetchUsers();
   </script>
 </body>
 </html>`;
