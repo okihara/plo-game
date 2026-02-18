@@ -9,8 +9,8 @@ const PAGE_SIZE = 20;
 const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
-const SUIT_COLORS: Record<string, string> = {
-  h: 'text-[#C0392B]', d: 'text-[#2874A6]', c: 'text-forest', s: 'text-cream-900',
+const SUIT_BG_COLORS: Record<string, string> = {
+  h: 'bg-red-600', d: 'bg-blue-600', c: 'bg-green-700', s: 'bg-gray-800',
 };
 
 interface HandSummary {
@@ -68,10 +68,10 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const rank = cardStr.slice(0, -1);
   const suit = cardStr.slice(-1);
   const symbol = SUIT_SYMBOLS[suit] || suit;
-  const color = SUIT_COLORS[suit] || 'text-cream-600';
+  const bg = SUIT_BG_COLORS[suit] || 'bg-gray-500';
 
   return (
-    <span className={`inline-flex items-center justify-center bg-cream-200/60 border border-cream-300 rounded px-1.5 py-0.5 text-sm font-mono font-bold ${color}`}>
+    <span className={`inline-flex items-center justify-center ${bg} text-white border border-white/40 rounded px-1.5 py-0.5 text-sm font-mono font-bold`}>
       {rank}{symbol}
     </span>
   );

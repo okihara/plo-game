@@ -21,16 +21,16 @@ interface CardProps {
   isNew?: boolean;
 }
 
-const SUIT_COLORS: Record<string, string> = {
-  h: 'text-red-600',
-  d: 'text-blue-500',
-  c: 'text-green-600',
-  s: 'text-gray-900',
+const SUIT_BG_COLORS: Record<string, string> = {
+  h: 'bg-red-600',
+  d: 'bg-blue-600',
+  c: 'bg-green-700',
+  s: 'bg-gray-800',
 };
 
 export function Card({ card, size = 'sm', isNew = false }: CardProps) {
   const suitSymbol = SUIT_SYMBOLS[card.suit];
-  const suitColor = SUIT_COLORS[card.suit];
+  const suitBg = SUIT_BG_COLORS[card.suit];
   const styles = sizeStyles[size];
 
   if (isNew) {
@@ -49,9 +49,8 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
             className={`
               absolute inset-0
               flex flex-col items-center justify-center
-              bg-gradient-to-br from-white to-gray-100
+              ${suitBg} text-white border border-white/40
               rounded-lg shadow-md
-              ${suitColor}
             `}
             style={{ backfaceVisibility: 'hidden' }}
           >
@@ -85,10 +84,9 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
     <div
       className={`
         flex flex-col items-center justify-center
-        bg-gradient-to-br from-white to-gray-100
+        ${suitBg} text-white border border-white/40
         rounded-lg shadow-md relative
         ${styles.card}
-        ${suitColor}
       `}
     >
       <span className="leading-none font-bold">{card.rank}</span>
