@@ -23,6 +23,7 @@ export class ActionController {
   private actionTimer: NodeJS.Timeout | null = null;
   private streetTransitionTimer: NodeJS.Timeout | null = null;
   private pendingAction: PendingAction | null = null;
+  private actionGeneration = 0;
 
   constructor(private broadcast: BroadcastService) {}
 
@@ -34,6 +35,7 @@ export class ActionController {
    * 全タイマーをクリア
    */
   clearTimers(): void {
+    this.actionGeneration++;
     if (this.actionTimer) {
       clearTimeout(this.actionTimer);
       this.actionTimer = null;
@@ -49,6 +51,7 @@ export class ActionController {
    * アクションタイマーのみクリア
    */
   clearActionTimer(): void {
+    this.actionGeneration++;
     if (this.actionTimer) {
       clearTimeout(this.actionTimer);
       this.actionTimer = null;
@@ -167,17 +170,8 @@ export class ActionController {
 
     const currentSeat = seats[currentPlayerIndex];
 
-    // 切断されたプレイヤーの処理
+    // 切断・離席済みプレイヤーの処理（FoldProcessorに委譲）
     if (!currentSeat || !currentSeat.socket) {
-      const player = gameState.players[currentPlayerIndex];
-      if (player && !player.folded) {
-        player.folded = true;
-        this.broadcast.emitToRoom('game:action_taken', {
-          playerId: currentSeat?.odId || `seat_${currentPlayerIndex}`,
-          action: 'fold',
-          amount: 0,
-        });
-      }
       onDisconnectedFold();
       return;
     }
@@ -210,11 +204,13 @@ export class ActionController {
       }
     );
 
-    // タイムアウトタイマー設定
+    // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）
     const playerIdForTimeout = currentSeat.odId;
     const seatIndexForTimeout = currentPlayerIndex;
+    const gen = ++this.actionGeneration;
 
     this.actionTimer = setTimeout(() => {
+      if (this.actionGeneration !== gen) return;
       onTimeout(playerIdForTimeout, seatIndexForTimeout);
     }, TABLE_CONSTANTS.ACTION_TIMEOUT_MS);
   }
