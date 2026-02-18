@@ -71,7 +71,7 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const color = SUIT_COLORS[suit] || 'text-white/60';
 
   return (
-    <span className={`inline-flex items-center justify-center bg-white/[0.08] border border-white/[0.1] rounded px-1 py-0.5 text-xs font-mono font-bold ${color}`}>
+    <span className={`inline-flex items-center justify-center bg-white/[0.08] border border-white/[0.1] rounded px-1.5 py-0.5 text-sm font-mono font-bold ${color}`}>
       {rank}{symbol}
     </span>
   );
@@ -208,11 +208,11 @@ function HandDetailDialog({
     <div className="absolute inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-[95%] max-h-[85%] bg-white/[0.1] backdrop-blur-2xl border border-white/[0.15] rounded-3xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
+        className="relative w-[95%] max-h-[70dvh] flex flex-col bg-white/[0.1] backdrop-blur-2xl border border-white/[0.15] rounded-3xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
         onClick={e => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="bg-white/[0.05] border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
+        <div className="shrink-0 bg-white/[0.05] border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
           <div>
             <h1 className="text-white font-bold text-lg tracking-tight">
               Hand #{hand.handNumber}
@@ -225,7 +225,7 @@ function HandDetailDialog({
           <button onClick={onClose} className="text-white/30 hover:text-white text-2xl leading-none transition-colors">&times;</button>
         </div>
 
-        <div className="p-3 space-y-3 overflow-y-auto max-h-[calc(85vh-70px)] glass-scrollbar">
+        <div className="p-3 space-y-3 overflow-y-auto min-h-0 flex-1 overscroll-contain glass-scrollbar">
           {/* プレイヤー */}
           <div className="space-y-1.5">
             {hand.players
@@ -307,18 +307,18 @@ function HandDetailDialog({
                       {showHeader && (
                         <div className={headerMargin ? 'mt-3 mb-1' : 'mb-1'}>
                           <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
-                            <span className="text-white/60 text-xs font-bold">{streetLabels[street] || street}</span>
+                            <span className="text-white/60 text-sm font-bold">{streetLabels[street] || street}</span>
+                            {streetCards[street]?.length > 0 && (
+                              <div className="flex gap-1">
+                                {streetCards[street].map((c, j) => (
+                                  <MiniCard key={j} cardStr={c} />
+                                ))}
+                              </div>
+                            )}
                             {streetStartPot[street] > 0 && (
-                              <span className="text-white/30 text-xs">Pot {streetStartPot[street]}</span>
+                              <span className="text-white/30 text-xs ml-auto">Pot {streetStartPot[street]}</span>
                             )}
                           </div>
-                          {streetCards[street]?.length > 0 && (
-                            <div className="flex gap-1 mt-1">
-                              {streetCards[street].map((c, j) => (
-                                <MiniCard key={j} cardStr={c} />
-                              ))}
-                            </div>
-                          )}
                         </div>
                       )}
                       <div className="flex items-center py-0.5 rounded-lg hover:bg-white/[0.03] px-1">
