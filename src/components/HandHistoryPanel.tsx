@@ -190,7 +190,7 @@ function HandSummaryCard({
       </div>
       {hand.finalHand && (
         <div className="mt-1.5">
-          <span className="text-cream-600 text-xs">{hand.finalHand}</span>
+          <span className="text-cream-600 text-sm font-medium">{hand.finalHand}</span>
         </div>
       )}
     </button>

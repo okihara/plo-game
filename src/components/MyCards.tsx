@@ -13,7 +13,7 @@ interface MyCardsProps {
 export function MyCards({ cards, isDealing, dealOrder, folded = false, handName }: MyCardsProps) {
   return (
     <div
-      className={`@container flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'opacity-40' : ''}`}
+      className={`@container relative flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'opacity-40' : ''}`}
     >
       {cards.length > 0 && (
       <div className="flex gap-[2cqw] justify-center">
@@ -38,7 +38,7 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false, handName 
       </div>
       )}
       {handName && !folded && (
-        <div className="text-[3.5cqw] font-bold text-amber-300 mt-[1cqw]">
+        <div className="absolute bottom-[1cqw] left-1/2 -translate-x-1/2 text-[4.5cqw] font-bold text-amber-300 whitespace-nowrap bg-black/70 px-[2cqw] py-[0.5cqw] rounded">
           {handName}
         </div>
       )}

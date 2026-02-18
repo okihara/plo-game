@@ -86,7 +86,7 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
               WIN
             </div>
             {winnerInfo.handName && (
-              <div className="text-[2vh] text-gray-300 mb-[2.5vh]">{winnerInfo.handName}</div>
+              <div className="text-[2.8vh] font-semibold text-gray-200 mb-[2.5vh]">{winnerInfo.handName}</div>
             )}
             <div className="text-[3vh] font-bold text-yellow-400 mb-[3.5vh] animate-amount-pop">
               +{formatChips(animationComplete ? myWinAmount : displayedAmount)}
@@ -98,7 +98,7 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
               {winner.name} wins
             </div>
             {winnerInfo.handName && (
-              <div className="text-[2vh] text-gray-300 mb-[2.5vh]">{winnerInfo.handName}</div>
+              <div className="text-[2.8vh] font-semibold text-gray-200 mb-[2.5vh]">{winnerInfo.handName}</div>
             )}
             <div className="text-[2.5vh] font-semibold text-yellow-400 mb-[3.5vh]">
               {formatChips(winnerInfo.amount)}
