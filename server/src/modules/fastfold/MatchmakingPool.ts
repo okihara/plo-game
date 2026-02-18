@@ -9,7 +9,6 @@ interface QueuedPlayer {
   socket: Socket;
   chips: number;
   queuedAt: number;
-  isBot: boolean;
 }
 
 export class MatchmakingPool {
@@ -33,8 +32,7 @@ export class MatchmakingPool {
     odAvatarUrl: string | null,
     socket: Socket,
     chips: number,
-    blinds: string,
-    isBot: boolean = false
+    blinds: string
   ): Promise<void> {
     const player: QueuedPlayer = {
       odId,
@@ -43,7 +41,6 @@ export class MatchmakingPool {
       socket,
       chips,
       queuedAt: Date.now(),
-      isBot,
     };
 
     // Get or create queue for this blind level

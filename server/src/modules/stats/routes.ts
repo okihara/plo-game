@@ -6,7 +6,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
     const { userId } = request.params as { userId: string };
 
-    if (userId.startsWith('guest_') || userId.startsWith('bot_')) {
+    if (userId.startsWith('guest_')) {
       return reply.code(404).send({ error: 'Stats not available' });
     }
 

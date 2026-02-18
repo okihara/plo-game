@@ -18,6 +18,41 @@ interface GameSocketDependencies {
   matchmakingPool: MatchmakingPool;
 }
 
+// Bot用ユーザーをDBにfind or create
+async function findOrCreateBotUser(botName: string, botAvatar: string | null) {
+  const providerId = botName;
+  let user = await prisma.user.findUnique({
+    where: { provider_providerId: { provider: 'bot', providerId } },
+  });
+
+  if (!user) {
+    let username = botName;
+    let suffix = 1;
+    while (await prisma.user.findUnique({ where: { username } })) {
+      username = `${botName}${suffix}`;
+      suffix++;
+    }
+
+    user = await prisma.user.create({
+      data: {
+        email: `${botName.toLowerCase().replace(/[^a-z0-9]/g, '_')}@bot.local`,
+        username,
+        avatarUrl: botAvatar,
+        provider: 'bot',
+        providerId,
+        bankroll: { create: { balance: 100000 } },
+      },
+    });
+  } else {
+    user = await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date(), avatarUrl: botAvatar },
+    });
+  }
+
+  return user;
+}
+
 // テーブル離脱時のキャッシュアウト処理
 async function cashOutPlayer(odId: string, chips: number, tableId?: string): Promise<void> {
   if (odId.startsWith('guest_') || chips <= 0) return;
@@ -39,10 +74,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   const matchmakingPool = new MatchmakingPool(io, tableManager);
 
   // テーブルから離席してキャッシュアウトする共通処理
-  async function unseatAndCashOut(table: TableInstance, odId: string, isBot: boolean): Promise<void> {
+  async function unseatAndCashOut(table: TableInstance, odId: string): Promise<void> {
     const result = table.unseatPlayer(odId);
     tableManager.removePlayerFromTracking(odId);
-    if (result && !isBot) {
+    if (result) {
       await cashOutPlayer(result.odId, result.chips, table.id);
     }
   }
@@ -59,14 +94,15 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       if (isBot) {
         const botName = socket.handshake.auth.botName || 'Bot';
         const botAvatar = socket.handshake.auth.botAvatar || null;
-        const botId = `bot_${socket.id}`;
 
-        socket.odId = botId;
-        socket.odName = botName;
-        socket.odAvatarUrl = botAvatar;
+        const user = await findOrCreateBotUser(botName, botAvatar);
+
+        socket.odId = user.id;
+        socket.odName = user.username;
+        socket.odAvatarUrl = user.avatarUrl;
         socket.odIsBot = true;
 
-        console.log(`Bot connected: ${botId} (${botName})`);
+        console.log(`Bot connected: ${user.id} (${user.username})`);
         return next();
       }
 
@@ -141,7 +177,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         // Leave current table if any (with cashout)
         const currentTable = tableManager.getPlayerTable(socket.odId!);
         if (currentTable) {
-          await unseatAndCashOut(currentTable, socket.odId!, socket.odIsBot === true);
+          await unseatAndCashOut(currentTable, socket.odId!);
         }
 
         // Deduct buy-in from balance
@@ -189,7 +225,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('table:leave', async () => {
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
-        await unseatAndCashOut(table, socket.odId!, socket.odIsBot === true);
+        await unseatAndCashOut(table, socket.odId!);
         socket.emit('table:left');
       }
     });
@@ -220,14 +256,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('matchmaking:join', async (data: { blinds: string }) => {
       const { blinds } = data;
       const isGuest = socket.odId!.startsWith('guest_');
-      const isBot = socket.odIsBot === true;
 
       try {
         const [, bb] = blinds.split('/').map(Number);
         const minBuyIn = bb * 100; // $300 for $1/$3
 
-        if (!isGuest && !isBot) {
-          // Authenticated user - check balance
+        if (!isGuest) {
+          // Authenticated user (including bots) - check balance
           const bankroll = await prisma.bankroll.findUnique({
             where: { userId: socket.odId },
           });
@@ -255,18 +290,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         // Leave current table if any (with cashout)
         const currentTable = tableManager.getPlayerTable(socket.odId!);
         if (currentTable) {
-          await unseatAndCashOut(currentTable, socket.odId!, socket.odIsBot === true);
+          await unseatAndCashOut(currentTable, socket.odId!);
         }
 
-        // Queue player (guests and bots get default buy-in)
+        // Queue player (guests get default buy-in)
         await matchmakingPool.queuePlayer(
           socket.odId!,
           socket.odName!,
           socket.odAvatarUrl!,
           socket,
           minBuyIn,
-          blinds,
-          isBot // Pass isBot flag
+          blinds
         );
       } catch (err) {
         console.error('Error joining fast fold:', err);
@@ -281,7 +315,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       // Leave current table too (with cashout)
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
-        await unseatAndCashOut(table, socket.odId!, socket.odIsBot === true);
+        await unseatAndCashOut(table, socket.odId!);
       }
     });
 
@@ -292,7 +326,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       const table = tableManager.getPlayerTable(socket.odId!);
       if (table) {
         const odId = socket.odId!;
-        const isBot = socket.odIsBot === true;
         // Give some time for reconnection before removing
         setTimeout(async () => {
           // Check if player reconnected
@@ -300,7 +333,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
             .some((s: AuthenticatedSocket) => s.odId === odId);
 
           if (!stillConnected) {
-            await unseatAndCashOut(table, odId, isBot);
+            await unseatAndCashOut(table, odId);
           }
         }, 30000); // 30 second grace period
       }

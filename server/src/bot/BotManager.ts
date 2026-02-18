@@ -1,6 +1,6 @@
 import { BotClient, BotStatus } from './BotClient.js';
 
-const BOT_NAMES = ['Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka', 'Yuki', 'Sora', 'Ren', 'Ai', 'Taro'];
+const BOT_NAMES = ['miko_plo_bot', 'kento_99_bot', 'luna_plays_bot', 'hiro_4card_bot', 'tomo_omaha_bot', 'yuki_raise_bot', 'sora_allin_bot', 'ren_bluff_bot', 'ai_poker_bot', 'taro_nuts_bot'];
 const BOT_AVATARS = [
   '/images/icons/avatar1.png',
   '/images/icons/avatar2.png',
@@ -35,11 +35,11 @@ export class BotManager {
     this.isRunning = true;
     console.log(`Starting BotManager with ${this.config.botCount} bots...`);
 
-    // Create and connect bots
+    // Create and connect bots (capped by available names)
     for (let i = 0; i < this.config.botCount; i++) {
       try {
-        await this.createBot();
-        // Small delay between bot connections to avoid overwhelming the server
+        const bot = await this.createBot();
+        if (!bot) break; // No more names available
         await this.sleep(500);
       } catch (err) {
         console.error(`Failed to create bot ${i + 1}:`, err);
@@ -113,23 +113,11 @@ export class BotManager {
   }
 
   private getAvailableName(): string | null {
-    // First try unused names
     for (const name of BOT_NAMES) {
       if (!this.usedNames.has(name)) {
         return name;
       }
     }
-
-    // If all names are used, add a number suffix
-    for (let i = 2; i <= 100; i++) {
-      for (const baseName of BOT_NAMES) {
-        const name = `${baseName}${i}`;
-        if (!this.usedNames.has(name)) {
-          return name;
-        }
-      }
-    }
-
     return null;
   }
 
@@ -158,7 +146,8 @@ export class BotManager {
       const botsToCreate = this.config.botCount - this.bots.size;
       for (let i = 0; i < botsToCreate; i++) {
         try {
-          await this.createBot();
+          const bot = await this.createBot();
+          if (!bot) break; // No more names available
           await this.sleep(500);
         } catch (err) {
           console.error('Failed to replace bot:', err);
