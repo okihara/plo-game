@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { GameState, Action } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 
@@ -32,6 +32,8 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
 
   const [sliderValue, setSliderValue] = useState(minRaise);
   const [actionSent, setActionSent] = useState(false);
+  const [prefoldChecked, setPrefoldChecked] = useState(false);
+  const prefoldTriggeredRef = useRef(false);
 
   useEffect(() => {
     setSliderValue(minRaise);
@@ -41,6 +43,26 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
   useEffect(() => {
     setActionSent(false);
   }, [isMyTurn]);
+
+  // フォールド予約: 自分のターンが来たら自動フォールド
+  useEffect(() => {
+    if (isMyTurn && prefoldChecked && !actionSent && !prefoldTriggeredRef.current) {
+      prefoldTriggeredRef.current = true;
+      setActionSent(true);
+      setPrefoldChecked(false);
+      onAction('fold', 0);
+    }
+    if (!isMyTurn) {
+      prefoldTriggeredRef.current = false;
+    }
+  }, [isMyTurn, prefoldChecked, actionSent, onAction]);
+
+  // ハンド完了時にフォールド予約をリセット
+  useEffect(() => {
+    if (state.isHandComplete) {
+      setPrefoldChecked(false);
+    }
+  }, [state.isHandComplete]);
 
   const handlePreset = useCallback((preset: number) => {
     const potAfterCall = state.pot + toCall;
@@ -102,13 +124,34 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
 
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-[1.8cqw]">
-        <button
-          onClick={() => handleAction('fold')}
-          disabled={!isMyTurn || actionSent}
-          className="py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
-        >
-          フォールド
-        </button>
+        <div className="flex items-center gap-[1.2cqw]">
+          <label className="flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={prefoldChecked}
+              onChange={(e) => setPrefoldChecked(e.target.checked)}
+              className="sr-only"
+            />
+            <div className={`w-[4.5cqw] h-[4.5cqw] rounded border-2 flex items-center justify-center transition-all ${
+              prefoldChecked
+                ? 'bg-red-500 border-red-400'
+                : 'bg-gray-700 border-gray-500'
+            }`}>
+              {prefoldChecked && (
+                <svg className="w-[3cqw] h-[3cqw] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
+            </div>
+          </label>
+          <button
+            onClick={() => handleAction('fold')}
+            disabled={!isMyTurn || actionSent}
+            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
+          >
+            フォールド
+          </button>
+        </div>
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
           disabled={!isMyTurn || actionSent}
