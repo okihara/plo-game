@@ -12,14 +12,6 @@ const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
-// Helper function to get cookie value
-function getCookie(name: string): string | null {
-  const value = `; ${document.cookie}`;
-  const parts = value.split(`; ${name}=`);
-  if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-  return null;
-}
-
 class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
@@ -66,19 +58,12 @@ class WebSocketService {
         }
       }
 
-      // Get JWT token from cookie - require authentication
-      const token = getCookie('token');
-      if (!token) {
-        reject(new Error('ログインが必要です'));
-        return;
-      }
-
+      // httpOnly cookieはdocument.cookieで読めないため、
+      // サーバー側がhandshake headerからcookieを読み取る
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
-        auth: {
-          token,
-        },
+        withCredentials: true,
       });
 
       this.socket.on('connection:established', ({ playerId }) => {
