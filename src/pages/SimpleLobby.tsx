@@ -93,13 +93,12 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
       <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[6cqw]">
         {/* Logo */}
         <div className="text-center mb-[5cqw]">
-          <img
+          {/* <img
             src="/images/image.png"
             alt="Baby PLO"
             className="w-[40cqw] mx-auto mb-[2cqw] drop-shadow-[0_0_20px_rgba(16,185,129,0.3)]"
-          />
+          /> */}
           <h1 className="text-[8cqw] font-bold text-white tracking-tight">Baby PLO</h1>
-          <div className="w-[12cqw] h-[0.5cqw] bg-gradient-to-r from-transparent via-white/30 to-transparent mx-auto mt-[1cqw]" />
         </div>
 
         {/* User Info or Login */}
@@ -182,7 +181,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           {/* Tables */}
           <div className="mb-[2.5cqw]">
             <h2 className="text-[4cqw] font-semibold text-white/80 tracking-wide uppercase">Tables</h2>
-            <div className="w-[8cqw] h-[0.3cqw] bg-emerald-400/50 mt-[0.5cqw]" />
           </div>
           <div className="space-y-[2.5cqw]">
             {TABLE_OPTIONS.map((table) => {
