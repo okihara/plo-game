@@ -119,6 +119,7 @@ export function useSpectatorState(tableId: string) {
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clientStateRef = useRef<ClientGameState | null>(null);
 
   // ============================================
   // アクションマーカー管理
@@ -195,6 +196,11 @@ export function useSpectatorState(tableId: string) {
   // イベントリスナー設定
   // ============================================
 
+  // clientStateRef を常に最新に同期（イベントハンドラ内での stale closure を防ぐ）
+  useEffect(() => {
+    clientStateRef.current = clientState;
+  }, [clientState]);
+
   useEffect(() => {
     wsService.setListeners({
       onConnected: () => {
@@ -230,15 +236,19 @@ export function useSpectatorState(tableId: string) {
         setWinners([]);
       },
       onActionTaken: ({ playerId, action, amount }) => {
-        const seat = clientState?.players.findIndex(p => p?.odId === playerId);
+        // refで最新のclientStateを参照
+        const currentState = clientStateRef.current;
+        const seat = currentState?.players.findIndex(p => p?.odId === playerId);
         if (seat !== undefined && seat >= 0) {
           recordAction(seat, action, amount);
         }
       },
       onHandComplete: (serverWinners) => {
-        if (clientState) {
+        // refで最新のclientStateを参照
+        const currentState = clientStateRef.current;
+        if (currentState) {
           const convertedWinners = serverWinners.map(w => {
-            const seat = clientState.players.findIndex(p => p?.odId === w.playerId);
+            const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
             return {
               playerId: seat >= 0 ? seat : 0,
               amount: w.amount,
@@ -252,8 +262,12 @@ export function useSpectatorState(tableId: string) {
 
     return () => {
       clearAllActionMarkerTimers();
+      if (dealingTimerRef.current) {
+        clearTimeout(dealingTimerRef.current);
+        dealingTimerRef.current = null;
+      }
     };
-  }, [clientState, clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
+  }, [clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState

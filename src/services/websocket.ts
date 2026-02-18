@@ -66,20 +66,31 @@ class WebSocketService {
         withCredentials: true,
       });
 
+      let settled = false;
+      const settle = () => {
+        settled = true;
+        clearTimeout(timeoutId);
+      };
+
       this.socket.on('connection:established', ({ playerId }) => {
         this.playerId = playerId;
         this.listeners.onConnected?.(playerId);
+        settle();
         resolve(playerId);
       });
 
       this.socket.on('connection:error', ({ message }) => {
         this.listeners.onError?.(message);
+        settle();
         reject(new Error(message));
       });
 
       this.socket.on('connect_error', (err) => {
         this.listeners.onError?.(err.message);
-        reject(new Error(err.message));
+        if (!settled) {
+          settle();
+          reject(new Error(err.message));
+        }
       });
 
       this.socket.on('disconnect', () => {
@@ -164,8 +175,9 @@ class WebSocketService {
       });
 
       // Timeout for initial connection
-      setTimeout(() => {
-        if (!this.playerId) {
+      const timeoutId = setTimeout(() => {
+        if (!settled) {
+          settled = true;
           reject(new Error('Connection timeout'));
         }
       }, 10000);

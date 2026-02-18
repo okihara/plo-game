@@ -186,6 +186,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const clientStateRef = useRef<ClientGameState | null>(null);
 
   // ショウダウン演出タイミング用Refs
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -296,6 +297,11 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   // イベントリスナー設定
   // ============================================
 
+  // clientStateRef を常に最新に同期（イベントハンドラ内での stale closure を防ぐ）
+  useEffect(() => {
+    clientStateRef.current = clientState;
+  }, [clientState]);
+
   useEffect(() => {
     wsService.setListeners({
       onConnected: () => {
@@ -365,17 +371,19 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         setActionTimeoutAt(null);
         setClientState(prev => prev ? { ...prev, currentPlayerSeat: null } : prev);
 
-        // playerIdからシート番号を取得
-        const seat = clientState?.players.findIndex(p => p?.odId === playerId);
+        // playerIdからシート番号を取得（refで最新のclientStateを参照）
+        const currentState = clientStateRef.current;
+        const seat = currentState?.players.findIndex(p => p?.odId === playerId);
         if (seat !== undefined && seat >= 0) {
           recordAction(seat, action, amount);
         }
       },
       onHandComplete: (serverWinners) => {
-        // playerIdをseat番号に変換
-        if (clientState) {
+        // playerIdをseat番号に変換（refで最新のclientStateを参照）
+        const currentState = clientStateRef.current;
+        if (currentState) {
           const convertedWinners = serverWinners.map(w => {
-            const seat = clientState.players.findIndex(p => p?.odId === w.playerId);
+            const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
             return {
               playerId: seat >= 0 ? seat : 0,
               amount: w.amount,
@@ -444,8 +452,20 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
 
     return () => {
       clearAllActionMarkerTimers();
+      if (dealingTimerRef.current) {
+        clearTimeout(dealingTimerRef.current);
+        dealingTimerRef.current = null;
+      }
+      if (showdownRevealTimerRef.current) {
+        clearTimeout(showdownRevealTimerRef.current);
+        showdownRevealTimerRef.current = null;
+      }
+      if (winnersDisplayTimerRef.current) {
+        clearTimeout(winnersDisplayTimerRef.current);
+        winnersDisplayTimerRef.current = null;
+      }
     };
-  }, [clientState, clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
+  }, [clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState
