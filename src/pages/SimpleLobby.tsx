@@ -91,8 +91,15 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   return (
     <div className="h-full w-full light-bg relative overflow-y-auto">
       <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[6cqw]">
-        {/* Logo */}
+        {/* Logo & Mascot */}
         <div className="text-center mb-[5cqw]">
+          <div className="w-[28cqw] h-[28cqw] mx-auto mb-[2cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60">
+            <img
+              src="/images/plo_baby.png"
+              alt="Baby PLO"
+              className="w-full h-full object-cover scale-125"
+            />
+          </div>
           <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
         </div>
 
