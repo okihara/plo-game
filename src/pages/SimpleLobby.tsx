@@ -177,9 +177,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               >
                 Twitterでログイン
               </button>
-              <p className="text-[2.5cqw] text-cream-500 text-center mt-[3cqw]">
-                またはゲストとしてプレイ
-              </p>
             </div>
           )}
 
