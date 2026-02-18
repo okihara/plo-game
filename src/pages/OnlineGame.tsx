@@ -122,26 +122,26 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
           <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-transparent px-[2%] flex items-center justify-between">
             <button
               onClick={onBack}
-              className="text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
             >
-              <DoorOpen style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
+              <DoorOpen style={{ width: 'min(4vh, 6.6vw)', height: 'min(4vh, 6.6vw)' }} />
             </button>
             <div />
             <div className="flex items-center gap-[1.5vw]">
             {/* ハンド履歴ボタン */}
             <button
               onClick={() => setShowHandHistory(true)}
-              className="text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
             >
-              <History style={{ width: 'min(3.2vh, 5.4vw)', height: 'min(3.2vh, 5.4vw)' }} />
+              <History style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
             </button>
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="text-gray-400 hover:text-gray-200 transition-colors"
+                className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
               >
-                <Settings style={{ width: 'min(3.2vh, 5.4vw)', height: 'min(3.2vh, 5.4vw)' }} />
+                <Settings style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
               </button>
               {showSettingsMenu && (
                 <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 min-w-[120px] z-50">
