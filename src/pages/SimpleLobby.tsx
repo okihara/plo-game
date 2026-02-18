@@ -101,12 +101,12 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             />
           </div>
           <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
-          <div className="mt-[2cqw] px-[3cqw] py-[1.5cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 text-center leading-relaxed">
-            <p className="font-medium">現在テスト中です</p>
-            <ul className="mt-[1cqw] space-y-[0.5cqw] text-amber-600">
-              <li>・データは予告なくリセットされる場合があります</li>
+          <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 leading-relaxed">
+            <p className="font-bold text-[3cqw] text-amber-800 mb-[1cqw] text-center">現在テスト中</p>
+            <ul className="space-y-[0.3cqw]">
+              <li>・データが予告なくリセットされる場合があります</li>
               <li>・チップに実際の価値はありません</li>
-              <li>・不具合があればお知らせください</li>
+              <li>・不具合があればお気軽にお知らせください</li>
             </ul>
           </div>
         </div>
@@ -183,9 +183,14 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             </div>
           )}
 
+          {/* Chip refill notice */}
+          <div className="mb-[4cqw] text-center text-[3.5cqw] text-cream-500">
+            毎朝7:00にチップが補充されます
+          </div>
+
           {/* Tables */}
           <div className="mb-[2.5cqw]">
-            <h2 className="text-[4cqw] font-semibold text-cream-900 tracking-wide uppercase">Tables</h2>
+            <h2 className="text-[4cqw] font-semibold text-cream-900 tracking-wide uppercase">レート</h2>
           </div>
           <div className="space-y-[2.5cqw]">
             {TABLE_OPTIONS.map((table) => {
@@ -216,8 +221,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       <span className="text-cream-600">buy-in: {table.buyIn}</span>
                       {table.enabled ? (
                         <>
+                          <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white bg-forest rounded-[1.5cqw]">参加する</span>
                           <span className="text-forest">{count}人</span>
-                          <span className="text-cream-400 text-[4cqw]">&rsaquo;</span>
                         </>
                       ) : (
                         <span className="text-cream-500">準備中</span>
