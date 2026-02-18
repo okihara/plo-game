@@ -263,7 +263,7 @@ export function Player({
         )}
         {/* Last Action Marker */}
         {showActionMarker && (
-          <div className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[3.1cqw] py-[1.5cqw] rounded-xl text-[4.2cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
+          <div className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips)}
           </div>
         )}
