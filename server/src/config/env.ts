@@ -12,6 +12,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
+  ADMIN_SECRET: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

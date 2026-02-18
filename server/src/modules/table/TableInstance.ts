@@ -14,6 +14,7 @@ import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { FoldProcessor } from './helpers/FoldProcessor.js';
 import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 // 型の再エクスポート（後方互換性のため）
 export type { MessageLog, PendingAction };
@@ -298,8 +299,13 @@ export class TableInstance {
 
   // Private methods
 
+  public triggerMaybeStartHand(): void {
+    this.maybeStartHand();
+  }
+
   private maybeStartHand(wasShowdown: boolean = false): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
+    if (maintenanceService.isMaintenanceActive()) return;
 
     const playerCount = this.getPlayerCount();
     if (playerCount < 2) return;

@@ -5,6 +5,7 @@ import { TableInstance } from '../table/TableInstance.js';
 import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
+import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 interface AuthenticatedSocket extends Socket {
   odId?: string;
@@ -152,8 +153,18 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     socket.emit('connection:established', { playerId: socket.odId! });
 
+    // メンテナンス状態を新規接続クライアントに通知
+    if (maintenanceService.isMaintenanceActive()) {
+      socket.emit('maintenance:status', maintenanceService.getStatus());
+    }
+
     // Handle table join
     socket.on('table:join', async (data: { tableId: string; buyIn: number }) => {
+      if (maintenanceService.isMaintenanceActive()) {
+        socket.emit('table:error', { message: 'メンテナンス中のため参加できません' });
+        return;
+      }
+
       const { tableId, buyIn } = data;
 
       try {
@@ -254,6 +265,11 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     // Handle fast fold pool join
     socket.on('matchmaking:join', async (data: { blinds: string }) => {
+      if (maintenanceService.isMaintenanceActive()) {
+        socket.emit('table:error', { message: 'メンテナンス中のため参加できません' });
+        return;
+      }
+
       const { blinds } = data;
       const isGuest = socket.odId!.startsWith('guest_');
 

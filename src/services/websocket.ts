@@ -53,6 +53,7 @@ class WebSocketService {
     onFastFoldTableAssigned?: (tableId: string) => void;
     onSpectating?: (tableId: string) => void;
     onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
+    onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -156,6 +157,11 @@ class WebSocketService {
 
       this.socket.on('game:all_hole_cards', ({ players }) => {
         this.listeners.onAllHoleCards?.(players);
+      });
+
+      // Maintenance events
+      this.socket.on('maintenance:status', (data) => {
+        this.listeners.onMaintenanceStatus?.(data);
       });
 
       // Timeout for initial connection

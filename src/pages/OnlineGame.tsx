@@ -39,6 +39,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     actionTimeoutAt,
     actionTimeoutMs,
     showdownHandNames,
+    maintenanceStatus,
     connect,
     disconnect,
     joinMatchmaking,
@@ -118,6 +119,16 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   return (
     <>
+      {/* メンテナンス通知バナー */}
+      {maintenanceStatus?.isActive && (
+        <div className="absolute top-[4%] left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="bg-red-600/90 text-white text-center py-[0.5cqw] px-[3cqw] rounded-b-[1.5cqw]"
+               style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>
+            メンテナンス予定 - 現在のハンド終了後、新しいハンドは開始されません
+            {maintenanceStatus.message && ` (${maintenanceStatus.message})`}
+          </div>
+        </div>
+      )}
       {/* ゲーム情報ヘッダー */}
           <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-transparent px-[2%] flex items-center justify-between">
             <button

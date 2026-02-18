@@ -64,6 +64,9 @@ export interface ServerToClientEvents {
   'game:all_hole_cards': (data: {
     players: { seatIndex: number; cards: Card[] }[];
   }) => void;
+
+  // Maintenance
+  'maintenance:status': (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
 }
 
 // ========== Shared Types ==========

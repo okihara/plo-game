@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
+import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 interface QueuedPlayer {
   odId: string;
@@ -81,6 +82,8 @@ export class MatchmakingPool {
 
   // Process queue and seat players
   private async processQueue(blinds: string): Promise<void> {
+    if (maintenanceService.isMaintenanceActive()) return;
+
     const queue = this.queues.get(blinds);
     if (!queue || queue.length === 0) return;
 

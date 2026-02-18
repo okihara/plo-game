@@ -15,6 +15,8 @@ import { adminRoutes } from './modules/admin/routes.js';
 import { lobbyRoutes } from './modules/lobby/routes.js';
 import { handHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
+import { maintenanceService } from './modules/maintenance/MaintenanceService.js';
+import { maintenanceRoutes } from './modules/maintenance/routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -96,9 +98,19 @@ const start = async () => {
 
     const { tableManager, matchmakingPool } = setupGameSocket(io, fastify);
 
+    // Initialize maintenance service
+    await maintenanceService.initialize(io);
+    maintenanceService.setOnDeactivate(() => {
+      for (const info of tableManager.getTablesInfo()) {
+        const table = tableManager.getTable(info.id);
+        table?.triggerMaybeStartHand();
+      }
+    });
+
     // Register admin routes (needs io, tableManager, matchmakingPool)
     await fastify.register(adminRoutes({ io, tableManager, matchmakingPool }));
     await fastify.register(lobbyRoutes({ tableManager, matchmakingPool }));
+    await fastify.register(maintenanceRoutes());
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 

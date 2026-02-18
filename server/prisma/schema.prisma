@@ -129,3 +129,11 @@ model DailyBonus {
 
   @@index([odId, claimedAt])
 }
+
+model MaintenanceMode {
+  id          String    @id @default("singleton")
+  isActive    Boolean   @default(false)
+  message     String    @default("")
+  activatedAt DateTime?
+  updatedAt   DateTime  @updatedAt
+}

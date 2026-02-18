@@ -28,6 +28,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [addingChips, setAddingChips] = useState(false);
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
+  const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -42,8 +43,17 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         }
       } catch { /* ignore */ }
     };
+    const fetchMaintenance = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/maintenance/status`);
+        if (res.ok) {
+          setMaintenance(await res.json());
+        }
+      } catch { /* ignore */ }
+    };
     fetchCounts();
-    const interval = setInterval(fetchCounts, 10000);
+    fetchMaintenance();
+    const interval = setInterval(() => { fetchCounts(); fetchMaintenance(); }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -101,6 +111,14 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             />
           </div>
           <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
+          {maintenance?.isActive && (
+            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-red-50 border border-red-300 rounded-[2cqw] text-[2.5cqw] text-red-700 leading-relaxed">
+              <p className="font-bold text-[3cqw] text-red-800 text-center">メンテナンス中</p>
+              {maintenance.message && (
+                <p className="mt-[1cqw] text-center">{maintenance.message}</p>
+              )}
+            </div>
+          )}
           <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 leading-relaxed">
             <p className="font-bold text-[3cqw] text-amber-800 mb-[1cqw] text-center">現在テスト中</p>
             <ul className="space-y-[0.3cqw]">
@@ -195,10 +213,10 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               return (
                 <button
                   key={table.id}
-                  onClick={() => table.enabled && onPlayOnline(table.blinds)}
-                  disabled={!table.enabled}
+                  onClick={() => table.enabled && !maintenance?.isActive && onPlayOnline(table.blinds)}
+                  disabled={!table.enabled || !!maintenance?.isActive}
                   className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
-                    table.enabled
+                    table.enabled && !maintenance?.isActive
                       ? 'bg-white border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] hover:bg-cream-50 hover:border-cream-400 hover:shadow-[0_4px_16px_rgba(139,126,106,0.15)] active:scale-[0.98]'
                       : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
                   }`}

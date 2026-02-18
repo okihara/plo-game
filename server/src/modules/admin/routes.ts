@@ -5,6 +5,7 @@ import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
+import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 interface AdminDependencies {
   io: Server;
@@ -66,6 +67,11 @@ interface ServerStats {
     external: number;
     rss: number;
   };
+  maintenance: {
+    isActive: boolean;
+    message: string;
+    activatedAt: string | null;
+  };
 }
 
 const startTime = Date.now();
@@ -74,6 +80,17 @@ export function adminRoutes(deps: AdminDependencies) {
   const { io, tableManager, matchmakingPool } = deps;
 
   return async function (fastify: FastifyInstance) {
+    // 管理エンドポイント認証: ADMIN_SECRET が設定されている場合、?secret= パラメータで認証
+    fastify.addHook('onRequest', async (request, reply) => {
+      const secret = env.ADMIN_SECRET;
+      if (!secret) return; // ADMIN_SECRET 未設定時はスキップ（開発環境用）
+
+      const querySecret = (request.query as Record<string, string>).secret;
+      if (querySecret !== secret) {
+        return reply.status(403).send({ error: 'Forbidden' });
+      }
+    });
+
     // JSON API for stats
     fastify.get('/api/admin/stats', async (): Promise<ServerStats> => {
       const sockets = Array.from(io.sockets.sockets.values());
@@ -163,7 +180,14 @@ export function adminRoutes(deps: AdminDependencies) {
           external: memUsage.external,
           rss: memUsage.rss,
         },
+        maintenance: maintenanceService.getStatus(),
       };
+    });
+
+    // Maintenance mode toggle
+    fastify.post('/api/admin/maintenance', async (request) => {
+      const { active, message } = request.body as { active: boolean; message?: string };
+      return maintenanceService.toggle(active, message || '');
     });
 
     // HTML Dashboard
@@ -484,6 +508,23 @@ function getDashboardHTML(clientUrl: string): string {
         <h2>Fast Fold キュー</h2>
         <div id="fastFoldQueues"></div>
       </div>
+
+      <div class="card">
+        <h2>メンテナンスモード</h2>
+        <div id="maintenanceStatus" style="margin-bottom:12px"></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button id="maintenanceOn" onclick="toggleMaintenance(true)"
+            style="padding:8px 16px;background:#ef4444;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">
+            ON (停止)
+          </button>
+          <button id="maintenanceOff" onclick="toggleMaintenance(false)"
+            style="padding:8px 16px;background:#22c55e;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600">
+            OFF (再開)
+          </button>
+        </div>
+        <input id="maintenanceMessage" placeholder="メンテナンスメッセージ（任意）"
+          style="margin-top:12px;width:100%;padding:8px;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;box-sizing:border-box" />
+      </div>
     </div>
 
     <div class="tables-section">
@@ -498,6 +539,10 @@ function getDashboardHTML(clientUrl: string): string {
 
   <script>
     var SPECTATE_BASE_URL = '${spectateBaseUrl}';
+    var ADMIN_SECRET = new URLSearchParams(window.location.search).get('secret') || '';
+    function apiUrl(path) {
+      return path + (ADMIN_SECRET ? '?secret=' + encodeURIComponent(ADMIN_SECRET) : '');
+    }
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
@@ -519,7 +564,7 @@ function getDashboardHTML(clientUrl: string): string {
 
     async function fetchStats() {
       try {
-        const res = await fetch('/api/admin/stats');
+        const res = await fetch(apiUrl('/api/admin/stats'));
         const data = await res.json();
         updateUI(data);
         document.getElementById('statusDot').classList.remove('error');
@@ -562,6 +607,16 @@ function getDashboardHTML(clientUrl: string): string {
       document.getElementById('memoryBar').textContent = memPercent + '%';
       document.getElementById('heapUsed').textContent = formatBytes(data.memory.heapUsed);
       document.getElementById('rss').textContent = formatBytes(data.memory.rss);
+
+      // Maintenance
+      var maint = data.maintenance;
+      var maintEl = document.getElementById('maintenanceStatus');
+      if (maint.isActive) {
+        maintEl.innerHTML = '<span class="stat-value error">ON - メンテナンス中</span>' +
+          (maint.message ? '<div class="stat-small">' + maint.message + '</div>' : '');
+      } else {
+        maintEl.innerHTML = '<span class="stat-value success">OFF - 通常運用</span>';
+      }
 
       // Fast Fold Queues
       const queuesHtml = data.fastFoldQueues.map(q => {
@@ -673,6 +728,20 @@ function getDashboardHTML(clientUrl: string): string {
       }).join('');
 
       document.getElementById('tablesList').innerHTML = tablesHtml || '<p style="color:#64748b">テーブルなし</p>';
+    }
+
+    async function toggleMaintenance(active) {
+      var message = document.getElementById('maintenanceMessage').value;
+      try {
+        await fetch(apiUrl('/api/admin/maintenance'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: active, message: message }),
+        });
+        fetchStats();
+      } catch (err) {
+        alert('Failed: ' + err.message);
+      }
     }
 
     // Initial fetch and start polling
