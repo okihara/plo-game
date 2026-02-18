@@ -49,24 +49,34 @@ export function PokerTable({
   return (
     <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
       <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
-        {/* Pot Display */}
-        <div className="absolute top-[65%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[2cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10">
-          {state.sidePots.length > 1 ? (
-            <div className="flex flex-col items-center gap-[0.5cqw]">
-              <span>Pot: {formatChips(state.pot)}</span>
+        {/* Pot Display - above community cards */}
+        <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg font-bold text-yellow-400 z-10">
+          <div className="flex flex-col items-center gap-[0.5cqw]">
+            <span className="text-[5cqw]">Pot: {formatChips(state.pot)}</span>
+            {state.sidePots.length > 1 && (
               <div className="flex gap-[2cqw] text-[3.5cqw] text-yellow-300/80">
                 {state.sidePots.map((sp, i) => (
                   <span key={i}>{i === 0 ? 'Main' : `Side${state.sidePots.length > 2 ? i : ''}`}: {formatChips(sp.amount)}</span>
                 ))}
               </div>
-            </div>
-          ) : (
-            <span>Pot: {formatChips(state.pot)}</span>
-          )}
+            )}
+          </div>
         </div>
 
         {/* Community Cards */}
         <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
+
+        {/* Carried Pot - below community cards, flop onwards */}
+        {(() => {
+          const currentStreetBets = state.players.reduce((sum, p) => sum + p.currentBet, 0);
+          const carriedPot = state.pot - currentStreetBets;
+          if (state.currentStreet === 'preflop' || carriedPot <= 0) return null;
+          return (
+            <div className="absolute top-[62%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10">
+              {formatChips(carriedPot)}
+            </div>
+          );
+        })()}
 
         {/* Players */}
         {orderedPlayers.map(({ player, playerIdx, posIndex }) => {
