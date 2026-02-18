@@ -6,7 +6,7 @@ import { getDashboardHTML } from './dashboard.js';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
 const BOT_COUNT = parseInt(process.env.BOT_COUNT || '10', 10);
 const BLINDS = process.env.BLINDS || '1/3';
-const DASHBOARD_PORT = parseInt(process.env.BOT_DASHBOARD_PORT || '3002', 10);
+const DASHBOARD_PORT = parseInt(process.env.BOT_DASHBOARD_PORT || '3004', 10);
 
 console.log('=================================');
 console.log('  PLO Poker Bot Manager');
