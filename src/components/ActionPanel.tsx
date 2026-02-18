@@ -85,7 +85,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
   }, [toCall, myPlayer.chips, sliderValue, onAction]);
 
   return (
-    <div className="bg-gradient-to-b from-gray-800/95 to-gray-900/95 px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw] border-t-2 border-gray-600 backdrop-blur-sm">
+    <div className="px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
       {/* Preset Buttons & Bet Slider */}
       <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'opacity-40 pointer-events-none' : ''}`}>
         <div className="w-1/2 flex gap-[0.9cqw]">
