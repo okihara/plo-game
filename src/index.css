@@ -227,3 +227,26 @@ body {
 .animate-reveal-card {
   animation: reveal-card 0.6s ease both;
 }
+
+/* Glassmorphism background */
+.glass-bg {
+  background:
+    radial-gradient(ellipse at 30% 20%, rgba(16, 185, 129, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at 70% 80%, rgba(59, 130, 246, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #020617 0%, #022c22 50%, #020617 100%);
+}
+
+/* Glass scrollbar */
+.glass-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.glass-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+.glass-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

@@ -10,7 +10,7 @@ const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
 const SUIT_COLORS: Record<string, string> = {
-  h: 'text-red-500', d: 'text-blue-500', c: 'text-green-700', s: 'text-black',
+  h: 'text-red-400', d: 'text-blue-400', c: 'text-emerald-400', s: 'text-white/80',
 };
 
 interface HandSummary {
@@ -68,10 +68,10 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const rank = cardStr.slice(0, -1);
   const suit = cardStr.slice(-1);
   const symbol = SUIT_SYMBOLS[suit] || suit;
-  const color = SUIT_COLORS[suit] || 'text-white';
+  const color = SUIT_COLORS[suit] || 'text-white/60';
 
   return (
-    <span className={`inline-flex items-center justify-center w-9 h-12 bg-white rounded text-sm font-bold shadow border border-black/20 ${color}`}>
+    <span className={`inline-flex items-center justify-center bg-white/[0.08] border border-white/[0.1] rounded px-1 py-0.5 text-xs font-mono font-bold ${color}`}>
       {rank}{symbol}
     </span>
   );
@@ -79,12 +79,12 @@ function MiniCard({ cardStr }: { cardStr: string }) {
 
 function ProfitDisplay({ profit }: { profit: number }) {
   if (profit > 0) {
-    return <span className="text-green-600 font-bold text-base">+{profit}</span>;
+    return <span className="text-emerald-400 font-bold text-sm">+{profit}</span>;
   }
   if (profit < 0) {
-    return <span className="text-red-500 font-bold text-base">-{Math.abs(profit)}</span>;
+    return <span className="text-red-400 font-bold text-sm">-{Math.abs(profit)}</span>;
   }
-  return <span className="text-black/30">0</span>;
+  return <span className="text-white/30 text-sm">0</span>;
 }
 
 function formatDate(dateStr: string): string {
@@ -138,6 +138,15 @@ function formatAction(action: string): string {
   return map[action] || action;
 }
 
+function PositionBadge({ position }: { position: string }) {
+  if (!position) return null;
+  return (
+    <span className="bg-white/[0.1] text-white/70 text-xs font-bold px-1.5 py-0.5 rounded border border-white/[0.08]">
+      {position}
+    </span>
+  );
+}
+
 function HandSummaryCard({
   hand,
   onClick,
@@ -148,22 +157,22 @@ function HandSummaryCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left hover:bg-black/[0.03] rounded-xl p-3 border border-black/20 hover:border-black/30 transition-all shadow-sm hover:shadow-md"
+      className="w-full text-left bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] rounded-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.3)] transition-all duration-200 hover:bg-white/[0.12] hover:border-white/[0.2] active:scale-[0.98]"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
-          <span className="text-black/40 text-sm font-medium">#{hand.handNumber}</span>
+          <span className="text-white/40 text-sm font-medium">#{hand.handNumber}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
-            return pos ? <span className="bg-black text-white text-xs font-bold px-1.5 py-0.5 rounded">{pos}</span> : null;
+            return pos ? <PositionBadge position={pos} /> : null;
           })()}
-          <span className="text-black/70 text-base font-bold">{hand.blinds}</span>
-          <span className="text-black/30 text-xs">Pot {hand.potSize}</span>
+          <span className="text-white/70 text-base font-bold">{hand.blinds}</span>
+          <span className="text-white/25 text-xs">Pot {hand.potSize}</span>
         </div>
         <div className="flex items-center gap-2">
           <ProfitDisplay profit={hand.profit} />
-          <span className="text-black/25 text-xs">{formatDate(hand.createdAt)}</span>
+          <span className="text-white/20 text-xs">{formatDate(hand.createdAt)}</span>
         </div>
       </div>
       <div className="flex items-center gap-1">
@@ -172,7 +181,7 @@ function HandSummaryCard({
         ))}
         {hand.communityCards.length > 0 && (
           <>
-            <span className="text-black/30 mx-1">|</span>
+            <span className="text-white/20 mx-1">|</span>
             {hand.communityCards.map((c, i) => (
               <MiniCard key={`cc-${i}`} cardStr={c} />
             ))}
@@ -180,8 +189,8 @@ function HandSummaryCard({
         )}
       </div>
       {hand.finalHand && (
-        <div className="mt-1">
-          <span className="text-black/50 text-xs">{hand.finalHand}</span>
+        <div className="mt-1.5">
+          <span className="text-amber-300/70 text-xs">{hand.finalHand}</span>
         </div>
       )}
     </button>
@@ -197,24 +206,26 @@ function HandDetailDialog({
 }) {
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/40" />
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
       <div
-        className="relative w-[95%] max-h-[85%] bg-white rounded-2xl border border-black/20 overflow-y-auto shadow-2xl"
+        className="relative w-[95%] max-h-[85%] bg-white/[0.1] backdrop-blur-2xl border border-white/[0.15] rounded-3xl overflow-hidden shadow-[0_8px_40px_rgba(0,0,0,0.5)]"
         onClick={e => e.stopPropagation()}
       >
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b-2 border-black px-4 py-3 flex items-center justify-between z-10 rounded-t-2xl">
-          <div className="flex items-center gap-2">
-            <h1 className="text-black font-bold text-xl tracking-tight">
+        <div className="bg-white/[0.05] border-b border-white/[0.08] px-4 py-3 flex items-center justify-between">
+          <div>
+            <h1 className="text-white font-bold text-lg tracking-tight">
               Hand #{hand.handNumber}
             </h1>
-            <span className="text-black/40">{hand.blinds}</span>
-            <span className="text-black/25 text-sm">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-white/50 text-xs">{hand.blinds}</span>
+              <span className="text-white/25 text-xs">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
+            </div>
           </div>
-          <button onClick={onClose} className="text-black/30 hover:text-black text-2xl leading-none">&times;</button>
+          <button onClick={onClose} className="text-white/30 hover:text-white text-2xl leading-none transition-colors">&times;</button>
         </div>
 
-        <div className="p-3 space-y-3">
+        <div className="p-3 space-y-3 overflow-y-auto max-h-[calc(85vh-70px)] glass-scrollbar">
           {/* プレイヤー */}
           <div className="space-y-1.5">
             {hand.players
@@ -225,17 +236,19 @@ function HandDetailDialog({
                 return (
                 <div
                   key={i}
-                  className={`rounded-lg px-3 py-2 border shadow-sm ${
-                    p.isCurrentUser ? 'border-black/25 bg-black/[0.03]' : 'border-black/8'
+                  className={`rounded-xl px-3 py-2 border ${
+                    p.isCurrentUser
+                      ? 'bg-white/[0.08] border-emerald-400/20'
+                      : 'bg-white/[0.03] border-white/[0.06]'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-1.5">
-                      {pos && <span className="bg-black text-white text-sm font-bold px-1.5 py-0.5 rounded">{pos}</span>}
+                      {pos && <PositionBadge position={pos} />}
                       {p.avatarUrl && (
-                        <img src={p.avatarUrl} alt="" className="w-6 h-6 rounded-full" />
+                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-white/10" />
                       )}
-                      <span className={`font-bold text-base ${p.isCurrentUser ? 'text-black underline decoration-2 underline-offset-2' : 'text-black/70'}`}>
+                      <span className={`font-semibold text-sm ${p.isCurrentUser ? 'text-emerald-400' : 'text-white/70'}`}>
                         {p.username}
                       </span>
                     </div>
@@ -246,7 +259,7 @@ function HandDetailDialog({
                       <MiniCard key={j} cardStr={c} />
                     ))}
                     {p.finalHand && (
-                      <span className="ml-2 text-black/50 text-sm">{p.finalHand}</span>
+                      <span className="ml-2 text-amber-300/70 text-xs">{p.finalHand}</span>
                     )}
                   </div>
                 </div>
@@ -255,7 +268,7 @@ function HandDetailDialog({
           </div>
 
           {/* アクション履歴（ストリートごと） */}
-          <div className="rounded-xl px-3 py-3 border border-black/20">
+          <div className="bg-white/[0.03] rounded-xl px-3 py-3 border border-white/[0.06]">
             <div className="space-y-0.5">
               {(() => {
                 const streets = ['preflop', 'flop', 'turn', 'river'];
@@ -268,7 +281,6 @@ function HandDetailDialog({
                   turn: cc.slice(3, 4),
                   river: cc.slice(4, 5),
                 };
-                // ストリート開始時のポット額を計算
                 const streetStartPot: Record<string, number> = {};
                 let cumPot = 0;
                 let prevStreet = '';
@@ -291,15 +303,15 @@ function HandDetailDialog({
                   return (
                     <div key={i}>
                       {showHeader && (
-                        <div className={headerMargin ? 'mt-4 mb-1' : 'mb-1'}>
-                          <div className="flex items-center gap-2 border-b-2 border-black pb-1">
-                            <span className="text-black font-bold text-sm">{streetLabels[street] || street}</span>
+                        <div className={headerMargin ? 'mt-3 mb-1' : 'mb-1'}>
+                          <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
+                            <span className="bg-white/[0.08] text-white/70 text-xs font-bold px-2 py-0.5 rounded">{streetLabels[street] || street}</span>
                             {streetStartPot[street] > 0 && (
-                              <span className="text-black/25 text-sm">Pot {streetStartPot[street]}</span>
+                              <span className="text-white/30 text-xs">Pot {streetStartPot[street]}</span>
                             )}
                           </div>
                           {streetCards[street]?.length > 0 && (
-                            <div className="flex gap-0.5 mt-1">
+                            <div className="flex gap-1 mt-1">
                               {streetCards[street].map((c, j) => (
                                 <MiniCard key={j} cardStr={c} />
                               ))}
@@ -307,17 +319,17 @@ function HandDetailDialog({
                           )}
                         </div>
                       )}
-                      <div className="flex items-center py-0.5">
-                        <span className="w-10 shrink-0">
+                      <div className="flex items-center py-0.5 rounded-lg hover:bg-white/[0.03] px-1">
+                        <span className="w-9 shrink-0">
                           {(() => {
                             const allSeats = hand.players.map(pl => pl.seatPosition);
                             const aPos = getPositionName(a.seatIndex, hand.dealerPosition, allSeats);
-                            return aPos ? <span className="bg-black text-white text-xs font-bold px-1 py-0.5 rounded">{aPos}</span> : null;
+                            return aPos ? <PositionBadge position={aPos} /> : null;
                           })()}
                         </span>
-                        <span className="w-24 shrink-0 text-black/50 truncate">{a.odName}</span>
-                        <span className="w-20 shrink-0 text-black/80 font-bold">{formatAction(a.action)}</span>
-                        <span className="text-black/50 font-medium">{a.amount > 0 ? a.amount : ''}</span>
+                        <span className="w-24 shrink-0 text-white/40 text-sm truncate">{a.odName}</span>
+                        <span className="w-16 shrink-0 text-white/80 text-sm font-bold">{formatAction(a.action)}</span>
+                        <span className="text-amber-400/80 text-sm font-mono">{a.amount > 0 ? a.amount : ''}</span>
                       </div>
                     </div>
                   );
@@ -325,10 +337,10 @@ function HandDetailDialog({
               })()}
             </div>
             {/* Result */}
-            <div className="mt-4 mb-1">
-              <div className="flex items-center gap-2 border-b-2 border-black pb-1">
-                <span className="text-black font-bold text-sm">Result</span>
-                <span className="text-black/40 text-base font-bold">Pot {hand.potSize}</span>
+            <div className="mt-3 mb-1">
+              <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
+                <span className="bg-white/[0.08] text-white/70 text-xs font-bold px-2 py-0.5 rounded">Result</span>
+                <span className="text-amber-400/80 text-sm font-bold">Pot {hand.potSize}</span>
               </div>
             </div>
             {(() => {
@@ -343,12 +355,12 @@ function HandDetailDialog({
                 const allSeats = hand.players.map(pl => pl.seatPosition);
                 const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
                 return (
-                  <div key={`result-${i}`} className="flex items-center py-0.5">
-                    <span className="w-10 shrink-0">
-                      {pos && <span className="bg-black text-white text-xs font-bold px-1 py-0.5 rounded">{pos}</span>}
+                  <div key={`result-${i}`} className="flex items-center py-0.5 px-1">
+                    <span className="w-9 shrink-0">
+                      {pos && <PositionBadge position={pos} />}
                     </span>
-                    <span className="w-24 shrink-0 text-black/50 truncate">{p.username}</span>
-                    <span className="w-20 shrink-0 text-black/50 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
+                    <span className="w-24 shrink-0 text-white/40 text-sm truncate">{p.username}</span>
+                    <span className="w-20 shrink-0 text-amber-300/60 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
                     <ProfitDisplay profit={p.profit} />
                   </div>
                 );
@@ -416,10 +428,10 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
 
   if (!user) {
     return (
-      <div className="h-full flex items-center justify-center">
+      <div className="h-full glass-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-black/50 mb-4">ログインするとハンド履歴を確認できます</p>
-          <button onClick={onClose} className="text-black hover:text-black/70">
+          <p className="text-white/50 mb-4">ログインするとハンド履歴を確認できます</p>
+          <button onClick={onClose} className="text-white/40 hover:text-white/60 transition-colors">
             閉じる
           </button>
         </div>
@@ -429,27 +441,27 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
 
   return (
     <div className="h-full relative">
-      <div className="h-full overflow-y-auto">
+      <div className="h-full overflow-y-auto glass-scrollbar">
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white/95 backdrop-blur border-b-2 border-black px-4 py-3 flex items-center z-10">
-          <button onClick={onClose} className="text-black/50 hover:text-black mr-3 text-sm">
+        <div className="sticky top-0 bg-white/[0.05] backdrop-blur-xl border-b border-white/[0.08] px-4 py-3 flex items-center z-10">
+          <button onClick={onClose} className="text-white/50 hover:text-white mr-3 text-sm transition-colors">
             &larr; 戻る
           </button>
-          <h1 className="text-black font-bold text-xl tracking-tight">ハンド履歴</h1>
-          <span className="ml-auto text-black/40 text-sm">{total}件</span>
+          <h1 className="text-white font-bold text-lg tracking-tight">ハンド履歴</h1>
+          <span className="ml-auto text-white/40 text-sm">{total}件</span>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-black/25 border-t-black rounded-full animate-spin" />
+            <div className="w-8 h-8 border-2 border-white/20 border-t-emerald-400 rounded-full animate-spin" />
           </div>
         ) : hands.length === 0 ? (
-          <div className="text-center text-black/30 py-20">
+          <div className="text-center text-white/30 py-20">
             まだハンド履歴がありません
           </div>
         ) : (
           <>
-            <div className="p-4 space-y-2">
+            <div className="p-3 space-y-2">
               {hands.map(hand => (
                 <HandSummaryCard
                   key={hand.id}
@@ -464,7 +476,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
-                  className="w-full py-3 text-black/50 hover:text-black hover:bg-black/5 rounded-xl transition-all text-sm border border-black/20"
+                  className="w-full py-3 text-white/40 hover:text-white/70 hover:bg-white/[0.05] rounded-xl transition-all text-sm border border-white/[0.08] hover:border-white/[0.15]"
                 >
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>
@@ -475,8 +487,8 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
       </div>
       {loadingDetail && (
         <div className="absolute inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/30" />
-          <div className="w-8 h-8 border-2 border-black/25 border-t-black rounded-full animate-spin relative z-10" />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+          <div className="w-8 h-8 border-2 border-white/20 border-t-emerald-400 rounded-full animate-spin relative z-10" />
         </div>
       )}
       {selectedHand && (
