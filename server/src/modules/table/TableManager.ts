@@ -22,18 +22,25 @@ export class TableManager {
     return this.tables.get(tableId);
   }
 
-  // Find a table with available seats
+  // Find a table with available seats (prefer table with fewest players for balance)
   public findAvailableTable(blinds: string, isFastFold: boolean = false): TableInstance | null {
+    let best: TableInstance | null = null;
+    let minPlayers = Infinity;
+
     for (const table of this.tables.values()) {
       if (
         table.blinds === blinds &&
         table.isFastFold === isFastFold &&
         table.hasAvailableSeat()
       ) {
-        return table;
+        const count = table.getPlayerCount();
+        if (count < minPlayers) {
+          minPlayers = count;
+          best = table;
+        }
       }
     }
-    return null;
+    return best;
   }
 
   // Get or create a table for given parameters
