@@ -251,9 +251,14 @@ body {
   background: rgba(255, 255, 255, 0.2);
 }
 
+/* Dark gold gradient for game screen */
+.game-bg {
+  background: linear-gradient(180deg, #2a2318 0%, #3d3020 50%, #2a2318 100%);
+}
+
 /* Light cream background */
 .light-bg {
-  background: #FAF8F5;
+  background: #F5F0EB;
 }
 
 /* Light scrollbar for cream theme */

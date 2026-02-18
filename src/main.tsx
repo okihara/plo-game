@@ -25,7 +25,7 @@ function App() {
   }
 
   const isGameScreen = !!blinds && currentPath === '/' ;
-  const bgClass = isGameScreen ? 'bg-gray-900' : 'bg-cream-100';
+  const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
 
   let page;
   if (currentPath.startsWith('/spectate/')) {
