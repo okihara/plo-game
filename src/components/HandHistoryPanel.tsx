@@ -141,7 +141,7 @@ function formatAction(action: string): string {
 function PositionBadge({ position }: { position: string }) {
   if (!position) return null;
   return (
-    <span className="bg-white/[0.1] text-white/70 text-xs font-bold px-1.5 py-0.5 rounded border border-white/[0.08]">
+    <span className="bg-white/[0.1] text-white/70 text-xs font-bold w-8 text-center py-0.5 rounded border border-white/[0.08] shrink-0 inline-block">
       {position}
     </span>
   );
@@ -157,7 +157,7 @@ function HandSummaryCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white/[0.07] backdrop-blur-xl border border-white/[0.12] rounded-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.3)] transition-all duration-200 hover:bg-white/[0.12] hover:border-white/[0.2] active:scale-[0.98]"
+      className="w-full text-left bg-white/[0.1] backdrop-blur-xl border border-white/[0.18] rounded-xl p-3 shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.08)] transition-all duration-200 hover:bg-white/[0.15] hover:border-white/[0.25] active:scale-[0.98] active:shadow-[0_2px_12px_rgba(0,0,0,0.3)]"
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -243,16 +243,18 @@ function HandDetailDialog({
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {pos && <PositionBadge position={pos} />}
                       {p.avatarUrl && (
-                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-white/10" />
+                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-white/10 shrink-0" />
                       )}
-                      <span className={`font-semibold text-sm ${p.isCurrentUser ? 'text-emerald-400' : 'text-white/70'}`}>
+                      <span className={`font-semibold text-sm truncate ${p.isCurrentUser ? 'text-emerald-400' : 'text-white/70'}`}>
                         {p.username}
                       </span>
                     </div>
-                    <ProfitDisplay profit={p.profit} />
+                    <div className="shrink-0 ml-2">
+                      <ProfitDisplay profit={p.profit} />
+                    </div>
                   </div>
                   <div className="flex items-center gap-1">
                     {p.holeCards.map((c, j) => (
@@ -305,7 +307,7 @@ function HandDetailDialog({
                       {showHeader && (
                         <div className={headerMargin ? 'mt-3 mb-1' : 'mb-1'}>
                           <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
-                            <span className="bg-white/[0.08] text-white/70 text-xs font-bold px-2 py-0.5 rounded">{streetLabels[street] || street}</span>
+                            <span className="text-white/60 text-xs font-bold">{streetLabels[street] || street}</span>
                             {streetStartPot[street] > 0 && (
                               <span className="text-white/30 text-xs">Pot {streetStartPot[street]}</span>
                             )}
@@ -320,7 +322,7 @@ function HandDetailDialog({
                         </div>
                       )}
                       <div className="flex items-center py-0.5 rounded-lg hover:bg-white/[0.03] px-1">
-                        <span className="w-9 shrink-0">
+                        <span className="w-10 shrink-0">
                           {(() => {
                             const allSeats = hand.players.map(pl => pl.seatPosition);
                             const aPos = getPositionName(a.seatIndex, hand.dealerPosition, allSeats);
@@ -339,7 +341,7 @@ function HandDetailDialog({
             {/* Result */}
             <div className="mt-3 mb-1">
               <div className="flex items-center gap-2 border-b border-white/[0.08] pb-1">
-                <span className="bg-white/[0.08] text-white/70 text-xs font-bold px-2 py-0.5 rounded">Result</span>
+                <span className="text-white/60 text-xs font-bold">Result</span>
                 <span className="text-amber-400/80 text-sm font-bold">Pot {hand.potSize}</span>
               </div>
             </div>
@@ -356,7 +358,7 @@ function HandDetailDialog({
                 const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
                 return (
                   <div key={`result-${i}`} className="flex items-center py-0.5 px-1">
-                    <span className="w-9 shrink-0">
+                    <span className="w-10 shrink-0">
                       {pos && <PositionBadge position={pos} />}
                     </span>
                     <span className="w-24 shrink-0 text-white/40 text-sm truncate">{p.username}</span>
@@ -476,7 +478,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
-                  className="w-full py-3 text-white/40 hover:text-white/70 hover:bg-white/[0.05] rounded-xl transition-all text-sm border border-white/[0.08] hover:border-white/[0.15]"
+                  className="w-full py-3 text-white/50 hover:text-white/80 bg-white/[0.05] hover:bg-white/[0.1] rounded-xl transition-all text-sm border border-white/[0.1] hover:border-white/[0.2] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)]"
                 >
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>

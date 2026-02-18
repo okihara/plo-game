@@ -153,7 +153,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               <p className="text-[3.5cqw] text-white/50 text-center mb-[3cqw]">ログインしてプレイ</p>
               <button
                 onClick={handleLogin}
-                className="w-full py-[2.5cqw] px-[4cqw] text-[3.5cqw] bg-emerald-500 text-white rounded-[2cqw] hover:bg-emerald-400 transition-all font-bold flex items-center justify-center gap-[2cqw] shadow-[0_4px_20px_rgba(16,185,129,0.3)] active:scale-[0.97]"
+                className="w-full py-[2.5cqw] px-[4cqw] text-[3.5cqw] bg-emerald-500 text-white rounded-[2cqw] hover:bg-emerald-400 transition-all font-bold flex items-center justify-center gap-[2cqw] shadow-[0_4px_20px_rgba(16,185,129,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_28px_rgba(16,185,129,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_10px_rgba(16,185,129,0.3)]"
               >
                 Twitterでログイン
               </button>
@@ -171,9 +171,10 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   window.history.pushState({}, '', '/history');
                   window.dispatchEvent(new PopStateEvent('popstate'));
                 }}
-                className="w-full py-[2cqw] px-[4cqw] text-[3cqw] text-white/40 hover:text-white/70 hover:bg-white/[0.05] rounded-[2.5cqw] transition-all border border-white/[0.08] hover:border-white/[0.15]"
+                className="w-full py-[2.5cqw] px-[4cqw] text-[3cqw] text-white/50 hover:text-white/80 bg-white/[0.05] hover:bg-white/[0.1] rounded-[2.5cqw] transition-all border border-white/[0.1] hover:border-white/[0.2] flex items-center justify-between"
               >
-                ハンド履歴を見る
+                <span>ハンド履歴を見る</span>
+                <span className="text-white/30 text-[3.5cqw]">&rsaquo;</span>
               </button>
             </div>
           )}
@@ -192,7 +193,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   disabled={!table.enabled}
                   className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border backdrop-blur-xl ${
                     table.enabled
-                      ? 'bg-white/[0.07] border-white/[0.12] shadow-[0_4px_24px_rgba(0,0,0,0.3)] hover:bg-white/[0.12] hover:border-white/[0.2] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4)] active:scale-[0.98]'
+                      ? 'bg-white/[0.1] border-white/[0.18] shadow-[0_4px_24px_rgba(0,0,0,0.3),inset_0_1px_0_rgba(255,255,255,0.1)] hover:bg-white/[0.15] hover:border-white/[0.25] hover:shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.15)] active:scale-[0.98] active:shadow-[0_2px_12px_rgba(0,0,0,0.3)]'
                       : 'bg-white/[0.03] border-white/[0.06] opacity-40 cursor-not-allowed'
                   }`}
                 >
@@ -200,17 +201,20 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                     <div className="flex items-center gap-[3cqw]">
                       <span className={`px-[2cqw] py-[0.6cqw] text-[2.5cqw] font-bold rounded-[1cqw] ${
                         table.enabled
-                          ? 'bg-emerald-500/20 text-emerald-400'
+                          ? 'bg-emerald-500/30 text-emerald-300 border border-emerald-400/20'
                           : 'bg-white/[0.05] text-white/30'
                       }`}>
                         {table.gameLabel}
                       </span>
                       <span className="text-[5cqw] font-bold text-white">{table.blindsLabel}</span>
                     </div>
-                    <div className="flex items-center gap-[3cqw] text-[2.8cqw]">
+                    <div className="flex items-center gap-[2cqw] text-[2.8cqw]">
                       <span className="text-white/40">buy-in: {table.buyIn}</span>
                       {table.enabled ? (
-                        <span className="text-emerald-400/80">{count}人</span>
+                        <>
+                          <span className="text-emerald-400/80">{count}人</span>
+                          <span className="text-white/25 text-[4cqw]">&rsaquo;</span>
+                        </>
                       ) : (
                         <span className="text-white/25">準備中</span>
                       )}
