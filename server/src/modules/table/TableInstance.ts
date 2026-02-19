@@ -588,12 +588,12 @@ export class TableInstance {
 
     this.isHandInProgress = false;
 
-    // ショーダウン時はカードを確認する時間を長めに取る
     this.pendingStartHand = true;
 
     // 待ち時間
     // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
     const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
+    // ショーダウン時はカードを確認する時間を長めに取る
     const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
     await new Promise(resolve => setTimeout(resolve, delay));
 
