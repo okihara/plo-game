@@ -116,7 +116,10 @@ export class TableInstance {
   // Remove a player from the table
   public unseatPlayer(odId: string): { odId: string; chips: number } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return null;
+    if (seatIndex === -1) {
+      console.error(`Player ${odId} not found in table ${this.id}`);
+      return null;
+    }
 
     const seat = this.playerManager.getSeat(seatIndex);
 
@@ -308,7 +311,7 @@ export class TableInstance {
     if (maintenanceService.isMaintenanceActive()) return;
 
     const playerCount = this.getPlayerCount();
-    if (playerCount < 2) return;
+    if (playerCount < TABLE_CONSTANTS.MIN_PLAYERS_TO_START) return;
 
     this.startNewHand();
   }
