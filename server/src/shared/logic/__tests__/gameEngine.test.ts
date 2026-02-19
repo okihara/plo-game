@@ -1031,12 +1031,19 @@ describe('applyAction: エッジケース', () => {
   }
 
   it('callでチップがちょうど0になるとオールイン', () => {
-    const state = createInitialGameState();
+    // startNewHandでデッキ・ホールカードを正しく初期化
+    const state = startNewHand(createInitialGameState(100));
+    const dealer = state.dealerPosition;
+    const sbIdx = (dealer + 1) % 6;
+    const bbIdx = (dealer + 2) % 6;
+
+    // Player 0をコールでちょうどオールインになる状態にする
     state.currentBet = 100;
     state.currentPlayerIndex = 0;
-    state.players[0].chips = 100;
-    state.players[0].currentBet = 0;
+    state.players[0].chips = 100 - state.players[0].currentBet; // currentBet分を引く
+    const chipsBefore = state.players[0].chips;
     state.pot = 200;
+
     // 他プレイヤーをfolded/hasActedにして次のプレイヤー判定を安定させる
     for (let i = 1; i < 6; i++) {
       state.players[i].folded = true;
@@ -1045,9 +1052,12 @@ describe('applyAction: エッジケース', () => {
     state.players[1].folded = false;
     state.players[1].currentBet = 100;
     state.players[1].hasActed = true;
+    state.players[1].isAllIn = true;
+    state.players[1].chips = 0;
 
     const newState = applyAction(state, 0, 'call');
-    expect(newState.players[0].chips).toBe(0);
+    // コール後にランアウト→ショーダウンまで進む（両者オールイン）
+    expect(newState.isHandComplete).toBe(true);
     expect(newState.players[0].isAllIn).toBe(true);
   });
 
@@ -1440,5 +1450,44 @@ describe('全員オールイン: ボードランアウト', () => {
 
     const totalChips = state.players.reduce((sum, p) => sum + p.chips, 0);
     expect(totalChips).toBe(600);
+  });
+
+  it('1人オールイン+1人コール（残りフォールド）で自動ランアウト', () => {
+    const initialState = createInitialGameState(100);
+    const totalChips = initialState.players.reduce((sum, p) => sum + p.chips, 0); // 600
+    let state = startNewHand(initialState);
+
+    // 最初のプレイヤーがオールイン
+    const firstPlayer = state.currentPlayerIndex;
+    state = applyAction(state, firstPlayer, 'allin');
+    expect(state.isHandComplete).toBe(false);
+
+    // 残りはフォールド、最後の1人だけコール
+    let lastCaller = -1;
+    let loopCount = 0;
+    while (!state.isHandComplete && loopCount < 10) {
+      const idx = state.currentPlayerIndex;
+      const actions = getValidActions(state, idx);
+      const callAction = actions.find(a => a.action === 'call');
+
+      // 最後のアクション可能プレイヤーだけコール、他はフォールド
+      const activeBefore = state.players.filter(p => !p.folded && p.id !== firstPlayer && !p.isAllIn).length;
+      if (activeBefore === 1 && callAction) {
+        lastCaller = idx;
+        state = applyAction(state, idx, 'call');
+      } else {
+        state = applyAction(state, idx, 'fold');
+      }
+      loopCount++;
+    }
+
+    // チェックなしで直接ショーダウンに到達
+    expect(state.isHandComplete).toBe(true);
+    expect(state.currentStreet).toBe('showdown');
+    expect(state.communityCards).toHaveLength(5);
+
+    // チップ合計が保存される
+    const totalChipsAfter = state.players.reduce((sum, p) => sum + p.chips, 0);
+    expect(totalChipsAfter).toBe(totalChips);
   });
 });

@@ -525,8 +525,9 @@ function moveToNextStreet(state: GameState): GameState {
     }
   }
 
-  if (firstActorIndex === -1) {
-    // 全員オールインなのでボードをランアウトしてショーダウン
+  // アクション可能なプレイヤーが1人以下ならベッティング不要 → ランアウト
+  const canActPlayers = activePlayers.filter(p => !p.isAllIn);
+  if (canActPlayers.length <= 1) {
     return runOutBoard(newState);
   }
 
@@ -542,7 +543,7 @@ function runOutBoard(state: GameState): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   // コミュニティカードが5枚になるまで配る
-  while (newState.communityCards.length < 5) {
+  while (newState.communityCards.length < 5 && newState.deck.length > 0) {
     const { cards, remainingDeck } = dealCards(newState.deck, 1);
     newState.communityCards.push(...cards);
     newState.deck = remainingDeck;
@@ -620,7 +621,7 @@ export function determineWinner(state: GameState): GameState {
 
   // コミュニティカードが5枚揃っていない場合はランアウト
   if (newState.communityCards.length < 5) {
-    while (newState.communityCards.length < 5) {
+    while (newState.communityCards.length < 5 && newState.deck.length > 0) {
       const { cards, remainingDeck } = dealCards(newState.deck, 1);
       newState.communityCards.push(...cards);
       newState.deck = remainingDeck;
