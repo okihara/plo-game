@@ -560,7 +560,6 @@ export class TableInstance {
       };
 
       // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
-
       await new Promise(resolve => setTimeout(resolve, 2000));
 
       this.broadcast.emitToRoom('game:showdown', showdownData);
@@ -589,15 +588,16 @@ export class TableInstance {
 
     this.isHandInProgress = false;
 
-    // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
-    const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
-
     // ショーダウン時はカードを確認する時間を長めに取る
     this.pendingStartHand = true;
+
+    // 待ち時間
+    // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
+    const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
     const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     // Remove busted players
-    await new Promise(resolve => setTimeout(resolve, delay));
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
       if (seat && seat.chips <= 0) {
