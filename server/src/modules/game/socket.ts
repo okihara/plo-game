@@ -309,12 +309,19 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     // Handle fast fold pool leave
     socket.on('matchmaking:leave', async (data: { blinds: string }) => {
-      await matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
+      try {
+        const refund = await matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
+        if (refund > 0) {
+          await cashOutPlayer(socket.odId!, refund);
+        }
 
-      // Leave current table too (with cashout)
-      const table = tableManager.getPlayerTable(socket.odId!);
-      if (table) {
-        await unseatAndCashOut(table, socket.odId!);
+        // Leave current table too (with cashout)
+        const table = tableManager.getPlayerTable(socket.odId!);
+        if (table) {
+          await unseatAndCashOut(table, socket.odId!);
+        }
+      } catch (err) {
+        console.error(`Error during matchmaking:leave for ${socket.odId}:`, err);
       }
     });
 
@@ -322,9 +329,21 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('disconnect', async () => {
       console.log(`Player disconnected: ${socket.odId} (${socket.odName})`);
 
-      const table = tableManager.getPlayerTable(socket.odId!);
-      if (table) {
-        await unseatAndCashOut(table, socket.odId!);
+      try {
+        // テーブルから離席+キャッシュアウト
+        const table = tableManager.getPlayerTable(socket.odId!);
+        if (table) {
+          await unseatAndCashOut(table, socket.odId!);
+        }
+
+        // マッチメイキングキューから除去+リファンド
+        const refund = await matchmakingPool.removeFromAllQueues(socket.odId!);
+        if (refund > 0) {
+          await cashOutPlayer(socket.odId!, refund);
+          console.log(`Refunded ${refund} chips to ${socket.odId} from matchmaking queue`);
+        }
+      } catch (err) {
+        console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
       }
     });
 

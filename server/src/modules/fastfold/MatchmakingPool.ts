@@ -66,18 +66,27 @@ export class MatchmakingPool {
     this.processQueue(blinds);
   }
 
-  // Remove player from queue
-  public async removeFromQueue(odId: string, blinds: string): Promise<void> {
+  // Remove player from queue (returns refund chip amount, 0 if not found)
+  public async removeFromQueue(odId: string, blinds: string): Promise<number> {
     const queue = this.queues.get(blinds);
-    if (!queue) return;
+    if (!queue) return 0;
 
     const index = queue.findIndex(p => p.odId === odId);
     if (index !== -1) {
-      queue.splice(index, 1);
+      const [removed] = queue.splice(index, 1);
+      return removed.chips;
     }
 
-    // Remove from Redis
-    // (Note: This is a simplified approach - in production, would need to scan and remove)
+    return 0;
+  }
+
+  // Remove player from ALL queues (returns total refund chip amount)
+  public async removeFromAllQueues(odId: string): Promise<number> {
+    let totalRefund = 0;
+    for (const blinds of this.queues.keys()) {
+      totalRefund += await this.removeFromQueue(odId, blinds);
+    }
+    return totalRefund;
   }
 
   // Process queue and seat players
