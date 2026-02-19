@@ -386,16 +386,23 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
             };
           });
           setWinners(convertedWinners);
-          // setShowdownHandNames(pendingShowdownHandNamesRef.current);
+          if (pendingShowdownHandNamesRef.current) {
+            setShowdownHandNames(pendingShowdownHandNamesRef.current);
+          }
         }
       },
       onShowdown: ({ players: showdownPlayers }) => {
         const cardsMap = new Map<number, Card[]>();
+        const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
           cardsMap.set(p.seatIndex, p.cards);
+          if (p.handName) {
+            handNamesMap.set(p.seatIndex, p.handName);
+          }
         }
-        // カードを公開
+        // カードを公開（役名はhand_completeで表示）
         setShowdownCards(cardsMap);
+        pendingShowdownHandNamesRef.current = handNamesMap;
       },
       onBusted: (message) => {
         setBustedMessage(message);
