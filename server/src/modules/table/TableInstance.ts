@@ -68,15 +68,9 @@ export class TableInstance {
     this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
   }
 
-  // Get room name for this table
-  private get roomName() {
-    return `table:${this.id}`;
-  }
-
-  // ダッシュボード用：ゲーム状態詳細を取得
-  public getDebugState(): DebugState {
-    return this.adminHelper.getDebugState(this.gameState, this.isHandInProgress);
-  }
+  // ============================================
+  // Public methods
+  // ============================================
 
   // Add a player to the table
   public seatPlayer(
@@ -165,26 +159,6 @@ export class TableInstance {
     return { odId, chips };
   }
 
-  // Advance game to next player after a fold
-  private advanceToNextPlayer(): void {
-    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return;
-
-    const result = this.actionController.advanceToNextPlayer(
-      this.gameState,
-      this.playerManager.getSeats()
-    );
-
-    this.gameState = result.gameState;
-
-    if (result.handComplete) {
-      this.broadcastGameState();
-      this.handleHandComplete();
-    } else {
-      this.requestNextAction();
-      this.broadcastGameState();
-    }
-  }
-
   // Handle player action
   public handleAction(odId: string, action: Action, amount: number): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return false;
@@ -237,6 +211,10 @@ export class TableInstance {
     return true;
   }
 
+  public triggerMaybeStartHand(): void {
+    this.maybeStartHand();
+  }
+
   // Get the number of connected players
   public getConnectedPlayerCount(): number {
     return this.playerManager.getConnectedPlayerCount();
@@ -264,10 +242,65 @@ export class TableInstance {
     };
   }
 
-  // Private methods
+  public getClientGameState(): ClientGameState {
+    return StateTransformer.toClientGameState(
+      this.id,
+      this.playerManager.getSeats(),
+      this.gameState,
+      this.actionController.getPendingAction(),
+      this.isHandInProgress,
+      this.smallBlind,
+      this.bigBlind
+    );
+  }
 
-  public triggerMaybeStartHand(): void {
-    this.maybeStartHand();
+  // スペクテーター管理
+  public addSpectator(socket: Socket): void {
+    this.spectatorManager.addSpectator(socket);
+  }
+
+  public sendAllHoleCardsToSpectator(socket: Socket): void {
+    this.spectatorManager.sendAllHoleCards(socket, this.gameState, this.isHandInProgress);
+  }
+
+  // デバッグ・管理用
+  public getDebugState(): DebugState {
+    return this.adminHelper.getDebugState(this.gameState, this.isHandInProgress);
+  }
+
+  public debugSetChips(odId: string, chips: number): boolean {
+    return this.adminHelper.debugSetChips(odId, chips, this.gameState, () => this.broadcastGameState());
+  }
+
+  public getAdminSeats(): (AdminSeat | null)[] {
+    return this.adminHelper.getAdminSeats(this.gameState);
+  }
+
+  // ============================================
+  // Private methods
+  // ============================================
+
+  private get roomName() {
+    return `table:${this.id}`;
+  }
+
+  private advanceToNextPlayer(): void {
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return;
+
+    const result = this.actionController.advanceToNextPlayer(
+      this.gameState,
+      this.playerManager.getSeats()
+    );
+
+    this.gameState = result.gameState;
+
+    if (result.handComplete) {
+      this.broadcastGameState();
+      this.handleHandComplete();
+    } else {
+      this.requestNextAction();
+      this.broadcastGameState();
+    }
   }
 
   private maybeStartHand(): void {
@@ -575,41 +608,7 @@ export class TableInstance {
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }
 
-  // ============================================
-  // スペクテーター管理
-  // ============================================
-
-  public addSpectator(socket: Socket): void {
-    this.spectatorManager.addSpectator(socket);
-  }
-
-  public sendAllHoleCardsToSpectator(socket: Socket): void {
-    this.spectatorManager.sendAllHoleCards(socket, this.gameState, this.isHandInProgress);
-  }
-
   private broadcastAllHoleCardsToSpectators(): void {
     this.spectatorManager.broadcastAllHoleCards(this.gameState);
-  }
-
-  // デバッグ用: プレイヤーのチップを強制的に変更する
-  public debugSetChips(odId: string, chips: number): boolean {
-    return this.adminHelper.debugSetChips(odId, chips, this.gameState, () => this.broadcastGameState());
-  }
-
-  public getClientGameState(): ClientGameState {
-    return StateTransformer.toClientGameState(
-      this.id,
-      this.playerManager.getSeats(),
-      this.gameState,
-      this.actionController.getPendingAction(),
-      this.isHandInProgress,
-      this.smallBlind,
-      this.bigBlind
-    );
-  }
-
-  /** 管理ダッシュボード用: 各シートの Player + SeatInfo 属性を返す */
-  public getAdminSeats(): (AdminSeat | null)[] {
-    return this.adminHelper.getAdminSeats(this.gameState);
   }
 }
