@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action, Card } from '../../shared/logic/types.js';
+import { GameState, Action } from '../../shared/logic/types.js';
 import { createInitialGameState, startNewHand, getActivePlayers, getValidActions } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
@@ -15,6 +15,7 @@ import { StateTransformer } from './helpers/StateTransformer.js';
 import { FoldProcessor } from './helpers/FoldProcessor.js';
 import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
+import { SpectatorManager } from './helpers/SpectatorManager.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 // 型の再エクスポート（後方互換性のため）
@@ -37,7 +38,6 @@ export class TableInstance {
   private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
   private isHandInProgress = false;
   private pendingStartHand = false;
-  private spectators: Set<Socket> = new Set();
 
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
@@ -46,6 +46,7 @@ export class TableInstance {
   private readonly actionController: ActionController;
   private readonly historyRecorder: HandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
+  private readonly spectatorManager: SpectatorManager;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false) {
     this.id = nanoid(12);
@@ -64,6 +65,7 @@ export class TableInstance {
     this.actionController = new ActionController(this.broadcast);
     this.historyRecorder = new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
+    this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
   }
 
   // Get room name for this table
@@ -578,53 +580,15 @@ export class TableInstance {
   // ============================================
 
   public addSpectator(socket: Socket): void {
-    this.spectators.add(socket);
-    socket.join(this.roomName);
-    socket.on('disconnect', () => {
-      this.spectators.delete(socket);
-    });
+    this.spectatorManager.addSpectator(socket);
   }
 
   public sendAllHoleCardsToSpectator(socket: Socket): void {
-    if (!this.gameState || !this.isHandInProgress) return;
-
-    const seats = this.playerManager.getSeats();
-    const players: { seatIndex: number; cards: Card[] }[] = [];
-
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      if (seats[i] && this.gameState.players[i].holeCards.length > 0) {
-        players.push({
-          seatIndex: i,
-          cards: this.gameState.players[i].holeCards,
-        });
-      }
-    }
-
-    if (players.length > 0) {
-      socket.emit('game:all_hole_cards', { players });
-    }
+    this.spectatorManager.sendAllHoleCards(socket, this.gameState, this.isHandInProgress);
   }
 
   private broadcastAllHoleCardsToSpectators(): void {
-    if (!this.gameState || this.spectators.size === 0) return;
-
-    const seats = this.playerManager.getSeats();
-    const players: { seatIndex: number; cards: Card[] }[] = [];
-
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      if (seats[i] && this.gameState.players[i].holeCards.length > 0) {
-        players.push({
-          seatIndex: i,
-          cards: this.gameState.players[i].holeCards,
-        });
-      }
-    }
-
-    if (players.length > 0) {
-      for (const socket of this.spectators) {
-        socket.emit('game:all_hole_cards', { players });
-      }
-    }
+    this.spectatorManager.broadcastAllHoleCards(this.gameState);
   }
 
   // デバッグ用: プレイヤーのチップを強制的に変更する
