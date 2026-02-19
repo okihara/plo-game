@@ -52,6 +52,9 @@ export class TableManager {
 
   // Remove a table
   public removeTable(tableId: string): void {
+    if (!this.tables.has(tableId)) {
+      console.warn(`[TableManager] removeTable: table ${tableId} not found`);
+    }
     this.tables.delete(tableId);
   }
 

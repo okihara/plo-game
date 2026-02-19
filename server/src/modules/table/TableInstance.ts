@@ -88,7 +88,10 @@ export class TableInstance {
       isHandInProgress: this.isHandInProgress,
     });
 
-    if (seatIndex === null) return null;
+    if (seatIndex === null) {
+      console.warn(`[Table ${this.id}] seatPlayer failed: odId=${odId}, odName=${odName}, buyIn=${buyIn}, preferredSeat=${preferredSeat}, handInProgress=${this.isHandInProgress}`);
+      return null;
+    }
 
     socket.join(this.roomName);
 
@@ -161,10 +164,16 @@ export class TableInstance {
 
   // Handle player action
   public handleAction(odId: string, action: Action, amount: number): boolean {
-    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return false;
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
+      console.warn(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
+      return false;
+    }
 
     const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return false;
+    if (seatIndex === -1) {
+      console.warn(`[Table ${this.id}] handleAction: player not found at table, odId=${odId}`);
+      return false;
+    }
 
     const result = this.actionController.handleAction(
       this.gameState,
@@ -174,7 +183,10 @@ export class TableInstance {
       odId
     );
 
-    if (!result.success) return false;
+    if (!result.success) {
+      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}`);
+      return false;
+    }
 
     // ランアウト検出用にカード枚数を保存
     const previousCardCount = this.gameState.communityCards.length;
@@ -394,6 +406,7 @@ export class TableInstance {
   }
 
   private handleActionTimeout(playerId: string, seatIndex: number): void {
+    console.warn(`[Table ${this.id}] Action timeout: playerId=${playerId}, seat=${seatIndex}`);
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
@@ -511,7 +524,10 @@ export class TableInstance {
   }
 
   private async handleHandComplete(): Promise<void> {
-    if (!this.gameState) return;
+    if (!this.gameState) {
+      console.error(`[Table ${this.id}] handleHandComplete called but gameState is null`);
+      return;
+    }
 
     // Clear pending action and ensure runout flag is reset (safety)
     this.actionController.clearTimers();

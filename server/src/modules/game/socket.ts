@@ -207,10 +207,15 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           socket.emit('table:joined', { tableId, seat: seatNumber });
         } else {
           // Refund if couldn't seat
-          await prisma.bankroll.update({
-            where: { userId: socket.odId },
-            data: { balance: { increment: buyIn } },
-          });
+          console.warn(`[table:join] Seating failed, refunding buyIn=${buyIn} to ${socket.odId}, tableId=${tableId}`);
+          try {
+            await prisma.bankroll.update({
+              where: { userId: socket.odId },
+              data: { balance: { increment: buyIn } },
+            });
+          } catch (refundErr) {
+            console.error(`[table:join] CRITICAL: Refund failed for ${socket.odId}, buyIn=${buyIn}, tableId=${tableId}:`, refundErr);
+          }
           socket.emit('table:error', { message: 'No available seats' });
         }
       } catch (err) {
@@ -225,6 +230,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       if (table) {
         await unseatAndCashOut(table, socket.odId!);
         socket.emit('table:left');
+      } else {
+        console.warn(`[table:leave] Player ${socket.odId} tried to leave but not seated at any table`);
       }
     });
 
@@ -252,7 +259,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       const { blinds } = data;
 
       try {
-        const [, bb] = blinds.split('/').map(Number);
+        const parts = blinds.split('/');
+        if (parts.length !== 2 || parts.some(p => isNaN(Number(p)) || Number(p) <= 0)) {
+          console.error(`[matchmaking:join] Invalid blinds format: "${blinds}", odId=${socket.odId}`);
+          socket.emit('table:error', { message: 'Invalid blinds format' });
+          return;
+        }
+        const [, bb] = parts.map(Number);
         const minBuyIn = bb * 100; // $300 for $1/$3
 
         // Check balance
@@ -315,6 +328,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         }
       } catch (err) {
         console.error(`Error during matchmaking:leave for ${socket.odId}:`, err);
+        socket.emit('table:error', { message: 'Failed to leave matchmaking pool' });
       }
     });
 
