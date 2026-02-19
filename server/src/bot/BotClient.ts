@@ -300,6 +300,7 @@ export class BotClient {
       smallBlind: this.gameState.smallBlind,
       bigBlind: this.gameState.bigBlind,
       lastRaiserIndex: -1,
+      lastFullRaiseBet: this.gameState.currentBet,
       handHistory: this.handActions,
       isHandComplete: false,
       winners: [],

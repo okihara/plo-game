@@ -1180,6 +1180,163 @@ describe('determineWinner: タイと端数', () => {
   });
 });
 
+describe('フルレイズルール（リオープン制限）', () => {
+  it('非フルレイズのオールインで既アクション済みプレイヤーにレイズ権がない', () => {
+    // セットアップ: Player0がレイズ済み、Player1が非フルレイズでオールイン
+    const state = createInitialGameState();
+    state.currentBet = 300;
+    state.minRaise = 200;
+    state.lastFullRaiseBet = 300;
+    state.currentPlayerIndex = 1;
+    state.pot = 600;
+
+    // Player0: レイズ済み（300にレイズ）
+    state.players[0].chips = 500;
+    state.players[0].currentBet = 300;
+    state.players[0].hasActed = true;
+
+    // Player1: ショートスタック（350にオールイン予定 → raiseBy=50 < minRaise=200）
+    state.players[1].chips = 350;
+    state.players[1].currentBet = 0;
+    state.players[1].hasActed = false;
+
+    // Player2: 未アクション（minRaise=200を出せるだけのチップが必要）
+    state.players[2].chips = 1000;
+    state.players[2].currentBet = 0;
+    state.players[2].hasActed = false;
+
+    for (let i = 3; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    // Player1がオールイン（350）→ 非フルレイズ
+    const afterAllin = applyAction(state, 1, 'allin');
+
+    expect(afterAllin.currentBet).toBe(350);
+    // hasActedはリセットされない（非フルレイズ）
+    expect(afterAllin.players[0].hasActed).toBe(true);
+    // lastFullRaiseBetは更新されない
+    expect(afterAllin.lastFullRaiseBet).toBe(300);
+
+    // Player2（未アクション）にはレイズ権がある
+    const actionsP2 = getValidActions(afterAllin, 2);
+    const p2ActionTypes = actionsP2.map(a => a.action);
+    expect(p2ActionTypes).toContain('raise');
+
+    // Player0（既アクション済み）にはレイズ権がない
+    // Player2がコールした後の状態でPlayer0のアクションを確認
+    const afterP2Call = applyAction(afterAllin, 2, 'call');
+    const actionsP0 = getValidActions(afterP2Call, 0);
+    const p0ActionTypes = actionsP0.map(a => a.action);
+    expect(p0ActionTypes).toContain('call');
+    expect(p0ActionTypes).toContain('fold');
+    expect(p0ActionTypes).not.toContain('raise');
+    expect(p0ActionTypes).not.toContain('allin');
+  });
+
+  it('フルレイズのオールインで全プレイヤーにアクション機会が与えられる', () => {
+    const state = createInitialGameState();
+    state.currentBet = 300;
+    state.minRaise = 200;
+    state.lastFullRaiseBet = 300;
+    state.currentPlayerIndex = 1;
+    state.pot = 600;
+
+    // Player0: レイズ済み
+    state.players[0].chips = 500;
+    state.players[0].currentBet = 300;
+    state.players[0].hasActed = true;
+
+    // Player1: 十分なチップでオールイン（500 → raiseBy=200 >= minRaise=200）
+    state.players[1].chips = 500;
+    state.players[1].currentBet = 0;
+    state.players[1].hasActed = false;
+
+    state.players[2].chips = 500;
+    state.players[2].currentBet = 0;
+    state.players[2].hasActed = false;
+
+    for (let i = 3; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    // Player1がオールイン（500）→ フルレイズ
+    const afterAllin = applyAction(state, 1, 'allin');
+
+    expect(afterAllin.currentBet).toBe(500);
+    // hasActedがリセットされる（フルレイズ）
+    expect(afterAllin.players[0].hasActed).toBe(false);
+    // lastFullRaiseBetが更新される
+    expect(afterAllin.lastFullRaiseBet).toBe(500);
+
+    // Player0にもレイズ権がある
+    const actionsP0 = getValidActions(afterAllin, 0);
+    const p0ActionTypes = actionsP0.map(a => a.action);
+    expect(p0ActionTypes).toContain('call');
+  });
+
+  it('非フルレイズオールイン後もゲームが正常に進行する', () => {
+    const state = createInitialGameState(300);
+
+    // Player2をショートスタックにする
+    state.players[2].chips = 10;
+
+    const totalChipsBefore = state.players.reduce((sum, p) => sum + p.chips, 0);
+
+    let gameState = startNewHand(state);
+
+    // ゲームを最後まで回す
+    let loopCount = 0;
+    while (!gameState.isHandComplete && loopCount < 100) {
+      const current = gameState.currentPlayerIndex;
+      const actions = getValidActions(gameState, current);
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      const allinAction = actions.find(a => a.action === 'allin');
+
+      if (callAction) {
+        gameState = applyAction(gameState, current, 'call');
+      } else if (checkAction) {
+        gameState = applyAction(gameState, current, 'check');
+      } else if (allinAction) {
+        gameState = applyAction(gameState, current, 'allin');
+      } else {
+        gameState = applyAction(gameState, current, 'fold');
+      }
+      loopCount++;
+    }
+
+    expect(gameState.isHandComplete).toBe(true);
+    // チップ合計が保存される
+    const totalChipsAfter = gameState.players.reduce((sum, p) => sum + p.chips, 0);
+    expect(totalChipsAfter).toBe(totalChipsBefore);
+  });
+
+  it('lastFullRaiseBetがストリート間でリセットされる', () => {
+    let state = startNewHand(createInitialGameState(1000));
+
+    // プリフロップでlastFullRaiseBetがBBに設定されている
+    expect(state.lastFullRaiseBet).toBe(state.bigBlind);
+
+    // 全員コール/チェックでフロップへ
+    let loopCount = 0;
+    while (state.currentStreet === 'preflop' && !state.isHandComplete && loopCount < 20) {
+      const current = state.currentPlayerIndex;
+      const actions = getValidActions(state, current);
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) state = applyAction(state, current, 'call');
+      else if (checkAction) state = applyAction(state, current, 'check');
+      else break;
+      loopCount++;
+    }
+
+    expect(state.currentStreet).toBe('flop');
+    // フロップではlastFullRaiseBetがリセットされる
+    expect(state.lastFullRaiseBet).toBe(0);
+  });
+});
+
 describe('全員オールイン: ボードランアウト', () => {
   it('プリフロップで全員オールインするとショーダウンまで進む', () => {
     let state = startNewHand(createInitialGameState(10));

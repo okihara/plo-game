@@ -44,6 +44,7 @@ export function createInitialGameState(playerChips: number = 600): GameState {
     smallBlind: 1,
     bigBlind: 3,
     lastRaiserIndex: -1,     // 最後にレイズしたプレイヤー（-1は誰もレイズしていない）
+    lastFullRaiseBet: 0,     // フルレイズが発生した時の currentBet（リオープン判定用）
     handHistory: [],         // このハンドのアクション履歴
     isHandComplete: false,
     winners: [],
@@ -68,6 +69,7 @@ export function startNewHand(state: GameState): GameState {
   newState.isHandComplete = false;
   newState.winners = [];
   newState.lastRaiserIndex = -1;
+  newState.lastFullRaiseBet = 0;
 
   // === プレイヤー状態のリセット ===
   newState.players = newState.players.map(p => ({
@@ -130,6 +132,9 @@ export function startNewHand(state: GameState): GameState {
 
   // ブラインドをポットに加算
   newState.pot = newState.players[sbIndex].currentBet + newState.players[bbIndex].currentBet;
+
+  // BBの投稿をフルレイズとして記録（プリフロップ特有）
+  newState.lastFullRaiseBet = newState.currentBet;
 
   // === カードを配る ===
   // PLOは4枚ずつ配る（テキサスホールデムは2枚）
@@ -243,6 +248,11 @@ export function getValidActions(state: GameState, playerIndex: number): { action
     actions.push({ action: 'call', minAmount: callAmount, maxAmount: callAmount });
   }
 
+  // === フルレイズルール: リレイズ権の判定 ===
+  // hasActed=true かつ lastFullRaiseBet 以上のベット済み → リレイズ不可（コール/フォールドのみ）
+  // 非フルレイズのオールインに対して、既にアクション済みプレイヤーはコール/フォールドのみ
+  const canRaise = !player.hasActed || player.currentBet < state.lastFullRaiseBet;
+
   // === ポットリミット計算 ===
   // PLOのポットリミット: コール額 + (現在のポット + コール額)
   // 例: ポット100、コール額20 → 最大レイズ = 20 + (100 + 20) = 140
@@ -250,8 +260,8 @@ export function getValidActions(state: GameState, playerIndex: number): { action
   const potLimitRaise = toCall + potAfterCall;
   const maxByPotLimit = Math.min(potLimitRaise, player.chips);
 
-  // ベット/レイズ（コール額より多くのチップが必要）
-  if (player.chips > toCall) {
+  // ベット/レイズ（コール額より多くのチップが必要、かつリレイズ権あり）
+  if (canRaise && player.chips > toCall) {
     const minRaiseTotal = state.currentBet + state.minRaise;  // 最小レイズ後の合計ベット額
     const minRaiseAmount = minRaiseTotal - player.currentBet; // プレイヤーが追加で出す額
 
@@ -269,8 +279,8 @@ export function getValidActions(state: GameState, playerIndex: number): { action
     }
   }
 
-  // オールイン（チップがポットリミット以下の場合のみ選択肢として表示）
-  if (player.chips > 0) {
+  // オールイン（チップがポットリミット以下の場合のみ選択肢として表示、かつリレイズ権あり）
+  if (canRaise && player.chips > 0) {
     const maxBetOrRaise = state.currentBet === 0 ? state.pot : potLimitRaise;
     if (player.chips <= maxBetOrRaise) {
       actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
@@ -327,6 +337,7 @@ export function applyAction(state: GameState, playerIndex: number, action: Actio
       newState.pot += amount;
       newState.currentBet = player.currentBet;  // 新しい最高ベット額
       newState.lastRaiserIndex = playerIndex;
+      newState.lastFullRaiseBet = newState.currentBet;  // bet/raiseは常にフルレイズ
       if (player.chips === 0) player.isAllIn = true;
 
       // レイズがあったら他のプレイヤーのhasActedをリセット
@@ -345,8 +356,9 @@ export function applyAction(state: GameState, playerIndex: number, action: Actio
       if (player.currentBet + allInAmount > newState.currentBet) {
         // オールインがレイズになる場合
         const raiseBy = (player.currentBet + allInAmount) - newState.currentBet;
-        if (raiseBy >= newState.minRaise) {
-          // 最小レイズ額以上なら正式なレイズ扱い
+        const isFullRaise = raiseBy >= newState.minRaise;
+        if (isFullRaise) {
+          // 最小レイズ額以上なら正式なレイズ扱い（フルレイズ）
           newState.minRaise = raiseBy;
           newState.lastRaiserIndex = playerIndex;
           // 他のプレイヤーのhasActedをリセット
@@ -357,6 +369,10 @@ export function applyAction(state: GameState, playerIndex: number, action: Actio
           }
         }
         newState.currentBet = player.currentBet + allInAmount;
+        // フルレイズ時のみ lastFullRaiseBet を更新（非フルレイズでは既アクション済みプレイヤーにリレイズ権なし）
+        if (isFullRaise) {
+          newState.lastFullRaiseBet = newState.currentBet;
+        }
       }
       player.currentBet += allInAmount;
       player.totalBetThisRound += allInAmount;
@@ -454,6 +470,7 @@ function moveToNextStreet(state: GameState): GameState {
   }
   newState.currentBet = 0;
   newState.minRaise = newState.bigBlind;  // 最小レイズをBBにリセット
+  newState.lastFullRaiseBet = 0;
 
   const activePlayers = getActivePlayers(newState);
   if (activePlayers.length === 1) {

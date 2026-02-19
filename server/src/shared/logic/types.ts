@@ -51,6 +51,7 @@ export interface GameState {
   smallBlind: number;
   bigBlind: number;
   lastRaiserIndex: number;
+  lastFullRaiseBet: number;  // フルレイズが発生した時の currentBet（リオープン判定用）
   handHistory: GameAction[];
   isHandComplete: boolean;
   winners: { playerId: number; amount: number; handName: string }[];
