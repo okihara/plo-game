@@ -89,6 +89,7 @@ class WebSocketService {
       };
 
       this.socket.on('connection:established', ({ playerId }) => {
+        console.log('[WS] connection:established', { playerId });
         this.playerId = playerId;
         this.listeners.onConnected?.(playerId);
         settle();
@@ -96,12 +97,14 @@ class WebSocketService {
       });
 
       this.socket.on('connection:error', ({ message }) => {
+        console.log('[WS] connection:error', { message });
         this.listeners.onError?.(message);
         settle();
         reject(new Error(message));
       });
 
       this.socket.on('connect_error', (err) => {
+        console.log('[WS] connect_error', err.message);
         this.listeners.onError?.(err.message);
         if (!settled) {
           settle();
@@ -110,83 +113,102 @@ class WebSocketService {
       });
 
       this.socket.on('disconnect', () => {
+        console.log('[WS] disconnect');
         this.listeners.onDisconnected?.();
       });
 
       // Table events
       this.socket.on('table:joined', ({ tableId, seat }) => {
+        console.log('[WS] table:joined', { tableId, seat });
         this.listeners.onTableJoined?.(tableId, seat);
       });
 
       this.socket.on('table:left', () => {
+        console.log('[WS] table:left');
         this.listeners.onTableLeft?.();
       });
 
       this.socket.on('table:player_joined', ({ seat, player }) => {
+        console.log('[WS] table:player_joined', { seat, player });
         this.listeners.onPlayerJoined?.(seat, player);
       });
 
       this.socket.on('table:player_left', ({ seat, playerId }) => {
+        console.log('[WS] table:player_left', { seat, playerId });
         this.listeners.onPlayerLeft?.(seat, playerId);
       });
 
       this.socket.on('table:error', ({ message }) => {
+        console.log('[WS] table:error', { message });
         this.listeners.onError?.(message);
       });
 
       this.socket.on('table:busted', ({ message }) => {
+        console.log('[WS] table:busted', { message });
         this.listeners.onBusted?.(message);
       });
 
       // Game events
       this.socket.on('game:state', ({ state }) => {
+        console.log('[WS] game:state', { phase: state.phase, street: state.currentStreet, pot: state.pot, handNumber: state.handNumber });
         this.listeners.onGameState?.(state);
       });
 
       this.socket.on('game:hole_cards', ({ cards }) => {
+        console.log('[WS] game:hole_cards', { cards });
         this.listeners.onHoleCards?.(cards);
       });
 
       this.socket.on('game:action_required', (data) => {
+        console.log('[WS] game:action_required', { playerId: data.playerId, validActions: data.validActions });
         this.listeners.onActionRequired?.(data);
       });
 
       this.socket.on('game:action_taken', (data) => {
+        console.log('[WS] game:action_taken', data);
         this.listeners.onActionTaken?.(data);
       });
 
       this.socket.on('game:street_changed', ({ street, communityCards }) => {
+        console.log('[WS] game:street_changed', { street, communityCards });
         this.listeners.onStreetChanged?.(street, communityCards);
       });
 
       this.socket.on('game:showdown', ({ winners, players }) => {
+        console.log('[WS] game:showdown', { winners, players });
         this.listeners.onShowdown?.({ winners, players });
       });
 
       this.socket.on('game:hand_complete', ({ winners }) => {
+        console.log('[WS] game:hand_complete', { winners });
         this.listeners.onHandComplete?.(winners);
       });
 
       // Matchmaking events
       this.socket.on('matchmaking:queued', ({ position }) => {
+        console.log('[WS] matchmaking:queued', { position });
         this.listeners.onMatchmakingQueued?.(position);
       });
 
       this.socket.on('matchmaking:table_assigned', ({ tableId }) => {
+        console.log('[WS] matchmaking:table_assigned', { tableId });
         this.listeners.onMatchmakingTableAssigned?.(tableId);
       });
 
       // Spectator events
       this.socket.on('table:spectating', ({ tableId }) => {
+        console.log('[WS] table:spectating', { tableId });
         this.listeners.onSpectating?.(tableId);
       });
 
       this.socket.on('game:all_hole_cards', ({ players }) => {
+        console.log('[WS] game:all_hole_cards', { players });
         this.listeners.onAllHoleCards?.(players);
       });
 
       // Maintenance events
       this.socket.on('maintenance:status', (data) => {
+        console.log('[WS] maintenance:status', data);
         this.listeners.onMaintenanceStatus?.(data);
       });
 

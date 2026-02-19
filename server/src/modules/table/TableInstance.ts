@@ -174,7 +174,10 @@ export class TableInstance {
       console.warn(`[Table ${this.id}] handleAction: player not found at table, odId=${odId}`);
       return false;
     }
+    // ランアウト検出用にカード枚数を保存
+    const previousCardCount = this.gameState.communityCards.length;
 
+    // アクションを処理
     const result = this.actionController.handleAction(
       this.gameState,
       seatIndex,
@@ -187,9 +190,6 @@ export class TableInstance {
       console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}`);
       return false;
     }
-
-    // ランアウト検出用にカード枚数を保存
-    const previousCardCount = this.gameState.communityCards.length;
 
     this.gameState = result.gameState;
 
@@ -436,7 +436,8 @@ export class TableInstance {
    * @param finalState 全カード配布済み＆勝者決定済みの最終ゲーム状態
    * @param previousCardCount ランアウト開始前のコミュニティカード枚数
    */
-  private handleAllInRunOut(finalState: GameState, previousCardCount: number): void {
+  private async handleAllInRunOut(finalState: GameState, previousCardCount: number): Promise<void> {
+    console.warn(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
     const allCards = [...finalState.communityCards];
 
     // 表示ステージを構築（フロップ→ターン→リバーの順）
@@ -486,6 +487,8 @@ export class TableInstance {
       };
       this.broadcast.emitToRoom('game:showdown', showdownData);
       this.showdownSentDuringRunOut = true;
+
+      await new Promise<void>(resolve => { setTimeout(resolve, 9000); });
     }
 
     let currentStageIndex = 0;
