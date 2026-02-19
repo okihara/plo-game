@@ -321,7 +321,7 @@ export class TableInstance {
 
     // Re-check player count (players may have disconnected during the delay)
     const playerCount = this.getPlayerCount();
-    if (playerCount < 2) return;
+    if (playerCount < TABLE_CONSTANTS.MIN_PLAYERS_TO_START) return;
 
     this.isHandInProgress = true;
 
