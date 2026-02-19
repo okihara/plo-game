@@ -7,13 +7,14 @@ import { nanoid } from 'nanoid';
 
 // ヘルパーモジュール
 import { TABLE_CONSTANTS } from './constants.js';
-import { MessageLog, PendingAction } from './types.js';
+import { MessageLog, PendingAction, AdminSeat, DebugState } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { FoldProcessor } from './helpers/FoldProcessor.js';
 import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { AdminHelper } from './helpers/AdminHelper.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 // 型の再エクスポート（後方互換性のため）
@@ -44,6 +45,7 @@ export class TableInstance {
   private readonly foldProcessor: FoldProcessor;
   private readonly actionController: ActionController;
   private readonly historyRecorder: HandHistoryRecorder;
+  private readonly adminHelper: AdminHelper;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false) {
     this.id = nanoid(12);
@@ -61,6 +63,7 @@ export class TableInstance {
     this.foldProcessor = new FoldProcessor(this.broadcast);
     this.actionController = new ActionController(this.broadcast);
     this.historyRecorder = new HandHistoryRecorder();
+    this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
 
   // Get room name for this table
@@ -69,18 +72,8 @@ export class TableInstance {
   }
 
   // ダッシュボード用：ゲーム状態詳細を取得
-  public getDebugState(): {
-    messageLog: MessageLog[];
-    pendingAction: PendingAction | null;
-    gamePhase: string;
-  } {
-    return {
-      messageLog: this.broadcast.getMessageLog(),
-      pendingAction: this.actionController.getPendingAction(),
-      gamePhase: this.isHandInProgress
-        ? (this.gameState?.currentStreet ?? 'unknown')
-        : 'waiting',
-    };
+  public getDebugState(): DebugState {
+    return this.adminHelper.getDebugState(this.gameState, this.isHandInProgress);
   }
 
   // Add a player to the table
@@ -636,14 +629,7 @@ export class TableInstance {
 
   // デバッグ用: プレイヤーのチップを強制的に変更する
   public debugSetChips(odId: string, chips: number): boolean {
-    const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return false;
-
-    this.playerManager.updateChips(seatIndex, chips);
-    if (this.gameState && this.gameState.players[seatIndex]) {
-      this.gameState.players[seatIndex].chips = chips;
-    }
-
+    if (!this.adminHelper.debugSetChips(odId, chips, this.gameState)) return false;
     this.broadcastGameState();
     return true;
   }
@@ -661,42 +647,7 @@ export class TableInstance {
   }
 
   /** 管理ダッシュボード用: 各シートの Player + SeatInfo 属性を返す */
-  public getAdminSeats(): Array<{
-    seatNumber: number;
-    odId: string;
-    odName: string;
-    chips: number;
-    isConnected: boolean;
-    folded: boolean;
-    isAllIn: boolean;
-    position: string;
-    currentBet: number;
-    totalBetThisRound: number;
-    hasActed: boolean;
-    isSittingOut: boolean;
-    buyIn: number;
-    waitingForNextHand: boolean;
-  } | null> {
-    const seats = this.playerManager.getSeats();
-    return seats.map((seat, i) => {
-      if (!seat) return null;
-      const player = this.gameState?.players[i] ?? null;
-      return {
-        seatNumber: i,
-        odId: seat.odId,
-        odName: seat.odName,
-        chips: player?.chips ?? seat.chips,
-        isConnected: seat.socket?.connected ?? false,
-        folded: player?.folded ?? false,
-        isAllIn: player?.isAllIn ?? false,
-        position: player?.position ?? '',
-        currentBet: player?.currentBet ?? 0,
-        totalBetThisRound: player?.totalBetThisRound ?? 0,
-        hasActed: player?.hasActed ?? false,
-        isSittingOut: player?.isSittingOut ?? false,
-        buyIn: seat.buyIn,
-        waitingForNextHand: seat.waitingForNextHand,
-      };
-    });
+  public getAdminSeats(): (AdminSeat | null)[] {
+    return this.adminHelper.getAdminSeats(this.gameState);
   }
 }

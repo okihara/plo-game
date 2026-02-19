@@ -37,3 +37,28 @@ export interface FoldContext {
   playerId: string;
   wasCurrentPlayer: boolean;
 }
+
+// ダッシュボード用：ゲーム状態デバッグ情報
+export interface DebugState {
+  messageLog: MessageLog[];
+  pendingAction: PendingAction | null;
+  gamePhase: string;
+}
+
+// 管理ダッシュボード用：シート詳細情報
+export interface AdminSeat {
+  seatNumber: number;
+  odId: string;
+  odName: string;
+  chips: number;
+  isConnected: boolean;
+  folded: boolean;
+  isAllIn: boolean;
+  position: string;
+  currentBet: number;
+  totalBetThisRound: number;
+  hasActed: boolean;
+  isSittingOut: boolean;
+  buyIn: number;
+  waitingForNextHand: boolean;
+}
