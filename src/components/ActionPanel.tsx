@@ -14,6 +14,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
   const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
 
   const toCall = state.currentBet - myPlayer.currentBet;
+  const canCheck = toCall === 0;
 
   // オンラインモード用のシンプルなレイズ判定
   // サーバー側でバリデーションするので、クライアントは基本的な条件のみチェック
@@ -46,7 +47,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
 
   // フォールド予約: 自分のターンが来たら自動フォールド
   useEffect(() => {
-    if (isMyTurn && prefoldChecked && !actionSent && !prefoldTriggeredRef.current) {
+    if (isMyTurn && prefoldChecked && !actionSent && !prefoldTriggeredRef.current && !canCheck) {
       prefoldTriggeredRef.current = true;
       setActionSent(true);
       setPrefoldChecked(false);
@@ -125,11 +126,12 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-[1.8cqw]">
         <div className="flex items-center gap-[1.2cqw]">
-          <label className="flex items-center cursor-pointer shrink-0">
+          <label className={`flex items-center shrink-0 ${canCheck ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
             <input
               type="checkbox"
               checked={prefoldChecked}
               onChange={(e) => setPrefoldChecked(e.target.checked)}
+              disabled={canCheck}
               className="sr-only"
             />
             <div className={`w-[4.5cqw] h-[4.5cqw] rounded border-2 flex items-center justify-center transition-all ${
@@ -146,7 +148,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
           </label>
           <button
             onClick={() => handleAction('fold')}
-            disabled={!isMyTurn || actionSent}
+            disabled={!isMyTurn || actionSent || canCheck}
             className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
           >
             フォールド
@@ -164,11 +166,15 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
           {toCall === 0 ? 'チェック' : `コール ${formatChips(toCall)}`}
         </button>
         <button
-          onClick={() => handleAction(state.currentBet === 0 ? 'bet' : 'raise')}
+          onClick={() => handleAction(sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
           disabled={!canRaise || !isMyTurn || actionSent}
-          className="py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed bg-gradient-to-b from-amber-500 to-amber-600 text-white shadow-md"
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
+            sliderValue >= myPlayer.chips
+              ? 'bg-gradient-to-b from-red-500 to-red-600'
+              : 'bg-gradient-to-b from-amber-500 to-amber-600'
+          }`}
         >
-          {state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
+          {sliderValue >= myPlayer.chips ? `オールイン ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
         </button>
       </div>
     </div>
