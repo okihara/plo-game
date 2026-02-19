@@ -629,8 +629,17 @@ export function determineWinner(state: GameState): GameState {
   }
 
   // === サイドポット計算 ===
-  const sidePots = calculateSidePots(newState.players);
-  newState.sidePots = sidePots;
+  const allPots = calculateSidePots(newState.players);
+
+  // 相手がいないポット（eligible 1人）は未コール分として返却
+  const contestedPots = allPots.filter(p => p.eligiblePlayers.length >= 2);
+  const uncontestedPots = allPots.filter(p => p.eligiblePlayers.length === 1);
+  for (const pot of uncontestedPots) {
+    const player = newState.players.find(p => p.id === pot.eligiblePlayers[0])!;
+    player.chips += pot.amount;
+    newState.pot -= pot.amount;
+  }
+  newState.sidePots = contestedPots;
 
   // === PLOハンド評価 ===
   // PLOルール: ホールカードから必ず2枚、コミュニティカードから必ず3枚使用
@@ -642,7 +651,7 @@ export function determineWinner(state: GameState): GameState {
   // === 各サイドポットの勝者を決定 ===
   const winnerAmounts = new Map<number, { amount: number; handName: string }>();
 
-  for (const pot of sidePots) {
+  for (const pot of contestedPots) {
     // このポットの対象プレイヤーのハンドを取得
     const eligibleHands = pot.eligiblePlayers
       .filter(id => playerHandMap.has(id))

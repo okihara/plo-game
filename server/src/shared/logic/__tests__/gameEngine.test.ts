@@ -1173,18 +1173,22 @@ describe('determineWinner: タイと端数', () => {
 
     state.players[0].holeCards = [card('9', 'h'), card('8', 'h'), card('2', 's'), card('3', 's')];
     state.players[0].folded = false;
-    state.players[0].totalBetThisRound = 51;
+    state.players[0].totalBetThisRound = 50;
 
     state.players[1].holeCards = [card('9', 'd'), card('8', 'd'), card('2', 'c'), card('3', 'c')];
     state.players[1].folded = false;
     state.players[1].totalBetThisRound = 50;
 
-    for (let i = 2; i < 6; i++) {
+    // P2がフォールド前に1チップ投入 → pot合計101
+    state.players[2].folded = true;
+    state.players[2].totalBetThisRound = 1;
+
+    for (let i = 3; i < 6; i++) {
       state.players[i].folded = true;
     }
 
     const result = determineWinner(state);
-    // 端数が出る（101を2人で分割 → 51 + 50 or 50 + 50 + 端数処理）
+    // 端数が出る（101を2人で分割 → 51 + 50）
     const totalWinAmount = result.winners.reduce((sum, w) => sum + w.amount, 0);
     expect(totalWinAmount).toBe(101);
   });
