@@ -85,8 +85,8 @@ export function getPreflopDecision(
 
   // === 参加可能なハンド (vpipThreshold以上) ===
   if (effectiveStrength > vpipThreshold) {
-    // レイズには降りる
-    if (facingRaise && toCall > state.bigBlind * 3) {
+    // 大きなレイズ（ポットの半分超）には降りる
+    if (facingBigRaise) {
       return { action: 'fold', amount: 0 };
     }
 
@@ -94,8 +94,8 @@ export function getPreflopDecision(
     const checkAction = validActions.find(a => a.action === 'check');
     if (checkAction) return { action: 'check', amount: 0 };
 
-    // 安くコール
-    if (potOdds < 0.2 && toCall <= state.bigBlind * 2) {
+    // 通常のオープンレイズにはコール（ポットオッズに見合えば）
+    if (potOdds < effectiveStrength * 0.6) {
       const callAction = validActions.find(a => a.action === 'call');
       if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
