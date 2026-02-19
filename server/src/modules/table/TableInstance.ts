@@ -303,21 +303,14 @@ export class TableInstance {
     this.maybeStartHand();
   }
 
-  private maybeStartHand(wasShowdown: boolean = false): void {
+  private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
     if (maintenanceService.isMaintenanceActive()) return;
 
     const playerCount = this.getPlayerCount();
     if (playerCount < 2) return;
 
-    this.pendingStartHand = true;
-
-    // ショーダウン時はカードを確認する時間を長めに取る
-    const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
-    setTimeout(() => {
-      this.startNewHand();
-      this.pendingStartHand = false;
-    }, delay);
+    this.startNewHand();
   }
 
   private startNewHand(): void {
@@ -551,18 +544,22 @@ export class TableInstance {
     // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
     const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
 
-    // Remove busted players
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      const seat = seats[i];
-      if (seat && seat.chips <= 0) {
-        // Notify player they're busted (table:busted, NOT table:error)
-        seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
-        this.unseatPlayer(seat.odId);
+    // ショーダウン時はカードを確認する時間を長めに取る
+    this.pendingStartHand = true;
+    const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
+    setTimeout(() => {
+      // Remove busted players
+      for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+        const seat = seats[i];
+        if (seat && seat.chips <= 0) {
+          // Notify player they're busted (table:busted, NOT table:error)
+          seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
+          this.unseatPlayer(seat.odId);
+        }
       }
-    }
-
-    // Start next hand if enough players
-    this.maybeStartHand(wasShowdown);
+      this.pendingStartHand = false;  // ← ここでリセット
+      this.maybeStartHand();
+    }, delay);
   }
 
   private broadcastGameState(): void {
