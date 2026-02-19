@@ -64,27 +64,6 @@ const isBot = socket.handshake.auth.isBot === true;  // クライアントの自
 
 ---
 
-### 5. /api/auth/me の preHandler で return がない
-
-**ファイル:** `server/src/modules/auth/routes.ts` L243-248
-
-```typescript
-preHandler: async (request, reply) => {
-    try {
-        await request.jwtVerify();
-    } catch (err) {
-        reply.code(401).send({ error: 'Unauthorized' });
-        // ← return がないため、後続のハンドラが実行される
-    }
-},
-```
-
-**問題:** 未認証時に `request.user` が未定義のまま後続処理が走り、`userId` が `undefined` で Prisma エラーが発生する。
-
-**修正方針:** `return reply.code(401).send(...)` に修正。
-
----
-
 ### 6. game:action の入力バリデーション不足
 
 **ファイル:** `server/src/modules/game/socket.ts` L231-242

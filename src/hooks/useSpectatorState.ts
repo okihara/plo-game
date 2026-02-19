@@ -31,6 +31,7 @@ function convertOnlinePlayerToPlayer(
       folded: true,
       isAllIn: false,
       hasActed: true,
+      isSittingOut: true,
       position: POSITIONS[(index - dealerSeat + 6) % 6],
     };
   }
@@ -47,6 +48,7 @@ function convertOnlinePlayerToPlayer(
     folded: online.folded,
     isAllIn: online.isAllIn,
     hasActed: online.hasActed,
+    isSittingOut: false,
     position: POSITIONS[posIndex],
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,

@@ -19,6 +19,7 @@ export interface Player {
   folded: boolean;
   isAllIn: boolean;
   hasActed: boolean;
+  isSittingOut: boolean;
   avatarId?: number;
   avatarUrl?: string | null;  // Twitter/OAuth profile image URL
   odId?: string;  // Online user ID (for stats lookup)

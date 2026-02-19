@@ -30,7 +30,7 @@ export function PokerTable({
   showdownHandNames,
 }: PokerTableProps) {
   const { formatChips } = useGameSettings();
-  const isShowdown = state.currentStreet === 'showdown' || state.isHandComplete;
+
   const orderedPlayers = [];
   for (let i = 0; i < 6; i++) {
     const idx = (humanIndex + i) % 6;
@@ -92,7 +92,7 @@ export function PokerTable({
               winHandName={state.winners.find(w => w.playerId === player.id)?.handName}
               showdownHandName={showdownHandNames?.get(playerIdx)}
               lastAction={lastActions.get(player.id) || null}
-              showCards={isSpectator || isShowdown}
+              showCards={isSpectator || player.holeCards.length > 0}
               isDealing={isDealingCards}
               dealOrder={getDealOrder(playerIdx)}
               actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}

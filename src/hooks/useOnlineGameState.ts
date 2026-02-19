@@ -58,11 +58,6 @@ export interface OnlineGameHookResult {
 const ACTION_MARKER_DISPLAY_TIME = 1000;
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
-// ショウダウン演出タイミング (ms)
-const SHOWDOWN_REVEAL_DELAY = 2000;   // ショウダウン → カード公開までの待機
-const SHOWDOWN_WINNERS_DELAY = 2000;  // カード公開 → WIN表示までの待機
-const FOLD_WIN_DELAY = 1000;          // フォールド勝ち → WIN表示までの待機
-
 // ============================================
 // ヘルパー関数
 // ============================================
@@ -84,6 +79,7 @@ function convertOnlinePlayerToPlayer(
       folded: true,
       isAllIn: false,
       hasActed: true,
+      isSittingOut: true,
       position: POSITIONS[(index - dealerSeat + 6) % 6],
     };
   }
@@ -100,6 +96,7 @@ function convertOnlinePlayerToPlayer(
     folded: online.folded,
     isAllIn: online.isAllIn,
     hasActed: online.hasActed,
+    isSittingOut: false,
     position: POSITIONS[posIndex],
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
@@ -193,7 +190,6 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const winnersDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingWinnersRef = useRef<{ playerId: number; amount: number; handName: string }[] | null>(null);
   const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
-  const isShowdownPendingRef = useRef(false);
 
   // ============================================
   // アクションマーカー管理
@@ -355,7 +351,6 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           }
           pendingWinnersRef.current = null;
           pendingShowdownHandNamesRef.current = null;
-          isShowdownPendingRef.current = false;
 
           startDealingAnimation();
           prevStreetRef.current = null;
@@ -379,41 +374,24 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         }
       },
       onHandComplete: (serverWinners) => {
-        // playerIdをseat番号に変換（refで最新のclientStateを参照）
         const currentState = clientStateRef.current;
         if (currentState) {
           const convertedWinners = serverWinners.map(w => {
-            const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
+          // playerIdをseat番号に変換（refで最新のclientStateを参照）
+          const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
             return {
               playerId: seat,  // -1 = 不明（UI側でハイライトされないだけ）
               amount: w.amount,
               handName: w.handName,
             };
           });
-
-          if (isShowdownPendingRef.current) {
-            // ショウダウン演出中 → winnersはカードreveal後に遅延表示
-            pendingWinnersRef.current = convertedWinners;
-          } else {
-            // ショウダウンなし（フォールド勝ち等）→ 1s後に表示
-            winnersDisplayTimerRef.current = setTimeout(() => {
-              setWinners(convertedWinners);
-            }, FOLD_WIN_DELAY);
+          setWinners(convertedWinners);
+          if (pendingShowdownHandNamesRef.current) {
+            setShowdownHandNames(pendingShowdownHandNamesRef.current);
           }
         }
       },
       onShowdown: ({ players: showdownPlayers }) => {
-        // 前回のショウダウンタイマーが残っていたらクリア
-        if (showdownRevealTimerRef.current) {
-          clearTimeout(showdownRevealTimerRef.current);
-          showdownRevealTimerRef.current = null;
-        }
-        if (winnersDisplayTimerRef.current) {
-          clearTimeout(winnersDisplayTimerRef.current);
-          winnersDisplayTimerRef.current = null;
-        }
-
-        // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
         const cardsMap = new Map<number, Card[]>();
         const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
@@ -422,26 +400,9 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
             handNamesMap.set(p.seatIndex, p.handName);
           }
         }
-        isShowdownPendingRef.current = true;
+        // カードを公開（役名はhand_completeで表示）
+        setShowdownCards(cardsMap);
         pendingShowdownHandNamesRef.current = handNamesMap;
-
-        // カードを公開
-        showdownRevealTimerRef.current = setTimeout(() => {
-          setShowdownCards(cardsMap);
-
-          // カードreveal後、WIN表示 + 役名表示
-          winnersDisplayTimerRef.current = setTimeout(() => {
-            if (pendingWinnersRef.current) {
-              setWinners(pendingWinnersRef.current);
-              pendingWinnersRef.current = null;
-            }
-            if (pendingShowdownHandNamesRef.current) {
-              setShowdownHandNames(pendingShowdownHandNamesRef.current);
-              pendingShowdownHandNamesRef.current = null;
-            }
-            isShowdownPendingRef.current = false;
-          }, SHOWDOWN_WINNERS_DELAY);
-        }, SHOWDOWN_REVEAL_DELAY);
       },
       onBusted: (message) => {
         setBustedMessage(message);

@@ -124,7 +124,7 @@ export function Player({
   const [isRevealing, setIsRevealing] = useState(false);
 
   useEffect(() => {
-    const shouldShowCards = showCards && !player.folded && player.holeCards.length > 0;
+    const shouldShowCards = !player.folded && player.holeCards.length > 0;
     if (shouldShowCards) {
       setIsRevealing(true);
       const timer = setTimeout(() => setIsRevealing(false), 1200);

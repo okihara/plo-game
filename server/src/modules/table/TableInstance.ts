@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action, Card } from '../../shared/logic/types.js';
+import { GameState, Action } from '../../shared/logic/types.js';
 import { createInitialGameState, startNewHand, getActivePlayers, getValidActions } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
@@ -7,13 +7,15 @@ import { nanoid } from 'nanoid';
 
 // ヘルパーモジュール
 import { TABLE_CONSTANTS } from './constants.js';
-import { MessageLog, PendingAction } from './types.js';
+import { MessageLog, PendingAction, AdminSeat, DebugState } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { FoldProcessor } from './helpers/FoldProcessor.js';
 import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { AdminHelper } from './helpers/AdminHelper.js';
+import { SpectatorManager } from './helpers/SpectatorManager.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 // 型の再エクスポート（後方互換性のため）
@@ -30,12 +32,9 @@ export class TableInstance {
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
-  private readonly HAND_COMPLETE_DELAY_MS = 3500; // 通常のハンド完了（全員フォールド等）
-  private readonly SHOWDOWN_DELAY_MS = 7000; // ショーダウン時（カードを見る時間）
-  private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
+  private showdownSentDuringRunOut = false;
   private isHandInProgress = false;
   private pendingStartHand = false;
-  private spectators: Set<Socket> = new Set();
 
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
@@ -43,6 +42,8 @@ export class TableInstance {
   private readonly foldProcessor: FoldProcessor;
   private readonly actionController: ActionController;
   private readonly historyRecorder: HandHistoryRecorder;
+  private readonly adminHelper: AdminHelper;
+  private readonly spectatorManager: SpectatorManager;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false) {
     this.id = nanoid(12);
@@ -60,27 +61,13 @@ export class TableInstance {
     this.foldProcessor = new FoldProcessor(this.broadcast);
     this.actionController = new ActionController(this.broadcast);
     this.historyRecorder = new HandHistoryRecorder();
+    this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
+    this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
   }
 
-  // Get room name for this table
-  private get roomName() {
-    return `table:${this.id}`;
-  }
-
-  // ダッシュボード用：ゲーム状態詳細を取得
-  public getDebugState(): {
-    messageLog: MessageLog[];
-    pendingAction: PendingAction | null;
-    gamePhase: string;
-  } {
-    return {
-      messageLog: this.broadcast.getMessageLog(),
-      pendingAction: this.actionController.getPendingAction(),
-      gamePhase: this.isHandInProgress
-        ? (this.gameState?.currentStreet ?? 'unknown')
-        : 'waiting',
-    };
-  }
+  // ============================================
+  // Public methods
+  // ============================================
 
   // Add a player to the table
   public seatPlayer(
@@ -101,7 +88,10 @@ export class TableInstance {
       isHandInProgress: this.isHandInProgress,
     });
 
-    if (seatIndex === null) return null;
+    if (seatIndex === null) {
+      console.warn(`[Table ${this.id}] seatPlayer failed: odId=${odId}, odName=${odName}, buyIn=${buyIn}, preferredSeat=${preferredSeat}, handInProgress=${this.isHandInProgress}`);
+      return null;
+    }
 
     socket.join(this.roomName);
 
@@ -126,7 +116,10 @@ export class TableInstance {
   // Remove a player from the table
   public unseatPlayer(odId: string): { odId: string; chips: number } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return null;
+    if (seatIndex === -1) {
+      console.error(`Player ${odId} not found in table ${this.id}`);
+      return null;
+    }
 
     const seat = this.playerManager.getSeat(seatIndex);
 
@@ -169,33 +162,22 @@ export class TableInstance {
     return { odId, chips };
   }
 
-  // Advance game to next player after a fold
-  private advanceToNextPlayer(): void {
-    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return;
-
-    const result = this.actionController.advanceToNextPlayer(
-      this.gameState,
-      this.playerManager.getSeats()
-    );
-
-    this.gameState = result.gameState;
-
-    if (result.handComplete) {
-      this.broadcastGameState();
-      this.handleHandComplete();
-    } else {
-      this.requestNextAction();
-      this.broadcastGameState();
-    }
-  }
-
   // Handle player action
   public handleAction(odId: string, action: Action, amount: number): boolean {
-    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return false;
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
+      console.warn(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
+      return false;
+    }
 
     const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return false;
+    if (seatIndex === -1) {
+      console.warn(`[Table ${this.id}] handleAction: player not found at table, odId=${odId}`);
+      return false;
+    }
+    // ランアウト検出用にカード枚数を保存
+    const previousCardCount = this.gameState.communityCards.length;
 
+    // アクションを処理
     const result = this.actionController.handleAction(
       this.gameState,
       seatIndex,
@@ -204,10 +186,10 @@ export class TableInstance {
       odId
     );
 
-    if (!result.success) return false;
-
-    // ランアウト検出用にカード枚数を保存
-    const previousCardCount = this.gameState.communityCards.length;
+    if (!result.success) {
+      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}`);
+      return false;
+    }
 
     this.gameState = result.gameState;
 
@@ -220,7 +202,7 @@ export class TableInstance {
       } else {
         // 通常のハンド完了（全員フォールド or リバーベッティング終了）
         this.broadcastGameState();
-        this.handleHandComplete();
+        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       }
     } else if (result.streetChanged) {
       // アクション演出を待ってからコミュニティカードを表示
@@ -241,33 +223,8 @@ export class TableInstance {
     return true;
   }
 
-  // Handle fast fold
-  public handleFastFold(odId: string): void {
-    if (!this.isFastFold) return;
-
-    const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return;
-
-    if (this.gameState && !this.gameState.isHandComplete) {
-      // Fold the player
-      if (this.gameState.currentPlayerIndex === seatIndex) {
-        this.handleAction(odId, 'fold', 0);
-      } else {
-        // Pre-fold (mark for folding when turn comes)
-        const result = this.foldProcessor.processFold(this.gameState, {
-          seatIndex,
-          playerId: odId,
-          wasCurrentPlayer: false,
-        });
-        this.gameState = result.gameState;
-      }
-    }
-
-    // Emit event for MatchmakingPool to handle re-queuing
-    const seat = this.playerManager.getSeat(seatIndex);
-    if (seat?.socket) {
-      seat.socket.emit('matchmaking:ready_for_new_table');
-    }
+  public triggerMaybeStartHand(): void {
+    this.maybeStartHand();
   }
 
   // Get the number of connected players
@@ -297,27 +254,75 @@ export class TableInstance {
     };
   }
 
-  // Private methods
-
-  public triggerMaybeStartHand(): void {
-    this.maybeStartHand();
+  public getClientGameState(): ClientGameState {
+    return StateTransformer.toClientGameState(
+      this.id,
+      this.playerManager.getSeats(),
+      this.gameState,
+      this.actionController.getPendingAction(),
+      this.isHandInProgress,
+      this.smallBlind,
+      this.bigBlind
+    );
   }
 
-  private maybeStartHand(wasShowdown: boolean = false): void {
+  // スペクテーター管理
+  public addSpectator(socket: Socket): void {
+    this.spectatorManager.addSpectator(socket);
+  }
+
+  public sendAllHoleCardsToSpectator(socket: Socket): void {
+    this.spectatorManager.sendAllHoleCards(socket, this.gameState, this.isHandInProgress);
+  }
+
+  // デバッグ・管理用
+  public getDebugState(): DebugState {
+    return this.adminHelper.getDebugState(this.gameState, this.isHandInProgress);
+  }
+
+  public debugSetChips(odId: string, chips: number): boolean {
+    return this.adminHelper.debugSetChips(odId, chips, this.gameState, () => this.broadcastGameState());
+  }
+
+  public getAdminSeats(): (AdminSeat | null)[] {
+    return this.adminHelper.getAdminSeats(this.gameState);
+  }
+
+  // ============================================
+  // Private methods
+  // ============================================
+
+  private get roomName() {
+    return `table:${this.id}`;
+  }
+
+  private advanceToNextPlayer(): void {
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return;
+
+    const result = this.actionController.advanceToNextPlayer(
+      this.gameState,
+      this.playerManager.getSeats()
+    );
+
+    this.gameState = result.gameState;
+
+    if (result.handComplete) {
+      this.broadcastGameState();
+      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+    } else {
+      this.requestNextAction();
+      this.broadcastGameState();
+    }
+  }
+
+  private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
     if (maintenanceService.isMaintenanceActive()) return;
 
     const playerCount = this.getPlayerCount();
-    if (playerCount < 2) return;
+    if (playerCount < TABLE_CONSTANTS.MIN_PLAYERS_TO_START) return;
 
-    this.pendingStartHand = true;
-
-    // ショーダウン時はカードを確認する時間を長めに取る
-    const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
-    setTimeout(() => {
-      this.startNewHand();
-      this.pendingStartHand = false;
-    }, delay);
+    this.startNewHand();
   }
 
   private startNewHand(): void {
@@ -325,7 +330,7 @@ export class TableInstance {
 
     // Re-check player count (players may have disconnected during the delay)
     const playerCount = this.getPlayerCount();
-    if (playerCount < 2) return;
+    if (playerCount < TABLE_CONSTANTS.MIN_PLAYERS_TO_START) return;
 
     this.isHandInProgress = true;
 
@@ -352,22 +357,16 @@ export class TableInstance {
       if (seat) {
         this.gameState.players[i].chips = seat.chips;
         this.gameState.players[i].name = seat.odName;
+        this.gameState.players[i].isSittingOut = false;
       } else {
-        // 空席のプレイヤーはチップ0にしてゲームに参加させない
+        // 空席はシッティングアウトとしてマーク
         this.gameState.players[i].chips = 0;
+        this.gameState.players[i].isSittingOut = true;
       }
     }
 
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = startNewHand(this.gameState);
-
-    // 空席のプレイヤーをfoldedにする（startNewHandがfoldedをリセットするため、後で処理）
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      if (!seats[i]) {
-        this.gameState.players[i].folded = true;
-        this.gameState.players[i].hasActed = true;
-      }
-    }
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -394,7 +393,7 @@ export class TableInstance {
 
     // currentPlayerIndex が -1 の場合（全員オールインなど）はハンド完了処理へ
     if (this.gameState.currentPlayerIndex === -1) {
-      this.handleHandComplete();
+      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       return;
     }
 
@@ -407,6 +406,7 @@ export class TableInstance {
   }
 
   private handleActionTimeout(playerId: string, seatIndex: number): void {
+    console.warn(`[Table ${this.id}] Action timeout: playerId=${playerId}, seat=${seatIndex}`);
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
@@ -432,11 +432,12 @@ export class TableInstance {
   }
 
   /**
-   * オールイン時のランアウト: コミュニティカードをストリートごとに段階的に表示する
+   * オールイン時のランアウト: 全員のカードを公開してから、コミュニティカードをストリートごとに段階的に表示する
    * @param finalState 全カード配布済み＆勝者決定済みの最終ゲーム状態
    * @param previousCardCount ランアウト開始前のコミュニティカード枚数
    */
-  private handleAllInRunOut(finalState: GameState, previousCardCount: number): void {
+  private async handleAllInRunOut(finalState: GameState, previousCardCount: number): Promise<void> {
+    console.warn(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
     const allCards = [...finalState.communityCards];
 
     // 表示ステージを構築（フロップ→ターン→リバーの順）
@@ -452,6 +453,44 @@ export class TableInstance {
     }
 
     this.isRunOutInProgress = true;
+    // ランアウト中はアクションタイマーを確実にクリア
+    this.actionController.clearTimers();
+
+    // ショーダウン: ボードランアウトの前に全員のカードを公開する（ポーカーの正しい順序）
+    const seats = this.playerManager.getSeats();
+    const activePlayers = getActivePlayers(finalState);
+    if (activePlayers.length > 1) {
+      const showdownPlayers = activePlayers.map(p => {
+        const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
+        let handName = winnerEntry?.handName || '';
+        if (!handName && finalState.communityCards.length === 5) {
+          try {
+            const result = evaluatePLOHand(p.holeCards, finalState.communityCards);
+            handName = result.name;
+          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
+        }
+        return {
+          seatIndex: p.id,
+          odId: seats[p.id]?.odId || '',
+          cards: p.holeCards,
+          handName,
+        };
+      });
+      const showdownData = {
+        winners: finalState.winners.map(w => ({
+          playerId: seats[w.playerId]?.odId || '',
+          amount: w.amount,
+          handName: w.handName,
+          cards: finalState.players[w.playerId].holeCards,
+        })),
+        players: showdownPlayers,
+      };
+      this.broadcast.emitToRoom('game:showdown', showdownData);
+      this.showdownSentDuringRunOut = true;
+
+      await new Promise<void>(resolve => { setTimeout(resolve, 9000); });
+    }
+
     let currentStageIndex = 0;
 
     const revealNextStage = () => {
@@ -462,7 +501,7 @@ export class TableInstance {
         this.isRunOutInProgress = false;
         this.gameState = finalState;
         this.broadcastGameState();
-        this.handleHandComplete();
+        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
         return;
       }
 
@@ -480,18 +519,22 @@ export class TableInstance {
       this.broadcastGameState();
 
       currentStageIndex++;
-      this.runOutTimer = setTimeout(revealNextStage, this.RUNOUT_STREET_DELAY_MS);
+      this.runOutTimer = setTimeout(revealNextStage, TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS);
     };
 
     // 最初のステージを即座に表示開始
     revealNextStage();
   }
 
-  private handleHandComplete(): void {
-    if (!this.gameState) return;
+  private async handleHandComplete(): Promise<void> {
+    if (!this.gameState) {
+      console.error(`[Table ${this.id}] handleHandComplete called but gameState is null`);
+      return;
+    }
 
-    // Clear pending action
+    // Clear pending action and ensure runout flag is reset (safety)
     this.actionController.clearTimers();
+    this.isRunOutInProgress = false;
 
     // ハンドヒストリー保存 (fire-and-forget)
     const seats = this.playerManager.getSeats();
@@ -503,7 +546,8 @@ export class TableInstance {
     ).catch(err => console.error('Hand history save failed:', err));
 
     // Showdown - reveal cards for ALL active players (showdownをhand_completeより先に送信)
-    if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1) {
+    // ランアウト時は handleAllInRunOut() で既に送信済みなのでスキップ
+    if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1 && !this.showdownSentDuringRunOut) {
       const activePlayers = getActivePlayers(this.gameState);
       const showdownPlayers = activePlayers.map(p => {
         const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
@@ -530,8 +574,16 @@ export class TableInstance {
         })),
         players: showdownPlayers,
       };
+
+      // 演出ウェイト
+      await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS));
+
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }
+    this.showdownSentDuringRunOut = false;
+
+    // ハンド完了時の演出ウェイト
+    await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.HAND_COMPLETE_DELAY_MS));
 
     // Broadcast winners
     const handCompleteData = {
@@ -554,8 +606,14 @@ export class TableInstance {
 
     this.isHandInProgress = false;
 
+    this.pendingStartHand = true;
+
+    // 待ち時間
     // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
     const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
+    // ショーダウン時はカードを確認する時間を長めに取る
+    const delay = wasShowdown ? TABLE_CONSTANTS.NEXT_HAND_SHOWDOWN_DELAY_MS : TABLE_CONSTANTS.NEXT_HAND_DELAY_MS;
+    await new Promise(resolve => setTimeout(resolve, delay));
 
     // Remove busted players
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -566,9 +624,8 @@ export class TableInstance {
         this.unseatPlayer(seat.odId);
       }
     }
-
-    // Start next hand if enough players
-    this.maybeStartHand(wasShowdown);
+    this.pendingStartHand = false;  // ← ここでリセット
+    this.maybeStartHand();
   }
 
   private broadcastGameState(): void {
@@ -578,83 +635,7 @@ export class TableInstance {
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }
 
-  // ============================================
-  // スペクテーター管理
-  // ============================================
-
-  public addSpectator(socket: Socket): void {
-    this.spectators.add(socket);
-    socket.join(this.roomName);
-    socket.on('disconnect', () => {
-      this.spectators.delete(socket);
-    });
-  }
-
-  public sendAllHoleCardsToSpectator(socket: Socket): void {
-    if (!this.gameState || !this.isHandInProgress) return;
-
-    const seats = this.playerManager.getSeats();
-    const players: { seatIndex: number; cards: Card[] }[] = [];
-
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      if (seats[i] && this.gameState.players[i].holeCards.length > 0) {
-        players.push({
-          seatIndex: i,
-          cards: this.gameState.players[i].holeCards,
-        });
-      }
-    }
-
-    if (players.length > 0) {
-      socket.emit('game:all_hole_cards', { players });
-    }
-  }
-
   private broadcastAllHoleCardsToSpectators(): void {
-    if (!this.gameState || this.spectators.size === 0) return;
-
-    const seats = this.playerManager.getSeats();
-    const players: { seatIndex: number; cards: Card[] }[] = [];
-
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      if (seats[i] && this.gameState.players[i].holeCards.length > 0) {
-        players.push({
-          seatIndex: i,
-          cards: this.gameState.players[i].holeCards,
-        });
-      }
-    }
-
-    if (players.length > 0) {
-      for (const socket of this.spectators) {
-        socket.emit('game:all_hole_cards', { players });
-      }
-    }
-  }
-
-  // デバッグ用: プレイヤーのチップを強制的に変更する
-  public debugSetChips(odId: string, chips: number): boolean {
-    const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return false;
-
-    this.playerManager.updateChips(seatIndex, chips);
-    if (this.gameState && this.gameState.players[seatIndex]) {
-      this.gameState.players[seatIndex].chips = chips;
-    }
-
-    this.broadcastGameState();
-    return true;
-  }
-
-  public getClientGameState(): ClientGameState {
-    return StateTransformer.toClientGameState(
-      this.id,
-      this.playerManager.getSeats(),
-      this.gameState,
-      this.actionController.getPendingAction(),
-      this.isHandInProgress,
-      this.smallBlind,
-      this.bigBlind
-    );
+    this.spectatorManager.broadcastAllHoleCards(this.gameState);
   }
 }

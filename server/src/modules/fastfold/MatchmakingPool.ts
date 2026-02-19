@@ -54,6 +54,7 @@ export class MatchmakingPool {
     // Remove if already in queue
     const existingIndex = queue.findIndex(p => p.odId === odId);
     if (existingIndex !== -1) {
+      console.warn(`[MatchmakingPool] Player ${odId} already in queue for ${blinds}, replacing (prev chips=${queue[existingIndex].chips}, new chips=${chips})`);
       queue.splice(existingIndex, 1);
     }
 
@@ -108,6 +109,7 @@ export class MatchmakingPool {
 
       // Check if socket is still connected
       if (!player.socket.connected) {
+        console.warn(`[MatchmakingPool] Skipping disconnected player ${player.odId} (chips=${player.chips}, blinds=${blinds}) - chips will be lost without refund`);
         continue;
       }
 
@@ -145,7 +147,9 @@ export class MatchmakingPool {
   private startProcessing(): void {
     this.processingInterval = setInterval(() => {
       for (const blinds of this.queues.keys()) {
-        this.processQueue(blinds);
+        this.processQueue(blinds).catch(err => {
+          console.error(`[MatchmakingPool] processQueue error for blinds=${blinds}:`, err);
+        });
       }
     }, 500); // Check every 500ms
   }

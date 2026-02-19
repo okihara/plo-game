@@ -31,7 +31,7 @@ export function getPostflopDecision(
   const potOdds = toCall > 0 ? toCall / (state.pot + toCall) : 0;
   const street = state.currentStreet;
   const spr = player.chips / Math.max(1, state.pot);
-  const activePlayers = state.players.filter(p => !p.folded && p.chips > 0).length;
+  const activePlayers = state.players.filter(p => !p.isSittingOut && !p.folded).length;
   const numOpponents = activePlayers - 1;
   const isAggressor = streetHistory.preflopAggressor === playerIndex;
 
@@ -123,7 +123,7 @@ function playMonster(
       boardTexture,
       handEval,
       isAggressor: streetHistory.preflopAggressor === playerIndex,
-      numOpponents: state.players.filter(p => !p.folded && p.chips > 0).length - 1,
+      numOpponents: state.players.filter(p => !p.isSittingOut && !p.folded).length - 1,
       personality,
     });
     const amount = calculateBetAmount(sizePct, state.pot, raiseAction.minAmount, raiseAction.maxAmount);
@@ -328,7 +328,7 @@ function playDraw(
         boardTexture,
         handEval,
         isAggressor: streetHistory.preflopAggressor === playerIndex,
-        numOpponents: state.players.filter(p => !p.folded && p.chips > 0).length - 1,
+        numOpponents: state.players.filter(p => !p.isSittingOut && !p.folded).length - 1,
         personality,
       });
       const amount = calculateBetAmount(sizePct, state.pot, raiseAction.minAmount, raiseAction.maxAmount);

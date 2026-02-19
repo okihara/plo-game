@@ -27,6 +27,7 @@ export function createInitialGameState(playerChips: number = 600): GameState {
       folded: false,
       isAllIn: false,
       hasActed: false,       // このストリートでアクション済みか
+      isSittingOut: false,
     });
   }
 
@@ -77,9 +78,9 @@ export function startNewHand(state: GameState): GameState {
     holeCards: [],
     currentBet: 0,
     totalBetThisRound: 0,
-    folded: false,
+    folded: p.isSittingOut,     // 空席は最初からfolded
     isAllIn: false,
-    hasActed: false,
+    hasActed: p.isSittingOut,   // 空席はアクション不要
   }));
 
   // デッキをシャッフル
@@ -139,6 +140,7 @@ export function startNewHand(state: GameState): GameState {
   // === カードを配る ===
   // PLOは4枚ずつ配る（テキサスホールデムは2枚）
   for (let i = 0; i < 6; i++) {
+    if (newState.players[i].isSittingOut) continue;
     const { cards, remainingDeck } = dealCards(newState.deck, 4);
     newState.players[i].holeCards = cards;
     newState.deck = remainingDeck;
@@ -172,8 +174,8 @@ function getNextActivePlayer(state: GameState, fromIndex: number): number {
   let index = (fromIndex + 1) % 6;
   let count = 0;
   while (count < 6) {
-    // フォールドしておらず、オールインでもなく、チップがあるプレイヤー
-    if (!state.players[index].folded && !state.players[index].isAllIn && state.players[index].chips > 0) {
+    // 着席中で、フォールドしておらず、オールインでもないプレイヤー
+    if (!state.players[index].isSittingOut && !state.players[index].folded && !state.players[index].isAllIn) {
       return index;
     }
     index = (index + 1) % 6;
@@ -184,21 +186,21 @@ function getNextActivePlayer(state: GameState, fromIndex: number): number {
 
 /**
  * ゲームに参加可能なプレイヤー数を取得
- * （フォールドしておらず、チップを持っている）
+ * （着席中でフォールドしていない）
  */
 function getActivePlayerCount(state: GameState): number {
-  return state.players.filter(p => !p.folded && p.chips > 0).length;
+  return state.players.filter(p => !p.isSittingOut && !p.folded).length;
 }
 
 /**
- * 指定位置から次のチップを持つプレイヤーを探す
- * ディーラーボタン移動などに使用
+ * 指定位置から次の着席中プレイヤーを探す
+ * ディーラーボタン移動やブラインド位置決定に使用
  */
 function getNextPlayerWithChips(state: GameState, fromIndex: number): number {
   let index = (fromIndex + 1) % 6;
   let count = 0;
   while (count < 6) {
-    if (!state.players[index].folded && state.players[index].chips > 0) {
+    if (!state.players[index].isSittingOut && !state.players[index].folded) {
       return index;
     }
     index = (index + 1) % 6;
@@ -523,8 +525,9 @@ function moveToNextStreet(state: GameState): GameState {
     }
   }
 
-  if (firstActorIndex === -1) {
-    // 全員オールインなのでボードをランアウトしてショーダウン
+  // アクション可能なプレイヤーが1人以下ならベッティング不要 → ランアウト
+  const canActPlayers = activePlayers.filter(p => !p.isAllIn);
+  if (canActPlayers.length <= 1) {
     return runOutBoard(newState);
   }
 
@@ -540,7 +543,7 @@ function runOutBoard(state: GameState): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   // コミュニティカードが5枚になるまで配る
-  while (newState.communityCards.length < 5) {
+  while (newState.communityCards.length < 5 && newState.deck.length > 0) {
     const { cards, remainingDeck } = dealCards(newState.deck, 1);
     newState.communityCards.push(...cards);
     newState.deck = remainingDeck;
@@ -618,7 +621,7 @@ export function determineWinner(state: GameState): GameState {
 
   // コミュニティカードが5枚揃っていない場合はランアウト
   if (newState.communityCards.length < 5) {
-    while (newState.communityCards.length < 5) {
+    while (newState.communityCards.length < 5 && newState.deck.length > 0) {
       const { cards, remainingDeck } = dealCards(newState.deck, 1);
       newState.communityCards.push(...cards);
       newState.deck = remainingDeck;
@@ -626,8 +629,17 @@ export function determineWinner(state: GameState): GameState {
   }
 
   // === サイドポット計算 ===
-  const sidePots = calculateSidePots(newState.players);
-  newState.sidePots = sidePots;
+  const allPots = calculateSidePots(newState.players);
+
+  // 相手がいないポット（eligible 1人）は未コール分として返却
+  const contestedPots = allPots.filter(p => p.eligiblePlayers.length >= 2);
+  const uncontestedPots = allPots.filter(p => p.eligiblePlayers.length === 1);
+  for (const pot of uncontestedPots) {
+    const player = newState.players.find(p => p.id === pot.eligiblePlayers[0])!;
+    player.chips += pot.amount;
+    newState.pot -= pot.amount;
+  }
+  newState.sidePots = contestedPots;
 
   // === PLOハンド評価 ===
   // PLOルール: ホールカードから必ず2枚、コミュニティカードから必ず3枚使用
@@ -639,7 +651,7 @@ export function determineWinner(state: GameState): GameState {
   // === 各サイドポットの勝者を決定 ===
   const winnerAmounts = new Map<number, { amount: number; handName: string }>();
 
-  for (const pot of sidePots) {
+  for (const pot of contestedPots) {
     // このポットの対象プレイヤーのハンドを取得
     const eligibleHands = pot.eligiblePlayers
       .filter(id => playerHandMap.has(id))

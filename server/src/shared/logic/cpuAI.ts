@@ -37,7 +37,7 @@ export function getCPUAction(
       return getPreflopDecision(state, playerIndex, personality, positionBonus, context.opponentModel);
     }
 
-    const activePlayers = state.players.filter(p => !p.folded && p.chips > 0).length;
+    const activePlayers = state.players.filter(p => !p.isSittingOut && !p.folded).length;
     const numOpponents = activePlayers - 1;
     const boardTexture = analyzeBoard(state.communityCards);
     const handEval = evaluateHandExtended(

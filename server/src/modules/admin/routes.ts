@@ -30,6 +30,13 @@ interface TableStats {
     isConnected: boolean;
     folded: boolean;
     isAllIn: boolean;
+    position: string;
+    currentBet: number;
+    totalBetThisRound: number;
+    hasActed: boolean;
+    isSittingOut: boolean;
+    buyIn: number;
+    waitingForNextHand: boolean;
   }>;
   // デバッグ情報
   gamePhase: string;
@@ -112,15 +119,7 @@ export function adminRoutes(deps: AdminDependencies) {
             isHandInProgress: gameState?.isHandInProgress ?? false,
             currentStreet: gameState?.currentStreet ?? null,
             pot: gameState?.pot ?? 0,
-            players: gameState?.players?.filter((p): p is NonNullable<typeof p> => p !== null).map(p => ({
-              odId: p.odId,
-              odName: p.odName,
-              seatNumber: p.seatNumber,
-              chips: p.chips,
-              isConnected: p.isConnected,
-              folded: p.folded,
-              isAllIn: p.isAllIn,
-            })) ?? [],
+            players: table.getAdminSeats().filter((s): s is NonNullable<typeof s> => s !== null),
             // デバッグ情報
             gamePhase: debugState.gamePhase,
             pendingAction: debugState.pendingAction,
@@ -376,7 +375,7 @@ function getDashboardHTML(clientUrl: string): string {
       padding: 8px;
       text-align: center;
       font-size: 12px;
-      min-height: 60px;
+      min-height: 80px;
     }
     .player-slot.occupied { background: #334155; }
     .player-slot.human { border: 2px solid #3b82f6; }
@@ -390,6 +389,12 @@ function getDashboardHTML(clientUrl: string): string {
     }
     .player-chips { color: #fbbf24; font-size: 11px; }
     .player-status { font-size: 10px; color: #64748b; }
+    .player-details { font-size: 10px; color: #94a3b8; margin-top: 2px; line-height: 1.4; }
+    .player-details span { margin-right: 4px; }
+    .player-position { color: #60a5fa; font-weight: 600; }
+    .player-bet { color: #f97316; }
+    .player-flag { color: #a78bfa; }
+    .player-sitting-out { color: #ef4444; }
     .table-footer {
       display: flex;
       gap: 12px;
@@ -706,18 +711,29 @@ function getDashboardHTML(clientUrl: string): string {
           const classes = ['player-slot', 'occupied'];
           if (player.folded) classes.push('folded');
 
-          let status = '👤'; // オンラインモードでは全員人間
+          let status = player.isConnected ? '🟢' : '🔴';
           if (player.folded) status += ' Fold';
           else if (player.isAllIn) status += ' All-In';
+          if (player.isSittingOut) status += ' 💤';
+          if (player.waitingForNextHand) status += ' ⏸';
 
           // Highlight if this player has pending action
           const isPending = table.pendingAction && table.pendingAction.seatNumber === i;
           if (isPending) classes.push('pending');
 
+          // Player detail attributes
+          var detailParts = [];
+          if (player.position) detailParts.push('<span class="player-position">' + player.position + '</span>');
+          detailParts.push('<span>BuyIn:' + formatChips(player.buyIn) + '</span>');
+          if (player.currentBet > 0) detailParts.push('<span class="player-bet">Bet:' + formatChips(player.currentBet) + '</span>');
+          if (player.totalBetThisRound > 0) detailParts.push('<span class="player-bet">Rnd:' + formatChips(player.totalBetThisRound) + '</span>');
+          if (player.hasActed) detailParts.push('<span class="player-flag">Acted</span>');
+
           return '<div class="' + classes.join(' ') + '"' + (isPending ? ' style="border-color:#f59e0b;box-shadow:0 0 8px rgba(245,158,11,0.5)"' : '') + '>' +
             '<div class="player-name">' + player.odName + '</div>' +
             '<div class="player-chips">' + formatChips(player.chips) + '</div>' +
             '<div class="player-status">' + status + (isPending ? ' ⏳' : '') + '</div>' +
+            '<div class="player-details">' + detailParts.join('') + '</div>' +
             '</div>';
         }).join('');
 

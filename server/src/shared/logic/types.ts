@@ -19,6 +19,7 @@ export interface Player {
   folded: boolean;
   isAllIn: boolean;
   hasActed: boolean;
+  isSittingOut: boolean;
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';

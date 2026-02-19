@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSpectatorState } from '../hooks/useSpectatorState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';
 import { PokerTable } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
-
-const MIN_LOADING_TIME_MS = 1000;
 
 interface SpectatorViewProps {
   tableId: string;
@@ -28,9 +26,7 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
 
   const { setBigBlind } = useGameSettings();
 
-  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
-  const mountTimeRef = useRef(Date.now());
 
   useEffect(() => {
     if (gameState) {
@@ -38,21 +34,13 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
     }
   }, [gameState, setBigBlind]);
 
-  useEffect(() => {
-    const elapsed = Date.now() - mountTimeRef.current;
-    const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
-    const timer = setTimeout(() => setMinLoadingComplete(true), remaining);
-    return () => clearTimeout(timer);
-  }, []);
 
   useEffect(() => {
     connect();
     return () => disconnect();
   }, [connect, disconnect]);
 
-  const showLoadingScreen = isConnecting || !minLoadingComplete;
-
-  if (showLoadingScreen) {
+  if (isConnecting) {
     return (
       <div className="h-full w-full light-bg flex items-center justify-center p-4">
         <div className="text-center">

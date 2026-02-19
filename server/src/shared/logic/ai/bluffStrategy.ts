@@ -40,7 +40,7 @@ export function evaluateBluff(
   const street = state.currentStreet;
   const toCall = state.currentBet - player.currentBet;
   const hasPosition = positionBonus >= 0.08;
-  const activePlayers = state.players.filter(p => !p.folded && p.chips > 0).length;
+  const activePlayers = state.players.filter(p => !p.isSittingOut && !p.folded).length;
 
   // リバーで弱い手 + ブロッカーあり → ブロッカーベースブラフ
   if (street === 'river' && handEval.madeHandRank <= 2) {
@@ -206,7 +206,7 @@ function evaluateProbeBet(
   }
 
   // ヘッズアップの方がプローブが効く
-  const activePlayers = state.players.filter(p => !p.folded && p.chips > 0).length;
+  const activePlayers = state.players.filter(p => !p.isSittingOut && !p.folded).length;
   if (activePlayers === 2) probeChance += 0.08;
 
   const roll = Math.random();
