@@ -651,4 +651,44 @@ export class TableInstance {
       this.bigBlind
     );
   }
+
+  /** 管理ダッシュボード用: 各シートの Player + SeatInfo 属性を返す */
+  public getAdminSeats(): Array<{
+    seatNumber: number;
+    odId: string;
+    odName: string;
+    chips: number;
+    isConnected: boolean;
+    folded: boolean;
+    isAllIn: boolean;
+    position: string;
+    currentBet: number;
+    totalBetThisRound: number;
+    hasActed: boolean;
+    isSittingOut: boolean;
+    buyIn: number;
+    waitingForNextHand: boolean;
+  } | null> {
+    const seats = this.playerManager.getSeats();
+    return seats.map((seat, i) => {
+      if (!seat) return null;
+      const player = this.gameState?.players[i] ?? null;
+      return {
+        seatNumber: i,
+        odId: seat.odId,
+        odName: seat.odName,
+        chips: player?.chips ?? seat.chips,
+        isConnected: seat.socket?.connected ?? false,
+        folded: player?.folded ?? false,
+        isAllIn: player?.isAllIn ?? false,
+        position: player?.position ?? '',
+        currentBet: player?.currentBet ?? 0,
+        totalBetThisRound: player?.totalBetThisRound ?? 0,
+        hasActed: player?.hasActed ?? false,
+        isSittingOut: player?.isSittingOut ?? false,
+        buyIn: seat.buyIn,
+        waitingForNextHand: seat.waitingForNextHand,
+      };
+    });
+  }
 }
