@@ -259,6 +259,11 @@ class WebSocketService {
   spectateTable(tableId: string): void {
     this.socket?.emit('table:spectate', { tableId });
   }
+
+  // Debug: チップ設定（開発環境のみ）
+  debugSetChips(chips: number): void {
+    (this.socket as any)?.emit('debug:set_chips', { chips });
+  }
 }
 
 // Singleton instance

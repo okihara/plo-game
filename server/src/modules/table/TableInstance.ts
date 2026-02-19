@@ -626,6 +626,20 @@ export class TableInstance {
     }
   }
 
+  // デバッグ用: プレイヤーのチップを強制的に変更する
+  public debugSetChips(odId: string, chips: number): boolean {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return false;
+
+    this.playerManager.updateChips(seatIndex, chips);
+    if (this.gameState && this.gameState.players[seatIndex]) {
+      this.gameState.players[seatIndex].chips = chips;
+    }
+
+    this.broadcastGameState();
+    return true;
+  }
+
   public getClientGameState(): ClientGameState {
     return StateTransformer.toClientGameState(
       this.id,

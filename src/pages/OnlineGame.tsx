@@ -244,6 +244,20 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             />
           )}
 
+          {/* バスト通知オーバーレイ */}
+          {bustedMessage && (
+            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/70 pointer-events-none">
+              <div className="text-center">
+                <p className="text-white font-bold mb-2" style={{ fontSize: 'min(3vh, 5vw)' }}>
+                  {bustedMessage}
+                </p>
+                <p className="text-white/60" style={{ fontSize: 'min(1.8vh, 3vw)' }}>
+                  ロビーに戻ります...
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* テーブル移動中オーバーレイ */}
           {isChangingTable && (
             <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">

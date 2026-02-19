@@ -9,6 +9,19 @@ import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
+// 開発環境のみ: ブラウザコンソールからデバッグ用チップ設定を呼べるようにする
+if (import.meta.env.DEV) {
+  import('./services/websocket').then(({ wsService }) => {
+    (window as any).__debug = {
+      setChips: (chips: number) => {
+        wsService.debugSetChips(chips);
+        console.log(`[debug] Requesting chip set to ${chips}`);
+      },
+    };
+    console.log('[debug] Available commands: __debug.setChips(amount)');
+  });
+}
+
 function App() {
   const [blinds, setBlinds] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);

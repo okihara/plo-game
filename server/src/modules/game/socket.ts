@@ -347,6 +347,24 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
     });
 
+    // Debug: チップ設定（開発環境のみ）
+    if (process.env.NODE_ENV !== 'production') {
+      socket.on('debug:set_chips', (data: { chips: number }) => {
+        const table = tableManager.getPlayerTable(socket.odId!);
+        if (!table) {
+          socket.emit('table:error', { message: '[debug] Not seated at a table' });
+          return;
+        }
+
+        const success = table.debugSetChips(socket.odId!, data.chips);
+        if (success) {
+          console.log(`[debug] Set chips for ${socket.odName} to ${data.chips}`);
+        } else {
+          socket.emit('table:error', { message: '[debug] Failed to set chips' });
+        }
+      });
+    }
+
     // Get available tables
     socket.on('lobby:get_tables', () => {
       const tables = tableManager.getTablesInfo();
