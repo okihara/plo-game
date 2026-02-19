@@ -51,7 +51,6 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [minLoadingComplete, setMinLoadingComplete] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const mountTimeRef = useRef(Date.now());
@@ -62,18 +61,6 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
       setBigBlind(gameState.bigBlind);
     }
   }, [gameState, setBigBlind]);
-
-  // 最低表示時間のタイマー
-  useEffect(() => {
-    const elapsed = Date.now() - mountTimeRef.current;
-    const remaining = Math.max(0, MIN_LOADING_TIME_MS - elapsed);
-
-    const timer = setTimeout(() => {
-      setMinLoadingComplete(true);
-    }, remaining);
-
-    return () => clearTimeout(timer);
-  }, []);
 
   // 接続と参加
   useEffect(() => {
@@ -99,10 +86,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   // ブラインド表示用
   const blindsLabel = blinds;
 
-  // 接続中（または最低表示時間が経過していない）
-  const showLoadingScreen = isConnecting || !minLoadingComplete;
-
-  if (showLoadingScreen) {
+  if (isConnecting) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }
 
