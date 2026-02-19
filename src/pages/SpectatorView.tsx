@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useSpectatorState } from '../hooks/useSpectatorState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';
@@ -16,6 +16,7 @@ import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 import { BustedScreen } from '../components/BustedScreen';
+import { wsService } from '../services/websocket';
 
 interface OnlineGameProps {
   blinds: string;
@@ -190,6 +191,21 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                   >
                     ハンド履歴
                   </button>
+                  {import.meta.env.DEV && (
+                    <>
+                      <div className="border-t border-gray-700 my-1" />
+                      <button
+                        onClick={() => {
+                            wsService.debugSetChips(6);
+                          setShowSettingsMenu(false);
+                        }}
+                        className="w-full px-3 py-2 text-left text-red-400 hover:bg-gray-700"
+                        style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                      >
+                        🐛 Chips → 6
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
