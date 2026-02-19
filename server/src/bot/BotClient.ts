@@ -384,9 +384,30 @@ export class BotClient {
     }
   }
 
-  disconnect(): void {
+  /**
+   * クリーンに切断する。table:leave / matchmaking:leave を送信してから disconnect。
+   * @returns サーバー側のクリーンアップ完了を待つ Promise
+   */
+  async disconnect(): Promise<void> {
     this.stopStuckCheck();
-    if (this.socket) {
+    if (this.socket && this.isConnected) {
+      // テーブルに着席中なら明示的に離席
+      if (this.tableId) {
+        this.socket.emit('table:leave');
+      }
+      // マッチメイキング中なら明示的にキュー離脱
+      const blinds = this.currentBlinds ?? this.config.defaultBlinds ?? '1/3';
+      this.socket.emit('matchmaking:leave', { blinds });
+
+      // disconnect パケットがサーバーに届くよう少し待つ
+      await new Promise<void>(resolve => {
+        this.socket!.on('disconnect', () => resolve());
+        this.socket!.disconnect();
+        // 安全弁: 1秒以内に disconnect イベントが来なければ強制resolve
+        setTimeout(resolve, 1000);
+      });
+      this.socket = null;
+    } else if (this.socket) {
       this.socket.disconnect();
       this.socket = null;
     }

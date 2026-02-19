@@ -64,10 +64,11 @@ export class BotManager {
 
     console.log('Stopping BotManager...');
 
-    // Disconnect all bots
-    for (const bot of this.bots.values()) {
-      bot.disconnect();
-    }
+    // 全ボットを並行してクリーンに切断（各ボットが table:leave 等を送信してから disconnect）
+    const disconnectPromises = Array.from(this.bots.values()).map(bot =>
+      bot.disconnect().catch(err => console.error('Bot disconnect error:', err))
+    );
+    await Promise.all(disconnectPromises);
 
     this.bots.clear();
     this.usedNames.clear();

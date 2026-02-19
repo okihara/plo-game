@@ -94,6 +94,8 @@ const start = async () => {
         origin: env.CLIENT_URL,
         credentials: true,
       },
+      pingInterval: 10000,  // 10秒ごとにping
+      pingTimeout: 5000,    // 5秒以内にpongがなければ切断と判断
     });
 
     const { tableManager, matchmakingPool } = setupGameSocket(io, fastify);

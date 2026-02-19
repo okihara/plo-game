@@ -23,17 +23,19 @@ const botManager = new BotManager({
 });
 
 // Handle shutdown gracefully
-process.on('SIGINT', async () => {
-  console.log('\nReceived SIGINT, shutting down...');
+let isShuttingDown = false;
+async function gracefulShutdown(signal: string) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+  console.log(`\nReceived ${signal}, shutting down...`);
   await botManager.stop();
+  server.close();
+  console.log('All bots disconnected cleanly.');
   process.exit(0);
-});
+}
 
-process.on('SIGTERM', async () => {
-  console.log('\nReceived SIGTERM, shutting down...');
-  await botManager.stop();
-  process.exit(0);
-});
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 // Dashboard HTTP server
 const server = http.createServer((req, res) => {
