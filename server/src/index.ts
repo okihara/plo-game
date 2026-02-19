@@ -22,7 +22,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const fastify = Fastify({
-  logger: env.NODE_ENV === 'development',
+  logger: env.NODE_ENV === 'development' ? { level: 'warn' } : false,
   trustProxy: env.NODE_ENV === 'production',
 });
 
