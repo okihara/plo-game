@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action, Card } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers } from '../../shared/logic/gameEngine.js';
+import { createInitialGameState, startNewHand, getActivePlayers, getValidActions } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
@@ -410,8 +410,14 @@ export class TableInstance {
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
-      // Player still there, force fold via handleAction
-      this.handleAction(playerId, 'fold', 0);
+      // チェック可能ならチェック、そうでなければフォールド
+      if (this.gameState) {
+        const validActions = getValidActions(this.gameState, seatIndex);
+        const canCheck = validActions.some(a => a.action === 'check');
+        this.handleAction(playerId, canCheck ? 'check' : 'fold', 0);
+      } else {
+        this.handleAction(playerId, 'fold', 0);
+      }
     } else {
       // Player already left, but game might be stuck - advance if needed
       if (this.gameState &&
