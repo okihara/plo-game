@@ -33,9 +33,6 @@ export class TableInstance {
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
-  private readonly HAND_COMPLETE_DELAY_MS = 3500; // 通常のハンド完了（全員フォールド等）
-  private readonly SHOWDOWN_DELAY_MS = 7000; // ショーダウン時（カードを見る時間）
-  private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
   private isHandInProgress = false;
   private pendingStartHand = false;
 
@@ -506,7 +503,7 @@ export class TableInstance {
       this.broadcastGameState();
 
       currentStageIndex++;
-      this.runOutTimer = setTimeout(revealNextStage, this.RUNOUT_STREET_DELAY_MS);
+      this.runOutTimer = setTimeout(revealNextStage, TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS);
     };
 
     // 最初のステージを即座に表示開始
@@ -559,12 +556,15 @@ export class TableInstance {
         players: showdownPlayers,
       };
 
-      // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 演出ウェイト
+      await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS));
 
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }
     this.showdownSentDuringRunOut = false;
+
+    // ハンド完了時の演出ウェイト
+    await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.HAND_COMPLETE_DELAY_MS));
 
     // Broadcast winners
     const handCompleteData = {
@@ -574,7 +574,6 @@ export class TableInstance {
         handName: w.handName,
       })),
     };
-    await new Promise(resolve => setTimeout(resolve, 2000));
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 
     // Update seat chips
@@ -594,7 +593,7 @@ export class TableInstance {
     // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
     const wasShowdown = this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1;
     // ショーダウン時はカードを確認する時間を長めに取る
-    const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
+    const delay = wasShowdown ? TABLE_CONSTANTS.NEXT_HAND_SHOWDOWN_DELAY_MS : TABLE_CONSTANTS.NEXT_HAND_DELAY_MS;
     await new Promise(resolve => setTimeout(resolve, delay));
 
     // Remove busted players
