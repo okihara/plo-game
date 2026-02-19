@@ -352,22 +352,16 @@ export class TableInstance {
       if (seat) {
         this.gameState.players[i].chips = seat.chips;
         this.gameState.players[i].name = seat.odName;
+        this.gameState.players[i].isSittingOut = false;
       } else {
-        // 空席のプレイヤーはチップ0にしてゲームに参加させない
+        // 空席はシッティングアウトとしてマーク
         this.gameState.players[i].chips = 0;
+        this.gameState.players[i].isSittingOut = true;
       }
     }
 
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = startNewHand(this.gameState);
-
-    // 空席のプレイヤーをfoldedにする（startNewHandがfoldedをリセットするため、後で処理）
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      if (!seats[i]) {
-        this.gameState.players[i].folded = true;
-        this.gameState.players[i].hasActed = true;
-      }
-    }
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {

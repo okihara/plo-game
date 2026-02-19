@@ -268,6 +268,7 @@ export class BotClient {
           folded: onlinePlayer.folded,
           isAllIn: onlinePlayer.isAllIn,
           hasActed: onlinePlayer.hasActed,
+          isSittingOut: false,
         });
       } else {
         // Empty seat - create placeholder
@@ -282,6 +283,7 @@ export class BotClient {
           folded: true,
           isAllIn: false,
           hasActed: true,
+          isSittingOut: true,
         });
       }
     }

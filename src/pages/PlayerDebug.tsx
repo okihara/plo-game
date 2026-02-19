@@ -21,6 +21,7 @@ const createPlayer = (name: string, overrides: Partial<PlayerType> = {}): Player
   folded: false,
   isAllIn: false,
   hasActed: false,
+  isSittingOut: false,
   avatarId: 1,
   ...overrides,
 });
