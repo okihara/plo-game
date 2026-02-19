@@ -65,6 +65,12 @@ class WebSocketService {
         this.connectionTimeoutId = null;
       }
 
+      // 前回のソケットが残っていたら切断してから新規作成
+      if (this.socket) {
+        this.socket.disconnect();
+        this.socket = null;
+      }
+
       // httpOnly cookieはdocument.cookieで読めないため、
       // サーバー側がhandshake headerからcookieを読み取る
       this.socket = io(SERVER_URL, {

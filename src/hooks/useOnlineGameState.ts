@@ -385,7 +385,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           const convertedWinners = serverWinners.map(w => {
             const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
             return {
-              playerId: seat >= 0 ? seat : 0,
+              playerId: seat,  // -1 = 不明（UI側でハイライトされないだけ）
               amount: w.amount,
               handName: w.handName,
             };
@@ -403,6 +403,16 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         }
       },
       onShowdown: ({ players: showdownPlayers }) => {
+        // 前回のショウダウンタイマーが残っていたらクリア
+        if (showdownRevealTimerRef.current) {
+          clearTimeout(showdownRevealTimerRef.current);
+          showdownRevealTimerRef.current = null;
+        }
+        if (winnersDisplayTimerRef.current) {
+          clearTimeout(winnersDisplayTimerRef.current);
+          winnersDisplayTimerRef.current = null;
+        }
+
         // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
         const cardsMap = new Map<number, Card[]>();
         const handNamesMap = new Map<number, string>();
