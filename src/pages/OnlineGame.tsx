@@ -16,8 +16,6 @@ import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 
-const MIN_LOADING_TIME_MS = 1000; // 最低1秒は接続中画面を表示
-
 interface OnlineGameProps {
   blinds: string;
   onBack: () => void;
