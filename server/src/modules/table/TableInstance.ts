@@ -30,6 +30,7 @@ export class TableInstance {
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
+  private showdownSentDuringRunOut = false;
   private readonly HAND_COMPLETE_DELAY_MS = 3500; // 通常のハンド完了（全員フォールド等）
   private readonly SHOWDOWN_DELAY_MS = 7000; // ショーダウン時（カードを見る時間）
   private readonly RUNOUT_STREET_DELAY_MS = 1500; // オールイン時の各ストリート表示間隔
@@ -241,35 +242,6 @@ export class TableInstance {
     return true;
   }
 
-  // Handle fast fold
-  public handleFastFold(odId: string): void {
-    if (!this.isFastFold) return;
-
-    const seatIndex = this.playerManager.findSeatByOdId(odId);
-    if (seatIndex === -1) return;
-
-    if (this.gameState && !this.gameState.isHandComplete) {
-      // Fold the player
-      if (this.gameState.currentPlayerIndex === seatIndex) {
-        this.handleAction(odId, 'fold', 0);
-      } else {
-        // Pre-fold (mark for folding when turn comes)
-        const result = this.foldProcessor.processFold(this.gameState, {
-          seatIndex,
-          playerId: odId,
-          wasCurrentPlayer: false,
-        });
-        this.gameState = result.gameState;
-      }
-    }
-
-    // Emit event for MatchmakingPool to handle re-queuing
-    const seat = this.playerManager.getSeat(seatIndex);
-    if (seat?.socket) {
-      seat.socket.emit('matchmaking:ready_for_new_table');
-    }
-  }
-
   // Get the number of connected players
   public getConnectedPlayerCount(): number {
     return this.playerManager.getConnectedPlayerCount();
@@ -419,7 +391,7 @@ export class TableInstance {
   }
 
   /**
-   * オールイン時のランアウト: コミュニティカードをストリートごとに段階的に表示する
+   * オールイン時のランアウト: 全員のカードを公開してから、コミュニティカードをストリートごとに段階的に表示する
    * @param finalState 全カード配布済み＆勝者決定済みの最終ゲーム状態
    * @param previousCardCount ランアウト開始前のコミュニティカード枚数
    */
@@ -439,6 +411,42 @@ export class TableInstance {
     }
 
     this.isRunOutInProgress = true;
+    // ランアウト中はアクションタイマーを確実にクリア
+    this.actionController.clearTimers();
+
+    // ショーダウン: ボードランアウトの前に全員のカードを公開する（ポーカーの正しい順序）
+    const seats = this.playerManager.getSeats();
+    const activePlayers = getActivePlayers(finalState);
+    if (activePlayers.length > 1) {
+      const showdownPlayers = activePlayers.map(p => {
+        const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
+        let handName = winnerEntry?.handName || '';
+        if (!handName && finalState.communityCards.length === 5) {
+          try {
+            const result = evaluatePLOHand(p.holeCards, finalState.communityCards);
+            handName = result.name;
+          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
+        }
+        return {
+          seatIndex: p.id,
+          odId: seats[p.id]?.odId || '',
+          cards: p.holeCards,
+          handName,
+        };
+      });
+      const showdownData = {
+        winners: finalState.winners.map(w => ({
+          playerId: seats[w.playerId]?.odId || '',
+          amount: w.amount,
+          handName: w.handName,
+          cards: finalState.players[w.playerId].holeCards,
+        })),
+        players: showdownPlayers,
+      };
+      this.broadcast.emitToRoom('game:showdown', showdownData);
+      this.showdownSentDuringRunOut = true;
+    }
+
     let currentStageIndex = 0;
 
     const revealNextStage = () => {
@@ -477,8 +485,9 @@ export class TableInstance {
   private handleHandComplete(): void {
     if (!this.gameState) return;
 
-    // Clear pending action
+    // Clear pending action and ensure runout flag is reset (safety)
     this.actionController.clearTimers();
+    this.isRunOutInProgress = false;
 
     // ハンドヒストリー保存 (fire-and-forget)
     const seats = this.playerManager.getSeats();
@@ -490,7 +499,8 @@ export class TableInstance {
     ).catch(err => console.error('Hand history save failed:', err));
 
     // Showdown - reveal cards for ALL active players (showdownをhand_completeより先に送信)
-    if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1) {
+    // ランアウト時は handleAllInRunOut() で既に送信済みなのでスキップ
+    if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1 && !this.showdownSentDuringRunOut) {
       const activePlayers = getActivePlayers(this.gameState);
       const showdownPlayers = activePlayers.map(p => {
         const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
@@ -519,6 +529,7 @@ export class TableInstance {
       };
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }
+    this.showdownSentDuringRunOut = false;
 
     // Broadcast winners
     const handCompleteData = {

@@ -242,14 +242,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
     });
 
-    // Handle fast fold
-    socket.on('game:fold', () => {
-      const table = tableManager.getPlayerTable(socket.odId!);
-      if (table && table.isFastFold) {
-        table.handleFastFold(socket.odId!);
-      }
-    });
-
     // Handle fast fold pool join
     socket.on('matchmaking:join', async (data: { blinds: string }) => {
       if (maintenanceService.isMaintenanceActive()) {

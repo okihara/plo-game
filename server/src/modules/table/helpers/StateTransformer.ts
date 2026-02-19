@@ -101,7 +101,7 @@ export class StateTransformer {
       })),
       currentStreet: gameState.currentStreet,
       dealerSeat: gameState.dealerPosition,
-      currentPlayerSeat: gameState.isHandComplete ? null : gameState.currentPlayerIndex,
+      currentPlayerSeat: (gameState.isHandComplete || gameState.currentPlayerIndex === -1) ? null : gameState.currentPlayerIndex,
       currentBet: gameState.currentBet,
       minRaise: gameState.minRaise,
       smallBlind: gameState.smallBlind,
