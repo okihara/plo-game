@@ -23,7 +23,10 @@ export class BotManager {
   private healthCheckInterval: NodeJS.Timeout | null = null;
 
   constructor(config: BotManagerConfig) {
-    this.config = config;
+    this.config = {
+      ...config,
+      botCount: Math.min(config.botCount, BOT_NAMES.length),
+    };
   }
 
   async start(): Promise<void> {
