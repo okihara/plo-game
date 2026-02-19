@@ -15,6 +15,7 @@ import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
+import { BustedScreen } from '../components/BustedScreen';
 
 interface OnlineGameProps {
   blinds: string;
@@ -100,6 +101,10 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   // テーブル待機中
   if (!gameState) {
+    // バスト中はバストスクリーンを表示
+    if (bustedMessage) {
+      return <BustedScreen message={bustedMessage} />;
+    }
     return <SearchingTableScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }
 
@@ -227,15 +232,8 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
           {/* バスト通知オーバーレイ */}
           {bustedMessage && (
-            <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/70 pointer-events-none">
-              <div className="text-center">
-                <p className="text-white font-bold mb-2" style={{ fontSize: 'min(3vh, 5vw)' }}>
-                  {bustedMessage}
-                </p>
-                <p className="text-white/60" style={{ fontSize: 'min(1.8vh, 3vw)' }}>
-                  ロビーに戻ります...
-                </p>
-              </div>
+            <div className="absolute inset-0 z-[200]">
+              <BustedScreen message={bustedMessage} />
             </div>
           )}
 
