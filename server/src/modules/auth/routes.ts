@@ -201,8 +201,8 @@ export async function authRoutes(fastify: FastifyInstance) {
             // Non-critical — continue without avatar
             fastify.log.warn({ status: profileRes.status }, 'Failed to get Twitter profile image');
           }
-        } catch {
-          // Non-critical
+        } catch (e) {
+          console.warn('Failed to fetch Twitter profile image:', e);
         }
 
         const user = await findOrCreateUser({

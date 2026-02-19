@@ -128,7 +128,7 @@ export class MatchmakingPool {
         player.socket.emit('table:joined', { tableId: table.id, seat: seatNumber });
       } else {
         // Seating failed - re-queue the player
-        console.log(`[MatchmakingPool] Seating failed for ${player.odId}, re-queuing`);
+        console.warn(`[MatchmakingPool] Seating failed for ${player.odId}, re-queuing`);
         queue.push(player);
         break; // Exit loop to avoid infinite retry
       }

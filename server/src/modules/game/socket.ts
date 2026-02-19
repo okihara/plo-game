@@ -130,6 +130,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.odIsBot = false;
       return next();
     } catch (err) {
+      console.warn('Socket auth failed:', err);
       return next(new Error('認証に失敗しました'));
     }
   });

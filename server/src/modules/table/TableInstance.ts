@@ -512,7 +512,7 @@ export class TableInstance {
           try {
             const result = evaluatePLOHand(p.holeCards, this.gameState!.communityCards);
             handName = result.name;
-          } catch { /* ignore */ }
+          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
         }
         return {
           seatIndex: p.id,

@@ -92,8 +92,8 @@ export class HandHistoryRecorder {
             try {
               const result = evaluatePLOHand(player.holeCards, gameState.communityCards);
               finalHand = result.name || null;
-            } catch {
-              // 評価失敗時はnull
+            } catch (e) {
+              console.warn('Hand evaluation failed for seat', seatIndex, e);
             }
           }
 

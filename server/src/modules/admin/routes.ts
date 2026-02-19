@@ -146,7 +146,8 @@ export function adminRoutes(deps: AdminDependencies) {
       try {
         userCount = await prisma.user.count();
         dbConnected = true;
-      } catch {
+      } catch (e) {
+        console.warn('Admin stats: DB connection check failed:', e);
         dbConnected = false;
       }
 
