@@ -49,6 +49,7 @@ export class BotClient {
   private handsPlayed: number = 0;
   private connectedAt: number | null = null;
   private lastActionAt: number | null = null;
+  private actionGeneration = 0; // stale なアクションコールバックを防ぐ世代カウンター
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -98,6 +99,7 @@ export class BotClient {
         this.tableId = data.tableId;
         this.seatNumber = data.seat;
         this.lastInGameTime = Date.now();
+        this.actionGeneration++; // 新テーブル参加時に旧アクションを無効化
         console.log(`[${this.config.name}] Joined table ${data.tableId} at seat ${data.seat}`);
       });
 
@@ -105,6 +107,7 @@ export class BotClient {
         console.log(`[${this.config.name}] Left table`);
         this.tableId = null;
         this.seatNumber = -1;
+        this.actionGeneration++; // テーブル離脱時に旧アクションを無効化
         // 自動的に再度マッチメイキングに参加
         this.rejoinMatchmaking();
       });
@@ -113,6 +116,7 @@ export class BotClient {
         console.log(`[${this.config.name}] Table closed`);
         this.tableId = null;
         this.seatNumber = -1;
+        this.actionGeneration++; // テーブル閉鎖時に旧アクションを無効化
         // 自動的に再度マッチメイキングに参加
         this.rejoinMatchmaking();
       });
@@ -150,6 +154,9 @@ export class BotClient {
       });
 
       this.socket.on('game:hand_complete', () => {
+        // ハンド完了時に保留中のアクションコールバックを無効化
+        this.actionGeneration++;
+
         // 相手モデルを更新（ハンド間の統計蓄積）
         if (this.handActions.length > 0 && this.gameState) {
           const activePlayers = Object.keys(this.gameState.players)
@@ -221,6 +228,9 @@ export class BotClient {
 
     // Validate action against valid actions
     const validAction = data.validActions.find(a => a.action === aiDecision.action);
+    // 世代を記録して、コールバック時にstaleでないか検証する
+    const gen = this.actionGeneration;
+
     if (validAction) {
       // Clamp amount to valid range
       let amount = aiDecision.amount;
@@ -231,6 +241,7 @@ export class BotClient {
       // Add thinking delay (800-2000ms)
       const delay = 800 + Math.random() * 1200;
       setTimeout(() => {
+        if (this.actionGeneration !== gen) return; // stale: ハンド完了やテーブル移動で無効化済み
         this.sendAction(aiDecision.action, amount);
       }, delay);
     } else {
@@ -239,11 +250,20 @@ export class BotClient {
       const callAction = data.validActions.find(a => a.action === 'call');
 
       if (checkAction) {
-        setTimeout(() => this.sendAction('check', 0), 800);
+        setTimeout(() => {
+          if (this.actionGeneration !== gen) return;
+          this.sendAction('check', 0);
+        }, 800);
       } else if (callAction) {
-        setTimeout(() => this.sendAction('call', callAction.minAmount), 800);
+        setTimeout(() => {
+          if (this.actionGeneration !== gen) return;
+          this.sendAction('call', callAction.minAmount);
+        }, 800);
       } else {
-        setTimeout(() => this.sendAction('fold', 0), 800);
+        setTimeout(() => {
+          if (this.actionGeneration !== gen) return;
+          this.sendAction('fold', 0);
+        }, 800);
       }
     }
   }
