@@ -593,9 +593,7 @@ export class TableInstance {
 
   // デバッグ用: プレイヤーのチップを強制的に変更する
   public debugSetChips(odId: string, chips: number): boolean {
-    if (!this.adminHelper.debugSetChips(odId, chips, this.gameState)) return false;
-    this.broadcastGameState();
-    return true;
+    return this.adminHelper.debugSetChips(odId, chips, this.gameState, () => this.broadcastGameState());
   }
 
   public getClientGameState(): ClientGameState {

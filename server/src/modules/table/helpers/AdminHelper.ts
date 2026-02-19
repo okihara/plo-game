@@ -48,7 +48,7 @@ export class AdminHelper {
   }
 
   /** デバッグ用: プレイヤーのチップを強制的に変更する */
-  debugSetChips(odId: string, chips: number, gameState: GameState | null): boolean {
+  debugSetChips(odId: string, chips: number, gameState: GameState | null, broadcastFn: () => void): boolean {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return false;
 
@@ -57,6 +57,7 @@ export class AdminHelper {
       gameState.players[seatIndex].chips = chips;
     }
 
+    broadcastFn();
     return true;
   }
 }
