@@ -577,36 +577,36 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   const hasQQ = rankCounts.get('Q') === 2;
   const hasJJ = rankCounts.get('J') === 2;
 
-  if (hasAA) nuttiness += 0.25;
-  else if (hasKK) nuttiness += 0.18;
-  else if (hasQQ) nuttiness += 0.14;
-  else if (hasJJ) nuttiness += 0.10;
-  else if (pairRanks.length > 0) { const highestPairValue = Math.max(...pairRanks.map(([r]) => getRankValue(r))); nuttiness += (highestPairValue / 14) * 0.08; }
+  if (hasAA) nuttiness += 0.28;
+  else if (hasKK) nuttiness += 0.22;
+  else if (hasQQ) nuttiness += 0.17;
+  else if (hasJJ) nuttiness += 0.13;
+  else if (pairRanks.length > 0) { const highestPairValue = Math.max(...pairRanks.map(([r]) => getRankValue(r))); nuttiness += (highestPairValue / 14) * 0.12; }
 
-  if (aceHighFlushDrawCount >= 2) nuttiness += 0.12;
-  else if (aceHighFlushDrawCount === 1) nuttiness += 0.08;
+  if (aceHighFlushDrawCount >= 2) nuttiness += 0.14;
+  else if (aceHighFlushDrawCount === 1) nuttiness += 0.10;
 
   const avgValue = values.reduce((a, b) => a + b, 0) / 4;
-  nuttiness += Math.max(0, (avgValue - 8) / 14 * 0.08);
+  nuttiness += Math.max(0, (avgValue - 6) / 14 * 0.15);
 
   let connectivity = 0;
   const isRundown = uniqueValues.length === 4 && span === 3;
   if (isRundown) {
     const minValue = uniqueValues[0];
-    if (minValue >= 10) connectivity += 0.30;
-    else if (minValue >= 7) connectivity += 0.25;
-    else connectivity += 0.18;
+    if (minValue >= 10) connectivity += 0.35;
+    else if (minValue >= 7) connectivity += 0.30;
+    else connectivity += 0.22;
   } else {
     let gapScore = 0;
     for (let i = 0; i < uniqueValues.length - 1; i++) {
       const gap = uniqueValues[i + 1] - uniqueValues[i];
       if (gap === 1) gapScore += 3; else if (gap === 2) gapScore += 2; else if (gap === 3) gapScore += 1;
     }
-    connectivity += (gapScore / 9) * 0.20;
+    connectivity += (gapScore / 9) * 0.28;
   }
 
   const hasWrap = span <= 4 && uniqueValues.length >= 3;
-  if (hasWrap && !isRundown) connectivity += 0.08;
+  if (hasWrap && !isRundown) connectivity += 0.10;
 
   let hasDangler = false;
   if (uniqueValues.length === 4) {
@@ -614,15 +614,15 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
     for (let i = 0; i < 3; i++) gaps.push(uniqueValues[i + 1] - uniqueValues[i]);
     const maxGap = Math.max(...gaps);
     const maxGapIndex = gaps.indexOf(maxGap);
-    if (maxGap >= 5 && (maxGapIndex === 0 || maxGapIndex === 2)) { hasDangler = true; connectivity -= 0.12; }
-    else if (maxGap >= 4) { hasDangler = true; connectivity -= 0.06; }
+    if (maxGap >= 5 && (maxGapIndex === 0 || maxGapIndex === 2)) { hasDangler = true; connectivity -= 0.08; }
+    else if (maxGap >= 4) { hasDangler = true; connectivity -= 0.04; }
   }
 
   let suitedness = 0;
-  if (isDoubleSuited) { suitedness += 0.20; if (hasAceSuited) suitedness += 0.05; }
-  else if (isSingleSuited) { suitedness += 0.10; if (hasAceSuited) suitedness += 0.03; }
-  if (tripleOrMoreSuited) suitedness -= 0.08;
-  if (isRainbow) suitedness -= 0.05;
+  if (isDoubleSuited) { suitedness += 0.22; if (hasAceSuited) suitedness += 0.06; }
+  else if (isSingleSuited) { suitedness += 0.14; if (hasAceSuited) suitedness += 0.04; }
+  if (tripleOrMoreSuited) suitedness -= 0.05;
+  if (isRainbow) suitedness -= 0.02;
 
   let bonus = 0;
   if (hasAA && hasKK && isDoubleSuited) bonus += 0.15;
