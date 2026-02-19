@@ -193,7 +193,7 @@ export class TableInstance {
       } else {
         // 通常のハンド完了（全員フォールド or リバーベッティング終了）
         this.broadcastGameState();
-        this.handleHandComplete();
+        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       }
     } else if (result.streetChanged) {
       // アクション演出を待ってからコミュニティカードを表示
@@ -299,7 +299,7 @@ export class TableInstance {
 
     if (result.handComplete) {
       this.broadcastGameState();
-      this.handleHandComplete();
+      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
     } else {
       this.requestNextAction();
       this.broadcastGameState();
@@ -384,7 +384,7 @@ export class TableInstance {
 
     // currentPlayerIndex が -1 の場合（全員オールインなど）はハンド完了処理へ
     if (this.gameState.currentPlayerIndex === -1) {
-      this.handleHandComplete();
+      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       return;
     }
 
@@ -488,7 +488,7 @@ export class TableInstance {
         this.isRunOutInProgress = false;
         this.gameState = finalState;
         this.broadcastGameState();
-        this.handleHandComplete();
+        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
         return;
       }
 
@@ -513,7 +513,7 @@ export class TableInstance {
     revealNextStage();
   }
 
-  private handleHandComplete(): void {
+  private async handleHandComplete(): Promise<void> {
     if (!this.gameState) return;
 
     // Clear pending action and ensure runout flag is reset (safety)
@@ -558,6 +558,11 @@ export class TableInstance {
         })),
         players: showdownPlayers,
       };
+
+      // ショウダウン演出: 2s待機 → カードreveal → 2s待機 → WIN表示
+
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }
     this.showdownSentDuringRunOut = false;
@@ -570,6 +575,7 @@ export class TableInstance {
         handName: w.handName,
       })),
     };
+    await new Promise(resolve => setTimeout(resolve, 2000));
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 
     // Update seat chips
@@ -589,19 +595,19 @@ export class TableInstance {
     // ショーダウン時はカードを確認する時間を長めに取る
     this.pendingStartHand = true;
     const delay = wasShowdown ? this.SHOWDOWN_DELAY_MS : this.HAND_COMPLETE_DELAY_MS;
-    setTimeout(() => {
-      // Remove busted players
-      for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-        const seat = seats[i];
-        if (seat && seat.chips <= 0) {
-          // Notify player they're busted (table:busted, NOT table:error)
-          seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
-          this.unseatPlayer(seat.odId);
-        }
+
+    // Remove busted players
+    await new Promise(resolve => setTimeout(resolve, delay));
+    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+      const seat = seats[i];
+      if (seat && seat.chips <= 0) {
+        // Notify player they're busted (table:busted, NOT table:error)
+        seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
+        this.unseatPlayer(seat.odId);
       }
-      this.pendingStartHand = false;  // ← ここでリセット
-      this.maybeStartHand();
-    }, delay);
+    }
+    this.pendingStartHand = false;  // ← ここでリセット
+    this.maybeStartHand();
   }
 
   private broadcastGameState(): void {
