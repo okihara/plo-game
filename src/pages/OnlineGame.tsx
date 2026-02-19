@@ -53,7 +53,6 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
-  const mountTimeRef = useRef(Date.now());
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
