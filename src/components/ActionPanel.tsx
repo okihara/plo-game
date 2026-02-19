@@ -15,6 +15,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
 
   const toCall = state.currentBet - myPlayer.currentBet;
   const canCheck = toCall === 0;
+  const isShortStack = toCall > 0 && myPlayer.chips < toCall;
 
   // オンラインモード用のシンプルなレイズ判定
   // サーバー側でバリデーションするので、クライアントは基本的な条件のみチェック
@@ -156,7 +157,7 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
         </div>
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
-          disabled={!isMyTurn || actionSent}
+          disabled={!isMyTurn || actionSent || isShortStack}
           className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
@@ -166,15 +167,15 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
           {toCall === 0 ? 'チェック' : `コール ${formatChips(toCall)}`}
         </button>
         <button
-          onClick={() => handleAction(sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
-          disabled={!canRaise || !isMyTurn || actionSent}
+          onClick={() => handleAction(isShortStack ? 'allin' : sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
+          disabled={isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent)}
           className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
-            sliderValue >= myPlayer.chips
+            isShortStack || sliderValue >= myPlayer.chips
               ? 'bg-gradient-to-b from-red-500 to-red-600'
               : 'bg-gradient-to-b from-amber-500 to-amber-600'
           }`}
         >
-          {sliderValue >= myPlayer.chips ? `オールイン ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
+          {isShortStack || sliderValue >= myPlayer.chips ? `オールイン ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
         </button>
       </div>
     </div>
