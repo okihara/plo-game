@@ -255,6 +255,12 @@ export function Player({
             D
           </div>
         )}
+        {/* All-In Marker */}
+        {player.isAllIn && !player.folded && (
+          <div className="absolute top-[-4cqw] left-[-4cqw] bg-red-600 text-white text-[4.5cqw] font-black px-[2cqw] py-[0.5cqw] rounded-full shadow-md z-[25] leading-none whitespace-nowrap">
+            ALL IN
+          </div>
+        )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
           <div className="absolute -bottom-[2cqw] left-1/2 -translate-x-1/2 w-[12cqw] h-[7.5cqw] bg-black/80 rounded flex items-center justify-center text-[6cqw] font-bold text-white z-[35] leading-none">
