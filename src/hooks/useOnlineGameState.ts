@@ -188,7 +188,6 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   // ショウダウン演出タイミング用Refs
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const winnersDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const pendingWinnersRef = useRef<{ playerId: number; amount: number; handName: string }[] | null>(null);
   const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
 
   // ============================================
@@ -340,18 +339,8 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       onHoleCards: (cards) => {
         // 新しいハンドが開始されたらカード配布アニメーションとwinnersクリア
         if (cards.length > 0) {
-          // ショウダウン演出タイマーをクリア
-          if (showdownRevealTimerRef.current) {
-            clearTimeout(showdownRevealTimerRef.current);
-            showdownRevealTimerRef.current = null;
-          }
-          if (winnersDisplayTimerRef.current) {
-            clearTimeout(winnersDisplayTimerRef.current);
-            winnersDisplayTimerRef.current = null;
-          }
-          pendingWinnersRef.current = null;
+          console.log('onHoleCards', cards);
           pendingShowdownHandNamesRef.current = null;
-
           startDealingAnimation();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
