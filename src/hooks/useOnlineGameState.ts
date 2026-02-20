@@ -396,14 +396,13 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       onBusted: (message) => {
         setBustedMessage(message);
       },
-      onFastFoldQueued: () => {
+      onMatchmakingQueued: () => {
         setIsChangingTable(true);
       },
-      onFastFoldTableAssigned: (newTableId: string) => {
+      onMatchmakingTableAssigned: (newTableId: string) => {
         setTableId(newTableId);
         setIsChangingTable(false);
         setMyHoleCards([]);
-        // カード配布アニメーションはonHoleCardsで開始される
       },
       onMaintenanceStatus: (data) => {
         setMaintenanceStatus(data);

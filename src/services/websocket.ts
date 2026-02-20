@@ -43,8 +43,6 @@ class WebSocketService {
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
     onBusted?: (message: string) => void;
-    onFastFoldQueued?: () => void;
-    onFastFoldTableAssigned?: (tableId: string) => void;
     onSpectating?: (tableId: string) => void;
     onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
     onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
