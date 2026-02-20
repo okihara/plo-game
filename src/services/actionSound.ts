@@ -1,6 +1,6 @@
 import type { Action } from '../logic/types';
 
-type SoundKey = Action | 'win' | 'lose';
+type SoundKey = Action | 'win' | 'lose' | 'deal' | 'myturn';
 
 const STORAGE_KEY = 'plo-sound-enabled';
 
@@ -25,6 +25,8 @@ const SOUND_FILES: Record<SoundKey, string> = {
   allin: '/sounds/allin.mp3',
   win: '/sounds/win.mp3',
   lose: '/sounds/lose.mp3',
+  deal: '/sounds/deal.mp3',
+  myturn: '/sounds/myturn.mp3',
 };
 
 // プリロードされた Audio オブジェクトのキャッシュ
@@ -55,4 +57,12 @@ export function playActionSound(action: Action) {
 
 export function playResultSound(isWinner: boolean) {
   play(isWinner ? 'win' : 'lose');
+}
+
+export function playDealSound() {
+  play('deal');
+}
+
+export function playMyTurnSound() {
+  play('myturn');
 }
