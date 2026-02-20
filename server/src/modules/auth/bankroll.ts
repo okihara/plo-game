@@ -5,6 +5,42 @@ const DAILY_BONUS = 1000;
 const LOGIN_BONUS_TARGET = 600;
 const DEBUG_ADD_AMOUNT = 10000;
 
+// バイイン引き落とし（着席直前に呼ばれる）
+export async function deductBuyIn(odId: string, amount: number): Promise<boolean> {
+  try {
+    const bankroll = await prisma.bankroll.findUnique({ where: { userId: odId } });
+    if (!bankroll || bankroll.balance < amount) return false;
+
+    await prisma.bankroll.update({
+      where: { userId: odId },
+      data: { balance: { decrement: amount } },
+    });
+    await prisma.transaction.create({
+      data: { userId: odId, type: 'BUY_IN', amount: -amount },
+    });
+    return true;
+  } catch (e) {
+    console.error('deductBuyIn failed:', odId, amount, e);
+    return false;
+  }
+}
+
+// キャッシュアウト（テーブル離脱時・バイイン返金時）
+export async function cashOutPlayer(odId: string, chips: number, tableId?: string): Promise<void> {
+  if (chips <= 0) return;
+  try {
+    await prisma.bankroll.update({
+      where: { userId: odId },
+      data: { balance: { increment: chips } },
+    });
+    await prisma.transaction.create({
+      data: { userId: odId, type: 'CASH_OUT', amount: chips, tableId },
+    });
+  } catch (e) {
+    console.error('Cash-out failed:', odId, chips, e);
+  }
+}
+
 /** 直近の JST 7:00 (= UTC 22:00) の境界を返す */
 function getJst7amBoundary(): Date {
   const now = new Date();

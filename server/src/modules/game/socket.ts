@@ -6,6 +6,7 @@ import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
+import { cashOutPlayer } from '../auth/bankroll.js';
 
 interface AuthenticatedSocket extends Socket {
   odId?: string;
@@ -52,22 +53,6 @@ async function findOrCreateBotUser(botName: string, botAvatar: string | null) {
   }
 
   return user;
-}
-
-// テーブル離脱時のキャッシュアウト処理
-async function cashOutPlayer(odId: string, chips: number, tableId?: string): Promise<void> {
-  if (chips <= 0) return;
-  try {
-    await prisma.bankroll.update({
-      where: { userId: odId },
-      data: { balance: { increment: chips } },
-    });
-    await prisma.transaction.create({
-      data: { userId: odId, type: 'CASH_OUT', amount: chips, tableId },
-    });
-  } catch (e) {
-    console.error('Cash-out failed:', odId, chips, e);
-  }
 }
 
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
@@ -189,7 +174,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const [, bb] = parts.map(Number);
         const minBuyIn = bb * 100; // $300 for $1/$3
 
-        // Check balance
+        // Check balance (deduction happens later when actually seated)
         const bankroll = await prisma.bankroll.findUnique({
           where: { userId: socket.odId },
         });
@@ -198,20 +183,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           socket.emit('table:error', { message: 'Insufficient balance for minimum buy-in' });
           return;
         }
-
-        // Deduct buy-in
-        await prisma.bankroll.update({
-          where: { userId: socket.odId },
-          data: { balance: { decrement: minBuyIn } },
-        });
-
-        await prisma.transaction.create({
-          data: {
-            userId: socket.odId!,
-            type: 'BUY_IN',
-            amount: -minBuyIn,
-          },
-        });
 
         // Leave current table if any (with cashout)
         const currentTable = tableManager.getPlayerTable(socket.odId!);
@@ -237,10 +208,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     // Handle fast fold pool leave
     socket.on('matchmaking:leave', async (data: { blinds: string }) => {
       try {
-        const refund = await matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
-        if (refund > 0) {
-          await cashOutPlayer(socket.odId!, refund);
-        }
+        matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
 
         // Leave current table too (with cashout)
         const table = tableManager.getPlayerTable(socket.odId!);
@@ -264,12 +232,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           await unseatAndCashOut(table, socket.odId!);
         }
 
-        // マッチメイキングキューから除去+リファンド
-        const refund = await matchmakingPool.removeFromAllQueues(socket.odId!);
-        if (refund > 0) {
-          await cashOutPlayer(socket.odId!, refund);
-          console.log(`Refunded ${refund} chips to ${socket.odId} from matchmaking queue`);
-        }
+        // マッチメイキングキューから除去（バイイン未引き落としなのでリファンド不要）
+        matchmakingPool.removeFromAllQueues(socket.odId!);
       } catch (err) {
         console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
       }

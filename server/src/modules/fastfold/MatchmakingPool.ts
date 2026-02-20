@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
+import { deductBuyIn, cashOutPlayer } from '../auth/bankroll.js';
 
 interface QueuedPlayer {
   odId: string;
@@ -67,27 +68,22 @@ export class MatchmakingPool {
     this.processQueue(blinds);
   }
 
-  // Remove player from queue (returns refund chip amount, 0 if not found)
-  public async removeFromQueue(odId: string, blinds: string): Promise<number> {
+  // Remove player from queue
+  public removeFromQueue(odId: string, blinds: string): void {
     const queue = this.queues.get(blinds);
-    if (!queue) return 0;
+    if (!queue) return;
 
     const index = queue.findIndex(p => p.odId === odId);
     if (index !== -1) {
-      const [removed] = queue.splice(index, 1);
-      return removed.chips;
+      queue.splice(index, 1);
     }
-
-    return 0;
   }
 
-  // Remove player from ALL queues (returns total refund chip amount)
-  public async removeFromAllQueues(odId: string): Promise<number> {
-    let totalRefund = 0;
+  // Remove player from ALL queues
+  public removeFromAllQueues(odId: string): void {
     for (const blinds of this.queues.keys()) {
-      totalRefund += await this.removeFromQueue(odId, blinds);
+      this.removeFromQueue(odId, blinds);
     }
-    return totalRefund;
   }
 
   // Process queue and seat players
@@ -109,7 +105,14 @@ export class MatchmakingPool {
 
       // Check if socket is still connected
       if (!player.socket.connected) {
-        console.warn(`[MatchmakingPool] Skipping disconnected player ${player.odId} (chips=${player.chips}, blinds=${blinds}) - chips will be lost without refund`);
+        console.warn(`[MatchmakingPool] Skipping disconnected player ${player.odId} (blinds=${blinds})`);
+        continue;
+      }
+
+      // Deduct buy-in right before seating
+      const deducted = await deductBuyIn(player.odId, player.chips);
+      if (!deducted) {
+        player.socket.emit('table:error', { message: 'Insufficient balance for buy-in' });
         continue;
       }
 
@@ -126,8 +129,9 @@ export class MatchmakingPool {
         player.socket.emit('matchmaking:table_assigned', { tableId: table.id });
         table.triggerMaybeStartHand();
       } else {
-        // Seating failed - re-queue the player
-        console.warn(`[MatchmakingPool] Seating failed for ${player.odId}, re-queuing`);
+        // Seating failed - refund and re-queue the player
+        console.warn(`[MatchmakingPool] Seating failed for ${player.odId}, refunding and re-queuing`);
+        await cashOutPlayer(player.odId, player.chips);
         queue.push(player);
         break; // Exit loop to avoid infinite retry
       }
