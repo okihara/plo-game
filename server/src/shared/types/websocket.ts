@@ -6,7 +6,6 @@ import type { Action, Card } from '../logic/types.js';
 
 export interface ClientToServerEvents {
   // Table actions
-  'table:join': (data: { tableId: string; buyIn: number }) => void;
   'table:leave': () => void;
   'table:sit': (data: { seatNumber: number }) => void;
   'table:stand': () => void;

@@ -103,12 +103,13 @@ export class TableInstance {
     };
     this.broadcast.emitToRoom('table:player_joined', joinData);
 
-    // Send current table state to the newly seated player
-    const clientState = this.getClientGameState();
-    this.broadcast.emitToSocket(socket, odId, 'game:state', { state: clientState });
+    // Notify the seated player
+    socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+    socket.emit('game:state', { state: this.getClientGameState() });
 
-    // Start hand if enough players
-    this.maybeStartHand();
+    // NOTE: triggerMaybeStartHand() is NOT called here.
+    // The caller must call it after completing tracking setup,
+    // to ensure table:joined arrives before game:hole_cards on the client.
 
     return seatIndex;
   }

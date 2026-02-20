@@ -247,10 +247,6 @@ class WebSocketService {
   }
 
   // Table actions
-  joinTable(tableId: string, buyIn: number): void {
-    this.socket?.emit('table:join', { tableId, buyIn });
-  }
-
   leaveTable(): void {
     this.socket?.emit('table:leave');
   }

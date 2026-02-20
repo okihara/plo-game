@@ -122,12 +122,9 @@ export class MatchmakingPool {
       );
 
       if (seatNumber !== null) {
-        // Track player's table
         this.tableManager.setPlayerTable(player.odId, table.id);
-
-        // Notify player
         player.socket.emit('matchmaking:table_assigned', { tableId: table.id });
-        player.socket.emit('table:joined', { tableId: table.id, seat: seatNumber });
+        table.triggerMaybeStartHand();
       } else {
         // Seating failed - re-queue the player
         console.warn(`[MatchmakingPool] Seating failed for ${player.odId}, re-queuing`);
