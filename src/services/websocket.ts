@@ -249,14 +249,6 @@ class WebSocketService {
     this.socket?.emit('table:leave');
   }
 
-  sitDown(seatNumber: number): void {
-    this.socket?.emit('table:sit', { seatNumber });
-  }
-
-  standUp(): void {
-    this.socket?.emit('table:stand');
-  }
-
   // Game actions
   sendAction(action: Action, amount?: number): void {
     this.socket?.emit('game:action', { action, amount });
