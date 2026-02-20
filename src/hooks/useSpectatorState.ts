@@ -91,6 +91,7 @@ function convertToSpectatorGameState(
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
+    rake: 0,
   };
 }
 
@@ -245,7 +246,7 @@ export function useSpectatorState(tableId: string) {
           recordAction(seat, action, amount);
         }
       },
-      onHandComplete: (serverWinners) => {
+      onHandComplete: (serverWinners, _rake) => {
         // refで最新のclientStateを参照
         const currentState = clientStateRef.current;
         if (currentState) {

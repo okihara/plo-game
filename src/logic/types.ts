@@ -58,4 +58,5 @@ export interface GameState {
   handHistory: GameAction[];
   isHandComplete: boolean;
   winners: { playerId: number; amount: number; handName: string }[];
+  rake: number;
 }

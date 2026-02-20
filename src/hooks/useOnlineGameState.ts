@@ -146,6 +146,7 @@ function convertClientStateToGameState(
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
+    rake: 0,
   };
 }
 
@@ -173,6 +174,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
   const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
+  const [lastRake, setLastRake] = useState(0);
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
@@ -328,6 +330,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
           setWinners([]); // 新しいハンド開始時にwinnersをクリア
+          setLastRake(0);
           setLastActions(new Map()); // アクションマーカーもクリア
           setShowdownCards(new Map()); // ショウダウンカードもクリア
           setShowdownHandNames(new Map()); // ショウダウン役名もクリア
@@ -350,7 +353,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       onActionRequired: () => {
         // playMyTurnSound();
       },
-      onHandComplete: (serverWinners) => {
+      onHandComplete: (serverWinners, rake) => {
         const currentState = clientStateRef.current;
         if (currentState) {
           const convertedWinners = serverWinners.map(w => {
@@ -363,6 +366,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
             };
           });
           setWinners(convertedWinners);
+          setLastRake(rake);
           if (pendingShowdownHandNamesRef.current) {
             setShowdownHandNames(pendingShowdownHandNamesRef.current);
           }
@@ -420,6 +424,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
     ? {
         ...baseGameState,
         winners,
+        rake: lastRake,
         // winnersがある場合はisHandCompleteをtrueに
         isHandComplete: baseGameState.isHandComplete || winners.length > 0,
       }

@@ -1,7 +1,7 @@
 // アクションフロー制御・タイマー管理
 
 import { GameState, Action } from '../../../shared/logic/types.js';
-import { getValidActions, getActivePlayers, applyAction, determineWinner, wouldAdvanceStreet } from '../../../shared/logic/gameEngine.js';
+import { getValidActions, getActivePlayers, applyAction, determineWinner, wouldAdvanceStreet, type RakeConfig } from '../../../shared/logic/gameEngine.js';
 import { SeatInfo, PendingAction } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
 import { BroadcastService } from './BroadcastService.js';
@@ -67,7 +67,8 @@ export class ActionController {
     seatIndex: number,
     action: Action,
     amount: number,
-    odId: string
+    odId: string,
+    rakeConfig?: RakeConfig
   ): ActionResult {
     // プレイヤーのターンかチェック
     if (gameState.currentPlayerIndex !== seatIndex) {
@@ -92,7 +93,7 @@ export class ActionController {
     const willAdvanceStreet = wouldAdvanceStreet(gameState, seatIndex, action, amount);
 
     // アクション適用
-    const newState = applyAction(gameState, seatIndex, action, amount);
+    const newState = applyAction(gameState, seatIndex, action, amount, rakeConfig);
 
     // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {
@@ -115,13 +116,14 @@ export class ActionController {
    */
   advanceToNextPlayer(
     gameState: GameState,
-    seats: (SeatInfo | null)[]
+    seats: (SeatInfo | null)[],
+    rakeConfig?: RakeConfig
   ): AdvanceResult {
     const activePlayers = getActivePlayers(gameState);
 
     // 1人以下なら勝者決定
     if (activePlayers.length <= 1) {
-      const newState = determineWinner(gameState);
+      const newState = determineWinner(gameState, rakeConfig);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 
@@ -142,7 +144,7 @@ export class ActionController {
 
     // 全員アクション不可なら勝者決定
     if (attempts >= TABLE_CONSTANTS.MAX_PLAYERS) {
-      const newState = determineWinner(gameState);
+      const newState = determineWinner(gameState, rakeConfig);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 

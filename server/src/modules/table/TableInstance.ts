@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers, getValidActions } from '../../shared/logic/gameEngine.js';
+import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, type RakeConfig } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
@@ -35,6 +35,7 @@ export class TableInstance {
   private showdownSentDuringRunOut = false;
   private isHandInProgress = false;
   private pendingStartHand = false;
+  private readonly rakeConfig: RakeConfig;
 
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
@@ -53,6 +54,11 @@ export class TableInstance {
     const [sb, bb] = blinds.split('/').map(Number);
     this.smallBlind = sb;
     this.bigBlind = bb;
+    this.rakeConfig = {
+      rate: TABLE_CONSTANTS.RAKE_RATE,
+      capBB: TABLE_CONSTANTS.RAKE_CAP_BB_MULTIPLIER,
+      noFlopNoDrop: TABLE_CONSTANTS.RAKE_NO_FLOP_NO_DROP,
+    };
 
     // ヘルパー初期化
     const roomName = `table:${this.id}`;
@@ -184,7 +190,8 @@ export class TableInstance {
       seatIndex,
       action,
       amount,
-      odId
+      odId,
+      this.rakeConfig
     );
 
     if (!result.success) {
@@ -302,7 +309,8 @@ export class TableInstance {
 
     const result = this.actionController.advanceToNextPlayer(
       this.gameState,
-      this.playerManager.getSeats()
+      this.playerManager.getSeats(),
+      this.rakeConfig
     );
 
     this.gameState = result.gameState;
@@ -367,7 +375,7 @@ export class TableInstance {
     }
 
     // Start the hand (this will increment dealerPosition and update positions)
-    this.gameState = startNewHand(this.gameState);
+    this.gameState = startNewHand(this.gameState, this.rakeConfig);
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -601,6 +609,7 @@ export class TableInstance {
         amount: w.amount,
         handName: w.handName,
       })),
+      rake: this.gameState.rake,
     };
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 

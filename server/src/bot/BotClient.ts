@@ -326,6 +326,7 @@ export class BotClient {
       handHistory: this.handActions,
       isHandComplete: false,
       winners: [],
+      rake: 0,
     };
   }
 

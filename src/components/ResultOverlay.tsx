@@ -91,6 +91,11 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
             <div className="text-[3vh] font-bold text-yellow-400 mb-[3.5vh] animate-amount-pop">
               +{formatChips(animationComplete ? myWinAmount : displayedAmount)}
             </div>
+            {state.rake > 0 && (
+              <div className="text-[1.8vh] text-gray-400 -mt-[2vh] mb-[2vh]">
+                Rake: {formatChips(state.rake)}
+              </div>
+            )}
           </>
         ) : (
           <>

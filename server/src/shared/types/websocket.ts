@@ -50,7 +50,7 @@ export interface ServerToClientEvents {
     winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
-  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[] }) => void;
+  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[]; rake: number }) => void;
 
   // Matchmaking
   'matchmaking:queued': (data: { position: number }) => void;
