@@ -523,7 +523,12 @@ export class TableInstance {
       this.broadcastGameState();
 
       currentStageIndex++;
-      this.runOutTimer = setTimeout(revealNextStage, TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS);
+      // ターン→リバーは1.5倍のディレイ
+      const nextStage = stages[currentStageIndex];
+      const delay = nextStage?.street === 'river'
+        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.5
+        : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
+      this.runOutTimer = setTimeout(revealNextStage, delay);
     };
 
     // 最初のステージを即座に表示開始
