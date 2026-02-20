@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
+import { playActionSound } from '../services/actionSound';
 import type { ClientGameState, OnlinePlayer } from '../../server/src/shared/types/websocket';
 import type { Card, Action, GameState, Player, Position } from '../logic/types';
 
@@ -332,6 +333,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         setMyHoleCards(cards);
       },
       onActionTaken: ({ playerId, action, amount }) => {
+        playActionSound(action);
         // アクション完了 → タイマーリング＆アクション待ちグローを即座にクリア
         setActionTimeoutAt(null);
         setClientState(prev => prev ? { ...prev, currentPlayerSeat: null } : prev);

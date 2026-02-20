@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';
-import { DoorOpen, Settings, History } from 'lucide-react';
+import { DoorOpen, Settings, History, Volume2, VolumeOff } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
@@ -17,6 +17,7 @@ import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 import { BustedScreen } from '../components/BustedScreen';
 import { wsService } from '../services/websocket';
+import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 
 interface OnlineGameProps {
   blinds: string;
@@ -53,6 +54,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
+  const [soundOn, setSoundOn] = useState(isSoundEnabled);
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -137,6 +139,19 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             </button>
             <div />
             <div className="flex items-center gap-[1.5vw]">
+            {/* サウンドトグル */}
+            <button
+              onClick={() => {
+                const next = !soundOn;
+                setSoundOn(next);
+                setSoundEnabled(next);
+              }}
+              className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
+            >
+              {soundOn
+                ? <Volume2 style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
+                : <VolumeOff style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />}
+            </button>
             {/* ハンド履歴ボタン */}
             <button
               onClick={() => setShowHandHistory(true)}
