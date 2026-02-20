@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
-import { playActionSound } from '../services/actionSound';
+import { playActionSound, playDealSound } from '../services/actionSound';
 import type { ClientGameState, OnlinePlayer } from '../../server/src/shared/types/websocket';
 import type { Card, Action, GameState, Player, Position } from '../logic/types';
 
@@ -313,6 +313,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         prevStreetRef.current = state.currentStreet;
         prevCardCountRef.current = state.communityCards.length;
         setClientState(state);
+
         // タイマー情報を更新
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
@@ -323,6 +324,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           console.log('onHoleCards', cards);
           pendingShowdownHandNamesRef.current = null;
           startDealingAnimation();
+          playDealSound();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
           setWinners([]); // 新しいハンド開始時にwinnersをクリア
@@ -344,6 +346,9 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         if (seat !== undefined && seat >= 0) {
           recordAction(seat, action, amount);
         }
+      },
+      onActionRequired: () => {
+        // playMyTurnSound();
       },
       onHandComplete: (serverWinners) => {
         const currentState = clientStateRef.current;
