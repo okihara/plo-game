@@ -126,7 +126,6 @@ export class MatchmakingPool {
 
       if (seatNumber !== null) {
         this.tableManager.setPlayerTable(player.odId, table.id);
-        player.socket.emit('matchmaking:table_assigned', { tableId: table.id });
         table.triggerMaybeStartHand();
       } else {
         // Seating failed - refund and re-queue the player
