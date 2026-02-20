@@ -154,7 +154,7 @@ class WebSocketService {
 
       // Game events
       this.socket.on('game:state', ({ state }) => {
-        wsLog('game:state', { phase: state.phase, street: state.currentStreet, pot: state.pot, handNumber: state.handNumber });
+        wsLog('game:state', { street: state.currentStreet, pot: state.pot });
         this.listeners.onGameState?.(state);
       });
 
