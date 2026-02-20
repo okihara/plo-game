@@ -397,11 +397,9 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         setBustedMessage(message);
       },
       onMatchmakingQueued: () => {
-        setIsChangingTable(true);
       },
       onMatchmakingTableAssigned: (newTableId: string) => {
         setTableId(newTableId);
-        setIsChangingTable(false);
         setMyHoleCards([]);
       },
       onMaintenanceStatus: (data) => {
