@@ -14,10 +14,13 @@ export function HandAnalysisOverlay({
   isVisible,
   onClose,
 }: HandAnalysisOverlayProps) {
-  const preflopEval = useMemo(() => getPreFlopEvaluation(holeCards), [holeCards]);
+  const preflopEval = useMemo(
+    () => isVisible ? getPreFlopEvaluation(holeCards) : null,
+    [holeCards, isVisible]
+  );
 
   const postflopInfo = useMemo(() => {
-    if (holeCards.length !== 4 || communityCards.length < 3) {
+    if (!isVisible || holeCards.length !== 4 || communityCards.length < 3) {
       return null;
     }
     const equity = calculateEquity(holeCards, communityCards, 5, 300);
@@ -30,9 +33,9 @@ export function HandAnalysisOverlay({
     }
 
     return { equity, outs, handRank };
-  }, [holeCards, communityCards]);
+  }, [holeCards, communityCards, isVisible]);
 
-  if (!isVisible || holeCards.length === 0) return null;
+  if (!isVisible || holeCards.length === 0 || !preflopEval) return null;
 
   const isPreflop = communityCards.length < 3;
 
