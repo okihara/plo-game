@@ -57,12 +57,12 @@ const cardPositionStyle = 'top-[12cqw] left-1/2 -translate-x-1/2';
 const dealerButtonStyle = 'top-[-5cqw] right-[-5cqw]';
 
 const actionColorStyles: Record<Action, string> = {
-  fold: 'bg-gray-600',
-  check: 'bg-blue-500',
-  call: 'bg-green-500',
-  bet: 'bg-orange-500',
-  raise: 'bg-orange-500',
-  allin: 'bg-red-500',
+  fold: 'text-gray-400 border-gray-400',
+  check: 'text-blue-400 border-blue-400',
+  call: 'text-green-400 border-green-400',
+  bet: 'text-orange-400 border-orange-400',
+  raise: 'text-orange-400 border-orange-400',
+  allin: 'text-red-400 border-red-400',
 };
 
 // カードがテーブル中央から各プレイヤー位置へ飛んでくる方向
@@ -269,7 +269,7 @@ export function Player({
         )}
         {/* Last Action Marker */}
         {showActionMarker && (
-          <div className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop ${actionColorStyles[lastAction.action]}`}>
+          <div className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips)}
           </div>
         )}
