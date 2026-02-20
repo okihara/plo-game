@@ -1,7 +1,6 @@
 import { FastifyInstance } from 'fastify';
 import { Server } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
-import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
@@ -10,7 +9,6 @@ import { maintenanceService } from '../maintenance/MaintenanceService.js';
 interface AdminDependencies {
   io: Server;
   tableManager: TableManager;
-  matchmakingPool: MatchmakingPool;
 }
 
 interface TableStats {
@@ -58,11 +56,6 @@ interface ServerStats {
     activeHands: number;
     details: TableStats[];
   };
-  fastFoldQueues: Array<{
-    blinds: string;
-    count: number;
-    avgWaitMs: number;
-  }>;
   database: {
     connected: boolean;
     userCount: number;
@@ -83,7 +76,7 @@ interface ServerStats {
 const startTime = Date.now();
 
 export function adminRoutes(deps: AdminDependencies) {
-  const { io, tableManager, matchmakingPool } = deps;
+  const { io, tableManager } = deps;
 
   return async function (fastify: FastifyInstance) {
     // 管理エンドポイント認証: ADMIN_SECRET が設定されている場合、?secret= パラメータで認証
@@ -132,13 +125,6 @@ export function adminRoutes(deps: AdminDependencies) {
       const fastFoldTables = tableDetails.filter(t => t.isFastFold);
       const activeHands = tableDetails.filter(t => t.isHandInProgress).length;
 
-      // Get fast fold queue status for common blind levels
-      const blindLevels = ['1/3', '2/5', '5/10'];
-      const fastFoldQueues = blindLevels.map(blinds => ({
-        blinds,
-        ...matchmakingPool.getQueueStatus(blinds),
-      }));
-
       // Database check
       let dbConnected = false;
       let userCount = 0;
@@ -166,7 +152,6 @@ export function adminRoutes(deps: AdminDependencies) {
           activeHands,
           details: tableDetails,
         },
-        fastFoldQueues,
         database: {
           connected: dbConnected,
           userCount,
@@ -569,11 +554,6 @@ function getDashboardHTML(clientUrl: string): string {
       </div>
 
       <div class="card">
-        <h2>Fast Fold キュー</h2>
-        <div id="fastFoldQueues"></div>
-      </div>
-
-      <div class="card">
         <h2>メンテナンスモード</h2>
         <div id="maintenanceStatus" style="margin-bottom:12px"></div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -681,17 +661,6 @@ function getDashboardHTML(clientUrl: string): string {
       } else {
         maintEl.innerHTML = '<span class="stat-value success">OFF - 通常運用</span>';
       }
-
-      // Fast Fold Queues
-      const queuesHtml = data.fastFoldQueues.map(q => {
-        const barWidth = Math.min(q.count * 10, 100);
-        return '<div class="stat-row">' +
-          '<span class="stat-label">' + q.blinds + '</span>' +
-          '<span class="stat-value">' + q.count + '人待機' + '</span>' +
-          '</div>' +
-          '<div class="queue-bar"><div class="queue-fill" style="width:' + barWidth + '%"></div></div>';
-      }).join('');
-      document.getElementById('fastFoldQueues').innerHTML = queuesHtml || '<p style="color:#64748b">キューなし</p>';
 
       // Tables list
       const tablesHtml = data.tables.details.map(table => {

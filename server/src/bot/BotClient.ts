@@ -174,14 +174,6 @@ export class BotClient {
         this.maybeDisconnectRandomly();
       });
 
-      this.socket.on('matchmaking:queued', (data: { position: number }) => {
-        console.log(`[${this.config.name}] Queued in matchmaking pool (position: ${data.position})`);
-      });
-
-      this.socket.on('matchmaking:table_assigned', (data: { tableId: string }) => {
-        console.log(`[${this.config.name}] Assigned to table ${data.tableId}`);
-      });
-
       // Timeout for connection
       setTimeout(() => {
         if (!this.playerId) {
