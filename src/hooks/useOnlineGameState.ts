@@ -55,7 +55,6 @@ export interface OnlineGameHookResult {
 // 定数
 // ============================================
 
-const ACTION_MARKER_DISPLAY_TIME = 1000;
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
 // ============================================
@@ -179,7 +178,6 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
 
   // Refs
-  const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -191,29 +189,8 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
 
   // ============================================
-  // アクションマーカー管理
+  // アクションマーカー管理（CSSアニメーションで自動フェードアウト）
   // ============================================
-
-  const clearAllActionMarkerTimers = useCallback(() => {
-    actionMarkerTimersRef.current.forEach(timer => clearTimeout(timer));
-    actionMarkerTimersRef.current.clear();
-  }, []);
-
-  const scheduleActionMarkerClear = useCallback((playerId: number) => {
-    const existingTimer = actionMarkerTimersRef.current.get(playerId);
-    if (existingTimer) clearTimeout(existingTimer);
-
-    const timer = setTimeout(() => {
-      setLastActions(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(playerId);
-        return newMap;
-      });
-      actionMarkerTimersRef.current.delete(playerId);
-    }, ACTION_MARKER_DISPLAY_TIME);
-
-    actionMarkerTimersRef.current.set(playerId, timer);
-  }, []);
 
   const recordAction = useCallback((playerId: number, action: Action, amount: number) => {
     setLastActions(prev => {
@@ -221,8 +198,11 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       newMap.set(playerId, { action, amount, timestamp: Date.now() });
       return newMap;
     });
-    scheduleActionMarkerClear(playerId);
-  }, [scheduleActionMarkerClear]);
+  }, []);
+
+  const clearAllActionMarkers = useCallback(() => {
+    setLastActions(new Map());
+  }, []);
 
   const startDealingAnimation = useCallback(() => {
     if (dealingTimerRef.current) {
@@ -345,6 +325,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
           setWinners([]); // 新しいハンド開始時にwinnersをクリア
+          setLastActions(new Map()); // アクションマーカーもクリア
           setShowdownCards(new Map()); // ショウダウンカードもクリア
           setShowdownHandNames(new Map()); // ショウダウン役名もクリア
         }
@@ -404,7 +385,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
     });
 
     return () => {
-      clearAllActionMarkerTimers();
+      clearAllActionMarkers();
       if (dealingTimerRef.current) {
         clearTimeout(dealingTimerRef.current);
         dealingTimerRef.current = null;
@@ -418,7 +399,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         winnersDisplayTimerRef.current = null;
       }
     };
-  }, [clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
+  }, [clearAllActionMarkers, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState

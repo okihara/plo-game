@@ -152,7 +152,7 @@ export function Player({
     : (player.avatarId !== undefined
       ? getAvatarImage(player.avatarId)
       : (isMe ? '/images/icons/avatar0.png' : cpuAvatars[player.name]));
-  const showActionMarker = lastAction && (Date.now() - lastAction.timestamp < 1000);
+  const showActionMarker = !!lastAction;
 
   // タイマー表示用の残り時間
   const [remainingTime, setRemainingTime] = useState<number | null>(null);
@@ -267,9 +267,9 @@ export function Player({
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
-        {/* Last Action Marker */}
+        {/* Last Action Marker (CSS animation handles fade-out) */}
         {showActionMarker && (
-          <div className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
+          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips)}
           </div>
         )}
