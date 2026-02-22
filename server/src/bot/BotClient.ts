@@ -137,6 +137,9 @@ export class BotClient {
 
       this.socket.on('table:busted', (data: { message: string }) => {
         console.log(`[${this.config.name}] Busted: ${data.message}`);
+        this.tableId = null;
+        this.seatNumber = -1;
+        this.actionGeneration++;
       });
 
       this.socket.on('table:error', (data: { message: string }) => {
@@ -453,9 +456,8 @@ export class BotClient {
       // ゲーム未参加が15秒以上続いたら再マッチメイキング
       const stuckDuration = Date.now() - this.lastInGameTime;
       if (stuckDuration > 15000) {
-        console.log(`[${this.config.name}] Stuck without game for ${Math.round(stuckDuration / 1000)}s, rejoining matchmaking (disabled)`);
-        this.lastInGameTime = Date.now(); // リセットして連続発火を防ぐ
-        // this.rejoinMatchmaking();
+        console.log(`[${this.config.name}] Stuck without game for ${Math.round(stuckDuration / 1000)}s, disconnecting`);
+        this.disconnect();
       }
     }, 5000);
   }
