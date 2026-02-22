@@ -48,7 +48,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
                   finalHand: true,
                   profit: true,
                   user: {
-                    select: { avatarUrl: true },
+                    select: { avatarUrl: true, useTwitterAvatar: true },
                   },
                 },
               },
@@ -73,7 +73,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       createdAt: ph.handHistory.createdAt,
       players: ph.handHistory.players.map(p => ({
         username: p.username || `Seat ${p.seatPosition + 1}`,
-        avatarUrl: p.user?.avatarUrl ?? null,
+        avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
         finalHand: p.finalHand,
@@ -102,7 +102,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
             finalHand: true,
             profit: true,
             user: {
-              select: { username: true, avatarUrl: true },
+              select: { username: true, avatarUrl: true, useTwitterAvatar: true },
             },
           },
         },
@@ -125,7 +125,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       createdAt: hand.createdAt,
       players: hand.players.map(p => ({
         username: p.username || p.user?.username || `Seat ${p.seatPosition + 1}`,
-        avatarUrl: p.user?.avatarUrl ?? null,
+        avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
         finalHand: p.finalHand,

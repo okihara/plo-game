@@ -247,7 +247,7 @@ function HandDetailDialog({
                     <div className="flex items-center gap-1.5 min-w-0 flex-1">
                       {pos && <PositionBadge position={pos} />}
                       {p.avatarUrl && (
-                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-cream-300 shrink-0" />
+                        <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-cream-300 shrink-0" />
                       )}
                       <span className={`font-semibold text-sm truncate ${p.isCurrentUser ? 'text-forest' : 'text-cream-800'}`}>
                         {p.isCurrentUser ? p.username : maskName(p.username)}
