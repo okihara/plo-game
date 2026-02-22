@@ -21,8 +21,10 @@
     "@fastify/cors": "^10.0.1",
     "@fastify/jwt": "^9.0.1",
     "@fastify/static": "^9.0.0",
+    "@fastify/view": "^11.1.1",
     "@prisma/client": "^6.2.1",
     "dotenv": "^17.2.3",
+    "ejs": "^4.0.1",
     "fastify": "^5.2.0",
     "nanoid": "^5.0.9",
     "socket.io": "^4.8.1",
@@ -31,6 +33,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
+    "@types/ejs": "^3.1.5",
     "@types/node": "^22.10.5",
     "prisma": "^6.2.1",
     "typescript": "^5.7.3",
