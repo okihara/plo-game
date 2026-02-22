@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { ProfitChart } from './ProfitChart';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -41,6 +42,7 @@ export function ProfilePopup({
   onClose,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const { user, refreshUser } = useAuth();
   const [nameMasked, setNameMasked] = useState(user?.nameMasked ?? true);
@@ -49,21 +51,22 @@ export function ProfilePopup({
   const [togglingAvatar, setTogglingAvatar] = useState(false);
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
 
-  // スタッツをAPIから取得
+  // スタッツ＆収支推移をAPIから並列取得
   useEffect(() => {
     if (!userId || userId.startsWith('bot_')) return;
 
     setLoading(true);
-    fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
-      .then(res => {
-        if (!res.ok) return null;
-        return res.json();
-      })
-      .then(data => {
-        if (data?.stats) setStats(data.stats);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    Promise.all([
+      fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null),
+      fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null),
+    ]).then(([statsData, historyData]) => {
+      if (statsData?.stats) setStats(statsData.stats);
+      if (historyData?.points) setProfitHistory(historyData.points);
+    }).finally(() => setLoading(false));
   }, [userId]);
 
   // ESCキーで閉じる
@@ -90,7 +93,7 @@ export function ProfilePopup({
       onClick={handleBackdropClick}
     >
       <div className="@container w-[80cqw]">
-        <div className="bg-white rounded-[5cqw] p-[6cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.2)] animate-scale-in relative">
+        <div className="bg-white rounded-[5cqw] p-[6cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.2)] animate-scale-in relative max-h-[85dvh] overflow-y-auto">
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -172,6 +175,13 @@ export function ProfilePopup({
               </div>
             )}
           </div>
+
+          {/* Profit Chart */}
+          {!loading && profitHistory.length >= 2 && (
+            <div className="bg-cream-100 rounded-[4cqw] p-[5cqw] mt-[3cqw]">
+              <ProfitChart points={profitHistory} />
+            </div>
+          )}
 
           {/* No Stats Notice */}
           {!loading && !stats && (

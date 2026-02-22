@@ -33,4 +33,27 @@ export async function statsRoutes(fastify: FastifyInstance) {
 
     return { stats, handsAnalyzed: cache.handsPlayed };
   });
+
+  // 収支推移データ（グラフ用）
+  fastify.get('/:userId/profit-history', async (request: FastifyRequest) => {
+    const { userId } = request.params as { userId: string };
+
+    const rows = await prisma.handHistoryPlayer.findMany({
+      where: { userId },
+      orderBy: { handHistory: { createdAt: 'asc' } },
+      select: { profit: true, finalHand: true },
+    });
+
+    let cumTotal = 0;
+    let cumSD = 0;
+    let cumNoSD = 0;
+    const points = rows.map(r => {
+      const sd = r.finalHand != null;
+      cumTotal += r.profit;
+      if (sd) cumSD += r.profit; else cumNoSD += r.profit;
+      return { p: r.profit, c: cumTotal, s: cumSD, n: cumNoSD };
+    });
+
+    return { points };
+  });
 }
