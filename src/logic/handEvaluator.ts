@@ -151,6 +151,29 @@ function getGroups(values: number[]): { value: number; count: number }[] {
   return groups;
 }
 
+// コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
+export function evaluateCurrentHand(holeCards: Card[], communityCards: Card[]): HandRank | null {
+  if (holeCards.length !== 4 || communityCards.length < 3) {
+    return null;
+  }
+
+  let bestHand: HandRank = { rank: 0, name: '', highCards: [] };
+  const holeCardCombos = getCombinations(holeCards, 2);
+  const communityCombos = getCombinations(communityCards, 3);
+
+  for (const holeCombo of holeCardCombos) {
+    for (const communityCombo of communityCombos) {
+      const fiveCards = [...holeCombo, ...communityCombo];
+      const handRank = evaluateFiveCardHand(fiveCards);
+      if (compareHands(handRank, bestHand) > 0) {
+        bestHand = handRank;
+      }
+    }
+  }
+
+  return bestHand;
+}
+
 export function compareHands(a: HandRank, b: HandRank): number {
   if (a.rank !== b.rank) return a.rank - b.rank;
 

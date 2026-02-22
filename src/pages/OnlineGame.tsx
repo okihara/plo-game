@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType } from '../logic';
+import { evaluateCurrentHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff } from 'lucide-react';
 import {
   PokerTable,
@@ -86,6 +87,11 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
 
   // ブラインド表示用
   const blindsLabel = blinds;
+
+  const myCurrentHandName = useMemo(
+    () => gameState ? evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name : undefined,
+    [myHoleCards, gameState?.communityCards]
+  );
 
   if (isConnecting) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
@@ -245,7 +251,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             isDealing={isDealingCards}
             dealOrder={humanDealOrder}
             folded={humanPlayer?.folded}
-            handName={showdownHandNames.get(humanPlayerIdx)}
+            handName={showdownHandNames.get(humanPlayerIdx) || myCurrentHandName}
           />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
