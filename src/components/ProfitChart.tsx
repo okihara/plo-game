@@ -81,8 +81,10 @@ export function ProfitChart({ points }: ProfitChartProps) {
   const tickStep = yTicks.length >= 2 ? yTicks[1] - yTicks[0] : Math.abs(rawMax - rawMin) || 1;
   if (!yTicks.some(t => t > 0)) yTicks.push(yTicks[yTicks.length - 1] + tickStep);
   if (!yTicks.some(t => t < 0)) yTicks.unshift(yTicks[0] - tickStep);
-  const rangeY = (Math.max(...yTicks) - Math.min(...yTicks)) || 1;
-  const adjMinY = Math.min(...yTicks);
+  // Drawing range must cover both ticks AND actual data
+  const adjMinY = Math.min(...yTicks, rawMin);
+  const adjMaxY = Math.max(...yTicks, rawMax);
+  const rangeY = (adjMaxY - adjMinY) || 1;
 
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
@@ -153,18 +155,27 @@ export function ProfitChart({ points }: ProfitChartProps) {
             </text>
           ))}
 
+          {/* Clip chart area */}
+          <defs>
+            <clipPath id="chart-clip">
+              <rect x={PAD_L} y={PAD_T} width={chartW} height={chartH} />
+            </clipPath>
+          </defs>
+
           {/* Series lines */}
-          {series.map(s => (
-            <polyline
-              key={s.key}
-              points={buildPolyline(points, s.get, toX, toY)}
-              fill="none"
-              stroke={s.color}
-              strokeWidth={s.width}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-            />
-          ))}
+          <g clipPath="url(#chart-clip)">
+            {series.map(s => (
+              <polyline
+                key={s.key}
+                points={buildPolyline(points, s.get, toX, toY)}
+                fill="none"
+                stroke={s.color}
+                strokeWidth={s.width}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            ))}
+          </g>
         </svg>
 
         {/* Legend */}
