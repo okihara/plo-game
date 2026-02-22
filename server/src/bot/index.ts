@@ -1,13 +1,10 @@
-import http from 'node:http';
 import { BotManager } from './BotManager.js';
-import { getDashboardHTML } from './dashboard.js';
 
 // Configuration
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
 const BOT_COUNT = parseInt(process.env.BOT_COUNT || '20', 10);
 const BLINDS = process.env.BLINDS || '1/3';
 const IS_FAST_FOLD = process.env.FAST_FOLD === 'true';
-const DASHBOARD_PORT = parseInt(process.env.BOT_DASHBOARD_PORT || '3004', 10);
 
 console.log('=================================');
 console.log('  PLO Poker Bot Manager');
@@ -32,7 +29,6 @@ async function gracefulShutdown(signal: string) {
   isShuttingDown = true;
   console.log(`\nReceived ${signal}, shutting down...`);
   await botManager.stop();
-  server.close();
   console.log('All bots disconnected cleanly.');
   process.exit(0);
 }
@@ -40,26 +36,8 @@ async function gracefulShutdown(signal: string) {
 process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
-// Dashboard HTTP server
-const server = http.createServer((req, res) => {
-  if (req.url === '/api/status') {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify(botManager.getDetailedStats()));
-  } else if (req.url === '/' || req.url === '') {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(getDashboardHTML());
-  } else {
-    res.writeHead(404);
-    res.end('Not Found');
-  }
-});
-
 // Start bot manager
 botManager.start().then(() => {
-  server.listen(DASHBOARD_PORT, () => {
-    console.log(`Bot dashboard: http://localhost:${DASHBOARD_PORT}`);
-  });
-
   // Print stats periodically
   setInterval(() => {
     const stats = botManager.getStats();
