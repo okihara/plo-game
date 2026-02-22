@@ -55,6 +55,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
 
   const [analysisEnabled, setAnalysisEnabled] = useState(false);
+  const [showHandName, setShowHandName] = useState(true);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
@@ -193,6 +194,19 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                   </button>
                   <button
                     onClick={() => {
+                      setShowHandName(!showHandName);
+                      setShowSettingsMenu(false);
+                    }}
+                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
+                  >
+                    <span>役名表示</span>
+                    <span className={showHandName ? 'text-emerald-400' : 'text-gray-500'}>
+                      {showHandName ? '✓' : ''}
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => {
                       setUseBBNotation(!settings.useBBNotation);
                       setShowSettingsMenu(false);
                     }}
@@ -243,7 +257,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
             isDealing={isDealingCards}
             dealOrder={humanDealOrder}
             folded={humanPlayer?.folded}
-            handName={showdownHandNames.get(humanPlayerIdx) || myCurrentHandName}
+            handName={showHandName ? (showdownHandNames.get(humanPlayerIdx) || myCurrentHandName) : showdownHandNames.get(humanPlayerIdx)}
           />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
