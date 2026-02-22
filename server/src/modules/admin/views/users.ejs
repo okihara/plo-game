@@ -87,6 +87,8 @@
   <div class="container">
     <div class="nav">
       <a href="status" id="backLink">&larr; ダッシュボード</a>
+      <span style="margin:0 6px;color:#334155">|</span>
+      <a href="players" id="playersLink">接続中プレイヤー &rarr;</a>
     </div>
     <h1>ユーザー一覧</h1>
 
@@ -121,6 +123,7 @@
 
     if (ADMIN_SECRET) {
       document.getElementById('backLink').href = 'status?secret=' + encodeURIComponent(ADMIN_SECRET);
+      document.getElementById('playersLink').href = 'players?secret=' + encodeURIComponent(ADMIN_SECRET);
     }
 
     function apiUrl(path) {

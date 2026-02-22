@@ -172,6 +172,85 @@ export function adminRoutes(deps: AdminDependencies) {
       return maintenanceService.toggle(active, message || '');
     });
 
+    // Connected players API
+    fastify.get('/api/admin/players', async () => {
+      const sockets = Array.from(io.sockets.sockets.values());
+      const connectedOdIds = new Set<string>();
+      const socketInfos: Array<{
+        odId: string;
+        isBot: boolean;
+        tableId: string | null;
+        tableBlinds: string | null;
+        seatNumber: number | null;
+        chips: number | null;
+        connectedAt: number;
+      }> = [];
+
+      for (const s of sockets) {
+        const authSocket = s as any;
+        const odId = authSocket.odId;
+        if (!odId) continue;
+        connectedOdIds.add(odId);
+
+        const table = tableManager.getPlayerTable(odId);
+        let seatNumber: number | null = null;
+        let chips: number | null = null;
+        if (table) {
+          const seats = table.getAdminSeats();
+          const seat = seats.find((st: any) => st && st.odId === odId);
+          if (seat) {
+            seatNumber = seat.seatNumber;
+            chips = seat.chips;
+          }
+        }
+
+        socketInfos.push({
+          odId,
+          isBot: !!authSocket.odIsBot,
+          tableId: table?.id ?? null,
+          tableBlinds: table?.blinds ?? null,
+          seatNumber,
+          chips,
+          connectedAt: (authSocket as any).handshake?.issued ?? Date.now(),
+        });
+      }
+
+      // Fetch user details from DB
+      const userIds = Array.from(connectedOdIds);
+      const users = userIds.length > 0
+        ? await prisma.user.findMany({
+            where: { id: { in: userIds } },
+            include: { bankroll: true },
+            })
+        : [];
+      const userMap = new Map(users.map(u => [u.id, u]));
+
+      const players = socketInfos.map(si => {
+        const user = userMap.get(si.odId);
+        return {
+          odId: si.odId,
+          username: user?.username ?? 'Unknown',
+          avatarUrl: user?.avatarUrl ?? null,
+          provider: user?.provider ?? 'unknown',
+          isBot: si.isBot,
+          balance: user?.bankroll?.balance ?? 0,
+          tableId: si.tableId,
+          tableBlinds: si.tableBlinds,
+          seatNumber: si.seatNumber,
+          chips: si.chips,
+          connectedAt: si.connectedAt,
+        };
+      });
+
+      return {
+        total: players.length,
+        bots: players.filter(p => p.isBot).length,
+        humans: players.filter(p => !p.isBot).length,
+        seated: players.filter(p => p.tableId !== null).length,
+        players,
+      };
+    });
+
     // Users API
     fastify.get('/api/admin/users', async (request) => {
       const query = request.query as Record<string, string>;
@@ -236,6 +315,11 @@ export function adminRoutes(deps: AdminDependencies) {
     // Users HTML page
     fastify.get('/admin/users', async (request, reply) => {
       return reply.view('users.ejs', {});
+    });
+
+    // Connected players HTML page
+    fastify.get('/admin/players', async (request, reply) => {
+      return reply.view('players.ejs', {});
     });
   };
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { HandHistoryPanel } from '../components/HandHistoryPanel';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
@@ -20,10 +21,6 @@ interface TableOption {
 const TABLE_OPTIONS: TableOption[] = [
   { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true, isFastFold: false },
   { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true, isFastFold: true },
-  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, enabled: false, isFastFold: false },
-  { id: 'plo-2-5-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, enabled: false, isFastFold: true },
-  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, enabled: false, isFastFold: false },
-  { id: 'plo-5-10-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, enabled: false, isFastFold: true },
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
@@ -33,6 +30,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [showHandHistory, setShowHandHistory] = useState(false);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -106,8 +104,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   };
 
   return (
-    <div className="h-full w-full light-bg relative overflow-y-auto">
-      <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[6cqw]">
+    <div className="h-full w-full light-bg relative overflow-hidden">
+      <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[4cqw] h-full min-h-0 overflow-y-auto">
         {/* Logo & Mascot */}
         <div className="text-center mb-[5cqw]">
           <div className="w-[28cqw] h-[28cqw] mx-auto mb-[2cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60">
@@ -126,14 +124,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               )}
             </div>
           )}
-          <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 leading-relaxed">
-            <p className="font-bold text-[3cqw] text-amber-800 mb-[1cqw] text-center">現在テスト中</p>
-            <ul className="space-y-[0.3cqw]">
-              <li>・データが予告なくリセットされる場合があります</li>
-              <li>・チップに実際の価値はありません</li>
-              <li>・不具合があればお気軽にお知らせください</li>
-            </ul>
-          </div>
         </div>
 
         {/* User Info or Login */}
@@ -182,16 +172,29 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   ログアウト
                 </button>
               </div>
-              <button
-                onClick={() => {
-                  window.history.pushState({}, '', '/history');
-                  window.dispatchEvent(new PopStateEvent('popstate'));
-                }}
-                className="mt-[3cqw] pt-[3cqw] border-t border-cream-200 w-full flex items-center justify-between text-[3cqw] text-cream-600 hover:text-cream-900 transition-colors"
-              >
-                <span>ハンド履歴を見る</span>
-                <span className="text-cream-400 text-[3.5cqw]">&rsaquo;</span>
-              </button>
+              <div className="mt-[3cqw] pt-[3cqw] border-t border-cream-200 w-full flex items-center gap-[2cqw] text-[2.8cqw]">
+                <button
+                  onClick={() => setShowHandHistory(true)}
+                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold hover:bg-cream-200 active:scale-[0.97] transition-all flex items-center justify-center gap-[1cqw]"
+                >
+                  <svg className="w-[3.5cqw] h-[3.5cqw]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+                  履歴
+                </button>
+                <button
+                  onClick={() => setShowProfile(true)}
+                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold hover:bg-cream-200 active:scale-[0.97] transition-all flex items-center justify-center gap-[1cqw]"
+                >
+                  <svg className="w-[3.5cqw] h-[3.5cqw]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                  Stats
+                </button>
+                <button
+                  disabled
+                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold transition-all flex items-center justify-center gap-[1cqw] opacity-40 cursor-not-allowed"
+                >
+                  <svg className="w-[3.5cqw] h-[3.5cqw]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+                  順位
+                </button>
+              </div>
             </div>
           ) : (
             <div className="bg-white border border-cream-300 rounded-[4cqw] p-[5cqw] mb-[4cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
@@ -305,6 +308,19 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           </div>
         </div>
       </div>
+
+      {/* Hand History Popup */}
+      {showHandHistory && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={() => setShowHandHistory(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative w-[92%] h-[90%] bg-white rounded-2xl shadow-2xl overflow-hidden"
+            onClick={e => e.stopPropagation()}
+          >
+            <HandHistoryPanel onClose={() => setShowHandHistory(false)} />
+          </div>
+        </div>
+      )}
 
       {/* Profile Popup */}
       {showProfile && user && (
