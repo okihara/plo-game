@@ -126,7 +126,7 @@ server/
 | `table:join` | `{ tableId, buyIn }` | テーブル参加 |
 | `table:leave` | - | テーブル離脱 |
 | `game:action` | `{ action, amount? }` | アクション送信 |
-| `game:fold` | - | ファストフォールド |
+| `game:fold` | - | フォールド |
 | `matchmaking:join` | `{ blinds }` | マッチメイキングプール参加 |
 | `matchmaking:leave` | - | プール離脱 |
 

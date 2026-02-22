@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 PLOポーカーゲーム - スマートフォン向けPot Limit Omaha実装。
 
-- **オンラインモード**: リアルタイムマルチプレイヤー、ファストフォールド対応
+- **オンラインモード**: リアルタイムマルチプレイヤー
 - **観戦モード**: `/spectate/:tableId` で全プレイヤーのカードを見ながらデバッグ観戦
 
 ## Development Commands
