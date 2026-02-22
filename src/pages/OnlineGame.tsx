@@ -286,9 +286,9 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
               <div className="text-center pointer-events-none">
                 <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
                 <p className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-                  {isChangingTable ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
+                  {false ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
                 </p>
-                {!isChangingTable && (
+                {true && (
                   <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
                     {seatedPlayerCount}/6 人着席中
                   </p>

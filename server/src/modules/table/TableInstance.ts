@@ -114,13 +114,12 @@ export class TableInstance {
       seat: seatIndex,
       player: StateTransformer.seatToOnlinePlayer(seat, seatIndex, null),
     };
-    this.broadcast.emitToRoom('table:player_joined', joinData);
 
     // Notify the seated player
     if (!options?.skipJoinedEmit) {
       socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
     }
-    socket.emit('game:state', { state: this.getClientGameState() });
+    this.broadcast.emitToRoom('game:state', { state: this.getClientGameState() });
 
     // NOTE: triggerMaybeStartHand() is NOT called here.
     // The caller must call it after completing tracking setup,
