@@ -148,6 +148,18 @@ export class BotManager {
     return null;
   }
 
+  private async getPlayerCountForBlinds(): Promise<number> {
+    try {
+      const res = await fetch(`${this.config.serverUrl}/api/lobby/tables`);
+      if (!res.ok) return 0;
+      const data = await res.json() as Array<{ blinds: string; playerCount: number; isFastFold: boolean }>;
+      const entry = data.find(t => t.blinds === this.config.blinds && t.isFastFold === !!this.config.isFastFold);
+      return entry?.playerCount ?? 0;
+    } catch {
+      return 0;
+    }
+  }
+
   private startHealthCheck(): void {
     // Check bot health every 10 seconds
     this.healthCheckInterval = setInterval(async () => {
@@ -167,6 +179,15 @@ export class BotManager {
       for (const playerId of deadBots) {
         this.bots.delete(playerId);
         console.log(`Removed dead bot: ${playerId}`);
+      }
+
+      // Skip replacing bots if total players for this blinds level exceeds limit
+      const totalPlayers = await this.getPlayerCountForBlinds();
+      if (totalPlayers >= this.config.botCount) {
+        if (deadBots.length > 0) {
+          console.log(`[HealthCheck] Skipping bot replacement: ${totalPlayers} players at ${this.config.blinds} (limit: ${this.config.botCount})`);
+        }
+        return;
       }
 
       // Replace dead bots
