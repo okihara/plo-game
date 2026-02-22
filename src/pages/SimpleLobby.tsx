@@ -40,9 +40,12 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
       try {
         const res = await fetch(`${apiBase}/api/lobby/tables`);
         if (res.ok) {
-          const data: { blinds: string; playerCount: number }[] = await res.json();
+          const data: { blinds: string; playerCount: number; isFastFold: boolean }[] = await res.json();
           const counts: Record<string, number> = {};
-          for (const d of data) counts[d.blinds] = d.playerCount;
+          for (const d of data) {
+            const key = d.isFastFold ? `${d.blinds}-ff` : d.blinds;
+            counts[key] = d.playerCount;
+          }
           setPlayerCounts(counts);
         }
       } catch { /* ignore */ }
@@ -210,7 +213,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           {/* Tables - Fast Fold */}
           <div className="space-y-[2.5cqw]">
             {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
-              const count = playerCounts[table.blinds] ?? 0;
+              const count = playerCounts[`${table.blinds}-ff`] ?? 0;
               return (
                 <button
                   key={table.id}

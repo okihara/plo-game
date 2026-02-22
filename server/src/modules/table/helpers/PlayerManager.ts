@@ -109,7 +109,7 @@ export class PlayerManager {
    * 着席プレイヤー数を取得
    */
   getPlayerCount(): number {
-    return this.seats.filter(s => s !== null).length;
+    return this.seats.filter(s => s !== null && !s.leftForFastFold).length;
   }
 
   /**
