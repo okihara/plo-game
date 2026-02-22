@@ -97,11 +97,23 @@
       font-weight: 600;
       font-size: 10px;
     }
-    .refresh-info {
-      text-align: center;
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
       color: #64748b;
       font-size: 11px;
       margin-top: 10px;
+    }
+    .refresh-bar select {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      cursor: pointer;
     }
     .nav { margin-bottom: 10px; }
   </style>
@@ -167,7 +179,16 @@
       <div id="tablesList"></div>
     </div>
 
-    <div class="refresh-info">自動更新: 2秒ごと</div>
+    <div class="refresh-bar">
+      <span>自動更新:</span>
+      <select id="refreshInterval" onchange="changeInterval(this.value)">
+        <option value="1000">1秒</option>
+        <option value="2000" selected>2秒</option>
+        <option value="5000">5秒</option>
+        <option value="10000">10秒</option>
+        <option value="0">停止</option>
+      </select>
+    </div>
   </div>
 
   <script>
@@ -329,8 +350,15 @@
       } catch (e) { alert('Failed: ' + e.message); }
     }
 
+    var intervalId = null;
+    function changeInterval(ms) {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = null;
+      ms = parseInt(ms, 10);
+      if (ms > 0) intervalId = setInterval(fetchStats, ms);
+    }
     fetchStats();
-    setInterval(fetchStats, 2000);
+    changeInterval(2000);
   </script>
 </body>
 </html>

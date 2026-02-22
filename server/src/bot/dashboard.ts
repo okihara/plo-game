@@ -111,11 +111,23 @@ export function getDashboardHTML(): string {
     .badge-matchmaking { background: #3b82f6; color: #eff6ff; }
     .badge-disconnected { background: #64748b; color: #f1f5f9; }
     .mono { font-family: 'SF Mono', Monaco, Consolas, monospace; font-size: 12px; color: #94a3b8; }
-    .refresh-info {
-      text-align: center;
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
       color: #64748b;
       font-size: 12px;
       margin-top: 16px;
+    }
+    .refresh-bar select {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
     }
     .last-update {
       font-size: 14px;
@@ -168,7 +180,16 @@ export function getDashboardHTML(): string {
       </tbody>
     </table>
 
-    <div class="refresh-info">Auto-refresh: 2s</div>
+    <div class="refresh-bar">
+      <span>Auto-refresh:</span>
+      <select id="refreshInterval" onchange="changeInterval(this.value)">
+        <option value="1000">1s</option>
+        <option value="2000" selected>2s</option>
+        <option value="5000">5s</option>
+        <option value="10000">10s</option>
+        <option value="0">Off</option>
+      </select>
+    </div>
   </div>
 
   <script>
@@ -243,8 +264,19 @@ export function getDashboardHTML(): string {
       document.getElementById('botList').innerHTML = rows || '<tr><td colspan="7" style="text-align:center;color:#64748b">No bots</td></tr>';
     }
 
+    var intervalId = null;
+
+    function changeInterval(ms) {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = null;
+      ms = parseInt(ms, 10);
+      if (ms > 0) {
+        intervalId = setInterval(fetchStatus, ms);
+      }
+    }
+
     fetchStatus();
-    setInterval(fetchStatus, 2000);
+    changeInterval(2000);
   </script>
 </body>
 </html>`;
