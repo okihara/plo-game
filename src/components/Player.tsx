@@ -54,7 +54,7 @@ const betPositionStyles: Record<number, string> = {
 
 const cardPositionStyle = 'top-[12cqw] left-1/2 -translate-x-1/2';
 
-const dealerButtonStyle = 'top-[-5cqw] right-[-5cqw]';
+const dealerButtonStyle = 'top-[-3cqw] right-[-3cqw]';
 
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
@@ -251,7 +251,7 @@ export function Player({
         </div>
         {/* Dealer Button */}
         {player.position === 'BTN' && (
-          <div className={`absolute w-[13cqw] h-[13cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[1cqw] border-yellow-700 rounded-full flex items-center justify-center text-[6.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
+          <div className={`absolute w-[11cqw] h-[11cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[5.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
             D
           </div>
         )}
@@ -352,7 +352,7 @@ export function Player({
       {player.currentBet > 0 && (
         <div
           key={chipAnimKey}
-          className={`absolute bg-black/70 text-yellow-400 px-[2.4cqw] py-[0.9cqw] rounded-lg text-[4.2cqw] font-bold whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
+          className={`absolute bg-black/70 text-yellow-400 px-[3cqw] py-[1.2cqw] rounded-full text-[4.8cqw] font-bold whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
         >
           {formatChips(player.currentBet)}
         </div>
