@@ -203,14 +203,8 @@ export class TableInstance {
       socket.leave(this.roomName);
     }
 
-    // Pending early fold: 席は残す（手番が来るまで他プレイヤーには着席中に見せる）
-    if (this.pendingEarlyFolds.has(seatIndex)) {
-      return { odId, chips, socket };
-    }
-
-    // 通常: 席からプレイヤーを削除して離脱を通知
-    this.playerManager.unseatPlayer(seatIndex);
-    // this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+    // 席情報は残してFastFold移動済みマーク（ハンド終了まで表示用に保持）
+    this.playerManager.markLeftForFastFold(seatIndex);
 
     return { odId, chips, socket };
   }
@@ -522,9 +516,7 @@ export class TableInstance {
       });
       this.gameState = foldResult.gameState;
 
-      // 離席処理
-      this.playerManager.unseatPlayer(seatIndex);
-      // this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+      // unseatForFastFoldで既にmarkLeftForFastFold済み
       this.pendingEarlyFolds.delete(seatIndex);
 
       // アクティブプレイヤーが1人以下 → ハンド終了
@@ -700,10 +692,7 @@ export class TableInstance {
     this.actionController.clearTimers();
     this.isRunOutInProgress = false;
 
-    // Pending early fold のクリーンアップ（残っていれば静かに離席）
-    for (const [seatIndex] of this.pendingEarlyFolds) {
-      this.playerManager.unseatPlayer(seatIndex);
-    }
+    // Pending early fold のクリーンアップ（unseatForFastFoldで既にマーク済み）
     this.pendingEarlyFolds.clear();
 
     // ハンドヒストリー保存 (fire-and-forget)
@@ -802,7 +791,15 @@ export class TableInstance {
       const currentSeats = this.playerManager.getSeats();
       for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
         const seat = currentSeats[i];
-        if (seat && seat.socket) {
+        if (!seat) continue;
+
+        if (seat.leftForFastFold) {
+          // ハンド中にFastFold移動済み → 席をクリアするだけ
+          this.playerManager.unseatPlayer(i);
+          continue;
+        }
+
+        if (seat.socket) {
           playersToMove.push({
             odId: seat.odId,
             chips: seat.chips,

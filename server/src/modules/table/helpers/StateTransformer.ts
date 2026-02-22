@@ -16,6 +16,24 @@ export class StateTransformer {
   ): OnlinePlayer | null {
     if (!seat) return null;
 
+    // FastFold移動済みプレイヤー: folded状態で表示を維持
+    if (seat.leftForFastFold) {
+      return {
+        odId: seat.odId,
+        odName: seat.odName,
+        avatarId: seat.avatarId,
+        avatarUrl: seat.avatarUrl,
+        seatNumber: seatIndex,
+        chips: player?.chips ?? seat.chips,
+        currentBet: player?.currentBet ?? 0,
+        folded: true,
+        isAllIn: false,
+        hasActed: true,
+        isConnected: false,
+        nameMasked: seat.nameMasked,
+      };
+    }
+
     // waitingForNextHandプレイヤーの特殊処理
     if (seat.waitingForNextHand) {
       return {

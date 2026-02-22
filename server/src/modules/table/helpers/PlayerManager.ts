@@ -74,6 +74,17 @@ export class PlayerManager {
   }
 
   /**
+   * FastFold移動済みマーク（席情報は残してソケット参照を切る）
+   */
+  markLeftForFastFold(seatIndex: number): void {
+    const seat = this.seats[seatIndex];
+    if (seat) {
+      seat.leftForFastFold = true;
+      seat.socket = null;
+    }
+  }
+
+  /**
    * 新しいハンド開始時にwaitingForNextHandフラグをクリア
    */
   clearWaitingFlags(): void {

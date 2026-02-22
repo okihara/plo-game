@@ -12,6 +12,7 @@ export interface SeatInfo {
   buyIn: number;
   waitingForNextHand: boolean; // ハンド中に着席した場合、次のハンドから参加
   nameMasked: boolean; // 他プレイヤーに名前をマスク表示するか
+  leftForFastFold?: boolean; // FastFold移動済み（表示用に席情報を残す）
 }
 
 // ダッシュボード用：送信メッセージログ
