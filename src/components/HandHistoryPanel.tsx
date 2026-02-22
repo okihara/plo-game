@@ -72,7 +72,7 @@ function MiniCard({ cardStr }: { cardStr: string }) {
   const bg = SUIT_BG_COLORS[suit] || 'bg-gray-500';
 
   return (
-    <span className={`inline-flex items-center justify-center ${bg} text-white border border-white/40 rounded px-1.5 py-0.5 text-sm font-mono font-bold`}>
+    <span className={`inline-flex items-center justify-center ${bg} text-white border border-white/40 rounded-[0.5cqw] px-[1.8cqw] py-[0.8cqw] text-[2.8cqw] font-mono font-bold leading-none`}>
       {rank}{symbol}
     </span>
   );
