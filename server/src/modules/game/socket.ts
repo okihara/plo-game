@@ -9,8 +9,6 @@ import { cashOutPlayer, deductBuyIn } from '../auth/bankroll.js';
 
 interface AuthenticatedSocket extends Socket {
   odId?: string;
-  odName?: string;
-  odAvatarUrl?: string | null;
   odIsBot?: boolean;
 }
 
@@ -81,8 +79,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const user = await findOrCreateBotUser(botName, botAvatar);
 
         socket.odId = user.id;
-        socket.odName = user.username;
-        socket.odAvatarUrl = user.avatarUrl;
         socket.odIsBot = true;
 
         console.log(`Bot connected: ${user.id} (${user.username})`);
@@ -107,8 +103,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
 
       socket.odId = user.id;
-      socket.odName = user.username;
-      socket.odAvatarUrl = user.avatarUrl;
       socket.odIsBot = false;
       return next();
     } catch (err) {
@@ -118,7 +112,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   });
 
   io.on('connection', (socket: AuthenticatedSocket) => {
-    console.log(`Player connected: ${socket.odId} (${socket.odName})`);
+    console.log(`Player connected: ${socket.odId}`);
 
     socket.emit('connection:established', { playerId: socket.odId! });
 
@@ -171,12 +165,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const [, bb] = parts.map(Number);
         const buyIn = bb * 100; // $300 for $1/$3
 
-        // Check balance
-        const bankroll = await prisma.bankroll.findUnique({
-          where: { userId: socket.odId },
+        // Check balance and get user info
+        const user = await prisma.user.findUnique({
+          where: { id: socket.odId },
+          include: { bankroll: true },
         });
 
-        if (!bankroll || bankroll.balance < buyIn) {
+        if (!user?.bankroll || user.bankroll.balance < buyIn) {
           socket.emit('table:error', { message: 'Insufficient balance for minimum buy-in' });
           return;
         }
@@ -200,10 +195,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         // Seat player
         const seatNumber = table.seatPlayer(
           socket.odId!,
-          socket.odName!,
+          user.username,
           socket,
           buyIn,
-          socket.odAvatarUrl ?? null
+          user.avatarUrl ?? null
         );
 
         if (seatNumber !== null) {
@@ -235,7 +230,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     // Handle disconnect - immediately unseat and cash out
     socket.on('disconnect', async () => {
-      console.log(`Player disconnected: ${socket.odId} (${socket.odName})`);
+      console.log(`Player disconnected: ${socket.odId}`);
 
       try {
         const table = tableManager.getPlayerTable(socket.odId!);
@@ -258,7 +253,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
         const success = table.debugSetChips(socket.odId!, data.chips);
         if (success) {
-          console.log(`[debug] Set chips for ${socket.odName} to ${data.chips}`);
+          console.log(`[debug] Set chips for ${socket.odId} to ${data.chips}`);
         } else {
           socket.emit('table:error', { message: '[debug] Failed to set chips' });
         }
