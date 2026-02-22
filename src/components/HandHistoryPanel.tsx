@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { evaluatePLOHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
+import { maskName } from '../utils';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
@@ -249,7 +250,7 @@ function HandDetailDialog({
                         <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full border border-cream-300 shrink-0" />
                       )}
                       <span className={`font-semibold text-sm truncate ${p.isCurrentUser ? 'text-forest' : 'text-cream-800'}`}>
-                        {p.username}
+                        {p.isCurrentUser ? p.username : maskName(p.username)}
                       </span>
                     </div>
                     <div className="shrink-0 ml-2">
@@ -329,7 +330,7 @@ function HandDetailDialog({
                             return aPos ? <PositionBadge position={aPos} /> : null;
                           })()}
                         </span>
-                        <span className="w-24 shrink-0 text-cream-600 text-sm truncate">{a.odName}</span>
+                        <span className="w-24 shrink-0 text-cream-600 text-sm truncate">{hand.players.find(p => p.seatPosition === a.seatIndex)?.isCurrentUser ? a.odName : maskName(a.odName)}</span>
                         <span className="w-16 shrink-0 text-cream-900 text-sm font-bold">{formatAction(a.action)}</span>
                         <span className="text-forest text-sm font-mono">{a.amount > 0 ? a.amount : ''}</span>
                       </div>
@@ -361,7 +362,7 @@ function HandDetailDialog({
                     <span className="w-10 shrink-0">
                       {pos && <PositionBadge position={pos} />}
                     </span>
-                    <span className="w-24 shrink-0 text-cream-600 text-sm truncate">{p.username}</span>
+                    <span className="w-24 shrink-0 text-cream-600 text-sm truncate">{p.isCurrentUser ? p.username : maskName(p.username)}</span>
                     <span className="w-20 shrink-0 text-cream-600 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
                     <ProfitDisplay profit={p.profit} />
                   </div>

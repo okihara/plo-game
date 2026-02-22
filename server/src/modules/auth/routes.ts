@@ -268,7 +268,29 @@ export async function authRoutes(fastify: FastifyInstance) {
       avatarUrl: user.avatarUrl,
       balance: user.bankroll?.balance ?? 0,
       loginBonusAvailable,
+      nameMasked: user.nameMasked,
     };
+  });
+
+  // Toggle name masking
+  fastify.patch('/name-mask', {
+    preHandler: async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch (err) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+    },
+  }, async (request: FastifyRequest) => {
+    const { userId } = request.user as { userId: string };
+    const { nameMasked } = request.body as { nameMasked: boolean };
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { nameMasked },
+    });
+
+    return { nameMasked: user.nameMasked };
   });
 
   // Logout

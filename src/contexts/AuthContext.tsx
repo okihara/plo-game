@@ -7,6 +7,7 @@ interface User {
   avatarUrl: string | null;
   balance: number;
   loginBonusAvailable: boolean;
+  nameMasked: boolean;
 }
 
 interface AuthContextType {

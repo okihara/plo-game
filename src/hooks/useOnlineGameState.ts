@@ -102,6 +102,7 @@ function convertOnlinePlayerToPlayer(
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
     odId: online.odId,
+    nameMasked: online.nameMasked,
   };
 }
 

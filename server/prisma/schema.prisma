@@ -17,6 +17,7 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
+  nameMasked    Boolean   @default(true)
 
   bankroll      Bankroll?
   statsCache    PlayerStatsCache?

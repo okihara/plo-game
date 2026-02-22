@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -23,6 +24,7 @@ interface ProfilePopupProps {
   avatarId?: number;
   userId?: string;
   badges?: string[];
+  isSelf?: boolean;
   onClose: () => void;
 }
 
@@ -35,10 +37,14 @@ export function ProfilePopup({
   avatarId,
   userId,
   badges = [],
+  isSelf = false,
   onClose,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [loading, setLoading] = useState(false);
+  const { user, refreshUser } = useAuth();
+  const [nameMasked, setNameMasked] = useState(user?.nameMasked ?? true);
+  const [togglingMask, setTogglingMask] = useState(false);
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
 
   // スタッツをAPIから取得
@@ -170,6 +176,38 @@ export function ProfilePopup({
             <p className="text-cream-500 text-[3cqw] text-center mt-[3cqw]">
               スタッツはハンドをプレイすると表示されます
             </p>
+          )}
+
+          {/* Name Mask Toggle (self only) */}
+          {isSelf && (
+            <div className="mt-[4cqw] flex items-center justify-between bg-cream-100 rounded-[4cqw] px-[5cqw] py-[4cqw]">
+              <div>
+                <div className="text-cream-900 text-[3.5cqw] font-semibold">名前を非公開</div>
+                <div className="text-cream-500 text-[2.5cqw]">他プレイヤーにマスク表示</div>
+              </div>
+              <button
+                disabled={togglingMask}
+                onClick={async () => {
+                  setTogglingMask(true);
+                  try {
+                    const res = await fetch(`${API_BASE}/api/auth/name-mask`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ nameMasked: !nameMasked }),
+                    });
+                    if (res.ok) {
+                      setNameMasked(!nameMasked);
+                      refreshUser();
+                    }
+                  } catch { /* ignore */ }
+                  finally { setTogglingMask(false); }
+                }}
+                className={`relative w-[12cqw] h-[6.5cqw] rounded-full transition-colors duration-200 ${nameMasked ? 'bg-forest' : 'bg-cream-300'} ${togglingMask ? 'opacity-50' : ''}`}
+              >
+                <div className={`absolute top-[0.75cqw] w-[5cqw] h-[5cqw] bg-white rounded-full shadow transition-transform duration-200 ${nameMasked ? 'translate-x-[6.25cqw]' : 'translate-x-[0.75cqw]'}`} />
+              </button>
+            </div>
           )}
         </div>
       </div>

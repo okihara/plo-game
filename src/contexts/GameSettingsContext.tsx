@@ -75,6 +75,7 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
     formatChips,
   };
 
+
   return (
     <GameSettingsContext.Provider value={value}>
       {children}

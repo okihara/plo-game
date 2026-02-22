@@ -23,6 +23,7 @@ export interface Player {
   avatarId?: number;
   avatarUrl?: string | null;  // Twitter/OAuth profile image URL
   odId?: string;  // Online user ID (for stats lookup)
+  nameMasked?: boolean;  // 他プレイヤーに名前をマスク表示するか
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';

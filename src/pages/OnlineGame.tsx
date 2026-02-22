@@ -13,6 +13,7 @@ import {
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
+import { maskName } from '../utils';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
@@ -303,10 +304,11 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
           {/* Profile Popup */}
           {selectedPlayer && (
             <ProfilePopup
-              name={selectedPlayer.name}
+              name={selectedPlayer.id !== humanPlayerIdx && selectedPlayer.nameMasked ? maskName(selectedPlayer.name) : selectedPlayer.name}
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
+              isSelf={selectedPlayer.id === humanPlayerIdx}
               onClose={() => setSelectedPlayer(null)}
             />
           )}

@@ -115,7 +115,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       unseatResult.chips,
       user.avatarUrl ?? null,
       undefined,
-      { skipJoinedEmit: true }
+      { skipJoinedEmit: true },
+      user.nameMasked
     );
 
     if (seatNumber !== null) {
@@ -153,7 +154,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
         const seatNumber = newTable.seatPlayer(
           p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
-          { skipJoinedEmit: true }
+          { skipJoinedEmit: true },
+          p.nameMasked
         );
 
         if (seatNumber !== null) {
@@ -341,7 +343,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           user.username,
           socket,
           buyIn,
-          user.avatarUrl ?? null
+          user.avatarUrl ?? null,
+          undefined,
+          undefined,
+          user.nameMasked
         );
 
         if (seatNumber !== null) {

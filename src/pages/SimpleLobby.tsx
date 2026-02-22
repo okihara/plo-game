@@ -309,6 +309,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           name={user.username}
           avatarUrl={user.avatarUrl}
           userId={user.id}
+          isSelf
           onClose={() => setShowProfile(false)}
         />
       )}
