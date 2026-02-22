@@ -183,7 +183,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         }
 
         // Find available table or create one
-        const table = tableManager.getOrCreateTable(blinds, true);
+        const table = tableManager.getOrCreateTable(blinds, false);
 
         // Deduct buy-in
         const deducted = await deductBuyIn(socket.odId!, buyIn);
