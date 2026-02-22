@@ -384,8 +384,6 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
       onBusted: (message) => {
         setBustedMessage(message);
       },
-      onMatchmakingQueued: () => {
-      },
       onMaintenanceStatus: (data) => {
         setMaintenanceStatus(data);
       },

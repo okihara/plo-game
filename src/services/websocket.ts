@@ -44,8 +44,6 @@ class WebSocketService {
       players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
     }) => void;
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
-    onMatchmakingQueued?: (position: number) => void;
-    onMatchmakingTableAssigned?: (tableId: string) => void;
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
     onBusted?: (message: string) => void;
@@ -186,17 +184,6 @@ class WebSocketService {
       this.socket.on('game:hand_complete', ({ winners }) => {
         wsLog('game:hand_complete', { winners });
         this.listeners.onHandComplete?.(winners);
-      });
-
-      // Matchmaking events
-      this.socket.on('matchmaking:queued', ({ position }) => {
-        wsLog('matchmaking:queued', { position });
-        this.listeners.onMatchmakingQueued?.(position);
-      });
-
-      this.socket.on('matchmaking:table_assigned', ({ tableId }) => {
-        wsLog('matchmaking:table_assigned', { tableId });
-        this.listeners.onMatchmakingTableAssigned?.(tableId);
       });
 
       // Spectator events

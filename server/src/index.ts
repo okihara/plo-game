@@ -98,7 +98,7 @@ const start = async () => {
       pingTimeout: 5000,    // 5秒以内にpongがなければ切断と判断
     });
 
-    const { tableManager, matchmakingPool } = setupGameSocket(io, fastify);
+    const { tableManager } = setupGameSocket(io, fastify);
 
     // Initialize maintenance service
     await maintenanceService.initialize(io);
@@ -109,9 +109,9 @@ const start = async () => {
       }
     });
 
-    // Register admin routes (needs io, tableManager, matchmakingPool)
-    await fastify.register(adminRoutes({ io, tableManager, matchmakingPool }));
-    await fastify.register(lobbyRoutes({ tableManager, matchmakingPool }));
+    // Register admin routes (needs io, tableManager)
+    await fastify.register(adminRoutes({ io, tableManager }));
+    await fastify.register(lobbyRoutes({ tableManager }));
     await fastify.register(maintenanceRoutes());
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });

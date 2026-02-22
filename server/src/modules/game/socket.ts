@@ -2,11 +2,10 @@ import { Server, Socket } from 'socket.io';
 import { FastifyInstance } from 'fastify';
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
-import { MatchmakingPool } from '../fastfold/MatchmakingPool.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
-import { cashOutPlayer } from '../auth/bankroll.js';
+import { cashOutPlayer, deductBuyIn } from '../auth/bankroll.js';
 
 interface AuthenticatedSocket extends Socket {
   odId?: string;
@@ -17,7 +16,6 @@ interface AuthenticatedSocket extends Socket {
 
 interface GameSocketDependencies {
   tableManager: TableManager;
-  matchmakingPool: MatchmakingPool;
 }
 
 // Bot用ユーザーをDBにfind or create
@@ -57,7 +55,6 @@ async function findOrCreateBotUser(botName: string, botAvatar: string | null) {
 
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
-  const matchmakingPool = new MatchmakingPool(io, tableManager);
 
   // テーブルから離席してキャッシュアウトする共通処理
   async function unseatAndCashOut(table: TableInstance, odId: string): Promise<void> {
@@ -155,7 +152,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
     });
 
-    // Handle fast fold pool join
+    // Handle table join (find available table or create one, seat immediately)
     socket.on('matchmaking:join', async (data: { blinds: string }) => {
       if (maintenanceService.isMaintenanceActive()) {
         socket.emit('table:error', { message: 'メンテナンス中のため参加できません' });
@@ -172,14 +169,14 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           return;
         }
         const [, bb] = parts.map(Number);
-        const minBuyIn = bb * 100; // $300 for $1/$3
+        const buyIn = bb * 100; // $300 for $1/$3
 
-        // Check balance (deduction happens later when actually seated)
+        // Check balance
         const bankroll = await prisma.bankroll.findUnique({
           where: { userId: socket.odId },
         });
 
-        if (!bankroll || bankroll.balance < minBuyIn) {
+        if (!bankroll || bankroll.balance < buyIn) {
           socket.emit('table:error', { message: 'Insufficient balance for minimum buy-in' });
           return;
         }
@@ -190,34 +187,49 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           await unseatAndCashOut(currentTable, socket.odId!);
         }
 
-        // Queue player
-        await matchmakingPool.queuePlayer(
+        // Find available table or create one
+        const table = tableManager.getOrCreateTable(blinds, true);
+
+        // Deduct buy-in
+        const deducted = await deductBuyIn(socket.odId!, buyIn);
+        if (!deducted) {
+          socket.emit('table:error', { message: 'Insufficient balance for buy-in' });
+          return;
+        }
+
+        // Seat player
+        const seatNumber = table.seatPlayer(
           socket.odId!,
           socket.odName!,
-          socket.odAvatarUrl!,
           socket,
-          minBuyIn,
-          blinds
+          buyIn,
+          socket.odAvatarUrl ?? null
         );
+
+        if (seatNumber !== null) {
+          tableManager.setPlayerTable(socket.odId!, table.id);
+          table.triggerMaybeStartHand();
+        } else {
+          // Seating failed - refund
+          await cashOutPlayer(socket.odId!, buyIn);
+          socket.emit('table:error', { message: 'No available seat' });
+        }
       } catch (err) {
-        console.error('Error joining fast fold:', err);
-        socket.emit('table:error', { message: 'Failed to join matchmaking pool' });
+        console.error('Error joining table:', err);
+        socket.emit('table:error', { message: 'Failed to join table' });
       }
     });
 
-    // Handle fast fold pool leave
-    socket.on('matchmaking:leave', async (data: { blinds: string }) => {
+    // Handle matchmaking leave (just leave table)
+    socket.on('matchmaking:leave', async () => {
       try {
-        matchmakingPool.removeFromQueue(socket.odId!, data.blinds);
-
-        // Leave current table too (with cashout)
         const table = tableManager.getPlayerTable(socket.odId!);
         if (table) {
           await unseatAndCashOut(table, socket.odId!);
         }
       } catch (err) {
         console.error(`Error during matchmaking:leave for ${socket.odId}:`, err);
-        socket.emit('table:error', { message: 'Failed to leave matchmaking pool' });
+        socket.emit('table:error', { message: 'Failed to leave table' });
       }
     });
 
@@ -226,14 +238,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       console.log(`Player disconnected: ${socket.odId} (${socket.odName})`);
 
       try {
-        // テーブルから離席+キャッシュアウト
         const table = tableManager.getPlayerTable(socket.odId!);
         if (table) {
           await unseatAndCashOut(table, socket.odId!);
         }
-
-        // マッチメイキングキューから除去（バイイン未引き落としなのでリファンド不要）
-        matchmakingPool.removeFromAllQueues(socket.odId!);
       } catch (err) {
         console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
       }
@@ -283,5 +291,5 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     });
   });
 
-  return { tableManager, matchmakingPool };
+  return { tableManager };
 }

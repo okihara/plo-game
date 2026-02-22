@@ -52,10 +52,6 @@ export interface ServerToClientEvents {
   }) => void;
   'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[] }) => void;
 
-  // Matchmaking
-  'matchmaking:queued': (data: { position: number }) => void;
-  'matchmaking:table_assigned': (data: { tableId: string }) => void;
-
   // Spectator
   'table:spectating': (data: { tableId: string }) => void;
   'game:all_hole_cards': (data: {
