@@ -22,10 +22,12 @@ export class TableManager {
     return this.tables.get(tableId);
   }
 
-  // Find a table with available seats (prefer table with fewest players for balance)
+  // Find a table with available seats
+  // Fast-fold: prefer table with most players that hasn't started a hand yet
+  // Normal: prefer table with fewest players for balance
   public findAvailableTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string): TableInstance | null {
     let best: TableInstance | null = null;
-    let minPlayers = Infinity;
+    let bestScore = isFastFold ? -1 : Infinity;
 
     for (const table of this.tables.values()) {
       if (
@@ -35,9 +37,19 @@ export class TableManager {
         table.id !== excludeTableId
       ) {
         const count = table.getPlayerCount();
-        if (count < minPlayers) {
-          minPlayers = count;
-          best = table;
+
+        if (isFastFold) {
+          // ファストフォールド: ハンド未開始 & 着席人数が最も多いテーブル
+          if (!table.isHandInProgress && count > bestScore) {
+            bestScore = count;
+            best = table;
+          }
+        } else {
+          // 通常: 着席人数が最も少ないテーブル
+          if (count < bestScore) {
+            bestScore = count;
+            best = table;
+          }
         }
       }
     }

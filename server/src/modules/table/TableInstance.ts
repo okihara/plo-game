@@ -36,7 +36,11 @@ export class TableInstance {
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
-  private isHandInProgress = false;
+  private _isHandInProgress = false;
+
+  public get isHandInProgress(): boolean {
+    return this._isHandInProgress;
+  }
   private pendingStartHand = false;
 
   // ヘルパーインスタンス
@@ -375,7 +379,7 @@ export class TableInstance {
     const playerCount = this.getPlayerCount();
     if (playerCount < this.minPlayersToStart) return;
 
-    this.isHandInProgress = true;
+    this._isHandInProgress = true;
 
     // Preserve dealer position from previous hand
     const previousDealerPosition = this.gameState?.dealerPosition ?? -1;
@@ -655,7 +659,7 @@ export class TableInstance {
       }
     }
 
-    this.isHandInProgress = false;
+    this._isHandInProgress = false;
 
     this.pendingStartHand = true;
 
