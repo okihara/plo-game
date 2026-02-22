@@ -161,7 +161,7 @@ export class TableInstance {
 
     this.playerManager.unseatPlayer(seatIndex);
 
-    this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+    // this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
 
     // If in a hand, fold the player
     if (this.gameState && !this.gameState.isHandComplete) {
@@ -210,7 +210,7 @@ export class TableInstance {
 
     // 通常: 席からプレイヤーを削除して離脱を通知
     this.playerManager.unseatPlayer(seatIndex);
-    this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+    // this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
 
     return { odId, chips, socket };
   }
@@ -524,7 +524,7 @@ export class TableInstance {
 
       // 離席処理
       this.playerManager.unseatPlayer(seatIndex);
-      this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+      // this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
       this.pendingEarlyFolds.delete(seatIndex);
 
       // アクティブプレイヤーが1人以下 → ハンド終了
