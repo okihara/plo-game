@@ -42,20 +42,9 @@
     .p-money { color: #fbbf24; font-size: 10px; }
     .p-bet { color: #f97316; font-size: 10px; }
     .p-icon { font-size: 9px; flex-shrink: 0; }
-    /* Pending action inline */
-    .pending-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-top: 5px;
-      background: #422006;
-      border: 1px solid #f59e0b;
-      border-radius: 4px;
-      padding: 3px 8px;
-      font-size: 11px;
-    }
-    .pending-row .pa-label { color: #fbbf24; font-weight: 600; }
-    .pending-row .pa-timer { color: #f59e0b; }
+    /* Pending action in header */
+    .pa-label { color: #fbbf24; font-weight: 600; font-size: 11px; }
+    .pa-timer { color: #f59e0b; font-size: 11px; }
     .action-option { background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
     /* Message log collapsible */
     .msg-details { margin-top: 5px; }
@@ -278,8 +267,8 @@
           return '<div class="' + cls.join(' ') + '">' + row1 + row2 + '</div>';
         }).join('');
 
-        // Pending action inline (always visible)
-        var pendingHtml = '';
+        // Pending action info for header
+        var pendingInfo = '';
         if (t.pendingAction) {
           var pa = t.pendingAction;
           var remaining = Math.max(0, Math.ceil((pa.timeoutMs - (Date.now() - pa.requestedAt)) / 1000));
@@ -288,13 +277,10 @@
             if (a.minAmount > 0) { l += ' $' + a.minAmount; if (a.maxAmount !== a.minAmount) l += '-$' + a.maxAmount; }
             return '<span class="action-option">' + l + '</span>';
           }).join(' ');
-          pendingHtml = '<div class="pending-row">' +
-            '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
-            '<span class="pa-timer">' + remaining + 's</span>' +
-            acts + '</div>';
+          pendingInfo = '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
+            '<span class="pa-timer">' + remaining + 's</span>' + acts;
         } else {
-          pendingHtml = '<div class="pending-row" style="background:#1e293b;border-color:#334155">' +
-            '<span class="pa-label" style="color:#64748b">— なし</span></div>';
+          pendingInfo = '<span style="color:#64748b;font-size:10px">— 待機中</span>';
         }
 
         // Messages collapsible
@@ -317,13 +303,14 @@
               (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px">' +
+              pendingInfo +
               '<a href="' + SPECTATE_BASE_URL + '/spectate/' + t.id + '" target="_blank">👁観戦</a>' +
               '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(t.pot) + '</span>' +
               '<span style="color:#64748b">' + t.playerCount + '/' + t.maxPlayers + '</span>' +
             '</div>' +
           '</div>' +
           '<div class="players-row">' + playersHtml + '</div>' +
-          pendingHtml + msgHtml +
+          msgHtml +
         '</div>';
       }).join('');
 
