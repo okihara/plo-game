@@ -285,11 +285,9 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                 <p className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
                   {isChangingTable ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
                 </p>
-                {!isChangingTable && (
-                  <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-                    {seatedPlayerCount}/6 人着席中
-                  </p>
-                )}
+                <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+                  {seatedPlayerCount}/6 人着席中
+                </p>
               </div>
               <button
                 onClick={onBack}
