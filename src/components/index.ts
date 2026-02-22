@@ -4,6 +4,5 @@ export { CommunityCards } from './CommunityCards';
 export { ActionPanel } from './ActionPanel';
 export { ResultOverlay } from './ResultOverlay';
 export { MyCards } from './MyCards';
-export { TableTransition } from './TableTransition';
 export { PokerTable } from './PokerTable';
 export { HandAnalysisOverlay } from './HandAnalysisOverlay';

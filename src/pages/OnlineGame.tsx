@@ -276,27 +276,27 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
             </div>
           )}
 
-          {/* テーブル移動中オーバーレイ */}
-          {isChangingTable && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
-              <div className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-                テーブル移動中...
-              </div>
-            </div>
-          )}
-
-          {/* 他のプレイヤーを待っている状態のオーバーレイ */}
-          {isWaitingForPlayers && !isChangingTable && (
-            <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 pointer-events-none">
-              <div className="text-center">
+          {/* テーブル検索・待機中オーバーレイ */}
+          {(isChangingTable || isWaitingForPlayers) && (
+            <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70">
+              <div className="text-center pointer-events-none">
                 <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
-                <p className="text-white font-bold mb-2" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-                  他のプレイヤーを待っています...
+                <p className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
+                  {isChangingTable ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
                 </p>
-                <p className="text-white/70" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-                  {seatedPlayerCount}/6 人着席中
-                </p>
+                {!isChangingTable && (
+                  <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+                    {seatedPlayerCount}/6 人着席中
+                  </p>
+                )}
               </div>
+              <button
+                onClick={onBack}
+                className="absolute bottom-[20%] px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
+                style={{ fontSize: 'min(2vh, 3.5vw)' }}
+              >
+                ロビーに戻る
+              </button>
             </div>
           )}
 
