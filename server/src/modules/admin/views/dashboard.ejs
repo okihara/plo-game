@@ -25,23 +25,22 @@
     }
     .p-cell {
       display: flex;
-      align-items: center;
-      gap: 4px;
+      flex-direction: column;
       background: #334155;
       border-radius: 4px;
-      padding: 3px 6px;
+      padding: 4px 6px;
       font-size: 11px;
-      white-space: nowrap;
-      overflow: hidden;
       min-width: 0;
+      gap: 1px;
     }
-    .p-cell.empty { background: #0f172a; color: #475569; justify-content: center; }
+    .p-cell.empty { background: #0f172a; color: #475569; align-items: center; justify-content: center; min-height: 42px; }
     .p-cell.folded { opacity: 0.45; }
     .p-cell.pending { border: 1px solid #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,0.3); }
+    .p-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
     .p-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
     .p-pos { color: #60a5fa; font-weight: 600; font-size: 10px; flex-shrink: 0; }
-    .p-money { color: #fbbf24; font-size: 10px; flex-shrink: 0; }
-    .p-bet { color: #f97316; font-size: 10px; flex-shrink: 0; }
+    .p-money { color: #fbbf24; font-size: 10px; }
+    .p-bet { color: #f97316; font-size: 10px; }
     .p-icon { font-size: 9px; flex-shrink: 0; }
     /* Pending action inline */
     .pending-row {
@@ -269,16 +268,17 @@
           if (p.isSittingOut) icon = '💤';
           if (isPending) icon = '⏳';
 
-          var parts = '<span class="p-icon">' + icon + '</span>';
-          if (p.position) parts += '<span class="p-pos">' + p.position + '</span>';
-          parts += '<span class="p-name">' + p.odName + '</span>';
-          parts += '<span class="p-money">' + formatChips(p.chips) + '</span>';
-          if (p.currentBet > 0) parts += '<span class="p-bet">B:' + formatChips(p.currentBet) + '</span>';
+          var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
+          if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
+          row1 += '<span class="p-name">' + p.odName + '</span></div>';
+          var row2 = '<div class="p-row"><span class="p-money">' + formatChips(p.chips) + '</span>';
+          if (p.currentBet > 0) row2 += '<span class="p-bet">Bet ' + formatChips(p.currentBet) + '</span>';
+          row2 += '</div>';
 
-          return '<div class="' + cls.join(' ') + '">' + parts + '</div>';
+          return '<div class="' + cls.join(' ') + '">' + row1 + row2 + '</div>';
         }).join('');
 
-        // Pending action inline
+        // Pending action inline (always visible)
         var pendingHtml = '';
         if (t.pendingAction) {
           var pa = t.pendingAction;
@@ -292,6 +292,9 @@
             '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
             '<span class="pa-timer">' + remaining + 's</span>' +
             acts + '</div>';
+        } else {
+          pendingHtml = '<div class="pending-row" style="background:#1e293b;border-color:#334155">' +
+            '<span class="pa-label" style="color:#64748b">— なし</span></div>';
         }
 
         // Messages collapsible
@@ -309,7 +312,7 @@
 
         return '<div class="table-card">' +
           '<div class="table-header">' +
-            '<div class="table-title">' + t.blinds +
+            '<div class="table-title"><span style="color:#64748b;font-weight:400;font-size:10px">' + t.id.slice(0,8) + '</span> ' + t.blinds +
               (t.isFastFold ? ' <span class="badge badge-ff">FF</span>' : '') +
               (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
             '</div>' +
