@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers, getValidActions } from '../../shared/logic/gameEngine.js';
+import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, determineWinner } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
@@ -260,6 +260,57 @@ export class TableInstance {
     } else {
       // 次のアクション要求後に状態をブロードキャスト（pendingActionがセットされている状態で送信するため）
       this.requestNextAction();
+      this.broadcastGameState();
+    }
+
+    return true;
+  }
+
+  /**
+   * ファストフォールド用: ターン前にフォールドして即座にテーブル移動可能にする
+   * BBはプリフロップでファストフォールドできない
+   */
+  public handleEarlyFold(odId: string): boolean {
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
+      return false;
+    }
+
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return false;
+
+    const player = this.gameState.players[seatIndex];
+    if (!player || player.folded || player.isAllIn) return false;
+
+    // BBはプリフロップでファストフォールドできない
+    if (player.position === 'BB' && this.gameState.currentStreet === 'preflop') {
+      return false;
+    }
+
+    const wasCurrentPlayer = this.gameState.currentPlayerIndex === seatIndex;
+
+    // フォールド処理
+    const result = this.foldProcessor.processFold(this.gameState, {
+      seatIndex,
+      playerId: odId,
+      wasCurrentPlayer,
+    });
+    this.gameState = result.gameState;
+
+    // アクティブプレイヤーが1人以下 → ハンド終了
+    const activePlayers = getActivePlayers(this.gameState);
+    if (activePlayers.length <= 1) {
+      this.actionController.clearTimers();
+      this.gameState = determineWinner(this.gameState);
+      this.broadcastGameState();
+      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+      return true;
+    }
+
+    // 現在のプレイヤーがフォールドした場合、次のプレイヤーへ進む
+    if (wasCurrentPlayer) {
+      this.actionController.clearTimers();
+      this.advanceToNextPlayer();
+    } else {
       this.broadcastGameState();
     }
 

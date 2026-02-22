@@ -48,6 +48,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
     disconnect,
     joinMatchmaking,
     handleAction,
+    handleFastFold,
   } = useOnlineGameState(blinds, isFastFold);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
@@ -255,7 +256,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
             handName={showdownHandNames.get(humanPlayerIdx) || myCurrentHandName}
           />
 
-          <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
+          <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
 
           {/* <ResultOverlay state={gameState} mySeat={humanPlayerIdx} /> */}
 

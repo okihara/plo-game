@@ -51,6 +51,7 @@ export class BotClient {
   private connectedAt: number | null = null;
   private lastActionAt: number | null = null;
   private actionGeneration = 0; // stale なアクションコールバックを防ぐ世代カウンター
+  private pendingFastFoldCheck = false; // ホールカード受信後のファストフォールド判定待ち
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -122,17 +123,43 @@ export class BotClient {
         this.rejoinMatchmaking();
       });
 
+      // ファストフォールド: テーブル移動
+      this.socket.on('table:change', (data: { tableId: string; seat: number }) => {
+        this.tableId = data.tableId;
+        this.seatNumber = data.seat;
+        this.holeCards = [];
+        this.handActions = [];
+        this.actionGeneration++;
+        this.pendingFastFoldCheck = false;
+        this.lastInGameTime = Date.now();
+        console.log(`[${this.config.name}] Table changed to ${data.tableId} seat ${data.seat}`);
+      });
+
+      this.socket.on('table:busted', (data: { message: string }) => {
+        console.log(`[${this.config.name}] Busted: ${data.message}`);
+      });
+
       this.socket.on('table:error', (data: { message: string }) => {
         console.log(`[${this.config.name}] Table error: ${data.message}`);
       });
 
       this.socket.on('game:hole_cards', (data: { cards: Card[] }) => {
         this.holeCards = data.cards;
+        this.handActions = [];
         console.log(`[${this.config.name}] Received hole cards`);
+        // ファストフォールド: 次のgame:stateで判定する
+        if (this.config.isFastFold) {
+          this.pendingFastFoldCheck = true;
+        }
       });
 
       this.socket.on('game:state', (data: { state: ClientGameState }) => {
         this.gameState = data.state;
+        // ファストフォールド判定: hole_cards受信後の最初のstate更新で判定
+        if (this.pendingFastFoldCheck) {
+          this.pendingFastFoldCheck = false;
+          this.maybeEarlyFold();
+        }
       });
 
       this.socket.on('game:action_taken', (data: { playerId: string; action: Action; amount: number; seat: number }) => {
@@ -149,7 +176,9 @@ export class BotClient {
         validActions: { action: Action; minAmount: number; maxAmount: number }[];
         timeoutMs: number;
       }) => {
+        // 自分の番が来たらファストフォールド判定をキャンセル（通常フローで処理）
         if (data.playerId === this.playerId) {
+          this.pendingFastFoldCheck = false;
           this.handleActionRequired(data);
         }
       });
@@ -328,6 +357,43 @@ export class BotClient {
     console.log(`[${this.config.name}] Action: ${action}${amount > 0 ? ` $${amount}` : ''}`);
     this.lastActionAt = Date.now();
     this.socket.emit('game:action', { action, amount });
+  }
+
+  /**
+   * ファストフォールド: ターン前にAIがフォールド判定したら即座にfold送信
+   */
+  private maybeEarlyFold(): void {
+    if (!this.gameState || !this.socket || !this.isConnected) return;
+    if (this.holeCards.length === 0) return;
+
+    // 既に自分のターンなら通常フローに任せる
+    if (this.gameState.currentPlayerSeat === this.seatNumber) return;
+
+    // BBはプリフロップでファストフォールドできない
+    const posIndex = (this.seatNumber - this.gameState.dealerSeat + 6) % 6;
+    if (POSITIONS[posIndex] === 'BB' && this.gameState.currentStreet === 'preflop') return;
+
+    // AIに判断させる
+    const aiGameState = this.buildGameStateForAI();
+    if (!aiGameState) return;
+
+    const aiDecision = getCPUAction(aiGameState, this.seatNumber, {
+      botName: this.config.name,
+      opponentModel: this.opponentModel,
+      handActions: this.handActions,
+    });
+
+    if (aiDecision.action === 'fold') {
+      const gen = ++this.actionGeneration;
+      const delay = 1000 + Math.random() * 1000; // 1000-2000ms（自然な遅延）
+      setTimeout(() => {
+        if (this.actionGeneration !== gen) return;
+        if (!this.socket || !this.isConnected) return;
+        console.log(`[${this.config.name}] Fast fold (early)`);
+        this.lastActionAt = Date.now();
+        this.socket.emit('game:fast_fold');
+      }, delay);
+    }
   }
 
   async joinMatchmaking(blinds: string): Promise<void> {

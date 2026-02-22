@@ -49,6 +49,7 @@ export interface OnlineGameHookResult {
   joinMatchmaking: () => void;
   leaveMatchmaking: () => void;
   handleAction: (action: Action, amount: number) => void;
+  handleFastFold: () => void;
   startNextHand: () => void;
 }
 
@@ -262,6 +263,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const handleAction = useCallback((action: Action, amount: number) => {
     wsService.sendAction(action, amount);
     setActionTimeoutAt(null);
+  }, []);
+
+  const handleFastFold = useCallback(() => {
+    wsService.sendFastFold();
   }, []);
 
   const startNextHand = useCallback(() => {
@@ -480,6 +485,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     joinMatchmaking,
     leaveMatchmaking,
     handleAction,
+    handleFastFold,
     startNextHand,
   };
 }

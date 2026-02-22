@@ -6,15 +6,22 @@ interface ActionPanelProps {
   state: GameState;
   mySeat: number;
   onAction: (action: Action, amount: number) => void;
+  isFastFold?: boolean;
+  onFastFold?: () => void;
 }
 
-export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
+export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }: ActionPanelProps) {
   const { formatChips } = useGameSettings();
   const myPlayer = state.players[mySeat];
   const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
 
   const toCall = state.currentBet - myPlayer.currentBet;
   const canCheck = toCall === 0;
+
+  // ファストフォールド: ターン前でもフォールド可能（BBプリフロップ除く）
+  const isBB = myPlayer.position === 'BB';
+  const canFastFold = !!isFastFold && !isMyTurn && !myPlayer.folded && !state.isHandComplete
+    && !(isBB && state.currentStreet === 'preflop');
   const isShortStack = toCall > 0 && myPlayer.chips < toCall;
 
   // オンラインモード用のシンプルなレイズ判定
@@ -86,6 +93,16 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
     onAction(action, amount);
   }, [toCall, myPlayer.chips, sliderValue, onAction]);
 
+  // フォールドボタンのクリックハンドラ
+  const handleFoldClick = useCallback(() => {
+    if (isMyTurn) {
+      handleAction('fold');
+    } else if (canFastFold && onFastFold) {
+      setActionSent(true);
+      onFastFold();
+    }
+  }, [isMyTurn, canFastFold, onFastFold, handleAction]);
+
   return (
     <div className="px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
       {/* Preset Buttons & Bet Slider */}
@@ -127,30 +144,37 @@ export function ActionPanel({ state, mySeat, onAction }: ActionPanelProps) {
       {/* Action Buttons */}
       <div className="grid grid-cols-3 gap-[1.8cqw]">
         <div className="flex items-center gap-[1.2cqw]">
-          <label className={`flex items-center shrink-0 ${canCheck ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
-            <input
-              type="checkbox"
-              checked={prefoldChecked}
-              onChange={(e) => setPrefoldChecked(e.target.checked)}
-              disabled={canCheck}
-              className="sr-only"
-            />
-            <div className={`w-[4.5cqw] h-[4.5cqw] rounded border-2 flex items-center justify-center transition-all ${
-              prefoldChecked
-                ? 'bg-red-500 border-red-400'
-                : 'bg-gray-700 border-gray-500'
-            }`}>
-              {prefoldChecked && (
-                <svg className="w-[3cqw] h-[3cqw] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              )}
-            </div>
-          </label>
+          {/* プリフォールドチェックボックス: FF時はファストフォールドボタンがあるので非表示 */}
+          {!isFastFold && (
+            <label className={`flex items-center shrink-0 ${canCheck ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+              <input
+                type="checkbox"
+                checked={prefoldChecked}
+                onChange={(e) => setPrefoldChecked(e.target.checked)}
+                disabled={canCheck}
+                className="sr-only"
+              />
+              <div className={`w-[4.5cqw] h-[4.5cqw] rounded border-2 flex items-center justify-center transition-all ${
+                prefoldChecked
+                  ? 'bg-red-500 border-red-400'
+                  : 'bg-gray-700 border-gray-500'
+              }`}>
+                {prefoldChecked && (
+                  <svg className="w-[3cqw] h-[3cqw] text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                )}
+              </div>
+            </label>
+          )}
           <button
-            onClick={() => handleAction('fold')}
-            disabled={!isMyTurn || actionSent || canCheck}
-            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
+            onClick={handleFoldClick}
+            disabled={!(isMyTurn && !actionSent && !canCheck) && !(canFastFold && !actionSent)}
+            className={`flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
+              canFastFold && !isMyTurn
+                ? 'bg-gradient-to-b from-red-500 to-red-600'
+                : 'bg-gradient-to-b from-gray-500 to-gray-600'
+            }`}
           >
             フォールド
           </button>

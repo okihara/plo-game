@@ -253,6 +253,10 @@ class WebSocketService {
     this.socket?.emit('game:action', { action, amount });
   }
 
+  sendFastFold(): void {
+    (this.socket as any)?.emit('game:fast_fold');
+  }
+
   // Matchmaking pool
   joinMatchmaking(blinds: string, isFastFold?: boolean): void {
     this.socket?.emit('matchmaking:join', { blinds, isFastFold });

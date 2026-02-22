@@ -262,6 +262,31 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
     });
 
+    // Handle fast fold (fold before your turn in fast fold mode)
+    socket.on('game:fast_fold', async () => {
+      const table = tableManager.getPlayerTable(socket.odId!);
+      if (!table) {
+        socket.emit('table:error', { message: 'Not seated at a table' });
+        return;
+      }
+
+      if (!table.isFastFold) {
+        socket.emit('table:error', { message: 'Fast fold not available' });
+        return;
+      }
+
+      const success = table.handleEarlyFold(socket.odId!);
+      if (!success) {
+        return;
+      }
+
+      try {
+        await handleFastFoldMove(socket, table, socket.odId!);
+      } catch (err) {
+        console.error('[FastFold] early fold move failed:', err);
+      }
+    });
+
     // Handle table join (find available table or create one, seat immediately)
     socket.on('matchmaking:join', async (data: { blinds: string; isFastFold?: boolean }) => {
       if (maintenanceService.isMaintenanceActive()) {
