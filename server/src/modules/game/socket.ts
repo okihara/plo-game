@@ -107,6 +107,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       return;
     }
 
+    // await中にソケットが切断された場合はゴーストプレイヤーを防ぐ
+    if (!socket.connected) {
+      console.warn(`[FastFold] Socket disconnected during move for ${odId}, cashing out`);
+      await cashOutPlayer(odId, unseatResult.chips, currentTable.id);
+      return;
+    }
+
     // 5. 新テーブルに着席（バイイン控除なし、チップをそのまま持ち越し）
     const seatNumber = newTable.seatPlayer(
       odId,
@@ -146,6 +153,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         if (p.chips <= 0) {
           cashOutPlayer(p.odId, 0, table.id).catch(e => console.error('[FastFold] cashOut error:', e));
           p.socket.emit('table:busted', { message: 'チップがなくなりました' });
+          continue;
+        }
+
+        // ソケットが切断済みならゴーストプレイヤーを防ぐ
+        if (!p.socket.connected) {
+          console.warn(`[FastFold] Skipping reassign for disconnected player ${p.odId}`);
+          cashOutPlayer(p.odId, p.chips, table.id).catch(e => console.error('[FastFold] cashOut error:', e));
           continue;
         }
 
@@ -334,6 +348,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const deducted = await deductBuyIn(socket.odId!, buyIn);
         if (!deducted) {
           socket.emit('table:error', { message: 'Insufficient balance for buy-in' });
+          return;
+        }
+
+        // await中にソケットが切断された場合はゴーストプレイヤーを防ぐ
+        if (!socket.connected) {
+          console.warn(`[matchmaking] Socket disconnected during join for ${socket.odId}, refunding`);
+          await cashOutPlayer(socket.odId!, buyIn);
           return;
         }
 
