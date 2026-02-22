@@ -247,7 +247,7 @@ export function Player({
           {avatarImage ? (
             <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
           ) : (
-            isMe ? '👤' : '🤖'
+            <span className="text-[4.5cqw] text-gray-400 font-medium">Empty</span>
           )}
         </div>
         {/* Dealer Button */}
