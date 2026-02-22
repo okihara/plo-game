@@ -1,4 +1,4 @@
-import { Card as CardType, getPreFlopEvaluation, calculateEquity, calculateOuts, evaluatePLOHand, HandRank } from '../logic';
+import { Card as CardType, getPreFlopEvaluation, calculateOuts, evaluatePLOHand, HandRank } from '../logic';
 import { useMemo } from 'react';
 
 interface HandAnalysisOverlayProps {
@@ -23,7 +23,6 @@ export function HandAnalysisOverlay({
     if (!isVisible || holeCards.length !== 4 || communityCards.length < 3) {
       return null;
     }
-    const equity = calculateEquity(holeCards, communityCards, 5, 300);
     const outs = communityCards.length < 5 ? calculateOuts(holeCards, communityCards) : null;
 
     // 5枚揃っている場合のみハンドランクを計算
@@ -32,7 +31,7 @@ export function HandAnalysisOverlay({
       handRank = evaluatePLOHand(holeCards, communityCards);
     }
 
-    return { equity, outs, handRank };
+    return { outs, handRank };
   }, [holeCards, communityCards, isVisible]);
 
   if (!isVisible || holeCards.length === 0 || !preflopEval) return null;
@@ -41,10 +40,10 @@ export function HandAnalysisOverlay({
 
   return (
     <div className="absolute top-[3%] left-[2%] z-50 pointer-events-auto">
-      <div className="bg-black/90 border border-gray-600 rounded-md p-[1vh] min-w-[18vh] shadow-xl text-[1.2vh]">
+      <div className="bg-black/70 border border-gray-600 rounded-md p-[1vh] min-w-[18vh] shadow-xl text-[1.2vh] backdrop-blur-sm">
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-[0.8vh] border-b border-gray-700 pb-[0.5vh]">
-          <span className="text-white font-bold">Analysis</span>
+          <span className="text-white font-bold">オープンハンド評価</span>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white text-[1.5vh] leading-none"
@@ -56,16 +55,16 @@ export function HandAnalysisOverlay({
         {/* プリフロップ評価 */}
         <div className="mb-[1vh]">
           <div className="text-white font-bold text-[1.5vh] mb-[0.5vh]">
-            Score: {preflopEval.score.toFixed(2)}
+            スコア: {preflopEval.score.toFixed(2)}
           </div>
           <div className="flex flex-col gap-[0.3vh]">
-            <EvalItem label="Pair" value={preflopEval.pairRank} positive={!!preflopEval.pairRank} />
-            <EvalItem label="A-suited" value={preflopEval.hasAceSuited ? "Yes" : "No"} positive={preflopEval.hasAceSuited} />
-            <EvalItem label="DS" value={preflopEval.isDoubleSuited ? "Yes" : "No"} positive={preflopEval.isDoubleSuited} />
-            <EvalItem label="SS" value={preflopEval.isSingleSuited ? "Yes" : "No"} positive={preflopEval.isSingleSuited} />
-            <EvalItem label="Rundown" value={preflopEval.isRundown ? "Yes" : "No"} positive={preflopEval.isRundown} />
-            <EvalItem label="Wrap" value={preflopEval.hasWrap ? "Yes" : "No"} positive={preflopEval.hasWrap} />
-            <EvalItem label="Dangler" value={preflopEval.hasDangler ? "Yes" : "No"} positive={false} negative={preflopEval.hasDangler} />
+            <EvalItem label="ペア" value={preflopEval.pairRank} positive={!!preflopEval.pairRank} />
+            <EvalItem label="Aスート" value={preflopEval.hasAceSuited ? "あり" : "なし"} positive={preflopEval.hasAceSuited} />
+            <EvalItem label="ダブルスート" value={preflopEval.isDoubleSuited ? "あり" : "なし"} positive={preflopEval.isDoubleSuited} />
+            <EvalItem label="シングルスート" value={preflopEval.isSingleSuited ? "あり" : "なし"} positive={preflopEval.isSingleSuited} />
+            <EvalItem label="ランダウン" value={preflopEval.isRundown ? "あり" : "なし"} positive={preflopEval.isRundown} />
+            <EvalItem label="ラップ" value={preflopEval.hasWrap ? "あり" : "なし"} positive={preflopEval.hasWrap} />
+            <EvalItem label="ダングラー" value={preflopEval.hasDangler ? "あり" : "なし"} positive={false} negative={preflopEval.hasDangler} />
           </div>
         </div>
 
@@ -75,20 +74,14 @@ export function HandAnalysisOverlay({
             <div className="flex flex-col gap-[0.3vh]">
               {postflopInfo.handRank && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">Hand</span>
+                  <span className="text-gray-400">ハンド</span>
                   <span className="text-yellow-300 font-bold">{postflopInfo.handRank.name}</span>
                 </div>
               )}
-              <div className="flex justify-between">
-                <span className="text-gray-400">Equity</span>
-                <span className={`font-bold ${getEquityColor(postflopInfo.equity)}`}>
-                  {postflopInfo.equity.toFixed(0)}%
-                </span>
-              </div>
               {postflopInfo.outs && (
                 <>
-                  <OutsItem label="Flush" value={postflopInfo.outs.flushOuts} icon="♣" />
-                  <OutsItem label="Straight" value={postflopInfo.outs.straightOuts} icon="→" />
+                  <OutsItem label="フラッシュ" value={postflopInfo.outs.flushOuts} icon="♣" />
+                  <OutsItem label="ストレート" value={postflopInfo.outs.straightOuts} icon="→" />
                 </>
               )}
             </div>
@@ -152,9 +145,3 @@ function OutsItem({
   );
 }
 
-function getEquityColor(equity: number): string {
-  if (equity >= 60) return 'text-yellow-300';
-  if (equity >= 40) return 'text-green-400';
-  if (equity >= 25) return 'text-blue-400';
-  return 'text-gray-400';
-}

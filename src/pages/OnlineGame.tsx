@@ -54,7 +54,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
 
-  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analysisEnabled, setAnalysisEnabled] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
@@ -177,18 +177,18 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                 <Settings style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
               </button>
               {showSettingsMenu && (
-                <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 min-w-[120px] z-50">
+                <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 z-50 whitespace-nowrap">
                   <button
                     onClick={() => {
-                      setShowAnalysis(!showAnalysis);
+                      setAnalysisEnabled(!analysisEnabled);
                       setShowSettingsMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                   >
-                    <span>分析表示</span>
-                    <span className={showAnalysis ? 'text-emerald-400' : 'text-gray-500'}>
-                      {showAnalysis ? '✓' : ''}
+                    <span>オープンハンド評価</span>
+                    <span className={analysisEnabled ? 'text-emerald-400' : 'text-gray-500'}>
+                      {analysisEnabled ? '✓' : ''}
                     </span>
                   </button>
                   <button
@@ -196,24 +196,13 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                       setUseBBNotation(!settings.useBBNotation);
                       setShowSettingsMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                   >
                     <span>BB表記</span>
                     <span className={settings.useBBNotation ? 'text-emerald-400' : 'text-gray-500'}>
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
-                  </button>
-                  <div className="border-t border-gray-700 my-1" />
-                  <button
-                    onClick={() => {
-                      setShowSettingsMenu(false);
-                      setShowHandHistory(true);
-                    }}
-                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700"
-                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
-                  >
-                    ハンド履歴
                   </button>
                   {import.meta.env.DEV && (
                     <>
@@ -223,8 +212,8 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                             wsService.debugSetChips(6);
                           setShowSettingsMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left text-red-400 hover:bg-gray-700"
-                        style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                        className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-700"
+                        style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                       >
                         🐛 Chips → 6
                       </button>
@@ -265,8 +254,8 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
             <HandAnalysisOverlay
               holeCards={myHoleCards}
               communityCards={gameState.communityCards}
-              isVisible={showAnalysis}
-              onClose={() => setShowAnalysis(false)}
+              isVisible={analysisEnabled && gameState.currentStreet === 'preflop'}
+              onClose={() => setAnalysisEnabled(false)}
             />
           )}
 
