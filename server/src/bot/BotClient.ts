@@ -27,6 +27,7 @@ interface BotConfig {
   avatarUrl: string | null;
   disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
   defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
+  isFastFold?: boolean; // ファストフォールドテーブルに参加するか
 }
 
 // デフォルト: 2% の確率で切断（約50ハンドに1回）
@@ -335,8 +336,9 @@ export class BotClient {
     }
 
     this.currentBlinds = blinds;
-    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds})`);
-    this.socket.emit('matchmaking:join', { blinds });
+    const isFastFold = this.config.isFastFold;
+    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''})`);
+    this.socket.emit('matchmaking:join', { blinds, isFastFold });
   }
 
   private rejoinMatchmaking(): void {
@@ -344,8 +346,9 @@ export class BotClient {
     // 少し遅延して再参加（サーバー側の状態更新を待つ）
     setTimeout(() => {
       if (this.isConnected && this.socket && !this.tableId) {
-        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds})`);
-        this.socket.emit('matchmaking:join', { blinds });
+        const isFastFold = this.config.isFastFold;
+        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''})`);
+        this.socket.emit('matchmaking:join', { blinds, isFastFold });
       }
     }, 500);
   }

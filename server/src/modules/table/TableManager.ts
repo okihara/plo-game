@@ -23,7 +23,7 @@ export class TableManager {
   }
 
   // Find a table with available seats (prefer table with fewest players for balance)
-  public findAvailableTable(blinds: string, isFastFold: boolean = false): TableInstance | null {
+  public findAvailableTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string): TableInstance | null {
     let best: TableInstance | null = null;
     let minPlayers = Infinity;
 
@@ -31,7 +31,8 @@ export class TableManager {
       if (
         table.blinds === blinds &&
         table.isFastFold === isFastFold &&
-        table.hasAvailableSeat()
+        table.hasAvailableSeat() &&
+        table.id !== excludeTableId
       ) {
         const count = table.getPlayerCount();
         if (count < minPlayers) {
@@ -44,8 +45,8 @@ export class TableManager {
   }
 
   // Get or create a table for given parameters
-  public getOrCreateTable(blinds: string, isFastFold: boolean = false): TableInstance {
-    const existing = this.findAvailableTable(blinds, isFastFold);
+  public getOrCreateTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string): TableInstance {
+    const existing = this.findAvailableTable(blinds, isFastFold, excludeTableId);
     if (existing) return existing;
     return this.createTable(blinds, isFastFold);
   }

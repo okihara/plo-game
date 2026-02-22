@@ -6,6 +6,7 @@ import { getDashboardHTML } from './dashboard.js';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
 const BOT_COUNT = parseInt(process.env.BOT_COUNT || '10', 10);
 const BLINDS = process.env.BLINDS || '1/3';
+const IS_FAST_FOLD = process.env.FAST_FOLD === 'true';
 const DASHBOARD_PORT = parseInt(process.env.BOT_DASHBOARD_PORT || '3004', 10);
 
 console.log('=================================');
@@ -14,12 +15,14 @@ console.log('=================================');
 console.log(`Server URL: ${SERVER_URL}`);
 console.log(`Bot Count: ${BOT_COUNT}`);
 console.log(`Blinds: ${BLINDS}`);
+console.log(`Fast Fold: ${IS_FAST_FOLD}`);
 console.log('=================================');
 
 const botManager = new BotManager({
   serverUrl: SERVER_URL,
   botCount: BOT_COUNT,
   blinds: BLINDS,
+  isFastFold: IS_FAST_FOLD,
 });
 
 // Handle shutdown gracefully

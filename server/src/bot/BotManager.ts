@@ -13,6 +13,7 @@ interface BotManagerConfig {
   serverUrl: string;
   botCount: number;
   blinds: string;
+  isFastFold?: boolean;
 }
 
 export class BotManager {
@@ -92,6 +93,7 @@ export class BotManager {
       name,
       avatarUrl: BOT_AVATARS[avatarIndex],
       defaultBlinds: this.config.blinds,
+      isFastFold: this.config.isFastFold,
     });
 
     try {

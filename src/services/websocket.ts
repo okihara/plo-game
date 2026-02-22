@@ -46,6 +46,7 @@ class WebSocketService {
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
     onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
     onPlayerLeft?: (seat: number, playerId: string) => void;
+    onTableChanged?: (tableId: string, seat: number) => void;
     onBusted?: (message: string) => void;
     onSpectating?: (tableId: string) => void;
     onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
@@ -143,6 +144,11 @@ class WebSocketService {
       this.socket.on('table:error', ({ message }) => {
         wsLog('table:error', { message });
         this.listeners.onError?.(message);
+      });
+
+      this.socket.on('table:change', ({ tableId, seat }) => {
+        wsLog('table:change', { tableId, seat });
+        this.listeners.onTableChanged?.(tableId, seat);
       });
 
       this.socket.on('table:busted', ({ message }) => {
@@ -248,8 +254,8 @@ class WebSocketService {
   }
 
   // Matchmaking pool
-  joinMatchmaking(blinds: string): void {
-    this.socket?.emit('matchmaking:join', { blinds });
+  joinMatchmaking(blinds: string, isFastFold?: boolean): void {
+    this.socket?.emit('matchmaking:join', { blinds, isFastFold });
   }
 
   leaveMatchmaking(): void {

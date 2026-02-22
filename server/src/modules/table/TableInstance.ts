@@ -29,6 +29,9 @@ export class TableInstance {
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
 
+  // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
+  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; avatarUrl: string | null }[]) => void;
+
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
@@ -76,7 +79,8 @@ export class TableInstance {
     socket: Socket,
     buyIn: number,
     avatarUrl?: string | null,
-    preferredSeat?: number
+    preferredSeat?: number,
+    options?: { skipJoinedEmit?: boolean }
   ): number | null {
     const seatIndex = this.playerManager.seatPlayer({
       odId,
@@ -104,7 +108,9 @@ export class TableInstance {
     this.broadcast.emitToRoom('table:player_joined', joinData);
 
     // Notify the seated player
-    socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+    if (!options?.skipJoinedEmit) {
+      socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+    }
     socket.emit('game:state', { state: this.getClientGameState() });
 
     // NOTE: triggerMaybeStartHand() is NOT called here.
@@ -161,6 +167,38 @@ export class TableInstance {
     }
 
     return { odId, chips };
+  }
+
+  // ファストフォールド用: フォールド済みプレイヤーを静かに離席させる
+  // table:left は送信しない（table:change を代わりに送るため）
+  // フォールド処理は不要（既に処理済み）
+  public unseatForFastFold(odId: string): { odId: string; chips: number; socket: Socket | null } | null {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return null;
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    if (!seat) return null;
+
+    // チップ数を取得（ハンド中はgameStateの値が最新）
+    let chips = seat.chips;
+    if (this.gameState && this.gameState.players[seatIndex]) {
+      chips = this.gameState.players[seatIndex].chips;
+    }
+
+    const socket = seat.socket ?? null;
+
+    // ソケットをルームから離脱
+    if (socket) {
+      socket.leave(this.roomName);
+    }
+
+    // 席からプレイヤーを削除
+    this.playerManager.unseatPlayer(seatIndex);
+
+    // 他プレイヤーに離脱を通知
+    this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+
+    return { odId, chips, socket };
   }
 
   // Handle player action
@@ -316,12 +354,16 @@ export class TableInstance {
     }
   }
 
+  private get minPlayersToStart(): number {
+    return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
+  }
+
   private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
     if (maintenanceService.isMaintenanceActive()) return;
 
     const playerCount = this.getPlayerCount();
-    if (playerCount < TABLE_CONSTANTS.MIN_PLAYERS_TO_START) return;
+    if (playerCount < this.minPlayersToStart) return;
 
     this.startNewHand();
   }
@@ -331,7 +373,7 @@ export class TableInstance {
 
     // Re-check player count (players may have disconnected during the delay)
     const playerCount = this.getPlayerCount();
-    if (playerCount < TABLE_CONSTANTS.MIN_PLAYERS_TO_START) return;
+    if (playerCount < this.minPlayersToStart) return;
 
     this.isHandInProgress = true;
 
@@ -633,7 +675,33 @@ export class TableInstance {
         this.unseatPlayer(seat.odId);
       }
     }
-    this.pendingStartHand = false;  // ← ここでリセット
+    this.pendingStartHand = false;
+
+    // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
+    if (this.isFastFold && this.onFastFoldReassign) {
+      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; avatarUrl: string | null }[] = [];
+      const currentSeats = this.playerManager.getSeats();
+      for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+        const seat = currentSeats[i];
+        if (seat && seat.socket) {
+          playersToMove.push({
+            odId: seat.odId,
+            chips: seat.chips,
+            socket: seat.socket,
+            odName: seat.odName,
+            avatarUrl: seat.avatarUrl,
+          });
+          // 静かに離席（ルーム離脱 + 席クリア）
+          seat.socket.leave(this.roomName);
+          this.playerManager.unseatPlayer(i);
+        }
+      }
+      if (playersToMove.length > 0) {
+        this.onFastFoldReassign(playersToMove);
+      }
+      return;
+    }
+
     this.maybeStartHand();
   }
 

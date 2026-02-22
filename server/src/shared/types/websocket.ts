@@ -13,7 +13,7 @@ export interface ClientToServerEvents {
   'game:action': (data: { action: Action; amount?: number }) => void;
 
   // Matchmaking pool
-  'matchmaking:join': (data: { blinds: string }) => void;
+  'matchmaking:join': (data: { blinds: string; isFastFold?: boolean }) => void;
   'matchmaking:leave': () => void;
 }
 
@@ -31,6 +31,7 @@ export interface ServerToClientEvents {
   'table:player_left': (data: { seat: number; playerId: string }) => void;
   'table:error': (data: { message: string }) => void;
   'table:busted': (data: { message: string }) => void;
+  'table:change': (data: { tableId: string; seat: number }) => void;
 
   // Game state updates
   'game:state': (data: { state: ClientGameState }) => void;
