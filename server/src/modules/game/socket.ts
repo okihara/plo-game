@@ -113,7 +113,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       user.username,
       socket as Socket,
       unseatResult.chips,
-      user.avatarUrl ?? null,
+      user.useTwitterAvatar ? (user.avatarUrl ?? null) : null,
       undefined,
       { skipJoinedEmit: true },
       user.nameMasked
@@ -343,7 +343,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           user.username,
           socket,
           buyIn,
-          user.avatarUrl ?? null,
+          user.useTwitterAvatar ? (user.avatarUrl ?? null) : null,
           undefined,
           undefined,
           user.nameMasked

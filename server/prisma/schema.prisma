@@ -18,6 +18,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
   nameMasked    Boolean   @default(true)
+  useTwitterAvatar Boolean @default(false)
 
   bankroll      Bankroll?
   statsCache    PlayerStatsCache?

@@ -269,6 +269,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       balance: user.bankroll?.balance ?? 0,
       loginBonusAvailable,
       nameMasked: user.nameMasked,
+      useTwitterAvatar: user.useTwitterAvatar,
     };
   });
 
@@ -291,6 +292,27 @@ export async function authRoutes(fastify: FastifyInstance) {
     });
 
     return { nameMasked: user.nameMasked };
+  });
+
+  // Toggle Twitter avatar usage
+  fastify.patch('/twitter-avatar', {
+    preHandler: async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch (err) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+    },
+  }, async (request: FastifyRequest) => {
+    const { userId } = request.user as { userId: string };
+    const { useTwitterAvatar } = request.body as { useTwitterAvatar: boolean };
+
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { useTwitterAvatar },
+    });
+
+    return { useTwitterAvatar: user.useTwitterAvatar };
   });
 
   // Logout

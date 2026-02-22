@@ -45,6 +45,8 @@ export function ProfilePopup({
   const { user, refreshUser } = useAuth();
   const [nameMasked, setNameMasked] = useState(user?.nameMasked ?? true);
   const [togglingMask, setTogglingMask] = useState(false);
+  const [useTwitterAvatar, setUseTwitterAvatar] = useState(user?.useTwitterAvatar ?? false);
+  const [togglingAvatar, setTogglingAvatar] = useState(false);
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
 
   // スタッツをAPIから取得
@@ -178,35 +180,68 @@ export function ProfilePopup({
             </p>
           )}
 
-          {/* Name Mask Toggle (self only) */}
+          {/* Settings Toggles (self only) */}
           {isSelf && (
-            <div className="mt-[4cqw] flex items-center justify-between bg-cream-100 rounded-[4cqw] px-[5cqw] py-[4cqw]">
-              <div>
-                <div className="text-cream-900 text-[3.5cqw] font-semibold">名前を非公開</div>
-                <div className="text-cream-500 text-[2.5cqw]">他プレイヤーにマスク表示</div>
+            <div className="mt-[4cqw] space-y-[2cqw]">
+              {/* Name Mask Toggle */}
+              <div className="flex items-center justify-between bg-cream-100 rounded-[4cqw] px-[5cqw] py-[4cqw]">
+                <div>
+                  <div className="text-cream-900 text-[3.5cqw] font-semibold">名前を公開</div>
+                  <div className="text-cream-500 text-[2.5cqw]">他プレイヤーに表示</div>
+                </div>
+                <button
+                  disabled={togglingMask}
+                  onClick={async () => {
+                    setTogglingMask(true);
+                    try {
+                      const res = await fetch(`${API_BASE}/api/auth/name-mask`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ nameMasked: !nameMasked }),
+                      });
+                      if (res.ok) {
+                        setNameMasked(!nameMasked);
+                        refreshUser();
+                      }
+                    } catch { /* ignore */ }
+                    finally { setTogglingMask(false); }
+                  }}
+                  className={`relative w-[12cqw] h-[6.5cqw] rounded-full transition-colors duration-200 ${!nameMasked ? 'bg-forest' : 'bg-cream-300'} ${togglingMask ? 'opacity-50' : ''}`}
+                >
+                  <div className={`absolute top-[0.75cqw] w-[5cqw] h-[5cqw] bg-white rounded-full shadow transition-transform duration-200 ${!nameMasked ? 'translate-x-[6.25cqw]' : 'translate-x-[0.75cqw]'}`} />
+                </button>
               </div>
-              <button
-                disabled={togglingMask}
-                onClick={async () => {
-                  setTogglingMask(true);
-                  try {
-                    const res = await fetch(`${API_BASE}/api/auth/name-mask`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify({ nameMasked: !nameMasked }),
-                    });
-                    if (res.ok) {
-                      setNameMasked(!nameMasked);
-                      refreshUser();
-                    }
-                  } catch { /* ignore */ }
-                  finally { setTogglingMask(false); }
-                }}
-                className={`relative w-[12cqw] h-[6.5cqw] rounded-full transition-colors duration-200 ${nameMasked ? 'bg-forest' : 'bg-cream-300'} ${togglingMask ? 'opacity-50' : ''}`}
-              >
-                <div className={`absolute top-[0.75cqw] w-[5cqw] h-[5cqw] bg-white rounded-full shadow transition-transform duration-200 ${nameMasked ? 'translate-x-[6.25cqw]' : 'translate-x-[0.75cqw]'}`} />
-              </button>
+
+              {/* Twitter Avatar Toggle */}
+              <div className="flex items-center justify-between bg-cream-100 rounded-[4cqw] px-[5cqw] py-[4cqw]">
+                <div>
+                  <div className="text-cream-900 text-[3.5cqw] font-semibold">Xのアイコンを使用</div>
+                  <div className="text-cream-500 text-[2.5cqw]">次回着席時から反映</div>
+                </div>
+                <button
+                  disabled={togglingAvatar}
+                  onClick={async () => {
+                    setTogglingAvatar(true);
+                    try {
+                      const res = await fetch(`${API_BASE}/api/auth/twitter-avatar`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ useTwitterAvatar: !useTwitterAvatar }),
+                      });
+                      if (res.ok) {
+                        setUseTwitterAvatar(!useTwitterAvatar);
+                        refreshUser();
+                      }
+                    } catch { /* ignore */ }
+                    finally { setTogglingAvatar(false); }
+                  }}
+                  className={`relative w-[12cqw] h-[6.5cqw] rounded-full transition-colors duration-200 ${useTwitterAvatar ? 'bg-forest' : 'bg-cream-300'} ${togglingAvatar ? 'opacity-50' : ''}`}
+                >
+                  <div className={`absolute top-[0.75cqw] w-[5cqw] h-[5cqw] bg-white rounded-full shadow transition-transform duration-200 ${useTwitterAvatar ? 'translate-x-[6.25cqw]' : 'translate-x-[0.75cqw]'}`} />
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -8,6 +8,7 @@ interface User {
   balance: number;
   loginBonusAvailable: boolean;
   nameMasked: boolean;
+  useTwitterAvatar: boolean;
 }
 
 interface AuthContextType {
