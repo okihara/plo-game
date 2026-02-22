@@ -311,6 +311,23 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onTableChanged: (tid, seat) => {
         // ファストフォールド: テーブル移動
         setIsChangingTable(true);
+        setClientState(prev => ({
+          tableId: tid,
+          players: Array(6).fill(null),
+          communityCards: [],
+          pot: 0,
+          sidePots: [],
+          currentStreet: 'preflop',
+          dealerSeat: 0,
+          currentPlayerSeat: null,
+          currentBet: 0,
+          minRaise: 0,
+          smallBlind: prev?.smallBlind ?? 0,
+          bigBlind: prev?.bigBlind ?? 0,
+          isHandInProgress: false,
+          actionTimeoutAt: null,
+          actionTimeoutMs: null,
+        }));
         setMyHoleCards([]);
         setShowdownCards(new Map());
         setShowdownHandNames(new Map());
