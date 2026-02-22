@@ -4,7 +4,7 @@ import { getDashboardHTML } from './dashboard.js';
 
 // Configuration
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
-const BOT_COUNT = parseInt(process.env.BOT_COUNT || '10', 10);
+const BOT_COUNT = parseInt(process.env.BOT_COUNT || '20', 10);
 const BLINDS = process.env.BLINDS || '1/3';
 const IS_FAST_FOLD = process.env.FAST_FOLD === 'true';
 const DASHBOARD_PORT = parseInt(process.env.BOT_DASHBOARD_PORT || '3004', 10);
