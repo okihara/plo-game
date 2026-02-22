@@ -24,6 +24,7 @@ if (import.meta.env.DEV) {
 
 function App() {
   const [blinds, setBlinds] = useState<string | null>(null);
+  const [isFastFold, setIsFastFold] = useState(false);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
@@ -60,9 +61,9 @@ function App() {
       }} />
     );
   } else if (blinds) {
-    page = <OnlineGame blinds={blinds} onBack={() => setBlinds(null)} />;
+    page = <OnlineGame blinds={blinds} isFastFold={isFastFold} onBack={() => { setBlinds(null); setIsFastFold(false); }} />;
   } else {
-    page = <SimpleLobby onPlayOnline={(selectedBlinds) => setBlinds(selectedBlinds)} />;
+    page = <SimpleLobby onPlayOnline={(selectedBlinds, fastFold) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); }} />;
   }
 
   return (

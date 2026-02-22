@@ -22,10 +22,11 @@ import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 
 interface OnlineGameProps {
   blinds: string;
+  isFastFold?: boolean;
   onBack: () => void;
 }
 
-export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -47,7 +48,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     disconnect,
     joinMatchmaking,
     handleAction,
-  } = useOnlineGameState(blinds);
+  } = useOnlineGameState(blinds, isFastFold);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
 

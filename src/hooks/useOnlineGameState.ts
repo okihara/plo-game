@@ -153,7 +153,7 @@ function convertClientStateToGameState(
 // メインフック
 // ============================================
 
-export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -248,8 +248,8 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   // ============================================
 
   const joinMatchmaking = useCallback(() => {
-    wsService.joinMatchmaking(blinds);
-  }, [blinds]);
+    wsService.joinMatchmaking(blinds, isFastFold);
+  }, [blinds, isFastFold]);
 
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();

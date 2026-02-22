@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 
 interface SimpleLobbyProps {
-  onPlayOnline: (blinds: string) => void;
+  onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
 }
 
 interface TableOption {
@@ -14,12 +14,16 @@ interface TableOption {
   blindsLabel: string;
   buyIn: number;
   enabled: boolean;
+  isFastFold: boolean;
 }
 
 const TABLE_OPTIONS: TableOption[] = [
-  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true },
-  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, enabled: false },
-  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, enabled: false },
+  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true, isFastFold: false },
+  { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true, isFastFold: true },
+  { id: 'plo-2-5', gameType: 'PLO', gameLabel: 'PLO', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, enabled: false, isFastFold: false },
+  { id: 'plo-2-5-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '2/5', blindsLabel: '2/5', buyIn: 500, enabled: false, isFastFold: true },
+  { id: 'plo-5-10', gameType: 'PLO', gameLabel: 'PLO', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, enabled: false, isFastFold: false },
+  { id: 'plo-5-10-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '5/10', blindsLabel: '5/10', buyIn: 1000, enabled: false, isFastFold: true },
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
@@ -203,17 +207,14 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             毎朝7:00にチップが補充されます
           </div>
 
-          {/* Tables */}
-          <div className="mb-[2.5cqw]">
-            <h2 className="text-[4cqw] font-semibold text-cream-900 tracking-wide uppercase">レート</h2>
-          </div>
+          {/* Tables - Fast Fold */}
           <div className="space-y-[2.5cqw]">
-            {TABLE_OPTIONS.map((table) => {
+            {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
               const count = playerCounts[table.blinds] ?? 0;
               return (
                 <button
                   key={table.id}
-                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds)}
+                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
                     table.enabled && !maintenance?.isActive
@@ -225,10 +226,10 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                     <div className="flex items-center gap-[3cqw]">
                       <span className={`px-[2cqw] py-[0.6cqw] text-[2.5cqw] font-bold rounded-[1cqw] ${
                         table.enabled
-                          ? 'bg-forest/10 text-forest border border-forest/20'
+                          ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
                           : 'bg-cream-300/50 text-cream-500'
                       }`}>
-                        {table.gameLabel}
+                        Fast Fold
                       </span>
                       <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
                     </div>
@@ -236,7 +237,43 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       <span className="text-cream-600">buy-in: {table.buyIn}</span>
                       {table.enabled ? (
                         <>
-                          <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white bg-forest rounded-[1.5cqw]">参加する</span>
+                          <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white rounded-[1.5cqw] bg-amber-500">参加する</span>
+                          <span className="text-amber-600">{count}人</span>
+                        </>
+                      ) : (
+                        <span className="text-cream-500">準備中</span>
+                      )}
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Tables - Normal */}
+          <div className="mt-[2.5cqw] space-y-[2.5cqw]">
+            {TABLE_OPTIONS.filter(t => !t.isFastFold).map((table) => {
+              const count = playerCounts[table.blinds] ?? 0;
+              return (
+                <button
+                  key={table.id}
+                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false)}
+                  disabled={!table.enabled || !!maintenance?.isActive || !user}
+                  className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
+                    table.enabled && !maintenance?.isActive
+                      ? 'bg-white border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] hover:bg-cream-50 hover:border-cream-400 hover:shadow-[0_4px_16px_rgba(139,126,106,0.15)] active:scale-[0.98]'
+                      : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-[3cqw]">
+                      <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
+                    </div>
+                    <div className="flex items-center gap-[2cqw] text-[2.8cqw]">
+                      <span className="text-cream-600">buy-in: {table.buyIn}</span>
+                      {table.enabled ? (
+                        <>
+                          <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white rounded-[1.5cqw] bg-forest">参加する</span>
                           <span className="text-forest">{count}人</span>
                         </>
                       ) : (
