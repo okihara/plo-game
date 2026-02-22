@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { GameState } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { maskName } from '../utils';
 
 interface ResultOverlayProps {
   state: GameState;
@@ -95,7 +96,7 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
         ) : (
           <>
             <div className="text-[3vh] font-bold mb-[2vh] text-blue-400">
-              {winner.name} wins
+              {winner.nameMasked ? maskName(winner.name) : winner.name} wins
             </div>
             {winnerInfo.handName && (
               <div className="text-[2.8vh] font-semibold text-gray-200 mb-[2.5vh]">{winnerInfo.handName}</div>

@@ -11,6 +11,7 @@ export interface SeatInfo {
   chips: number;
   buyIn: number;
   waitingForNextHand: boolean; // ハンド中に着席した場合、次のハンドから参加
+  nameMasked: boolean; // 他プレイヤーに名前をマスク表示するか
 }
 
 // ダッシュボード用：送信メッセージログ

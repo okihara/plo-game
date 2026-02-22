@@ -3,6 +3,8 @@ import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
 import jwt from '@fastify/jwt';
 import fastifyStatic from '@fastify/static';
+import view from '@fastify/view';
+import ejs from 'ejs';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -40,6 +42,11 @@ await fastify.register(jwt, {
     cookieName: 'token',
     signed: false,
   },
+});
+
+await fastify.register(view, {
+  engine: { ejs },
+  root: path.join(__dirname, 'modules/admin/views'),
 });
 
 // Decorate fastify with prisma

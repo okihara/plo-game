@@ -30,6 +30,7 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: seat.socket?.connected ?? false,
+        nameMasked: seat.nameMasked,
       };
     }
 
@@ -45,6 +46,7 @@ export class StateTransformer {
       isAllIn: player?.isAllIn ?? false,
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
+      nameMasked: seat.nameMasked,
     };
   }
 

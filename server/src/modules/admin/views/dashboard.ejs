@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <%- include('_head', { title: 'PLO Server Status' }) %>
+  <style>
+    .table-card {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 4px;
+      border: 1px solid #334155;
+    }
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .table-title { font-weight: 600; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+    /* Players as 6-col grid, single-line cells */
+    .players-row {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 3px;
+    }
+    .p-cell {
+      display: flex;
+      flex-direction: column;
+      background: #334155;
+      border-radius: 4px;
+      padding: 4px 6px;
+      font-size: 11px;
+      min-width: 0;
+      gap: 1px;
+    }
+    .p-cell.empty { background: #0f172a; color: #475569; align-items: center; justify-content: center; min-height: 42px; }
+    .p-cell.folded { opacity: 0.45; }
+    .p-cell.pending { border: 1px solid #f59e0b; box-shadow: 0 0 4px rgba(245,158,11,0.3); }
+    .p-row { display: flex; align-items: center; gap: 4px; white-space: nowrap; overflow: hidden; }
+    .p-name { font-weight: 600; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+    .p-pos { color: #60a5fa; font-weight: 600; font-size: 10px; flex-shrink: 0; }
+    .p-money { color: #fbbf24; font-size: 10px; }
+    .p-bet { color: #f97316; font-size: 10px; }
+    .p-icon { font-size: 9px; flex-shrink: 0; }
+    /* Pending action in header */
+    .pa-label { color: #fbbf24; font-weight: 600; font-size: 11px; }
+    .pa-timer { color: #f59e0b; font-size: 11px; }
+    .action-option { background: #334155; padding: 1px 5px; border-radius: 3px; font-size: 10px; }
+    /* Message log collapsible */
+    .msg-details { margin-top: 5px; }
+    .msg-details summary {
+      font-size: 10px;
+      color: #64748b;
+      cursor: pointer;
+      user-select: none;
+      list-style: none;
+    }
+    .msg-details summary::-webkit-details-marker { display: none; }
+    .msg-details summary::before { content: '▶ '; font-size: 8px; }
+    .msg-details[open] summary::before { content: '▼ '; }
+    .msg-list {
+      background: #0f172a;
+      border-radius: 4px;
+      padding: 6px;
+      margin-top: 4px;
+      max-height: 120px;
+      overflow-y: auto;
+    }
+    .msg-row { font-size: 10px; padding: 1px 0; display: flex; gap: 6px; border-bottom: 1px solid #1e293b; }
+    .msg-row:last-child { border-bottom: none; }
+    .msg-time { color: #64748b; min-width: 55px; }
+    .msg-event { color: #60a5fa; min-width: 110px; }
+    .msg-target { color: #a78bfa; min-width: 50px; }
+    .msg-data { color: #94a3b8; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 8px 14px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .sb-item { display: flex; align-items: center; gap: 6px; }
+    .sb-label { font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
+    .sb-value { font-size: 14px; font-weight: 700; color: #f8fafc; }
+    .sb-sub { font-size: 10px; color: #64748b; }
+    .sb-sep { width: 1px; height: 20px; background: #334155; flex-shrink: 0; }
+    .maint-btn {
+      padding: 2px 8px;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 10px;
+    }
+    .refresh-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      color: #64748b;
+      font-size: 11px;
+      margin-top: 10px;
+    }
+    .refresh-bar select {
+      background: #1e293b;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .nav { margin-bottom: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="nav">
+      <a href="users" id="usersLink">ユーザー一覧 &rarr;</a>
+    </div>
+    <h1>
+      <div class="status-dot" id="statusDot"></div>
+      PLO Server Status
+      <span style="font-size:11px;color:#64748b;margin-left:auto" id="lastUpdate"></span>
+    </h1>
+
+    <!-- Status Bar -->
+    <div class="status-bar">
+      <div class="sb-item">
+        <span class="sb-label">接続</span>
+        <span class="sb-value" id="totalConnections">-</span>
+        <span class="sb-sub" id="connectionBreakdown"></span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">テーブル</span>
+        <span class="sb-value" id="totalTables">-</span>
+        <span class="sb-sub" id="tableBreakdown"></span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">ハンド</span>
+        <span class="sb-value" id="activeHands">-</span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">稼働</span>
+        <span class="sb-value" id="uptime">-</span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">DB</span>
+        <span class="sb-value" id="dbStatus">-</span>
+        <span class="sb-sub"><span id="userCount">-</span> users</span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">Mem</span>
+        <span class="sb-value" id="heapUsed">-</span>
+        <span class="sb-sub">RSS <span id="rss">-</span></span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">Maint</span>
+        <span id="maintenanceStatus" class="sb-value"></span>
+        <button class="maint-btn" style="background:#ef4444" onclick="toggleMaintenance(true)">ON</button>
+        <button class="maint-btn" style="background:#22c55e" onclick="toggleMaintenance(false)">OFF</button>
+      </div>
+    </div>
+
+    <!-- Tables -->
+    <div style="margin-top:10px">
+      <h2 style="margin-bottom:8px;font-size:14px;">テーブル詳細</h2>
+      <div id="tablesList"></div>
+    </div>
+
+    <div class="refresh-bar">
+      <span>自動更新:</span>
+      <select id="refreshInterval" onchange="changeInterval(this.value)">
+        <option value="1000">1秒</option>
+        <option value="2000" selected>2秒</option>
+        <option value="5000">5秒</option>
+        <option value="10000">10秒</option>
+        <option value="0">停止</option>
+      </select>
+    </div>
+  </div>
+
+  <script>
+    var SPECTATE_BASE_URL = '<%- spectateBaseUrl %>';
+    var ADMIN_SECRET = new URLSearchParams(window.location.search).get('secret') || '';
+
+    // Preserve secret in nav links
+    if (ADMIN_SECRET) {
+      document.getElementById('usersLink').href = 'users?secret=' + encodeURIComponent(ADMIN_SECRET);
+    }
+
+    function apiUrl(path) {
+      return path + (ADMIN_SECRET ? '?secret=' + encodeURIComponent(ADMIN_SECRET) : '');
+    }
+    function formatBytes(bytes) {
+      if (bytes < 1024) return bytes + ' B';
+      if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+      return (bytes / 1048576).toFixed(1) + ' MB';
+    }
+    function formatUptime(s) {
+      var h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+      if (h > 0) return h + 'h ' + m + 'm';
+      if (m > 0) return m + 'm ' + sec + 's';
+      return sec + 's';
+    }
+    function formatChips(c) { return '$' + c.toLocaleString(); }
+
+    async function fetchStats() {
+      try {
+        var res = await fetch(apiUrl('/api/admin/stats'));
+        var data = await res.json();
+        updateUI(data);
+        document.getElementById('statusDot').classList.remove('error');
+      } catch (e) {
+        console.error('Failed to fetch stats:', e);
+        document.getElementById('statusDot').classList.add('error');
+      }
+    }
+
+    function updateUI(d) {
+      document.getElementById('lastUpdate').textContent = new Date(d.timestamp).toLocaleTimeString('ja-JP');
+      document.getElementById('totalConnections').textContent = d.connections.total;
+      document.getElementById('connectionBreakdown').textContent = '認証: ' + d.connections.authenticated;
+      document.getElementById('totalTables').textContent = d.tables.total;
+      document.getElementById('tableBreakdown').textContent = '通常: ' + d.tables.regular + ' / FF: ' + d.tables.fastFold;
+      document.getElementById('activeHands').textContent = d.tables.activeHands;
+      document.getElementById('uptime').textContent = formatUptime(d.uptime);
+
+      var dbEl = document.getElementById('dbStatus');
+      dbEl.textContent = d.database.connected ? 'OK' : 'NG';
+      dbEl.className = 'sb-value ' + (d.database.connected ? 'success' : 'error');
+      document.getElementById('userCount').textContent = d.database.userCount.toLocaleString();
+
+      document.getElementById('heapUsed').textContent = formatBytes(d.memory.heapUsed);
+      document.getElementById('rss').textContent = formatBytes(d.memory.rss);
+
+      var me = document.getElementById('maintenanceStatus');
+      if (d.maintenance.isActive) {
+        me.textContent = 'ON';
+        me.className = 'sb-value error';
+      } else {
+        me.textContent = 'OFF';
+        me.className = 'sb-value success';
+      }
+
+      renderTables(d.tables.details);
+    }
+
+    function renderTables(tables) {
+      var streetLabels = { preflop:'Pre', flop:'Flop', turn:'Turn', river:'River', showdown:'SD' };
+      var html = tables.map(function(t) {
+        var street = t.currentStreet ? (streetLabels[t.currentStreet] || t.currentStreet) : '待機';
+
+        // Players as 6-col grid cells
+        var playersHtml = Array.from({length:6}, function(_,i) {
+          var p = t.players.find(function(x){return x.seatNumber===i});
+          if (!p) return '<div class="p-cell empty">Seat ' + (i+1) + '</div>';
+
+          var cls = ['p-cell'];
+          if (p.folded) cls.push('folded');
+          var isPending = t.pendingAction && t.pendingAction.seatNumber === i;
+          if (isPending) cls.push('pending');
+
+          var icon = p.isConnected ? '🟢' : '🔴';
+          if (p.folded) icon = 'F';
+          else if (p.isAllIn) icon = 'AI';
+          if (p.isSittingOut) icon = '💤';
+          if (isPending) icon = '⏳';
+
+          var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
+          if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
+          row1 += '<span class="p-name">' + p.odName + '</span></div>';
+          var row2 = '<div class="p-row"><span class="p-money">' + formatChips(p.chips) + '</span>';
+          if (p.currentBet > 0) row2 += '<span class="p-bet">Bet ' + formatChips(p.currentBet) + '</span>';
+          row2 += '</div>';
+
+          return '<div class="' + cls.join(' ') + '">' + row1 + row2 + '</div>';
+        }).join('');
+
+        // Pending action info for header
+        var pendingInfo = '';
+        if (t.pendingAction) {
+          var pa = t.pendingAction;
+          var remaining = Math.max(0, Math.ceil((pa.timeoutMs - (Date.now() - pa.requestedAt)) / 1000));
+          var acts = pa.validActions.map(function(a) {
+            var l = a.action;
+            if (a.minAmount > 0) { l += ' $' + a.minAmount; if (a.maxAmount !== a.minAmount) l += '-$' + a.maxAmount; }
+            return '<span class="action-option">' + l + '</span>';
+          }).join(' ');
+          pendingInfo = '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
+            '<span class="pa-timer">' + remaining + 's</span>' + acts;
+        } else {
+          pendingInfo = '<span style="color:#64748b;font-size:10px">— 待機中</span>';
+        }
+
+        // Messages collapsible
+        var msgHtml = '';
+        var msgCount = t.recentMessages ? t.recentMessages.length : 0;
+        if (msgCount > 0) {
+          var msgs = t.recentMessages.slice().reverse().map(function(m) {
+            var time = new Date(m.timestamp).toLocaleTimeString('ja-JP');
+            var tgt = m.target === 'all' ? 'all' : m.target.slice(0,6) + '..';
+            var data = JSON.stringify(m.data).slice(0,40);
+            return '<div class="msg-row"><span class="msg-time">' + time + '</span><span class="msg-event">' + m.event + '</span><span class="msg-target">' + tgt + '</span><span class="msg-data">' + data + '</span></div>';
+          }).join('');
+          msgHtml = '<details class="msg-details"><summary>Messages (' + msgCount + ')</summary><div class="msg-list">' + msgs + '</div></details>';
+        }
+
+        return '<div class="table-card">' +
+          '<div class="table-header">' +
+            '<div class="table-title"><span style="color:#64748b;font-weight:400;font-size:10px">' + t.id.slice(0,8) + '</span> ' + t.blinds +
+              (t.isFastFold ? ' <span class="badge badge-ff">FF</span>' : '') +
+              (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
+            '</div>' +
+            '<div style="display:flex;align-items:center;gap:8px">' +
+              pendingInfo +
+              '<a href="' + SPECTATE_BASE_URL + '/spectate/' + t.id + '" target="_blank">👁観戦</a>' +
+              '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(t.pot) + '</span>' +
+              '<span style="color:#64748b">' + t.playerCount + '/' + t.maxPlayers + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="players-row">' + playersHtml + '</div>' +
+          msgHtml +
+        '</div>';
+      }).join('');
+
+      document.getElementById('tablesList').innerHTML = html || '<p style="color:#64748b">テーブルなし</p>';
+    }
+
+    async function toggleMaintenance(active) {
+      var msg = document.getElementById('maintenanceMessage').value;
+      try {
+        await fetch(apiUrl('/api/admin/maintenance'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ active: active, message: msg }),
+        });
+        fetchStats();
+      } catch (e) { alert('Failed: ' + e.message); }
+    }
+
+    var intervalId = null;
+    function changeInterval(ms) {
+      if (intervalId) clearInterval(intervalId);
+      intervalId = null;
+      ms = parseInt(ms, 10);
+      if (ms > 0) intervalId = setInterval(fetchStats, ms);
+    }
+    fetchStats();
+    changeInterval(2000);
+  </script>
+</body>
+</html>

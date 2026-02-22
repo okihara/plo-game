@@ -13,6 +13,7 @@ import {
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
+import { maskName } from '../utils';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
@@ -22,10 +23,11 @@ import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 
 interface OnlineGameProps {
   blinds: string;
+  isFastFold?: boolean;
   onBack: () => void;
 }
 
-export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -47,11 +49,12 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
     disconnect,
     joinMatchmaking,
     handleAction,
-  } = useOnlineGameState(blinds);
+    handleFastFold,
+  } = useOnlineGameState(blinds, isFastFold);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
 
-  const [showAnalysis, setShowAnalysis] = useState(false);
+  const [analysisEnabled, setAnalysisEnabled] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
@@ -174,18 +177,18 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                 <Settings style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
               </button>
               {showSettingsMenu && (
-                <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 min-w-[120px] z-50">
+                <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 z-50 whitespace-nowrap">
                   <button
                     onClick={() => {
-                      setShowAnalysis(!showAnalysis);
+                      setAnalysisEnabled(!analysisEnabled);
                       setShowSettingsMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                   >
-                    <span>分析表示</span>
-                    <span className={showAnalysis ? 'text-emerald-400' : 'text-gray-500'}>
-                      {showAnalysis ? '✓' : ''}
+                    <span>オープンハンド評価</span>
+                    <span className={analysisEnabled ? 'text-emerald-400' : 'text-gray-500'}>
+                      {analysisEnabled ? '✓' : ''}
                     </span>
                   </button>
                   <button
@@ -193,24 +196,13 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                       setUseBBNotation(!settings.useBBNotation);
                       setShowSettingsMenu(false);
                     }}
-                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
+                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                   >
                     <span>BB表記</span>
                     <span className={settings.useBBNotation ? 'text-emerald-400' : 'text-gray-500'}>
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
-                  </button>
-                  <div className="border-t border-gray-700 my-1" />
-                  <button
-                    onClick={() => {
-                      setShowSettingsMenu(false);
-                      setShowHandHistory(true);
-                    }}
-                    className="w-full px-3 py-2 text-left text-gray-200 hover:bg-gray-700"
-                    style={{ fontSize: 'min(1.2vh, 2vw)' }}
-                  >
-                    ハンド履歴
                   </button>
                   {import.meta.env.DEV && (
                     <>
@@ -220,8 +212,8 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
                             wsService.debugSetChips(6);
                           setShowSettingsMenu(false);
                         }}
-                        className="w-full px-3 py-2 text-left text-red-400 hover:bg-gray-700"
-                        style={{ fontSize: 'min(1.2vh, 2vw)' }}
+                        className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-700"
+                        style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                       >
                         🐛 Chips → 6
                       </button>
@@ -254,7 +246,7 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             handName={showdownHandNames.get(humanPlayerIdx) || myCurrentHandName}
           />
 
-          <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
+          <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
 
           {/* <ResultOverlay state={gameState} mySeat={humanPlayerIdx} /> */}
 
@@ -262,8 +254,8 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             <HandAnalysisOverlay
               holeCards={myHoleCards}
               communityCards={gameState.communityCards}
-              isVisible={showAnalysis}
-              onClose={() => setShowAnalysis(false)}
+              isVisible={analysisEnabled && gameState.currentStreet === 'preflop'}
+              onClose={() => setAnalysisEnabled(false)}
             />
           )}
 
@@ -274,37 +266,36 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
             </div>
           )}
 
-          {/* テーブル移動中オーバーレイ */}
-          {isChangingTable && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80">
-              <div className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-                テーブル移動中...
-              </div>
-            </div>
-          )}
-
-          {/* 他のプレイヤーを待っている状態のオーバーレイ */}
-          {isWaitingForPlayers && !isChangingTable && (
-            <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 pointer-events-none">
-              <div className="text-center">
+          {/* テーブル検索・待機中オーバーレイ */}
+          {(isChangingTable || isWaitingForPlayers) && (
+            <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70">
+              <div className="text-center pointer-events-none">
                 <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
-                <p className="text-white font-bold mb-2" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-                  他のプレイヤーを待っています...
+                <p className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
+                  {isChangingTable ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
                 </p>
-                <p className="text-white/70" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+                <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
                   {seatedPlayerCount}/6 人着席中
                 </p>
               </div>
+              <button
+                onClick={onBack}
+                className="absolute bottom-[20%] px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
+                style={{ fontSize: 'min(2vh, 3.5vw)' }}
+              >
+                ロビーに戻る
+              </button>
             </div>
           )}
 
           {/* Profile Popup */}
           {selectedPlayer && (
             <ProfilePopup
-              name={selectedPlayer.name}
+              name={selectedPlayer.id !== humanPlayerIdx && selectedPlayer.nameMasked ? maskName(selectedPlayer.name) : selectedPlayer.name}
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
+              isSelf={selectedPlayer.id === humanPlayerIdx}
               onClose={() => setSelectedPlayer(null)}
             />
           )}

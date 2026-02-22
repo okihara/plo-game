@@ -3,6 +3,7 @@ import { Player as PlayerType, Action } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { maskName } from '../utils';
 
 interface PlayerProps {
   player: PlayerType;
@@ -277,7 +278,7 @@ export function Player({
 
       {/* Player Info */}
       <div className="bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20]">
-        <div className="text-[3.5cqw] text-white-400 whitespace-nowrap">{player.name}</div>
+        <div className="text-[3.5cqw] text-white-400 whitespace-nowrap">{positionIndex !== 0 && !isSpectator && player.nameMasked ? maskName(player.name) : player.name}</div>
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 

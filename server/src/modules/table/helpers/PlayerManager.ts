@@ -12,6 +12,7 @@ export interface SeatPlayerParams {
   avatarUrl?: string | null;
   preferredSeat?: number;
   isHandInProgress: boolean;
+  nameMasked?: boolean;
 }
 
 export class PlayerManager {
@@ -33,7 +34,7 @@ export class PlayerManager {
    * プレイヤーを着席させる
    */
   seatPlayer(params: SeatPlayerParams): number | null {
-    const { odId, odName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress } = params;
+    const { odId, odName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress, nameMasked } = params;
 
     // 空き席を探す
     let seatIndex = preferredSeat ?? -1;
@@ -57,6 +58,7 @@ export class PlayerManager {
       chips: buyIn,
       buyIn,
       waitingForNextHand: isHandInProgress, // ハンド中に着席した場合は次のハンドから参加
+      nameMasked: nameMasked ?? true,
     };
 
     return seatIndex;

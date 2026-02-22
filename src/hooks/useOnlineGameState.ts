@@ -49,6 +49,7 @@ export interface OnlineGameHookResult {
   joinMatchmaking: () => void;
   leaveMatchmaking: () => void;
   handleAction: (action: Action, amount: number) => void;
+  handleFastFold: () => void;
   startNextHand: () => void;
 }
 
@@ -101,6 +102,7 @@ function convertOnlinePlayerToPlayer(
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
     odId: online.odId,
+    nameMasked: online.nameMasked,
   };
 }
 
@@ -153,7 +155,7 @@ function convertClientStateToGameState(
 // メインフック
 // ============================================
 
-export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -169,7 +171,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const [lastActions, setLastActions] = useState<Map<number, LastAction>>(new Map());
   const [isDealingCards, setIsDealingCards] = useState(false);
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
-  const [isChangingTable] = useState(false);
+  const [isChangingTable, setIsChangingTable] = useState(false);
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
   const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
@@ -248,8 +250,8 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   // ============================================
 
   const joinMatchmaking = useCallback(() => {
-    wsService.joinMatchmaking(blinds);
-  }, [blinds]);
+    wsService.joinMatchmaking(blinds, isFastFold);
+  }, [blinds, isFastFold]);
 
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();
@@ -262,6 +264,10 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
   const handleAction = useCallback((action: Action, amount: number) => {
     wsService.sendAction(action, amount);
     setActionTimeoutAt(null);
+  }, []);
+
+  const handleFastFold = useCallback(() => {
+    wsService.sendFastFold();
   }, []);
 
   const startNextHand = useCallback(() => {
@@ -302,7 +308,26 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
         setClientState(null);
         setActionTimeoutAt(null);
       },
+      onTableChanged: (tid, seat) => {
+        // ファストフォールド: テーブル移動
+        setIsChangingTable(true);
+        setMyHoleCards([]);
+        setShowdownCards(new Map());
+        setShowdownHandNames(new Map());
+        setWinners([]);
+        setLastActions(new Map());
+        setActionTimeoutAt(null);
+        setActionTimeoutMs(null);
+        prevStreetRef.current = null;
+        prevCardCountRef.current = 0;
+        pendingShowdownHandNamesRef.current = null;
+        setTableId(tid);
+        setMySeat(seat);
+      },
       onGameState: (state) => {
+        // ファストフォールド移動後、新テーブルの状態が届いたらフラグクリア
+        setIsChangingTable(false);
+
         // ストリート変更検出
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
@@ -461,6 +486,7 @@ export function useOnlineGameState(blinds: string = '1/3'): OnlineGameHookResult
     joinMatchmaking,
     leaveMatchmaking,
     handleAction,
+    handleFastFold,
     startNextHand,
   };
 }

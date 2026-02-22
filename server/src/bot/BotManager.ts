@@ -1,6 +1,27 @@
 import { BotClient, BotStatus } from './BotClient.js';
 
-const BOT_NAMES = ['miko_plo_bot', 'kento_99_bot', 'luna_plays_bot', 'hiro_4card_bot', 'tomo_omaha_bot', 'yuki_raise_bot', 'sora_allin_bot', 'ren_bluff_bot', 'ai_poker_bot', 'taro_nuts_bot'];
+const BOT_NAMES = [
+  'Taku83',        // 名前+生まれ年風
+  'mii_chan',      // ニックネーム風
+  'ShotaK',       // 名前+イニシャル
+  'risa.p',       // 名前+ドット+頭文字
+  'YuHayashi',    // フルネーム風
+  'ken2408',      // 名前+数字
+  'NanaM',        // 名前+イニシャル
+  'daisk77',      // カジュアル+数字
+  'HaruSun',      // 名前+英語
+  'AyakaSaito',   // フルネーム風
+  'ryooo3',       // 伸ばし+数字
+  'MizuhoT',      // 名前+イニシャル
+  'shun_pkr',     // 名前+略語
+  'Sakuraba',     // 苗字のみ
+  'kojimax',      // 名前+接尾辞
+  'Mei0522',      // 名前+誕生日風
+  'TatsuyaN',     // 名前+イニシャル
+  'yuna0312',     // 名前+日付
+  'Kaito_R',      // 名前+アンダーバー+イニシャル
+  'momoka55',     // 名前+数字
+];
 const BOT_AVATARS = [
   '/images/icons/avatar1.png',
   '/images/icons/avatar2.png',
@@ -13,6 +34,7 @@ interface BotManagerConfig {
   serverUrl: string;
   botCount: number;
   blinds: string;
+  isFastFold?: boolean;
 }
 
 export class BotManager {
@@ -92,6 +114,7 @@ export class BotManager {
       name,
       avatarUrl: BOT_AVATARS[avatarIndex],
       defaultBlinds: this.config.blinds,
+      isFastFold: this.config.isFastFold,
     });
 
     try {
