@@ -110,8 +110,8 @@ export class BotClient {
         this.tableId = null;
         this.seatNumber = -1;
         this.actionGeneration++; // テーブル離脱時に旧アクションを無効化
-        // 自動的に再度マッチメイキングに参加
-        this.rejoinMatchmaking();
+        // 自動的に再度マッチメイキングに参加（一時無効化）
+        // this.rejoinMatchmaking();
       });
 
       this.socket.on('table:closed', () => {
@@ -119,8 +119,8 @@ export class BotClient {
         this.tableId = null;
         this.seatNumber = -1;
         this.actionGeneration++; // テーブル閉鎖時に旧アクションを無効化
-        // 自動的に再度マッチメイキングに参加
-        this.rejoinMatchmaking();
+        // 自動的に再度マッチメイキングに参加（一時無効化）
+        // this.rejoinMatchmaking();
       });
 
       // ファストフォールド: テーブル移動
@@ -453,9 +453,9 @@ export class BotClient {
       // ゲーム未参加が15秒以上続いたら再マッチメイキング
       const stuckDuration = Date.now() - this.lastInGameTime;
       if (stuckDuration > 15000) {
-        console.log(`[${this.config.name}] Stuck without game for ${Math.round(stuckDuration / 1000)}s, rejoining matchmaking`);
+        console.log(`[${this.config.name}] Stuck without game for ${Math.round(stuckDuration / 1000)}s, rejoining matchmaking (disabled)`);
         this.lastInGameTime = Date.now(); // リセットして連続発火を防ぐ
-        this.rejoinMatchmaking();
+        // this.rejoinMatchmaking();
       }
     }, 5000);
   }
