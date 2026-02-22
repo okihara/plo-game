@@ -43,6 +43,9 @@ export class TableInstance {
   }
   private pendingStartHand = false;
 
+  // ファストフォールド: 手番が来るまで保留するフォールド (seatIndex → odId)
+  private pendingEarlyFolds: Map<number, string> = new Map();
+
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
@@ -151,6 +154,9 @@ export class TableInstance {
       !this.gameState.isHandComplete &&
       this.gameState.currentPlayerIndex === seatIndex;
 
+    // 保留フォールドがあれば削除（通常の離席処理で対応するため）
+    this.pendingEarlyFolds.delete(seatIndex);
+
     this.playerManager.unseatPlayer(seatIndex);
 
     this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
@@ -175,7 +181,6 @@ export class TableInstance {
 
   // ファストフォールド用: フォールド済みプレイヤーを静かに離席させる
   // table:left は送信しない（table:change を代わりに送るため）
-  // フォールド処理は不要（既に処理済み）
   public unseatForFastFold(odId: string): { odId: string; chips: number; socket: Socket | null } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
@@ -196,10 +201,13 @@ export class TableInstance {
       socket.leave(this.roomName);
     }
 
-    // 席からプレイヤーを削除
-    this.playerManager.unseatPlayer(seatIndex);
+    // Pending early fold: 席は残す（手番が来るまで他プレイヤーには着席中に見せる）
+    if (this.pendingEarlyFolds.has(seatIndex)) {
+      return { odId, chips, socket };
+    }
 
-    // 他プレイヤーに離脱を通知
+    // 通常: 席からプレイヤーを削除して離脱を通知
+    this.playerManager.unseatPlayer(seatIndex);
     this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
 
     return { odId, chips, socket };
@@ -281,6 +289,9 @@ export class TableInstance {
     const player = this.gameState.players[seatIndex];
     if (!player || player.folded || player.isAllIn) return false;
 
+    // 既に保留中のフォールドがある場合は無視
+    if (this.pendingEarlyFolds.has(seatIndex)) return false;
+
     // BBはプリフロップでファストフォールドできない
     if (player.position === 'BB' && this.gameState.currentStreet === 'preflop') {
       return false;
@@ -288,11 +299,17 @@ export class TableInstance {
 
     const wasCurrentPlayer = this.gameState.currentPlayerIndex === seatIndex;
 
-    // フォールド処理
+    if (!wasCurrentPlayer) {
+      // 自分のターンではない: フォールドを保留（手番が来たときに処理される）
+      this.pendingEarlyFolds.set(seatIndex, odId);
+      return true;
+    }
+
+    // 現在のプレイヤー: 通常通りフォールド処理
     const result = this.foldProcessor.processFold(this.gameState, {
       seatIndex,
       playerId: odId,
-      wasCurrentPlayer,
+      wasCurrentPlayer: true,
     });
     this.gameState = result.gameState;
 
@@ -306,14 +323,8 @@ export class TableInstance {
       return true;
     }
 
-    // 現在のプレイヤーがフォールドした場合、次のプレイヤーへ進む
-    if (wasCurrentPlayer) {
-      this.actionController.clearTimers();
-      this.advanceToNextPlayer();
-    } else {
-      this.broadcastGameState();
-    }
-
+    this.actionController.clearTimers();
+    this.advanceToNextPlayer();
     return true;
   }
 
@@ -431,6 +442,7 @@ export class TableInstance {
     if (playerCount < this.minPlayersToStart) return;
 
     this._isHandInProgress = true;
+    this.pendingEarlyFolds.clear(); // safety
 
     // Preserve dealer position from previous hand
     const previousDealerPosition = this.gameState?.dealerPosition ?? -1;
@@ -493,6 +505,50 @@ export class TableInstance {
     if (this.gameState.currentPlayerIndex === -1) {
       this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       return;
+    }
+
+    // Pending early fold: 手番が回ってきたプレイヤーの保留フォールドを処理
+    while (this.pendingEarlyFolds.has(this.gameState.currentPlayerIndex)) {
+      const seatIndex = this.gameState.currentPlayerIndex;
+      const odId = this.pendingEarlyFolds.get(seatIndex)!;
+
+      // フォールド処理（game:action_taken をブロードキャスト）
+      const foldResult = this.foldProcessor.processFold(this.gameState, {
+        seatIndex,
+        playerId: odId,
+        wasCurrentPlayer: true,
+      });
+      this.gameState = foldResult.gameState;
+
+      // 離席処理
+      this.playerManager.unseatPlayer(seatIndex);
+      this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
+      this.pendingEarlyFolds.delete(seatIndex);
+
+      // アクティブプレイヤーが1人以下 → ハンド終了
+      const activePlayers = getActivePlayers(this.gameState);
+      if (activePlayers.length <= 1) {
+        this.actionController.clearTimers();
+        this.gameState = determineWinner(this.gameState);
+        this.broadcastGameState();
+        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+        return;
+      }
+
+      // 次のプレイヤーへ進む
+      const advResult = this.actionController.advanceToNextPlayer(
+        this.gameState,
+        this.playerManager.getSeats()
+      );
+      this.gameState = advResult.gameState;
+
+      if (advResult.handComplete) {
+        this.broadcastGameState();
+        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+        return;
+      }
+
+      // ループ継続: 次のプレイヤーも pending fold かチェック
     }
 
     this.actionController.requestNextAction(
@@ -641,6 +697,12 @@ export class TableInstance {
     // Clear pending action and ensure runout flag is reset (safety)
     this.actionController.clearTimers();
     this.isRunOutInProgress = false;
+
+    // Pending early fold のクリーンアップ（残っていれば静かに離席）
+    for (const [seatIndex] of this.pendingEarlyFolds) {
+      this.playerManager.unseatPlayer(seatIndex);
+    }
+    this.pendingEarlyFolds.clear();
 
     // ハンドヒストリー保存 (fire-and-forget)
     const seats = this.playerManager.getSeats();
