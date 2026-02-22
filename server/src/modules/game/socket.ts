@@ -113,7 +113,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       user.username,
       socket as Socket,
       unseatResult.chips,
-      user.useTwitterAvatar ? (user.avatarUrl ?? null) : null,
+      user.useTwitterAvatar ? (user.avatarUrl ?? null) : '/images/icons/anonymous.svg',
       undefined,
       { skipJoinedEmit: true },
       user.nameMasked
@@ -343,7 +343,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           user.username,
           socket,
           buyIn,
-          user.useTwitterAvatar ? (user.avatarUrl ?? null) : null,
+          user.useTwitterAvatar ? (user.avatarUrl ?? null) : '/images/icons/anonymous.svg',
           undefined,
           undefined,
           user.nameMasked
