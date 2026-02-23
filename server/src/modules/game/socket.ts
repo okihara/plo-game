@@ -38,7 +38,7 @@ async function findOrCreateBotUser(botName: string, botAvatar: string | null) {
         avatarUrl: botAvatar,
         provider: 'bot',
         providerId,
-        bankroll: { create: { balance: 100000 } },
+        bankroll: { create: { balance: 10000 } },
       },
     });
   } else {
