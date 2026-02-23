@@ -56,18 +56,23 @@ export function ProfilePopup({
     if (!userId || userId.startsWith('bot_')) return;
 
     setLoading(true);
-    Promise.all([
+    const fetches: Promise<any>[] = [
       fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
         .then(res => res.ok ? res.json() : null)
         .catch(() => null),
-      fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
-        .catch(() => null),
-    ]).then(([statsData, historyData]) => {
+    ];
+    if (isSelf) {
+      fetches.push(
+        fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
+          .then(res => res.ok ? res.json() : null)
+          .catch(() => null),
+      );
+    }
+    Promise.all(fetches).then(([statsData, historyData]) => {
       if (statsData?.stats) setStats(statsData.stats);
       if (historyData?.points) setProfitHistory(historyData.points);
     }).finally(() => setLoading(false));
-  }, [userId]);
+  }, [userId, isSelf]);
 
   // ESCキーで閉じる
   useEffect(() => {
@@ -176,8 +181,8 @@ export function ProfilePopup({
             )}
           </div>
 
-          {/* Profit Chart */}
-          {!loading && profitHistory.length >= 2 && (
+          {/* Profit Chart (self only) */}
+          {isSelf && !loading && profitHistory.length >= 2 && (
             <div className="bg-cream-100 rounded-[4cqw] p-[5cqw] mt-[3cqw]">
               <ProfitChart points={profitHistory} />
             </div>
