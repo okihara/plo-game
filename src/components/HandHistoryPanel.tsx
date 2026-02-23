@@ -295,9 +295,11 @@ function HandDetailDialog({
                   }
                   cumPot += a.amount;
                 }
+                // アクションに含まれるストリートを集計
+                const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
                 let lastStreet = '';
                 let isFirstHeader = true;
-                return hand.actions.map((a, i) => {
+                const actionElements = hand.actions.map((a, i) => {
                   const street = a.street || 'preflop';
                   const showHeader = street !== lastStreet && streets.includes(street);
                   lastStreet = street;
@@ -337,6 +339,27 @@ function HandDetailDialog({
                     </div>
                   );
                 });
+
+                // オールインランアウト時: アクションのないストリートのカードを追加表示
+                const runOutElements: JSX.Element[] = [];
+                for (const s of ['flop', 'turn', 'river'] as const) {
+                  if (!streetsInActions.has(s) && streetCards[s]?.length > 0) {
+                    runOutElements.push(
+                      <div key={`runout-${s}`} className="mt-3 mb-1">
+                        <div className="flex items-center gap-2 border-b border-cream-300 pb-1">
+                          <span className="text-cream-700 text-sm font-bold">{streetLabels[s]}</span>
+                          <div className="flex gap-1">
+                            {streetCards[s].map((c, j) => (
+                              <MiniCard key={j} cardStr={c} />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+                }
+
+                return [...actionElements, ...runOutElements];
               })()}
             </div>
             {/* Result */}
