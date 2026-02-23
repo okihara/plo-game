@@ -1,26 +1,28 @@
 import { BotClient, BotStatus } from './BotClient.js';
 
 const BOT_NAMES = [
-  'Taku83',        // 名前+生まれ年風
-  'mii_chan',      // ニックネーム風
-  'ShotaK',       // 名前+イニシャル
-  'risa.p',       // 名前+ドット+頭文字
-  'YuHayashi',    // フルネーム風
-  'ken2408',      // 名前+数字
-  'NanaM',        // 名前+イニシャル
-  'daisk77',      // カジュアル+数字
-  'HaruSun',      // 名前+英語
-  'AyakaSaito',   // フルネーム風
-  'ryooo3',       // 伸ばし+数字
-  'MizuhoT',      // 名前+イニシャル
-  'shun_pkr',     // 名前+略語
-  'Sakuraba',     // 苗字のみ
-  'kojimax',      // 名前+接尾辞
-  'Mei0522',      // 名前+誕生日風
-  'TatsuyaN',     // 名前+イニシャル
-  'yuna0312',     // 名前+日付
-  'Kaito_R',      // 名前+アンダーバー+イニシャル
-  'momoka55',     // 名前+数字
+  // --- 既存20体 ---
+  'Taku83', 'mii_chan', 'ShotaK', 'risa.p', 'YuHayashi',
+  'ken2408', 'NanaM', 'daisk77', 'HaruSun', 'AyakaSaito',
+  'ryooo3', 'MizuhoT', 'shun_pkr', 'Sakuraba', 'kojimax',
+  'Mei0522', 'TatsuyaN', 'yuna0312', 'Kaito_R', 'momoka55',
+  // --- 追加80体 ---
+  'ReinaK42', 'takuya_s', 'Yamamoto7', 'hina2525', 'KenjiF',
+  'Sora_99', 'mayu_plo', 'DaichiM', 'aoi1208', 'RyosukeT',
+  'mikimiki3', 'HiroShi', 'natsuki_p', 'YutoK07', 'haruna88',
+  'KazukiH', 'rin_chan5', 'TomoyaS', 'asuka111', 'KoharuN',
+  'shunsuke', 'MaoT14', 'yuki_ace', 'IkuoW', 'chiho33',
+  'RenK', 'aya_poker', 'TakeshiM', 'mana0808', 'YusukeH',
+  'karin22', 'ShinyaT', 'miho_pkr', 'DaigoN', 'sakiY05',
+  'KotaroS', 'nene777', 'AtsushiK', 'yui_0210', 'MasatoH',
+  'hana_plo', 'SoichiroT', 'riho99', 'KengoM', 'akane_55',
+  'YumaS', 'shiori12', 'TakeruN', 'mai_chan', 'RyujiK',
+  'miku0603', 'HayatoS', 'kanako_p', 'JunpeiT', 'riko2424',
+  'NaokiM', 'sae_pkr', 'KosukeH', 'yurina10', 'MakotoS',
+  'chihiro7', 'TaigaN', 'ami_0930', 'ShogoK', 'nanami22',
+  'RyotaH', 'kyoko_p', 'YoshikiT', 'eri_chan', 'DaisukeN',
+  'momo_plo', 'KeisukeS', 'sayaka88', 'AkiraM', 'yuzuki13',
+  'ShinjiK', 'rika_ace', 'HikaruN', 'tomomi55', 'GoT08',
 ];
 const BOT_AVATARS = [
   '/images/icons/avatar1.png',
@@ -115,6 +117,7 @@ export class BotManager {
       avatarUrl: BOT_AVATARS[avatarIndex],
       defaultBlinds: this.config.blinds,
       isFastFold: this.config.isFastFold,
+      onJoinFailed: (failedBot, reason) => this.handleJoinFailed(failedBot, reason),
     });
 
     try {
@@ -139,13 +142,35 @@ export class BotManager {
     return null;
   }
 
-  private getAvailableName(): string | null {
-    for (const name of BOT_NAMES) {
-      if (!this.usedNames.has(name)) {
-        return name;
-      }
+  /** マッチメイキング参加失敗時: 該当ボットを切断し、別のボットで再試行 */
+  private async handleJoinFailed(failedBot: BotClient, reason: string): Promise<void> {
+    if (!this.isRunning) return;
+
+    const playerId = failedBot.getPlayerId();
+    const botName = failedBot.getName();
+    console.log(`[BotManager] Bot ${botName} join failed (${reason}), replacing...`);
+
+    // 失敗したボットを除去
+    if (playerId) this.bots.delete(playerId);
+    this.usedNames.delete(botName);
+    failedBot.disconnect().catch(() => {});
+
+    // 少し待ってから別のボットで再試行
+    await this.sleep(1000);
+    if (!this.isRunning) return;
+
+    try {
+      await this.createBot();
+    } catch (err) {
+      console.error('[BotManager] Failed to create replacement bot:', err);
     }
-    return null;
+  }
+
+  private getAvailableName(): string | null {
+    // 使用可能な名前をランダムに選択
+    const available = BOT_NAMES.filter(n => !this.usedNames.has(n));
+    if (available.length === 0) return null;
+    return available[Math.floor(Math.random() * available.length)];
   }
 
   private async getPlayerCountForBlinds(): Promise<number> {

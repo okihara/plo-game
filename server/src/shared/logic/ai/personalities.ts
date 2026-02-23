@@ -167,15 +167,30 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
 // デフォルト（HaruSun相当のバランス型）
 const DEFAULT_PERSONALITY: BotPersonality = BOT_PERSONALITIES['HaruSun'];
 
+// パーソナリティテンプレート配列（ハッシュ割り当て用）
+const PERSONALITY_TEMPLATES = Object.values(BOT_PERSONALITIES);
+
+/** 名前から決定的にハッシュ値を生成 */
+function nameHash(str: string): number {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
 /**
  * ボット名からパーソナリティを取得。
- * 名前が見つからない場合はデフォルトを返す。
+ * 既存定義にない名前はハッシュベースで20体のテンプレートから割り当て。
  */
 export function getPersonality(botName: string): BotPersonality {
   if (BOT_PERSONALITIES[botName]) {
     return BOT_PERSONALITIES[botName];
   }
-  return DEFAULT_PERSONALITY;
+  // 名前のハッシュで既存テンプレートから決定的に選択
+  const idx = nameHash(botName) % PERSONALITY_TEMPLATES.length;
+  return { ...PERSONALITY_TEMPLATES[idx], name: botName };
 }
 
 export { DEFAULT_PERSONALITY, BOT_PERSONALITIES };

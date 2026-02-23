@@ -28,6 +28,7 @@ interface BotConfig {
   disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
   defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
   isFastFold?: boolean; // ファストフォールドテーブルに参加するか
+  onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
 }
 
 // デフォルト: 2% の確率で切断（約50ハンドに1回）
@@ -144,6 +145,10 @@ export class BotClient {
 
       this.socket.on('table:error', (data: { message: string }) => {
         console.log(`[${this.config.name}] Table error: ${data.message}`);
+        // テーブル未参加時のエラー（バランス不足等）→ 参加失敗として通知
+        if (!this.tableId && this.config.onJoinFailed) {
+          this.config.onJoinFailed(this, data.message);
+        }
       });
 
       this.socket.on('game:hole_cards', (data: { cards: Card[] }) => {
