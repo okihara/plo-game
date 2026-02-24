@@ -8,6 +8,7 @@ import {
   applyAction,
   wouldAdvanceStreet,
   calculateSidePots,
+  calculateRake,
   determineWinner,
   rotatePositions,
 } from '../gameEngine.js';
@@ -1493,5 +1494,137 @@ describe('全員オールイン: ボードランアウト', () => {
     // チップ合計が保存される
     const totalChipsAfter = state.players.reduce((sum, p) => sum + p.chips, 0);
     expect(totalChipsAfter).toBe(totalChips);
+  });
+});
+
+// ===== レーキ =====
+
+describe('calculateRake', () => {
+  it('ポットの5%を計算する', () => {
+    expect(calculateRake(100, 3, 0.05, 3)).toBe(5);
+  });
+
+  it('キャップを適用する（3BB）', () => {
+    // pot=1000, 5%=50, cap=3*3=9 → 9
+    expect(calculateRake(1000, 3, 0.05, 3)).toBe(9);
+  });
+
+  it('レーキ率0ならレーキ0', () => {
+    expect(calculateRake(100, 3, 0, 3)).toBe(0);
+  });
+
+  it('小数点以下切り捨て', () => {
+    // pot=7, 5%=0.35 → 0
+    expect(calculateRake(7, 3, 0.05, 3)).toBe(0);
+  });
+
+  it('キャップ未到達ならレーキ率で計算', () => {
+    // pot=100, 5%=5, cap=3*3=9 → 5
+    expect(calculateRake(100, 3, 0.05, 3)).toBe(5);
+  });
+});
+
+describe('determineWinner with rake', () => {
+  it('プリフロップで全員フォールド → レーキなし', () => {
+    const state = createTestState({
+      currentStreet: 'preflop',
+      pot: 100,
+      bigBlind: 3,
+    });
+    // プレイヤー0だけ残り、他は全員フォールド
+    const updated = withPlayers(state, [
+      { folded: false, totalBetThisRound: 3 },
+      { folded: true, totalBetThisRound: 1 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+    ]);
+    const result = determineWinner(updated, 0.05, 3);
+    expect(result.rake).toBe(0);
+    expect(result.winners[0].amount).toBe(100);
+  });
+
+  it('フロップ以降で全員フォールド → レーキあり', () => {
+    const state = createTestState({
+      currentStreet: 'flop',
+      pot: 100,
+      bigBlind: 3,
+      communityCards: [card('A', 'h'), card('K', 's'), card('Q', 'd')],
+    });
+    const updated = withPlayers(state, [
+      { folded: false, totalBetThisRound: 50, holeCards: [card('A', 's'), card('A', 'd'), card('K', 'h'), card('K', 'd')] },
+      { folded: true, totalBetThisRound: 50 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+    ]);
+    const result = determineWinner(updated, 0.05, 3);
+    expect(result.rake).toBe(5); // 100 * 0.05 = 5
+    expect(result.winners[0].amount).toBe(95);
+  });
+
+  it('レーキがキャップを超えない', () => {
+    const state = createTestState({
+      currentStreet: 'flop',
+      pot: 1000,
+      bigBlind: 3,
+      communityCards: [card('A', 'h'), card('K', 's'), card('Q', 'd')],
+    });
+    const updated = withPlayers(state, [
+      { folded: false, totalBetThisRound: 500, holeCards: [card('A', 's'), card('A', 'd'), card('K', 'h'), card('K', 'd')] },
+      { folded: true, totalBetThisRound: 500 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+    ]);
+    const result = determineWinner(updated, 0.05, 3);
+    expect(result.rake).toBe(9); // cap = 3 * 3 = 9
+    expect(result.winners[0].amount).toBe(991);
+  });
+
+  it('レーキパラメータなしならレーキ0（デフォルト）', () => {
+    const state = createTestState({
+      currentStreet: 'flop',
+      pot: 100,
+      bigBlind: 3,
+      communityCards: [card('A', 'h'), card('K', 's'), card('Q', 'd')],
+    });
+    const updated = withPlayers(state, [
+      { folded: false, totalBetThisRound: 50, holeCards: [card('A', 's'), card('A', 'd'), card('K', 'h'), card('K', 'd')] },
+      { folded: true, totalBetThisRound: 50 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+    ]);
+    const result = determineWinner(updated);
+    expect(result.rake).toBe(0);
+    expect(result.winners[0].amount).toBe(100);
+  });
+
+  it('ショーダウン時にサイドポットからレーキを差し引く', () => {
+    const state = createTestState({
+      currentStreet: 'river',
+      pot: 200,
+      bigBlind: 3,
+      communityCards: [card('A', 'h'), card('K', 's'), card('Q', 'd'), card('J', 'h'), card('T', 's')],
+    });
+    // 2人がショーダウン
+    const updated = withPlayers(state, [
+      { folded: false, totalBetThisRound: 100, holeCards: [card('A', 's'), card('A', 'd'), card('K', 'h'), card('K', 'd')] },
+      { folded: false, totalBetThisRound: 100, holeCards: [card('2', 's'), card('3', 'd'), card('4', 'h'), card('5', 'd')] },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+      { folded: true, totalBetThisRound: 0 },
+    ]);
+    const result = determineWinner(updated, 0.05, 3);
+    expect(result.rake).toBe(9); // cap = 3 * 3 = 9 (200*0.05=10 > 9)
+    // 勝者の獲得額は200-9=191
+    const totalWinnings = result.winners.reduce((sum, w) => sum + w.amount, 0);
+    expect(totalWinnings).toBe(191);
   });
 });

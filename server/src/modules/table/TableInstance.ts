@@ -313,7 +313,7 @@ export class TableInstance {
     const activePlayers = getActivePlayers(this.gameState);
     if (activePlayers.length <= 1) {
       this.actionController.clearTimers();
-      this.gameState = determineWinner(this.gameState);
+      this.gameState = determineWinner(this.gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
       this.broadcastGameState();
       this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       return true;
@@ -523,7 +523,7 @@ export class TableInstance {
       const activePlayers = getActivePlayers(this.gameState);
       if (activePlayers.length <= 1) {
         this.actionController.clearTimers();
-        this.gameState = determineWinner(this.gameState);
+        this.gameState = determineWinner(this.gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
         this.broadcastGameState();
         this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
         return;
@@ -768,6 +768,7 @@ export class TableInstance {
         amount: w.amount,
         handName: w.handName,
       })),
+      rake: this.gameState.rake,
     };
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 

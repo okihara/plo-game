@@ -105,6 +105,7 @@ export class StateTransformer {
         isHandInProgress: false,
         actionTimeoutAt: null,
         actionTimeoutMs: null,
+        rake: 0,
       };
     }
 
@@ -129,6 +130,7 @@ export class StateTransformer {
       isHandInProgress,
       actionTimeoutAt,
       actionTimeoutMs,
+      rake: gameState.rake ?? 0,
     };
   }
 }

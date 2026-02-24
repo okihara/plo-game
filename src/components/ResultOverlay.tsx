@@ -89,9 +89,12 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
             {winnerInfo.handName && (
               <div className="text-[2.8vh] font-semibold text-gray-200 mb-[2.5vh]">{winnerInfo.handName}</div>
             )}
-            <div className="text-[3vh] font-bold text-yellow-400 mb-[3.5vh] animate-amount-pop">
+            <div className="text-[3vh] font-bold text-yellow-400 mb-[1vh] animate-amount-pop">
               +{formatChips(animationComplete ? myWinAmount : displayedAmount)}
             </div>
+            {state.rake > 0 && (
+              <div className="text-[1.5vh] text-gray-400 mb-[2vh]">Rake: {formatChips(state.rake)}</div>
+            )}
           </>
         ) : (
           <>
@@ -101,9 +104,12 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
             {winnerInfo.handName && (
               <div className="text-[2.8vh] font-semibold text-gray-200 mb-[2.5vh]">{winnerInfo.handName}</div>
             )}
-            <div className="text-[2.5vh] font-semibold text-yellow-400 mb-[3.5vh]">
+            <div className="text-[2.5vh] font-semibold text-yellow-400 mb-[1vh]">
               {formatChips(winnerInfo.amount)}
             </div>
+            {state.rake > 0 && (
+              <div className="text-[1.5vh] text-gray-400 mb-[2vh]">Rake: {formatChips(state.rake)}</div>
+            )}
           </>
         )}
       </div>
