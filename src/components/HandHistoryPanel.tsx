@@ -164,7 +164,7 @@ function HandSummaryCard({
       {/* Row 1: meta left, profit right (hero element) */}
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-1.5">
-          <span className="text-cream-600 text-sm font-semibold">#{hand.handNumber}</span>
+          <span className="text-cream-600 text-sm font-semibold">#{hand.id.slice(-6)}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
@@ -211,7 +211,7 @@ function HandDetailDialog({
             &larr; 戻る
           </button>
           <h1 className="text-cream-900 font-bold text-lg tracking-tight">
-            Hand #{hand.handNumber}
+            Hand #{hand.id.slice(-6)}
           </h1>
           <div className="flex items-center gap-2 ml-3">
             <span className="text-cream-700 text-xs font-medium">{hand.blinds}</span>
