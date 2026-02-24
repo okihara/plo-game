@@ -263,10 +263,15 @@ export function HandDetailDialog({
   onClose: () => void;
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
-  const sortedPlayers = useMemo(
-    () => [...hand.players].sort((a, b) => (a.isCurrentUser ? -1 : b.isCurrentUser ? 1 : 0)),
-    [hand.players],
-  );
+  const sortedPlayers = useMemo(() => {
+    const dealer = hand.dealerPosition;
+    return [...hand.players].sort((a, b) => {
+      // SB→BB→UTG→HJ→CO→BTN（ディーラーの次=SBが先頭）
+      const offsetA = (a.seatPosition - dealer - 1 + 6) % 6;
+      const offsetB = (b.seatPosition - dealer - 1 + 6) % 6;
+      return offsetA - offsetB;
+    });
+  }, [hand.players, hand.dealerPosition]);
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col h-full light-bg">
