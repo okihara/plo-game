@@ -12,7 +12,6 @@ import {
   handleMatchmakingLeave,
   handleDisconnect,
   handleDebugSetChips,
-  handleGetTables,
   handleSpectate,
 } from './handlers.js';
 
@@ -45,7 +44,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager));
     socket.on('matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager));
     socket.on('disconnect', () => handleDisconnect(socket, tableManager));
-    socket.on('lobby:get_tables', () => handleGetTables(socket, tableManager));
     socket.on('table:spectate', (data) => handleSpectate(socket, data, tableManager));
 
     if (process.env.NODE_ENV !== 'production') {

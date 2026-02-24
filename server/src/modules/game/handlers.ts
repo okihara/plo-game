@@ -201,11 +201,6 @@ export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: 
   }
 }
 
-export function handleGetTables(socket: AuthenticatedSocket, tableManager: TableManager): void {
-  const tables = tableManager.getTablesInfo();
-  socket.emit('lobby:tables', { tables });
-}
-
 export function handleSpectate(socket: AuthenticatedSocket, data: { tableId: string }, tableManager: TableManager): void {
   const { tableId } = data;
   const table = tableManager.getTable(tableId);
