@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { computeIncrementForPlayer } from '../updateStatsIncremental.js';
+import { computeIncrementForPlayer } from '../statsComputation.js';
 
 // 最小限のアクションエントリ
 function action(seatIndex: number, odId: string, act: string, amount: number, street?: string) {
