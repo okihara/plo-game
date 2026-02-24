@@ -87,6 +87,77 @@ function displayName(player: { isCurrentUser: boolean; username: string }): stri
   return player.isCurrentUser ? player.username : maskName(player.username);
 }
 
+/** プリフロでアクション記録がないプレイヤーに fold を補完（ポジション順の正しい位置に挿入） */
+function complementMissingFolds(
+  actions: HandDetailAction[],
+  players: HandDetailPlayer[],
+  dealerPosition: number,
+): HandDetailAction[] {
+  // プリフロ / それ以降に分割
+  const preflopActions: HandDetailAction[] = [];
+  const postPreflopActions: HandDetailAction[] = [];
+  let preflopDone = false;
+  for (const a of actions) {
+    if (preflopDone || (a.street && a.street !== 'preflop')) {
+      postPreflopActions.push(a);
+      preflopDone = true;
+    } else {
+      preflopActions.push(a);
+    }
+  }
+
+  const seatsInPreflop = new Set(preflopActions.map(a => a.seatIndex));
+  const missingSeats = new Set(
+    players.filter(p => !seatsInPreflop.has(p.seatPosition)).map(p => p.seatPosition),
+  );
+  if (missingSeats.size === 0) return actions;
+
+  // プリフロのアクション順を算出: UTG→...→BTN→SB→BB
+  const sortedSeats = [...new Set(players.map(p => p.seatPosition))].sort(
+    (a, b) => ((a - dealerPosition + 6) % 6) - ((b - dealerPosition + 6) % 6),
+  );
+  const n = sortedSeats.length;
+  const preflopOrder = n <= 2
+    ? sortedSeats
+    : [...sortedSeats.slice(3), ...sortedSeats.slice(0, 3)];
+
+  const seatOrderMap = new Map(preflopOrder.map((seat, idx) => [seat, idx]));
+  const playerBySeat = new Map(players.map(p => [p.seatPosition, p]));
+
+  const makeFold = (seat: number): HandDetailAction => {
+    const p = playerBySeat.get(seat)!;
+    return { seatIndex: seat, odId: '', odName: p.username, action: 'fold', amount: 0, street: 'preflop' };
+  };
+
+  // プリフロアクションを走査し、初出シートの手前にスキップされた席の fold を挿入
+  const result: HandDetailAction[] = [];
+  const seenSeats = new Set<number>();
+  const inserted = new Set<number>();
+
+  for (const a of preflopActions) {
+    if (!seenSeats.has(a.seatIndex)) {
+      const curOrder = seatOrderMap.get(a.seatIndex) ?? 0;
+      for (const seat of preflopOrder) {
+        if (missingSeats.has(seat) && !inserted.has(seat) && (seatOrderMap.get(seat) ?? 0) < curOrder) {
+          result.push(makeFold(seat));
+          inserted.add(seat);
+        }
+      }
+      seenSeats.add(a.seatIndex);
+    }
+    result.push(a);
+  }
+
+  // 残りの欠落席はプリフロ末尾に追加
+  for (const seat of preflopOrder) {
+    if (missingSeats.has(seat) && !inserted.has(seat)) {
+      result.push(makeFold(seat));
+    }
+  }
+
+  return [...result, ...postPreflopActions];
+}
+
 /* ── サブコンポーネント ── */
 
 function StreetHeader({ street, cards, pot, isFirst }: {
@@ -263,6 +334,10 @@ export function HandDetailDialog({
   onClose: () => void;
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
+  const normalizedHand = useMemo(() => ({
+    ...hand,
+    actions: complementMissingFolds(hand.actions, hand.players, hand.dealerPosition),
+  }), [hand]);
   const sortedPlayers = useMemo(() => {
     const dealer = hand.dealerPosition;
     return [...hand.players].sort((a, b) => {
@@ -304,9 +379,9 @@ export function HandDetailDialog({
           {/* アクション履歴 + Result */}
           <div className="bg-cream-100 rounded-xl px-3 py-3 border border-cream-300">
             <div className="space-y-0.5">
-              <ActionHistory hand={hand} allSeats={allSeats} />
+              <ActionHistory hand={normalizedHand} allSeats={allSeats} />
             </div>
-            <ResultSection hand={hand} allSeats={allSeats} />
+            <ResultSection hand={normalizedHand} allSeats={allSeats} />
           </div>
         </div>
     </div>
