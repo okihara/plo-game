@@ -1,7 +1,8 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, determineWinner } from '../../shared/logic/gameEngine.js';
+import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, determineWinner, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
+import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
 
@@ -585,6 +586,23 @@ export class TableInstance {
    */
   private async handleAllInRunOut(finalState: GameState, previousCardCount: number): Promise<void> {
     console.warn(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
+
+    // ランアウト前のボードでEV計算（エクイティベース）
+    try {
+      const priorBoard = finalState.communityCards.slice(0, previousCardCount);
+      const allPots = calculateSidePots(finalState.players);
+      const totalBets = new Map<number, number>();
+      const allPlayerInfo = finalState.players.map(p => {
+        totalBets.set(p.id, p.totalBetThisRound);
+        return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
+      });
+      const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
+      this.historyRecorder.setAllInEVProfits(evProfits);
+      console.warn(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
+    } catch (err) {
+      console.error(`[Table ${this.id}] EV calculation failed:`, err);
+    }
+
     const allCards = [...finalState.communityCards];
 
     // 表示ステージを構築（フロップ→ターン→リバーの順）

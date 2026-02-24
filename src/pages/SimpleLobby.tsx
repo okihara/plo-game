@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
+import { SettingConfig } from '../components/SettingConfig';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
@@ -31,6 +33,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
+  const [showRanking, setShowRanking] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -134,14 +138,22 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             <div className="bg-white border border-cream-300 rounded-[4cqw] p-[4cqw] mb-[4cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-[2.5cqw]">
-                  {user.avatarUrl && (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.username}
-                      className="w-[12cqw] h-[12cqw] rounded-full border-[0.4cqw] border-cream-300 cursor-pointer hover:border-forest/50 transition-all"
-                      onClick={() => setShowProfile(true)}
-                    />
-                  )}
+                  <div className="relative">
+                    {user.avatarUrl && (
+                      <img
+                        src={user.avatarUrl}
+                        alt={user.username}
+                        className="w-[12cqw] h-[12cqw] rounded-full border-[0.4cqw] border-cream-300 cursor-pointer hover:border-forest/50 transition-all"
+                        onClick={() => setShowProfile(true)}
+                      />
+                    )}
+                    <button
+                      onClick={() => setShowSettings(true)}
+                      className="absolute -bottom-[0.5cqw] -right-[0.5cqw] w-[5cqw] h-[5cqw] bg-white border border-cream-300 rounded-full flex items-center justify-center shadow-sm hover:bg-cream-100 active:scale-90 transition-all"
+                    >
+                      <svg className="w-[3cqw] h-[3cqw] text-cream-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                    </button>
+                  </div>
                   <div>
                     <div className="text-[4cqw] text-cream-900 font-bold">{user.username}</div>
                     <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">
@@ -188,8 +200,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   Stats
                 </button>
                 <button
-                  disabled
-                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold transition-all flex items-center justify-center gap-[1cqw] opacity-40 cursor-not-allowed"
+                  onClick={() => setShowRanking(true)}
+                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold hover:bg-cream-200 active:scale-[0.97] transition-all flex items-center justify-center gap-[1cqw]"
                 >
                   <svg className="w-[3.5cqw] h-[3.5cqw]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                   順位
@@ -331,6 +343,19 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           isSelf
           onClose={() => setShowProfile(false)}
         />
+      )}
+
+      {/* Ranking Popup */}
+      {showRanking && user && (
+        <RankingPopup
+          userId={user.id}
+          onClose={() => setShowRanking(false)}
+        />
+      )}
+
+      {/* Settings Popup */}
+      {showSettings && user && (
+        <SettingConfig onClose={() => setShowSettings(false)} />
       )}
     </div>
   );

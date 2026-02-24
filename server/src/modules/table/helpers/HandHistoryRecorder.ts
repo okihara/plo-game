@@ -21,6 +21,7 @@ function isAuthenticatedUser(_odId: string): boolean {
 export class HandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
+  private allInEVProfits: Map<number, number> | null = null;
 
   /**
    * ハンド開始時に呼ぶ。開始時チップを記録する。
@@ -28,6 +29,7 @@ export class HandHistoryRecorder {
   recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
     this.handCount++;
     this.startChips.clear();
+    this.allInEVProfits = null;
 
     for (let i = 0; i < seats.length; i++) {
       if (seats[i]) {
@@ -36,6 +38,16 @@ export class HandHistoryRecorder {
         this.startChips.set(i, chips);
       }
     }
+  }
+
+  /** オールインランアウト時のEV利益をセット（seatIndex → evProfit） */
+  setAllInEVProfits(evProfits: Map<number, number>): void {
+    this.allInEVProfits = evProfits;
+  }
+
+  /** ハンド開始時のチップを取得 */
+  getStartChips(): Map<number, number> {
+    return this.startChips;
   }
 
   /**
@@ -97,6 +109,8 @@ export class HandHistoryRecorder {
             }
           }
 
+          const allInEVProfit = this.allInEVProfits?.get(seatIndex) ?? null;
+
           return {
             userId: isAuthenticatedUser(seat.odId) ? seat.odId : null,
             username: seat.odName,
@@ -104,6 +118,7 @@ export class HandHistoryRecorder {
             holeCards: serializeCards(player.holeCards),
             finalHand,
             profit,
+            allInEVProfit,
           };
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -127,7 +142,7 @@ export class HandHistoryRecorder {
       });
 
       // スタッツキャッシュ更新 (fire-and-forget)
-      updatePlayerStats(gameState, seats, this.startChips).catch(err =>
+      updatePlayerStats(gameState, seats, this.startChips, this.allInEVProfits).catch(err =>
         console.error('Stats cache update failed:', err)
       );
     } catch (error) {

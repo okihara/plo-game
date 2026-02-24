@@ -140,15 +140,24 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 h-[4%] bg-transparent px-[2%] flex items-center justify-between">
+          <div className="absolute top-0 left-0 right-0 z-40 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[3vw]">
             <button
               onClick={onBack}
-              className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
+              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
             >
-              <DoorOpen style={{ width: 'min(4vh, 6.6vw)', height: 'min(4vh, 6.6vw)' }} />
+              <DoorOpen style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
             </button>
-            <div />
-            <div className="flex items-center gap-[1.5vw]">
+            {/* ハンド履歴ボタン */}
+            <button
+              onClick={() => setShowHandHistory(true)}
+              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
+              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+            >
+              <History style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+            </button>
+            <div className="flex-1" />
+            <div className="flex items-center gap-[3vw]">
             {/* サウンドトグル */}
             <button
               onClick={() => {
@@ -156,26 +165,21 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                 setSoundOn(next);
                 setSoundEnabled(next);
               }}
-              className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
+              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
+              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
             >
               {soundOn
-                ? <Volume2 style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
-                : <VolumeOff style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />}
-            </button>
-            {/* ハンド履歴ボタン */}
-            <button
-              onClick={() => setShowHandHistory(true)}
-              className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
-            >
-              <History style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
+                ? <Volume2 style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+                : <VolumeOff style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />}
             </button>
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="flex items-center justify-center text-gray-400 hover:text-gray-200 transition-colors"
+                className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
+                style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
               >
-                <Settings style={{ width: 'min(3.6vh, 6vw)', height: 'min(3.6vh, 6vw)' }} />
+                <Settings style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
               </button>
               {showSettingsMenu && (
                 <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 z-50 whitespace-nowrap">
