@@ -280,7 +280,9 @@ export function adminRoutes(deps: AdminDependencies) {
 
       const orderBy = sort === 'balance'
         ? { bankroll: { balance: order } }
-        : { [sort]: order };
+        : sort === 'handsPlayed'
+          ? { handHistories: { _count: order } }
+          : { [sort]: order };
 
       const [users, total] = await Promise.all([
         prisma.user.findMany({
