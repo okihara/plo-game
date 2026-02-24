@@ -148,6 +148,31 @@
     .action-check { color: #94a3b8; }
     .action-allin { color: #ef4444; font-weight: 600; }
 
+    .json-toggle {
+      font-size: 11px;
+      color: #64748b;
+      cursor: pointer;
+      margin-top: 12px;
+      user-select: none;
+    }
+    .json-toggle:hover { color: #94a3b8; }
+    .json-block {
+      display: none;
+      margin-top: 8px;
+      padding: 10px;
+      background: #020617;
+      border: 1px solid #1e293b;
+      border-radius: 6px;
+      font-family: monospace;
+      font-size: 11px;
+      color: #94a3b8;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 400px;
+      overflow-y: auto;
+    }
+    .json-block.open { display: block; }
+
     .pagination {
       display: flex;
       justify-content: center;
@@ -316,6 +341,10 @@
           if (detail) detail.classList.toggle('open');
         });
       });
+      // Prevent json-block clicks from closing the detail row
+      document.querySelectorAll('.json-block').forEach(function(el) {
+        el.addEventListener('click', function(e) { e.stopPropagation(); });
+      });
 
       // Pagination
       document.getElementById('pagination').innerHTML =
@@ -390,8 +419,23 @@
       }
       out += '</div>';
 
+      // Raw JSON toggle
+      var jsonId = 'json-' + h.id;
+      out += '<div class="json-toggle" onclick="toggleJson(\'' + jsonId + '\', event)">&#9654; Raw JSON</div>';
+      out += '<div class="json-block" id="' + jsonId + '">' + escapeHtml(JSON.stringify(h, null, 2)) + '</div>';
+
       out += '</div>';
       return out;
+    }
+
+    function toggleJson(id, event) {
+      event.stopPropagation();
+      var el = document.getElementById(id);
+      if (el) {
+        el.classList.toggle('open');
+        var toggle = el.previousElementSibling;
+        if (toggle) toggle.innerHTML = el.classList.contains('open') ? '&#9660; Raw JSON' : '&#9654; Raw JSON';
+      }
     }
 
     function goPage(p) { currentPage = p; fetchHands(); }
