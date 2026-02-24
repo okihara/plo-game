@@ -8,6 +8,7 @@ interface PlayerStats {
   handsPlayed: number;
   winRate: number;
   totalProfit: number;
+  totalAllInEVProfit: number;
   vpip: number;
   pfr: number;
   threeBet: number;
@@ -42,7 +43,7 @@ export function ProfilePopup({
   onClose,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
-  const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number }[]>([]);
+  const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const { user, refreshUser } = useAuth();
   const [nameMasked, setNameMasked] = useState(user?.nameMasked ?? true);
@@ -159,6 +160,7 @@ export function ProfilePopup({
                 <StatItem label="Hands" value={stats.handsPlayed.toLocaleString()} />
                 <StatItem label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
                 <StatItem label="Profit" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
+                <StatItem label="EV Profit" value={formatProfit(stats.totalAllInEVProfit ?? stats.totalProfit)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
                 <StatItem label="VPIP" value={`${stats.vpip.toFixed(1)}%`} />
                 <StatItem label="PFR" value={`${stats.pfr.toFixed(1)}%`} />
                 <StatItem label="3Bet" value={`${stats.threeBet.toFixed(1)}%`} />
@@ -274,6 +276,7 @@ const statInfo: Record<string, { desc: string; formula: string }> = {
   Hands:       { desc: 'プレイしたハンド数', formula: '参加ハンドの合計' },
   'Win Rate':  { desc: '勝利したハンドの割合', formula: '勝利数 ÷ 総ハンド数 × 100' },
   Profit:      { desc: '総損益（チップ）', formula: '全ハンドの獲得チップ合計' },
+  'EV Profit': { desc: 'オールイン時のエクイティに基づく期待損益', formula: 'Σ(エクイティ × ポット額 - ベット額)' },
   VPIP:        { desc: '自発的にポットに参加した割合', formula: '(コール+レイズ) ÷ 総ハンド数 × 100' },
   PFR:         { desc: 'プリフロップでレイズした割合', formula: 'PFレイズ数 ÷ 総ハンド数 × 100' },
   '3Bet':      { desc: 'プリフロップで3ベットした割合', formula: '3ベット数 ÷ 3ベット機会数 × 100' },

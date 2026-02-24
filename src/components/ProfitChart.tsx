@@ -3,6 +3,7 @@ interface Point {
   c: number;  // cumulative total
   s: number;  // cumulative showdown
   n: number;  // cumulative non-showdown
+  e: number;  // cumulative EV profit
 }
 
 interface ProfitChartProps {
@@ -18,14 +19,16 @@ const PAD_B = 18;  // bottom padding for X labels
 
 const COLORS = {
   total: '#00C000',
+  ev: '#FFB800',
   showdown: '#0080FF',
   nonShowdown: '#FF0000',
 } as const;
 
-type SeriesKey = 'total' | 'showdown' | 'nonShowdown';
+type SeriesKey = 'total' | 'ev' | 'showdown' | 'nonShowdown';
 
 const LABELS: Record<SeriesKey, string> = {
   total: 'Total',
+  ev: 'EV',
   showdown: 'Showdown',
   nonShowdown: 'Non-SD',
 };
@@ -72,7 +75,7 @@ function formatCompact(v: number): string {
 export function ProfitChart({ points }: ProfitChartProps) {
   if (points.length < 2) return null;
 
-  const allValues = points.flatMap(pt => [pt.c, pt.s, pt.n]);
+  const allValues = points.flatMap(pt => [pt.c, pt.s, pt.n, pt.e]);
   const rawMin = Math.min(0, ...allValues);
   const rawMax = Math.max(0, ...allValues);
 
@@ -104,6 +107,7 @@ export function ProfitChart({ points }: ProfitChartProps) {
   const series: { key: SeriesKey; get: (pt: Point) => number; color: string; width: number }[] = [
     { key: 'nonShowdown', get: pt => pt.n, color: COLORS.nonShowdown, width: 1 },
     { key: 'showdown', get: pt => pt.s, color: COLORS.showdown, width: 1 },
+    { key: 'ev', get: pt => pt.e, color: COLORS.ev, width: 1.2 },
     { key: 'total', get: pt => pt.c, color: COLORS.total, width: 1.5 },
   ];
 

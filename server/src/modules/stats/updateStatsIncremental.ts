@@ -29,6 +29,7 @@ interface StatsIncrement {
   handsPlayed: number;
   winCount: number;
   totalProfit: number;
+  totalAllInEVProfit: number;
   detailedHands: number;
   vpipCount: number;
   pfrCount: number;
@@ -49,7 +50,7 @@ interface StatsIncrement {
 
 function emptyIncrement(): StatsIncrement {
   return {
-    handsPlayed: 0, winCount: 0, totalProfit: 0, detailedHands: 0,
+    handsPlayed: 0, winCount: 0, totalProfit: 0, totalAllInEVProfit: 0, detailedHands: 0,
     vpipCount: 0, pfrCount: 0,
     threeBetCount: 0, threeBetOpportunity: 0, foldTo3BetCount: 0, faced3BetCount: 0,
     aggressiveActions: 0, totalPostflopActions: 0,
@@ -69,11 +70,14 @@ function computeIncrementForPlayer(
   activeSeatPositions: number[],
   communityCardsCount: number,
   players: { odId: string; seatPosition: number; finalHand: string | null }[],
+  allInEVProfit?: number | null,
 ): StatsIncrement {
   const inc = emptyIncrement();
 
   inc.handsPlayed = 1;
   inc.totalProfit = profit;
+  // allInEVProfit が null（非オールインハンド）の場合は実利益を使用
+  inc.totalAllInEVProfit = allInEVProfit ?? profit;
   if (winnerOdIds.includes(userId)) inc.winCount = 1;
 
   const hasStreetInfo = actions.length > 0 && actions[0].street !== undefined;
@@ -236,6 +240,7 @@ export async function updatePlayerStats(
   gameState: GameState,
   seats: (SeatInfo | null)[],
   startChips: Map<number, number>,
+  allInEVProfits?: Map<number, number> | null,
 ): Promise<void> {
   const actions: ActionEntry[] = gameState.handHistory.map(a => ({
     seatIndex: a.playerId,
@@ -274,11 +279,12 @@ export async function updatePlayerStats(
     if (!seat || !startChips.has(i) || !isAuthenticatedUser(seat.odId)) continue;
 
     const profit = gameState.players[i].chips - startChips.get(i)!;
+    const allInEVProfit = allInEVProfits?.get(i) ?? null;
     const inc = computeIncrementForPlayer(
       seat.odId, i, profit, actions,
       gameState.dealerPosition, winnerOdIds,
       activeSeatPositions, gameState.communityCards.length,
-      playerInfos,
+      playerInfos, allInEVProfit,
     );
 
     upserts.push(
@@ -289,6 +295,7 @@ export async function updatePlayerStats(
           handsPlayed: { increment: inc.handsPlayed },
           winCount: { increment: inc.winCount },
           totalProfit: { increment: inc.totalProfit },
+          totalAllInEVProfit: { increment: inc.totalAllInEVProfit },
           detailedHands: { increment: inc.detailedHands },
           vpipCount: { increment: inc.vpipCount },
           pfrCount: { increment: inc.pfrCount },

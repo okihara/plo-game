@@ -4,6 +4,7 @@ export interface PlayerStats {
   handsPlayed: number;
   winRate: number;      // 勝ちハンド数 / 全ハンド数 (%)
   totalProfit: number;
+  totalAllInEVProfit: number;
   vpip: number;         // Voluntarily Put money In Pot (%)
   pfr: number;          // Pre-Flop Raise (%)
   threeBet: number;     // 3-Bet (%)
@@ -31,7 +32,7 @@ interface HandData {
   winners: string[];
   blinds: string;
   communityCards: string[];
-  players: { userId: string | null; seatPosition: number; profit: number; finalHand?: string | null }[];
+  players: { userId: string | null; seatPosition: number; profit: number; finalHand?: string | null; allInEVProfit?: number | null }[];
 }
 
 /** 6-max テーブルでSBのシート位置を返す */
@@ -64,6 +65,7 @@ export function computeStats(handHistories: HandData[], userId: string): PlayerS
   let handsPlayed = 0;
   let winCount = 0;
   let totalProfit = 0;
+  let totalAllInEVProfit = 0;
 
   // Street情報があるハンドのみ詳細スタッツ計算
   let detailedHands = 0;
@@ -95,6 +97,7 @@ export function computeStats(handHistories: HandData[], userId: string): PlayerS
 
     handsPlayed++;
     totalProfit += playerEntry.profit;
+    totalAllInEVProfit += playerEntry.allInEVProfit ?? playerEntry.profit;
     if (hand.winners.includes(userId)) winCount++;
 
     const actions = hand.actions;
@@ -296,6 +299,7 @@ export function computeStats(handHistories: HandData[], userId: string): PlayerS
     handsPlayed,
     winRate: pct(winCount, handsPlayed),
     totalProfit,
+    totalAllInEVProfit,
     vpip: pct(vpipCount, detailedHands),
     pfr: pct(pfrCount, detailedHands),
     threeBet: pct(threeBetCount, threeBetOpportunity),

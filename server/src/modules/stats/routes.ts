@@ -20,6 +20,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       handsPlayed: cache.handsPlayed,
       winRate: pct(cache.winCount, cache.handsPlayed),
       totalProfit: cache.totalProfit,
+      totalAllInEVProfit: cache.totalAllInEVProfit,
       vpip: pct(cache.vpipCount, cache.detailedHands),
       pfr: pct(cache.pfrCount, cache.detailedHands),
       threeBet: pct(cache.threeBetCount, cache.threeBetOpportunity),
@@ -41,17 +42,19 @@ export async function statsRoutes(fastify: FastifyInstance) {
     const rows = await prisma.handHistoryPlayer.findMany({
       where: { userId },
       orderBy: { handHistory: { createdAt: 'asc' } },
-      select: { profit: true, finalHand: true },
+      select: { profit: true, finalHand: true, allInEVProfit: true },
     });
 
     let cumTotal = 0;
     let cumSD = 0;
     let cumNoSD = 0;
+    let cumEV = 0;
     const points = rows.map(r => {
       const sd = r.finalHand != null;
       cumTotal += r.profit;
+      cumEV += r.allInEVProfit ?? r.profit;
       if (sd) cumSD += r.profit; else cumNoSD += r.profit;
-      return { p: r.profit, c: cumTotal, s: cumSD, n: cumNoSD };
+      return { p: r.profit, c: cumTotal, s: cumSD, n: cumNoSD, e: cumEV };
     });
 
     return { points };

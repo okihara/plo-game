@@ -89,6 +89,7 @@ model HandHistoryPlayer {
   holeCards     String[] // Array of card strings
   finalHand     String?  // e.g., "Full House, Aces full of Kings"
   profit        Int      // Can be negative for losses
+  allInEVProfit Int?     // EV-based profit for all-in runouts (null = not all-in hand)
 
   handHistory HandHistory @relation(fields: [handHistoryId], references: [id], onDelete: Cascade)
   user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -119,6 +120,7 @@ model PlayerStatsCache {
   sawFlopCount         Int      @default(0)
   wtsdCount            Int      @default(0)
   wsdCount             Int      @default(0)
+  totalAllInEVProfit   Int      @default(0)
   updatedAt            DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
