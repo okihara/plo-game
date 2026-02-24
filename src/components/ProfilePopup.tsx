@@ -121,36 +121,22 @@ export function ProfilePopup({
             <h2 className="text-[6cqw] font-bold text-cream-900">{name}</h2>
           </div>
 
-          {/* Badges Placeholder */}
-          <div className="flex justify-center gap-[2.5cqw] mb-[5cqw]">
-            {badges.length > 0 ? (
-              badges.map((_, i) => (
+          {/* Badges (実バッジがある場合のみ表示) */}
+          {badges.length > 0 && (
+            <div className="flex justify-center gap-[2.5cqw] mb-[5cqw]">
+              {badges.map((_, i) => (
                 <div
                   key={i}
                   className="w-[12cqw] h-[12cqw] rounded-full bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-[5cqw]"
                 >
                   🏆
                 </div>
-              ))
-            ) : (
-              // プレースホルダーバッジ
-              <>
-                <div className="w-[12cqw] h-[12cqw] rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center">
-                  <span className="text-cream-400 text-[4cqw]">?</span>
-                </div>
-                <div className="w-[12cqw] h-[12cqw] rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center">
-                  <span className="text-cream-400 text-[4cqw]">?</span>
-                </div>
-                <div className="w-[12cqw] h-[12cqw] rounded-full bg-cream-200 border border-cream-300 flex items-center justify-center">
-                  <span className="text-cream-400 text-[4cqw]">?</span>
-                </div>
-              </>
-            )}
-          </div>
+              ))}
+            </div>
+          )}
 
           {/* Stats */}
           <div className="bg-cream-100 rounded-[4cqw] p-[5cqw]">
-            <h3 className="text-cream-600 text-[3cqw] uppercase tracking-wider mb-[3cqw]">統計</h3>
             {loading ? (
               <div className="flex flex-col items-center py-[4cqw]">
                 <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
@@ -191,18 +177,19 @@ export function ProfilePopup({
             )}
           </div>
 
-          {/* Profit Chart (self only) */}
-          {isSelf && !loading && profitHistory.length >= 2 && (
-            <div className="bg-cream-100 rounded-[4cqw] p-[5cqw] mt-[3cqw]">
-              <ProfitChart points={profitHistory} />
-            </div>
-          )}
 
           {/* No Stats Notice */}
           {!loading && !stats && (
             <p className="text-cream-500 text-[3cqw] text-center mt-[3cqw]">
               スタッツはハンドをプレイすると表示されます
             </p>
+          )}
+
+          {/* Profit Chart (self only) */}
+          {isSelf && !loading && profitHistory.length >= 2 && (
+            <div className="bg-cream-100 rounded-[4cqw] p-[5cqw] mt-[3cqw]">
+              <ProfitChart points={profitHistory} />
+            </div>
           )}
 
           {/* Settings Toggles (self only) */}

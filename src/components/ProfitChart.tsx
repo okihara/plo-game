@@ -12,7 +12,7 @@ interface ProfitChartProps {
 
 const W = 300;
 const H = 160;
-const PAD_L = 40;  // left padding for Y labels
+const PAD_L = 22;  // left padding for Y labels
 const PAD_R = 4;
 const PAD_T = 8;
 const PAD_B = 18;  // bottom padding for X labels
@@ -118,9 +118,6 @@ export function ProfitChart({ points }: ProfitChartProps) {
 
   return (
     <div className="mt-[3cqw]">
-      <h3 className="text-cream-600 text-[3cqw] uppercase tracking-wider mb-[2cqw]">
-        収支推移
-      </h3>
       <div className="relative">
         <svg
           viewBox={`0 0 ${W} ${H}`}
