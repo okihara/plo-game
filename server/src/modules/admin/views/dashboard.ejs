@@ -120,11 +120,7 @@
 </head>
 <body>
   <div class="container">
-    <div class="nav">
-      <a href="users" id="usersLink">ユーザー一覧 &rarr;</a>
-      <span style="margin:0 6px;color:#334155">|</span>
-      <a href="players" id="playersLink">接続中プレイヤー &rarr;</a>
-    </div>
+    <%- include('_nav', { current: 'status' }) %>
     <h1>
       <div class="status-dot" id="statusDot"></div>
       PLO Server Status
@@ -196,17 +192,6 @@
 
   <script>
     var SPECTATE_BASE_URL = '<%- spectateBaseUrl %>';
-    var ADMIN_SECRET = new URLSearchParams(window.location.search).get('secret') || '';
-
-    // Preserve secret in nav links
-    if (ADMIN_SECRET) {
-      document.getElementById('usersLink').href = 'users?secret=' + encodeURIComponent(ADMIN_SECRET);
-      document.getElementById('playersLink').href = 'players?secret=' + encodeURIComponent(ADMIN_SECRET);
-    }
-
-    function apiUrl(path) {
-      return path + (ADMIN_SECRET ? '?secret=' + encodeURIComponent(ADMIN_SECRET) : '');
-    }
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';

@@ -74,9 +74,7 @@
 </head>
 <body>
   <div class="container">
-    <div class="nav">
-      <a href="status" id="backLink">&larr; ダッシュボード</a>
-    </div>
+    <%- include('_nav', { current: 'players' }) %>
     <h1>
       <div class="status-dot" id="statusDot"></div>
       接続中プレイヤー
@@ -115,15 +113,6 @@
   </div>
 
   <script>
-    var ADMIN_SECRET = new URLSearchParams(window.location.search).get('secret') || '';
-
-    if (ADMIN_SECRET) {
-      document.getElementById('backLink').href = 'status?secret=' + encodeURIComponent(ADMIN_SECRET);
-    }
-
-    function apiUrl(path) {
-      return path + (ADMIN_SECRET ? '?secret=' + encodeURIComponent(ADMIN_SECRET) : '');
-    }
     function formatChips(n) { return '$' + n.toLocaleString(); }
     function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 

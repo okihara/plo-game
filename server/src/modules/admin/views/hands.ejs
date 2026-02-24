@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <%- include('_head', { title: 'PLO Hand History' }) %>
+  <style>
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .search-input {
+      padding: 6px 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-size: 13px;
+      width: 300px;
+    }
+    .search-input::placeholder { color: #64748b; }
+    .summary { font-size: 12px; color: #94a3b8; margin-left: auto; }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #1e293b;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    thead th {
+      padding: 8px 12px;
+      text-align: left;
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    thead th:hover { color: #e2e8f0; }
+    thead th.sorted { color: #60a5fa; }
+    thead th .arrow { margin-left: 4px; font-size: 9px; }
+    tbody tr { border-bottom: 1px solid #1e293b; transition: background 0.15s; }
+    tbody tr.hand-row { cursor: pointer; }
+    tbody tr.hand-row:hover { background: #334155; }
+    tbody td { padding: 6px 12px; font-size: 12px; white-space: nowrap; }
+    .hand-id { color: #60a5fa; font-family: monospace; font-size: 11px; }
+    .blinds-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 9999px;
+      font-weight: 500;
+      background: #334155;
+      color: #94a3b8;
+    }
+    .pot { color: #fbbf24; font-weight: 600; }
+    .rake { color: #64748b; }
+    .winner { color: #22c55e; font-weight: 600; }
+    .profit-pos { color: #22c55e; }
+    .profit-neg { color: #ef4444; }
+    .date { color: #64748b; }
+    .players-count { color: #a78bfa; }
+
+    /* Detail row */
+    .detail-row { display: none; }
+    .detail-row.open { display: table-row; }
+    .detail-row td {
+      padding: 12px 16px;
+      background: #0f172a;
+      border-bottom: 2px solid #334155;
+    }
+    .detail-content {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .detail-section {
+      flex: 1;
+      min-width: 250px;
+    }
+    .detail-section h3 {
+      font-size: 11px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .player-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      border-bottom: 1px solid #1e293b;
+      font-size: 12px;
+    }
+    .player-row:last-child { border-bottom: none; }
+    .seat-badge {
+      font-size: 10px;
+      width: 20px;
+      text-align: center;
+      color: #64748b;
+    }
+    .player-name { font-weight: 600; min-width: 80px; }
+    .player-cards {
+      font-family: monospace;
+      font-size: 11px;
+      color: #fbbf24;
+    }
+    .player-hand { font-size: 11px; color: #94a3b8; }
+    .player-profit { font-size: 12px; font-weight: 600; min-width: 50px; text-align: right; }
+
+    .community-cards {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 8px;
+    }
+    .card-chip {
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: 600;
+      background: #f8fafc;
+      color: #0f172a;
+    }
+    .card-chip.heart, .card-chip.diamond { color: #ef4444; }
+    .card-chip.spade, .card-chip.club { color: #0f172a; }
+
+    .action-list { font-size: 12px; }
+    .action-item {
+      padding: 3px 0;
+      border-bottom: 1px solid #1e293b;
+    }
+    .action-item:last-child { border-bottom: none; }
+    .action-street {
+      font-size: 10px;
+      text-transform: uppercase;
+      color: #7c3aed;
+      font-weight: 600;
+      padding: 4px 0 2px;
+    }
+    .action-fold { color: #64748b; }
+    .action-call { color: #3b82f6; }
+    .action-raise, .action-bet { color: #f59e0b; }
+    .action-check { color: #94a3b8; }
+    .action-allin { color: #ef4444; font-weight: 600; }
+
+    .pagination {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .pagination button {
+      padding: 4px 12px;
+      background: #334155;
+      border: none;
+      border-radius: 6px;
+      color: #e2e8f0;
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .pagination button:hover:not(:disabled) { background: #475569; }
+    .pagination button:disabled { opacity: 0.3; cursor: default; }
+    .pagination .page-info { font-size: 12px; color: #94a3b8; }
+    .loading { text-align: center; padding: 30px; color: #64748b; }
+    .nav { margin-bottom: 10px; }
+    .filter-group { display: flex; gap: 2px; }
+    .filter-btn {
+      padding: 5px 12px;
+      background: #334155;
+      border: 1px solid #475569;
+      color: #94a3b8;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .filter-btn:first-child { border-radius: 6px 0 0 6px; }
+    .filter-btn:last-child { border-radius: 0 6px 6px 0; }
+    .filter-btn:hover { background: #475569; color: #e2e8f0; }
+    .filter-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <%- include('_nav', { current: 'hands' }) %>
+    <h1>ハンド履歴</h1>
+
+    <div class="toolbar">
+      <input type="text" class="search-input" id="searchInput" placeholder="ハンドID / プレイヤー名で検索...">
+      <div class="filter-group" id="blindsFilter">
+        <button class="filter-btn active" data-blinds="">全て</button>
+        <button class="filter-btn" data-blinds="1/2">1/2</button>
+        <button class="filter-btn" data-blinds="1/3">1/3</button>
+        <button class="filter-btn" data-blinds="2/5">2/5</button>
+        <button class="filter-btn" data-blinds="5/10">5/10</button>
+      </div>
+      <div class="summary" id="summary"></div>
+    </div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th data-sort="handNumber">Hand# <span class="arrow"></span></th>
+          <th>ブラインド</th>
+          <th data-sort="potSize">ポット <span class="arrow"></span></th>
+          <th>レーキ</th>
+          <th>プレイヤー</th>
+          <th>勝者</th>
+          <th data-sort="createdAt">日時 <span class="arrow"></span></th>
+        </tr>
+      </thead>
+      <tbody id="handsBody">
+        <tr><td colspan="8" class="loading">読み込み中...</td></tr>
+      </tbody>
+    </table>
+
+    <div class="pagination" id="pagination"></div>
+  </div>
+
+  <script>
+    var currentPage = 1, currentSort = 'createdAt', currentOrder = 'desc', currentBlinds = '', searchTimeout = null;
+    function formatDate(iso) {
+      if (!iso) return '-';
+      var d = new Date(iso);
+      return d.toLocaleDateString('ja-JP') + ' ' + d.toLocaleTimeString('ja-JP', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+    }
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    function cardSuit(card) {
+      if (!card) return '';
+      var s = card.charAt(card.length - 1);
+      return s === 'h' ? 'heart' : s === 'd' ? 'diamond' : s === 's' ? 'spade' : 'club';
+    }
+    function formatCard(card) {
+      if (!card) return '';
+      var suit = card.charAt(card.length - 1);
+      var rank = card.slice(0, -1);
+      var sym = suit === 'h' ? '\u2665' : suit === 'd' ? '\u2666' : suit === 's' ? '\u2660' : '\u2663';
+      return rank + sym;
+    }
+
+    function getWinnerNames(hand) {
+      return hand.winners.map(function(wId) {
+        var p = hand.players.find(function(pl) { return pl.userId === wId; });
+        return p ? p.username : wId.slice(-6);
+      });
+    }
+
+    function positionLabel(seatPos, dealerPos, playerCount) {
+      var positions = playerCount === 6
+        ? ['', '', '', '', '', '']
+        : ['', '', '', '', '', ''];
+      // Simple position labels based on dealer
+      var labels6 = ['SB','BB','UTG','HJ','CO','BTN'];
+      var offset = (seatPos - dealerPos - 1 + playerCount) % playerCount;
+      return labels6[offset] || '';
+    }
+
+    async function fetchHands() {
+      var search = document.getElementById('searchInput').value;
+      var url = '/api/admin/hands?page=' + currentPage + '&sort=' + currentSort + '&order=' + currentOrder +
+        (currentBlinds ? '&blinds=' + encodeURIComponent(currentBlinds) : '') +
+        (search ? '&search=' + encodeURIComponent(search) : '');
+      try {
+        var res = await fetch(apiUrl(url));
+        var data = await res.json();
+        renderHands(data);
+      } catch (e) {
+        document.getElementById('handsBody').innerHTML = '<tr><td colspan="8" class="loading" style="color:#ef4444">読み込みエラー</td></tr>';
+      }
+    }
+
+    function renderHands(data) {
+      var from = (data.page-1)*data.limit+1;
+      var to = Math.min(data.page*data.limit, data.total);
+      document.getElementById('summary').textContent =
+        data.total > 0 ? data.total + '件中 ' + from + '-' + to + '件表示' : '0件';
+
+      var html = '';
+      data.hands.forEach(function(h) {
+        var winnerNames = getWinnerNames(h);
+        var shortId = h.id.slice(-8);
+
+        // Main row
+        html += '<tr class="hand-row" data-id="' + h.id + '">' +
+          '<td><span class="hand-id" title="' + escapeHtml(h.id) + '">' + shortId + '</span></td>' +
+          '<td>#' + h.handNumber + '</td>' +
+          '<td><span class="blinds-badge">' + escapeHtml(h.blinds) + '</span></td>' +
+          '<td class="pot">$' + h.potSize.toLocaleString() + '</td>' +
+          '<td class="rake">$' + h.rakeAmount + '</td>' +
+          '<td class="players-count">' + h.players.length + '人</td>' +
+          '<td class="winner">' + escapeHtml(winnerNames.join(', ')) + '</td>' +
+          '<td class="date">' + formatDate(h.createdAt) + '</td>' +
+        '</tr>';
+
+        // Detail row (hidden by default)
+        html += '<tr class="detail-row" data-detail="' + h.id + '"><td colspan="8">';
+        html += renderDetail(h);
+        html += '</td></tr>';
+      });
+
+      if (!data.hands.length) html = '<tr><td colspan="8" class="loading">該当ハンドなし</td></tr>';
+      document.getElementById('handsBody').innerHTML = html;
+
+      // Click handlers for expanding
+      document.querySelectorAll('.hand-row').forEach(function(row) {
+        row.addEventListener('click', function() {
+          var id = row.getAttribute('data-id');
+          var detail = document.querySelector('[data-detail="' + id + '"]');
+          if (detail) detail.classList.toggle('open');
+        });
+      });
+
+      // Pagination
+      document.getElementById('pagination').innerHTML =
+        '<button ' + (data.page<=1?'disabled':'') + ' onclick="goPage(' + (data.page-1) + ')">前へ</button>' +
+        '<span class="page-info">' + data.page + ' / ' + data.totalPages + '</span>' +
+        '<button ' + (data.page>=data.totalPages?'disabled':'') + ' onclick="goPage(' + (data.page+1) + ')">次へ</button>';
+
+      // Sort indicators
+      document.querySelectorAll('thead th[data-sort]').forEach(function(th) {
+        var s = th.getAttribute('data-sort');
+        th.classList.toggle('sorted', s === currentSort);
+        th.querySelector('.arrow').textContent = s === currentSort ? (currentOrder === 'asc' ? '\u25B2' : '\u25BC') : '';
+      });
+    }
+
+    function renderDetail(h) {
+      var out = '<div class="detail-content">';
+
+      // Community cards
+      out += '<div class="detail-section">';
+      out += '<h3>コミュニティカード</h3>';
+      if (h.communityCards && h.communityCards.length > 0) {
+        out += '<div class="community-cards">';
+        h.communityCards.forEach(function(c) {
+          out += '<span class="card-chip ' + cardSuit(c) + '">' + formatCard(c) + '</span>';
+        });
+        out += '</div>';
+      } else {
+        out += '<span style="color:#64748b;font-size:12px">なし（プリフロップ決着）</span>';
+      }
+
+      // Players
+      out += '<h3 style="margin-top:12px">プレイヤー</h3>';
+      h.players.forEach(function(p) {
+        var isWinner = h.winners.indexOf(p.userId) !== -1;
+        var profitClass = p.profit > 0 ? 'profit-pos' : p.profit < 0 ? 'profit-neg' : '';
+        var profitStr = p.profit > 0 ? '+$' + p.profit : p.profit < 0 ? '-$' + Math.abs(p.profit) : '$0';
+        var pos = positionLabel(p.seatPosition, h.dealerPosition, h.players.length);
+
+        out += '<div class="player-row">';
+        out += '<span class="seat-badge">' + pos + '</span>';
+        out += '<span class="player-name' + (isWinner ? ' winner' : '') + '">' + escapeHtml(p.username) + '</span>';
+        out += '<span class="player-cards">' + p.holeCards.map(formatCard).join(' ') + '</span>';
+        if (p.finalHand) out += '<span class="player-hand">' + escapeHtml(p.finalHand) + '</span>';
+        out += '<span class="player-profit ' + profitClass + '">' + profitStr + '</span>';
+        out += '</div>';
+      });
+      out += '</div>';
+
+      // Actions
+      out += '<div class="detail-section">';
+      out += '<h3>アクション</h3>';
+      var actions = Array.isArray(h.actions) ? h.actions : [];
+      if (actions.length === 0) {
+        out += '<span style="color:#64748b;font-size:12px">アクションなし</span>';
+      } else {
+        out += '<div class="action-list">';
+        var lastStreet = '';
+        actions.forEach(function(a) {
+          if (a.street && a.street !== lastStreet) {
+            lastStreet = a.street;
+            out += '<div class="action-street">' + lastStreet + '</div>';
+          }
+          var cls = 'action-' + (a.action || '').toLowerCase().replace(/ /g, '');
+          if (a.action === 'raise' && a.amount > 0) cls = 'action-raise';
+          var label = a.odName || 'Seat ' + a.seatIndex;
+          var detail = a.action;
+          if (a.amount > 0) detail += ' $' + a.amount;
+          out += '<div class="action-item"><span class="' + cls + '">' + escapeHtml(label) + ': ' + detail + '</span></div>';
+        });
+        out += '</div>';
+      }
+      out += '</div>';
+
+      out += '</div>';
+      return out;
+    }
+
+    function goPage(p) { currentPage = p; fetchHands(); }
+
+    document.querySelectorAll('thead th[data-sort]').forEach(function(th) {
+      th.addEventListener('click', function() {
+        var s = th.getAttribute('data-sort');
+        if (currentSort === s) { currentOrder = currentOrder === 'desc' ? 'asc' : 'desc'; }
+        else { currentSort = s; currentOrder = 'desc'; }
+        currentPage = 1;
+        fetchHands();
+      });
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function() {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(function() { currentPage = 1; fetchHands(); }, 300);
+    });
+
+    document.querySelectorAll('#blindsFilter .filter-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        currentBlinds = btn.getAttribute('data-blinds');
+        document.querySelectorAll('#blindsFilter .filter-btn').forEach(function(b) { b.classList.remove('active'); });
+        btn.classList.add('active');
+        currentPage = 1;
+        fetchHands();
+      });
+    });
+
+    fetchHands();
+  </script>
+</body>
+</html>

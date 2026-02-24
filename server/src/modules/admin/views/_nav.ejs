@@ -1,0 +1,29 @@
+<div class="nav">
+  <% var pages = [
+    { id: 'status', label: 'ダッシュボード' },
+    { id: 'users', label: 'ユーザー' },
+    { id: 'players', label: 'プレイヤー' },
+    { id: 'hands', label: 'ハンド履歴' },
+  ]; %>
+  <% pages.forEach(function(p, i) { %>
+    <% if (p.id === current) { %>
+      <span style="color:#f8fafc;font-weight:600"><%= p.label %></span>
+    <% } else { %>
+      <a href="<%= p.id %>" class="nav-link"><%= p.label %></a>
+    <% } %>
+    <% if (i < pages.length - 1) { %>
+      <span style="margin:0 6px;color:#334155">|</span>
+    <% } %>
+  <% }); %>
+</div>
+<script>
+  var ADMIN_SECRET = new URLSearchParams(window.location.search).get('secret') || '';
+  if (ADMIN_SECRET) {
+    document.querySelectorAll('.nav a.nav-link').forEach(function(a) {
+      a.href = a.getAttribute('href') + '?secret=' + encodeURIComponent(ADMIN_SECRET);
+    });
+  }
+  function apiUrl(path) {
+    return path + (ADMIN_SECRET ? (path.indexOf('?') !== -1 ? '&' : '?') + 'secret=' + encodeURIComponent(ADMIN_SECRET) : '');
+  }
+</script>

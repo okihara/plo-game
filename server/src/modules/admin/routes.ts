@@ -332,6 +332,109 @@ export function adminRoutes(deps: AdminDependencies) {
     fastify.get('/admin/players', async (request, reply) => {
       return reply.view('players.ejs', {});
     });
+
+    // Hand history API
+    fastify.get('/api/admin/hands', async (request) => {
+      const query = request.query as Record<string, string>;
+      const page = Math.max(1, parseInt(query.page || '1', 10));
+      const limit = Math.min(100, Math.max(1, parseInt(query.limit || '50', 10)));
+      const search = query.search || '';
+      const blinds = query.blinds || '';
+      const sort = query.sort || 'createdAt';
+      const order = query.order === 'asc' ? 'asc' as const : 'desc' as const;
+
+      const conditions: any[] = [];
+      if (search) {
+        conditions.push({
+          OR: [
+            { id: { contains: search, mode: 'insensitive' as const } },
+            { players: { some: { username: { contains: search, mode: 'insensitive' as const } } } },
+          ],
+        });
+      }
+      if (blinds) {
+        conditions.push({ blinds });
+      }
+
+      const where = conditions.length > 0 ? { AND: conditions } : {};
+
+      const [hands, total] = await Promise.all([
+        prisma.handHistory.findMany({
+          where,
+          include: { players: { orderBy: { seatPosition: 'asc' } } },
+          orderBy: { [sort]: order },
+          skip: (page - 1) * limit,
+          take: limit,
+        }),
+        prisma.handHistory.count({ where }),
+      ]);
+
+      return {
+        hands: hands.map(h => ({
+          id: h.id,
+          tableId: h.tableId,
+          handNumber: h.handNumber,
+          blinds: h.blinds,
+          communityCards: h.communityCards,
+          potSize: h.potSize,
+          rakeAmount: h.rakeAmount,
+          winners: h.winners,
+          actions: h.actions,
+          dealerPosition: h.dealerPosition,
+          createdAt: h.createdAt.toISOString(),
+          players: h.players.map(p => ({
+            username: p.username,
+            seatPosition: p.seatPosition,
+            holeCards: p.holeCards,
+            finalHand: p.finalHand,
+            profit: p.profit,
+            userId: p.userId,
+          })),
+        })),
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      };
+    });
+
+    // Hand history detail API
+    fastify.get('/api/admin/hands/:handId', async (request, reply) => {
+      const { handId } = request.params as { handId: string };
+      const hand = await prisma.handHistory.findUnique({
+        where: { id: handId },
+        include: { players: { orderBy: { seatPosition: 'asc' } } },
+      });
+      if (!hand) {
+        return reply.status(404).send({ error: 'Hand not found' });
+      }
+      return {
+        id: hand.id,
+        tableId: hand.tableId,
+        handNumber: hand.handNumber,
+        blinds: hand.blinds,
+        communityCards: hand.communityCards,
+        potSize: hand.potSize,
+        rakeAmount: hand.rakeAmount,
+        winners: hand.winners,
+        actions: hand.actions,
+        dealerPosition: hand.dealerPosition,
+        createdAt: hand.createdAt.toISOString(),
+        players: hand.players.map(p => ({
+          username: p.username,
+          seatPosition: p.seatPosition,
+          holeCards: p.holeCards,
+          finalHand: p.finalHand,
+          profit: p.profit,
+          userId: p.userId,
+        })),
+      };
+    });
+
+    // Hand history HTML page
+    fastify.get('/admin/hands', async (request, reply) => {
+      return reply.view('hands.ejs', {});
+    });
   };
 }
 
