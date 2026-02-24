@@ -29,6 +29,7 @@ export interface HandDetail {
   blinds: string;
   communityCards: string[];
   potSize: number;
+  rakeAmount?: number;
   winners: string[];
   actions: HandDetailAction[];
   dealerPosition: number;
@@ -170,13 +171,13 @@ function StreetHeader({ street, cards, pot, isFirst }: {
     <div className={isFirst ? 'mb-1' : 'mt-3 mb-1'}>
       <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
         <span className="text-cream-800 text-sm font-bold">{STREET_LABELS[street] || street}</span>
+        {pot != null && pot > 0 && (
+          <span className="text-cream-600 text-xs font-medium">Pot {pot}</span>
+        )}
         {cards && cards.length > 0 && (
           <div className="flex gap-[0.4cqw]">
             {cards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
           </div>
-        )}
-        {pot != null && pot > 0 && (
-          <span className="text-cream-600 text-xs font-medium ml-auto">Pot {pot}</span>
         )}
       </div>
     </div>
@@ -305,6 +306,9 @@ function ResultSection({ hand, allSeats }: { hand: HandDetail; allSeats: number[
         <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
           <span className="text-cream-800 text-sm font-bold">Result</span>
           <span className="text-forest text-sm font-bold">Pot {hand.potSize}</span>
+          {hand.rakeAmount != null && hand.rakeAmount > 0 && (
+            <span className="text-cream-500 text-xs font-medium">Rake {hand.rakeAmount}</span>
+          )}
         </div>
       </div>
       {activePlayers.map((p, i) => {

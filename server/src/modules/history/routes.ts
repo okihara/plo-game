@@ -119,6 +119,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       blinds: hand.blinds,
       communityCards: hand.communityCards,
       potSize: hand.potSize,
+      rakeAmount: hand.rakeAmount,
       winners: hand.winners,
       actions: hand.actions,
       dealerPosition: hand.dealerPosition,
