@@ -3,7 +3,6 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   ClientGameState,
-  OnlinePlayer
 } from '../../server/src/shared/types/websocket';
 import type { Card, Action } from '../logic/types';
 
@@ -38,14 +37,11 @@ class WebSocketService {
       timeoutMs: number;
     }) => void;
     onActionTaken?: (data: { playerId: string; action: Action; amount: number }) => void;
-    onStreetChanged?: (street: string, communityCards: Card[]) => void;
     onShowdown?: (data: {
       winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
       players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
     }) => void;
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
-    onPlayerJoined?: (seat: number, player: OnlinePlayer) => void;
-    onPlayerLeft?: (seat: number, playerId: string) => void;
     onTableChanged?: (tableId: string, seat: number) => void;
     onBusted?: (message: string) => void;
     onSpectating?: (tableId: string) => void;
@@ -99,13 +95,6 @@ class WebSocketService {
         resolve(playerId);
       });
 
-      this.socket.on('connection:error', ({ message }) => {
-        wsLog('connection:error', { message });
-        this.listeners.onError?.(message);
-        settle();
-        reject(new Error(message));
-      });
-
       this.socket.on('connect_error', (err) => {
         wsLog('connect_error', err.message);
         this.listeners.onError?.(err.message);
@@ -129,16 +118,6 @@ class WebSocketService {
       this.socket.on('table:left', () => {
         wsLog('table:left');
         this.listeners.onTableLeft?.();
-      });
-
-      this.socket.on('table:player_joined', ({ seat, player }) => {
-        wsLog('table:player_joined', { seat, player });
-        this.listeners.onPlayerJoined?.(seat, player);
-      });
-
-      this.socket.on('table:player_left', ({ seat, playerId }) => {
-        wsLog('table:player_left', { seat, playerId });
-        this.listeners.onPlayerLeft?.(seat, playerId);
       });
 
       this.socket.on('table:error', ({ message }) => {
@@ -175,11 +154,6 @@ class WebSocketService {
       this.socket.on('game:action_taken', (data) => {
         wsLog('game:action_taken', data);
         this.listeners.onActionTaken?.(data);
-      });
-
-      this.socket.on('game:street_changed', ({ street, communityCards }) => {
-        wsLog('game:street_changed', { street, communityCards });
-        this.listeners.onStreetChanged?.(street, communityCards);
       });
 
       this.socket.on('game:showdown', ({ winners, players }) => {

@@ -23,13 +23,10 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   // Connection
   'connection:established': (data: { playerId: string }) => void;
-  'connection:error': (data: { message: string }) => void;
 
   // Table events
   'table:joined': (data: { tableId: string; seat: number }) => void;
   'table:left': () => void;
-  'table:player_joined': (data: { seat: number; player: OnlinePlayer }) => void;
-  'table:player_left': (data: { seat: number; playerId: string }) => void;
   'table:error': (data: { message: string }) => void;
   'table:busted': (data: { message: string }) => void;
   'table:change': (data: { tableId: string; seat: number }) => void;
@@ -47,7 +44,6 @@ export interface ServerToClientEvents {
     action: Action;
     amount: number;
   }) => void;
-  'game:street_changed': (data: { street: string; communityCards: Card[] }) => void;
   'game:showdown': (data: {
     winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];

@@ -116,7 +116,10 @@ server/src/
 │   └── database.ts               # Prismaクライアント
 ├── modules/
 │   ├── game/
-│   │   └── socket.ts             # Socket.ioイベントハンドラ（認証MW、全イベント定義）
+│   │   ├── socket.ts             # エントリーポイント（socket.on登録、テーブル初期化）
+│   │   ├── authMiddleware.ts     # 認証ミドルウェア（JWT/Bot認証、findOrCreateBotUser）
+│   │   ├── fastFoldService.ts    # FastFoldロジック（テーブル移動・再割り当て）
+│   │   └── handlers.ts           # イベントハンドラ実装（DB・TableManager操作）
 │   ├── table/
 │   │   ├── TableManager.ts       # テーブルレジストリ（tables Map、playerTables Map）
 │   │   ├── TableInstance.ts      # テーブル実装（ゲーム状態・ハンド進行・スペクテーター）
@@ -128,7 +131,9 @@ server/src/
 │   │       ├── ActionController.ts   # アクション処理 + タイムアウト
 │   │       ├── FoldProcessor.ts      # フォールド処理
 │   │       ├── StateTransformer.ts   # GameState → ClientGameState変換
-│   │       └── HandHistoryRecorder.ts # ハンド履歴DB保存（fire-and-forget）
+│   │       ├── HandHistoryRecorder.ts # ハンド履歴DB保存（fire-and-forget）
+│   │       ├── SpectatorManager.ts   # 観戦者管理
+│   │       └── AdminHelper.ts       # 管理・デバッグ機能
 │   ├── fastfold/
 │   │   └── MatchmakingPool.ts    # FFマッチメイキング（500ms間隔キュー処理）
 │   ├── auth/
@@ -149,6 +154,12 @@ server/src/
         └── websocket.ts          # WebSocketイベント型定義（C2S/S2C）
 ```
 
+### game/handlers.ts と TableInstance の責務分担
+
+- **handlers.ts** — odId（ユーザー）起点。テーブルの外側の処理（DB問い合わせ、残高チェック、バイイン控除、テーブル選択・移動、エラーレスポンス）
+- **TableInstance** — seatIndex（席番号）起点。テーブルの内側の処理（ハンド進行、アクション処理、状態ブロードキャスト、ショーダウン演出）
+- 判断基準: DBやTableManagerを触るなら handlers、GameStateを触るなら TableInstance
+
 ### ゲームフロー（オンライン）
 
 1. ロビーでブラインド選択 → `matchmaking:join` でFFキュー参加
@@ -162,17 +173,22 @@ server/src/
 ### Socket.ioイベント
 
 **Client → Server:**
-- `table:join`, `table:leave`, `table:spectate` - テーブル参加/離脱/観戦
-- `game:action`, `game:fold` - ゲームアクション
-- `matchmaking:join`, `matchmaking:leave` - FFキュー
+- `table:leave`, `table:spectate` - テーブル離脱/観戦
+- `game:action`, `game:fast_fold` - ゲームアクション
+- `matchmaking:join`, `matchmaking:leave` - マッチメイキング
+- `debug:set_chips` - デバッグ用チップ設定（開発環境のみ）
 
 **Server → Client:**
+- `connection:established` - 接続確認（playerId通知）
 - `game:state` - ゲーム状態更新（ルーム全体ブロードキャスト）
 - `game:hole_cards` - ホールカード（各プレイヤー個別送信）
 - `game:all_hole_cards` - 全員のカード（スペクテーター専用）
 - `game:action_required`, `game:action_taken` - アクション
 - `game:hand_complete`, `game:showdown` - ハンド結果
+- `table:joined`, `table:left`, `table:error` - テーブル状態
+- `table:change`, `table:busted` - FastFoldテーブル移動/バスト
 - `table:spectating` - 観戦開始確認
+- `maintenance:status` - メンテナンス通知
 
 ### ゲーム状態の変換フロー
 

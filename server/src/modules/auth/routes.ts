@@ -250,10 +250,11 @@ export async function authRoutes(fastify: FastifyInstance) {
   }, async (request: FastifyRequest) => {
     const { userId } = request.user as { userId: string };
 
-    const user = await prisma.user.findUnique({
+    const user = await prisma.user.update({
       where: { id: userId },
+      data: { lastLoginAt: new Date() },
       include: { bankroll: true },
-    });
+    }).catch(() => null);
 
     if (!user) {
       return { error: 'User not found' };
@@ -392,6 +393,7 @@ async function findOrCreateUser(data: {
         avatarUrl: data.avatarUrl,
         provider: data.provider,
         providerId: data.providerId,
+        lastLoginAt: new Date(),
         bankroll: {
           create: { balance: 10000 },
         },

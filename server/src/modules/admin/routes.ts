@@ -259,15 +259,24 @@ export function adminRoutes(deps: AdminDependencies) {
       const search = query.search || '';
       const sort = query.sort || 'createdAt';
       const order = query.order === 'asc' ? 'asc' as const : 'desc' as const;
+      const filter = query.filter || 'all'; // 'all' | 'human' | 'bot'
 
-      const where = search
-        ? {
-            OR: [
-              { username: { contains: search, mode: 'insensitive' as const } },
-              { email: { contains: search, mode: 'insensitive' as const } },
-            ],
-          }
-        : {};
+      const conditions: any[] = [];
+      if (search) {
+        conditions.push({
+          OR: [
+            { username: { contains: search, mode: 'insensitive' as const } },
+            { email: { contains: search, mode: 'insensitive' as const } },
+          ],
+        });
+      }
+      if (filter === 'bot') {
+        conditions.push({ provider: 'bot' });
+      } else if (filter === 'human') {
+        conditions.push({ provider: { not: 'bot' } });
+      }
+
+      const where = conditions.length > 0 ? { AND: conditions } : {};
 
       const orderBy = sort === 'balance'
         ? { bankroll: { balance: order } }
