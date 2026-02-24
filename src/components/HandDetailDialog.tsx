@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { evaluatePLOHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { maskName } from '../utils';
@@ -48,13 +49,211 @@ function getHandName(holeCards: string[], communityCards: string[]): string {
   }
 }
 
-function formatAction(action: string): string {
-  const map: Record<string, string> = {
-    fold: 'Fold', check: 'Check', call: 'Call',
-    bet: 'Bet', raise: 'Raise', allin: 'All-in',
+const ACTION_LABELS: Record<string, string> = {
+  fold: 'Fold', check: 'Check', call: 'Call',
+  bet: 'Bet', raise: 'Raise', allin: 'All-in',
+};
+
+const STREET_LABELS: Record<string, string> = {
+  preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River',
+};
+
+const STREETS = ['preflop', 'flop', 'turn', 'river'] as const;
+
+function getStreetCards(communityCards: string[]): Record<string, string[]> {
+  return {
+    flop: communityCards.slice(0, 3),
+    turn: communityCards.slice(3, 4),
+    river: communityCards.slice(4, 5),
   };
-  return map[action] || action;
 }
+
+function computeStreetStartPots(actions: HandDetailAction[]): Record<string, number> {
+  const pots: Record<string, number> = {};
+  let cumPot = 0;
+  let prevStreet = '';
+  for (const a of actions) {
+    const s = a.street || 'preflop';
+    if (s !== prevStreet) {
+      pots[s] = cumPot;
+      prevStreet = s;
+    }
+    cumPot += a.amount;
+  }
+  return pots;
+}
+
+function displayName(player: { isCurrentUser: boolean; username: string }): string {
+  return player.isCurrentUser ? player.username : maskName(player.username);
+}
+
+/* ── サブコンポーネント ── */
+
+function StreetHeader({ street, cards, pot, isFirst }: {
+  street: string;
+  cards?: string[];
+  pot?: number;
+  isFirst: boolean;
+}) {
+  return (
+    <div className={isFirst ? 'mb-1' : 'mt-3 mb-1'}>
+      <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
+        <span className="text-cream-800 text-sm font-bold">{STREET_LABELS[street] || street}</span>
+        {cards && cards.length > 0 && (
+          <div className="flex gap-[0.4cqw]">
+            {cards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+          </div>
+        )}
+        {pot != null && pot > 0 && (
+          <span className="text-cream-600 text-xs font-medium ml-auto">Pot {pot}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ActionRow({ action, playerName, allSeats, dealerPosition }: {
+  action: HandDetailAction;
+  playerName: string;
+  allSeats: number[];
+  dealerPosition: number;
+}) {
+  const pos = getPositionName(action.seatIndex, dealerPosition, allSeats);
+  return (
+    <div className="flex items-center py-0.5 rounded-lg hover:bg-cream-200/50 px-1">
+      <span className="w-10 shrink-0">
+        {pos ? <PositionBadge position={pos} /> : null}
+      </span>
+      <span className="w-24 shrink-0 text-cream-700 text-sm truncate">{playerName}</span>
+      <span className="w-16 shrink-0 text-cream-900 text-sm font-bold">{ACTION_LABELS[action.action] || action.action}</span>
+      <span className="text-forest text-sm font-bold font-mono">{action.amount > 0 ? action.amount : ''}</span>
+    </div>
+  );
+}
+
+function PlayerRow({ player, position }: {
+  player: HandDetailPlayer;
+  position: string | null;
+}) {
+  return (
+    <div
+      className={`rounded-lg px-2 py-1.5 border flex items-center gap-1.5 ${
+        player.isCurrentUser
+          ? 'bg-forest/5 border-forest/20'
+          : 'bg-cream-100 border-cream-300'
+      }`}
+    >
+      <div className="flex items-center gap-1.5 w-[30cqw] shrink-0">
+        {position ? <PositionBadge position={position} /> : <span className="w-8 shrink-0" />}
+        {player.avatarUrl && (
+          <img src={player.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-cream-300 shrink-0" />
+        )}
+        <span className={`font-semibold text-sm truncate ${player.isCurrentUser ? 'text-forest' : 'text-cream-900'}`}>
+          {displayName(player)}
+        </span>
+      </div>
+      <div className="flex items-center gap-[0.4cqw] shrink-0">
+        {player.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+      </div>
+      <span className="ml-auto shrink-0">
+        <ProfitDisplay profit={player.profit} />
+      </span>
+    </div>
+  );
+}
+
+function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[] }) {
+  const streetCards = getStreetCards(hand.communityCards);
+  const streetStartPot = computeStreetStartPots(hand.actions);
+  const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
+
+  const seatToPlayer = useMemo(() => {
+    const map = new Map<number, HandDetailPlayer>();
+    for (const p of hand.players) map.set(p.seatPosition, p);
+    return map;
+  }, [hand.players]);
+
+  let lastStreet = '';
+  let isFirstHeader = true;
+
+  return (
+    <>
+      {hand.actions.map((a, i) => {
+        const street = a.street || 'preflop';
+        const showHeader = street !== lastStreet && (STREETS as readonly string[]).includes(street);
+        lastStreet = street;
+        const isFirst = isFirstHeader;
+        if (showHeader) isFirstHeader = false;
+
+        const player = seatToPlayer.get(a.seatIndex);
+        const name = player?.isCurrentUser ? a.odName : maskName(a.odName);
+
+        return (
+          <div key={i}>
+            {showHeader && (
+              <StreetHeader
+                street={street}
+                cards={streetCards[street]}
+                pot={streetStartPot[street]}
+                isFirst={isFirst}
+              />
+            )}
+            <ActionRow
+              action={a}
+              playerName={name}
+              allSeats={allSeats}
+              dealerPosition={hand.dealerPosition}
+            />
+          </div>
+        );
+      })}
+
+      {/* オールインランアウト時: アクションのないストリートのカードを追加表示 */}
+      {(['flop', 'turn', 'river'] as const).map(s =>
+        !streetsInActions.has(s) && streetCards[s]?.length > 0 ? (
+          <StreetHeader key={`runout-${s}`} street={s} cards={streetCards[s]} isFirst={false} />
+        ) : null
+      )}
+    </>
+  );
+}
+
+function ResultSection({ hand, allSeats }: { hand: HandDetail; allSeats: number[] }) {
+  const activePlayers = useMemo(() => {
+    const foldedSeats = new Set(
+      hand.actions.filter(a => a.action === 'fold').map(a => a.seatIndex)
+    );
+    return hand.players
+      .filter(p => !foldedSeats.has(p.seatPosition))
+      .sort((a, b) => b.profit - a.profit);
+  }, [hand.actions, hand.players]);
+
+  return (
+    <>
+      <div className="mt-3 mb-1">
+        <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
+          <span className="text-cream-800 text-sm font-bold">Result</span>
+          <span className="text-forest text-sm font-bold">Pot {hand.potSize}</span>
+        </div>
+      </div>
+      {activePlayers.map((p, i) => {
+        const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
+        return (
+          <div key={`result-${i}`} className="flex items-center py-0.5 px-1">
+            <span className="w-10 shrink-0">
+              {pos && <PositionBadge position={pos} />}
+            </span>
+            <span className="w-24 shrink-0 text-cream-700 text-sm truncate">{displayName(p)}</span>
+            <span className="w-20 shrink-0 text-cream-700 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
+            <ProfitDisplay profit={p.profit} />
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+/* ── メインコンポーネント ── */
 
 export function HandDetailDialog({
   hand,
@@ -63,6 +262,12 @@ export function HandDetailDialog({
   hand: HandDetail;
   onClose: () => void;
 }) {
+  const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
+  const sortedPlayers = useMemo(
+    () => [...hand.players].sort((a, b) => (a.isCurrentUser ? -1 : b.isCurrentUser ? 1 : 0)),
+    [hand.players],
+  );
+
   return (
     <div className="absolute inset-0 z-50 flex flex-col h-full light-bg">
         {/* ヘッダー */}
@@ -82,165 +287,22 @@ export function HandDetailDialog({
         <div className="p-3 space-y-3 overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
           {/* プレイヤー（1行表示） */}
           <div className="space-y-1">
-            {hand.players
-              .sort((a, b) => (a.isCurrentUser ? -1 : b.isCurrentUser ? 1 : 0))
-              .map((p, i) => {
-                const allSeats = hand.players.map(pl => pl.seatPosition);
-                const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
-                return (
-                <div
-                  key={i}
-                  className={`rounded-lg px-2 py-1.5 border flex items-center gap-1.5 ${
-                    p.isCurrentUser
-                      ? 'bg-forest/5 border-forest/20'
-                      : 'bg-cream-100 border-cream-300'
-                  }`}
-                >
-                  <div className="flex items-center gap-1.5 w-[30cqw] shrink-0">
-                    {pos ? <PositionBadge position={pos} /> : <span className="w-8 shrink-0" />}
-                    {p.avatarUrl && (
-                      <img src={p.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-cream-300 shrink-0" />
-                    )}
-                    <span className={`font-semibold text-sm truncate ${p.isCurrentUser ? 'text-forest' : 'text-cream-900'}`}>
-                      {p.isCurrentUser ? p.username : maskName(p.username)}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-[0.4cqw] shrink-0">
-                    {p.holeCards.map((c, j) => (
-                      <MiniCard key={j} cardStr={c} />
-                    ))}
-                  </div>
-                  <span className="ml-auto shrink-0">
-                    <ProfitDisplay profit={p.profit} />
-                  </span>
-                </div>
-              );
-              })}
+            {sortedPlayers.map((p, i) => (
+              <PlayerRow
+                key={i}
+                player={p}
+                position={getPositionName(p.seatPosition, hand.dealerPosition, allSeats)}
+              />
+            ))}
           </div>
 
-          {/* アクション履歴（ストリートごと） */}
+          {/* アクション履歴 + Result */}
           <div className="bg-cream-100 rounded-xl px-3 py-3 border border-cream-300">
             <div className="space-y-0.5">
-              {(() => {
-                const streets = ['preflop', 'flop', 'turn', 'river'];
-                const streetLabels: Record<string, string> = {
-                  preflop: 'Preflop', flop: 'Flop', turn: 'Turn', river: 'River',
-                };
-                const cc = hand.communityCards;
-                const streetCards: Record<string, string[]> = {
-                  flop: cc.slice(0, 3),
-                  turn: cc.slice(3, 4),
-                  river: cc.slice(4, 5),
-                };
-                const streetStartPot: Record<string, number> = {};
-                let cumPot = 0;
-                let prevStreet = '';
-                for (const a of hand.actions) {
-                  const s = a.street || 'preflop';
-                  if (s !== prevStreet) {
-                    streetStartPot[s] = cumPot;
-                    prevStreet = s;
-                  }
-                  cumPot += a.amount;
-                }
-                // アクションに含まれるストリートを集計
-                const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
-                let lastStreet = '';
-                let isFirstHeader = true;
-                const actionElements = hand.actions.map((a, i) => {
-                  const street = a.street || 'preflop';
-                  const showHeader = street !== lastStreet && streets.includes(street);
-                  lastStreet = street;
-                  const headerMargin = showHeader && !isFirstHeader;
-                  if (showHeader) isFirstHeader = false;
-                  return (
-                    <div key={i}>
-                      {showHeader && (
-                        <div className={headerMargin ? 'mt-3 mb-1' : 'mb-1'}>
-                          <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
-                            <span className="text-cream-800 text-sm font-bold">{streetLabels[street] || street}</span>
-                            {streetCards[street]?.length > 0 && (
-                              <div className="flex gap-[0.4cqw]">
-                                {streetCards[street].map((c, j) => (
-                                  <MiniCard key={j} cardStr={c} />
-                                ))}
-                              </div>
-                            )}
-                            {streetStartPot[street] > 0 && (
-                              <span className="text-cream-600 text-xs font-medium ml-auto">Pot {streetStartPot[street]}</span>
-                            )}
-                          </div>
-                        </div>
-                      )}
-                      <div className="flex items-center py-0.5 rounded-lg hover:bg-cream-200/50 px-1">
-                        <span className="w-10 shrink-0">
-                          {(() => {
-                            const allSeats = hand.players.map(pl => pl.seatPosition);
-                            const aPos = getPositionName(a.seatIndex, hand.dealerPosition, allSeats);
-                            return aPos ? <PositionBadge position={aPos} /> : null;
-                          })()}
-                        </span>
-                        <span className="w-24 shrink-0 text-cream-700 text-sm truncate">{hand.players.find(p => p.seatPosition === a.seatIndex)?.isCurrentUser ? a.odName : maskName(a.odName)}</span>
-                        <span className="w-16 shrink-0 text-cream-900 text-sm font-bold">{formatAction(a.action)}</span>
-                        <span className="text-forest text-sm font-bold font-mono">{a.amount > 0 ? a.amount : ''}</span>
-                      </div>
-                    </div>
-                  );
-                });
-
-                // オールインランアウト時: アクションのないストリートのカードを追加表示
-                const runOutElements: JSX.Element[] = [];
-                for (const s of ['flop', 'turn', 'river'] as const) {
-                  if (!streetsInActions.has(s) && streetCards[s]?.length > 0) {
-                    runOutElements.push(
-                      <div key={`runout-${s}`} className="mt-3 mb-1">
-                        <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
-                          <span className="text-cream-800 text-sm font-bold">{streetLabels[s]}</span>
-                          <div className="flex gap-[0.4cqw]">
-                            {streetCards[s].map((c, j) => (
-                              <MiniCard key={j} cardStr={c} />
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  }
-                }
-
-                return [...actionElements, ...runOutElements];
-              })()}
+              <ActionHistory hand={hand} allSeats={allSeats} />
             </div>
-            {/* Result */}
-            <div className="mt-3 mb-1">
-              <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
-                <span className="text-cream-800 text-sm font-bold">Result</span>
-                <span className="text-forest text-sm font-bold">Pot {hand.potSize}</span>
-              </div>
-            </div>
-            {(() => {
-              const foldedSeats = new Set(
-                hand.actions.filter(a => a.action === 'fold').map(a => a.seatIndex)
-              );
-              return hand.players
-                .filter(p => !foldedSeats.has(p.seatPosition))
-                .sort((a, b) => b.profit - a.profit);
-            })()
-              .map((p, i) => {
-                const allSeats = hand.players.map(pl => pl.seatPosition);
-                const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
-                return (
-                  <div key={`result-${i}`} className="flex items-center py-0.5 px-1">
-                    <span className="w-10 shrink-0">
-                      {pos && <PositionBadge position={pos} />}
-                    </span>
-                    <span className="w-24 shrink-0 text-cream-700 text-sm truncate">{p.isCurrentUser ? p.username : maskName(p.username)}</span>
-                    <span className="w-20 shrink-0 text-cream-700 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
-                    <ProfitDisplay profit={p.profit} />
-                  </div>
-                );
-              })}
+            <ResultSection hand={hand} allSeats={allSeats} />
           </div>
-
         </div>
     </div>
   );
