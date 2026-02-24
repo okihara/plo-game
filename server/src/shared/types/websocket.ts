@@ -48,7 +48,7 @@ export interface ServerToClientEvents {
     winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
-  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[] }) => void;
+  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[]; rake: number }) => void;
 
   // Spectator
   'table:spectating': (data: { tableId: string }) => void;
@@ -95,6 +95,7 @@ export interface ClientGameState {
   // アクションタイムアウト情報
   actionTimeoutAt: number | null;  // タイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
   actionTimeoutMs: number | null;  // タイムアウト時間（ミリ秒）
+  rake: number;  // このハンドのレーキ額
 }
 
 export interface TableInfo {

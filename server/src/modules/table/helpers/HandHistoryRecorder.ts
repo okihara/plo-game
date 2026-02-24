@@ -132,6 +132,7 @@ export class HandHistoryRecorder {
           blinds,
           communityCards: serializeCards(gameState.communityCards),
           potSize: gameState.pot,
+          rakeAmount: gameState.rake ?? 0,
           winners: winnerOdIds,
           actions,
           dealerPosition: gameState.dealerPosition,

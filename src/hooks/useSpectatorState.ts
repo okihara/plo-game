@@ -92,6 +92,7 @@ function convertToSpectatorGameState(
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
+    rake: clientState.rake ?? 0,
   };
 }
 

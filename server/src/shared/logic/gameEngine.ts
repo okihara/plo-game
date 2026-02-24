@@ -49,6 +49,7 @@ export function createInitialGameState(playerChips: number = 600): GameState {
     handHistory: [],         // このハンドのアクション履歴
     isHandComplete: false,
     winners: [],
+    rake: 0,
   };
 }
 
@@ -69,6 +70,7 @@ export function startNewHand(state: GameState): GameState {
   newState.handHistory = [];
   newState.isHandComplete = false;
   newState.winners = [];
+  newState.rake = 0;
   newState.lastRaiserIndex = -1;
   newState.lastFullRaiseBet = 0;
 
@@ -299,7 +301,7 @@ export function getValidActions(state: GameState, playerIndex: number): { action
  * @param amount ベット/レイズ額（該当する場合）
  * @returns 更新されたGameState
  */
-export function applyAction(state: GameState, playerIndex: number, action: Action, amount: number = 0): GameState {
+export function applyAction(state: GameState, playerIndex: number, action: Action, amount: number = 0, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
   // 状態をディープコピー（イミュータブルな更新）
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const player = newState.players[playerIndex];
@@ -392,13 +394,13 @@ export function applyAction(state: GameState, playerIndex: number, action: Actio
   const nextResult = determineNextAction(newState);
   if (nextResult.moveToNextStreet) {
     // 次のストリートへ進む
-    return moveToNextStreet(newState);
+    return moveToNextStreet(newState, rakePercent, rakeCapBB);
   } else if (nextResult.nextPlayerIndex !== -1) {
     // 次のプレイヤーへ
     newState.currentPlayerIndex = nextResult.nextPlayerIndex;
   } else {
     // ハンド終了（1人だけ残った等）
-    return determineWinner(newState);
+    return determineWinner(newState, rakePercent, rakeCapBB);
   }
 
   return newState;
@@ -462,7 +464,7 @@ function determineNextAction(state: GameState): { nextPlayerIndex: number; moveT
 /**
  * 次のストリート（フロップ/ターン/リバー/ショーダウン）へ進む
  */
-function moveToNextStreet(state: GameState): GameState {
+function moveToNextStreet(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   // ストリート間でベット状態をリセット
@@ -477,7 +479,7 @@ function moveToNextStreet(state: GameState): GameState {
   const activePlayers = getActivePlayers(newState);
   if (activePlayers.length === 1) {
     // 1人だけなら勝者決定
-    return determineWinner(newState);
+    return determineWinner(newState, rakePercent, rakeCapBB);
   }
 
   // === コミュニティカードを配る ===
@@ -509,7 +511,7 @@ function moveToNextStreet(state: GameState): GameState {
     case 'river': {
       // ショーダウン: ベッティング終了、勝者決定へ
       newState.currentStreet = 'showdown';
-      return determineWinner(newState);
+      return determineWinner(newState, rakePercent, rakeCapBB);
     }
   }
 
@@ -528,7 +530,7 @@ function moveToNextStreet(state: GameState): GameState {
   // アクション可能なプレイヤーが1人以下ならベッティング不要 → ランアウト
   const canActPlayers = activePlayers.filter(p => !p.isAllIn);
   if (canActPlayers.length <= 1) {
-    return runOutBoard(newState);
+    return runOutBoard(newState, rakePercent, rakeCapBB);
   }
 
   newState.currentPlayerIndex = firstActorIndex;
@@ -539,7 +541,7 @@ function moveToNextStreet(state: GameState): GameState {
  * ボードをランアウトする（残りのコミュニティカードを全て配る）
  * 全員オールインの場合に使用
  */
-function runOutBoard(state: GameState): GameState {
+function runOutBoard(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   // コミュニティカードが5枚になるまで配る
@@ -550,7 +552,7 @@ function runOutBoard(state: GameState): GameState {
   }
 
   newState.currentStreet = 'showdown';
-  return determineWinner(newState);
+  return determineWinner(newState, rakePercent, rakeCapBB);
 }
 
 /**
@@ -594,11 +596,22 @@ export function calculateSidePots(players: Player[]): { amount: number; eligible
 }
 
 /**
+ * レーキを計算する
+ */
+export function calculateRake(totalPot: number, bigBlind: number, rakePercent: number, rakeCapBB: number): number {
+  const rawRake = Math.floor(totalPot * rakePercent);
+  const cap = bigBlind * rakeCapBB;
+  return Math.min(rawRake, cap);
+}
+
+/**
  * 勝者を決定し、ポットを分配する
  * サイドポットを考慮して、各ポットごとに勝者を決定する
  */
-export function determineWinner(state: GameState): GameState {
+export function determineWinner(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
+  // ノーフロップ・ノードロップ判定用に元のストリートを保存
+  const originalStreet = state.currentStreet;
   newState.isHandComplete = true;
   newState.currentStreet = 'showdown';
 
@@ -608,14 +621,22 @@ export function determineWinner(state: GameState): GameState {
   if (activePlayers.length === 0) {
     console.error('determineWinner: No active players found');
     newState.winners = [];
+    newState.rake = 0;
     return newState;
   }
 
   // 1人だけ残っている場合 → その人が無条件で勝者
   if (activePlayers.length === 1) {
     const winner = activePlayers[0];
-    winner.chips += newState.pot;
-    newState.winners = [{ playerId: winner.id, amount: newState.pot, handName: '' }];
+    // ノーフロップ・ノードロップ: プリフロップ終了はレーキなし
+    let rake = 0;
+    if (originalStreet !== 'preflop' && rakePercent > 0) {
+      rake = calculateRake(newState.pot, newState.bigBlind, rakePercent, rakeCapBB);
+    }
+    newState.rake = rake;
+    const winAmount = newState.pot - rake;
+    winner.chips += winAmount;
+    newState.winners = [{ playerId: winner.id, amount: winAmount, handName: '' }];
     return newState;
   }
 
@@ -639,6 +660,29 @@ export function determineWinner(state: GameState): GameState {
     player.chips += pot.amount;
     newState.pot -= pot.amount;
   }
+
+  // レーキ計算: contestedポットの合計からレーキを差し引く
+  const totalContested = contestedPots.reduce((sum, p) => sum + p.amount, 0);
+  let rake = 0;
+  if (rakePercent > 0 && totalContested > 0) {
+    rake = calculateRake(totalContested, newState.bigBlind, rakePercent, rakeCapBB);
+  }
+  newState.rake = rake;
+
+  // レーキを各contestedポットから比例配分で差し引く
+  if (rake > 0 && totalContested > 0) {
+    let rakeRemaining = rake;
+    for (const pot of contestedPots) {
+      const potRake = Math.floor(rake * pot.amount / totalContested);
+      pot.amount -= potRake;
+      rakeRemaining -= potRake;
+    }
+    // 端数は最後のポットから差し引く
+    if (rakeRemaining > 0 && contestedPots.length > 0) {
+      contestedPots[contestedPots.length - 1].amount -= rakeRemaining;
+    }
+  }
+
   newState.sidePots = contestedPots;
 
   // === PLOハンド評価 ===

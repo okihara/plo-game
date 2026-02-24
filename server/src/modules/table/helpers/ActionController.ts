@@ -92,7 +92,7 @@ export class ActionController {
     const willAdvanceStreet = wouldAdvanceStreet(gameState, seatIndex, action, amount);
 
     // アクション適用
-    const newState = applyAction(gameState, seatIndex, action, amount);
+    const newState = applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
 
     // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {

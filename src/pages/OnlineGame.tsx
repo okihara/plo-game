@@ -8,7 +8,6 @@ import {
   PokerTable,
   MyCards,
   ActionPanel,
-  // ResultOverlay,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -265,8 +264,6 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
           />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
-
-          {/* <ResultOverlay state={gameState} mySeat={humanPlayerIdx} /> */}
 
           {humanPlayer && (
             <HandAnalysisOverlay

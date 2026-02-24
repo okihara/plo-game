@@ -148,6 +148,7 @@ function convertClientStateToGameState(
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
+    rake: clientState.rake ?? 0,
   };
 }
 
@@ -327,6 +328,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           isHandInProgress: false,
           actionTimeoutAt: null,
           actionTimeoutMs: null,
+          rake: 0,
         }));
         setMyHoleCards([]);
         setShowdownCards(new Map());

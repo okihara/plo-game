@@ -69,6 +69,7 @@ model HandHistory {
   blinds         String   // e.g., "10/20"
   communityCards String[] // Array of card strings
   potSize        Int
+  rakeAmount     Int      @default(0)
   winners        String[] // Array of winner user IDs
   actions        Json     // Full action history
   dealerPosition Int      @default(-1)  // -1 = unknown (legacy data)

@@ -17,6 +17,10 @@ export const TABLE_CONSTANTS = {
   NEXT_HAND_SHOWDOWN_DELAY_MS: 5000,  // ショウダウン後の次ハンドまでの待ち時間
   RUNOUT_STREET_DELAY_MS: 1500,       // オールイン時の各ストリート表示間隔
   
+  // レーキ
+  RAKE_PERCENT: 0.05,  // 5%
+  RAKE_CAP_BB: 3,      // キャップ = 3BB
+
   // ダッシュボード
   MAX_MESSAGE_LOG: 50,
 } as const;

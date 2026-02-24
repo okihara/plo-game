@@ -159,12 +159,10 @@ export class TableInstance {
     // 保留フォールドがあれば削除（通常の離席処理で対応するため）
     this.pendingEarlyFolds.delete(seatIndex);
 
-    this.playerManager.unseatPlayer(seatIndex);
-
-    // this.broadcast.emitToRoom('table:player_left', { seat: seatIndex, odId });
-
-    // If in a hand, fold the player
+    // If in a hand, fold the player and keep seat info for history/display
     if (this.gameState && !this.gameState.isHandComplete) {
+      this.playerManager.markLeftForFastFold(seatIndex);
+
       const result = this.foldProcessor.processFold(this.gameState, {
         seatIndex,
         playerId: odId,
@@ -176,6 +174,8 @@ export class TableInstance {
         this.actionController.clearTimers();
         this.advanceToNextPlayer();
       }
+    } else {
+      this.playerManager.unseatPlayer(seatIndex);
     }
 
     return { odId, chips };
@@ -313,7 +313,7 @@ export class TableInstance {
     const activePlayers = getActivePlayers(this.gameState);
     if (activePlayers.length <= 1) {
       this.actionController.clearTimers();
-      this.gameState = determineWinner(this.gameState);
+      this.gameState = determineWinner(this.gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
       this.broadcastGameState();
       this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       return true;
@@ -523,7 +523,7 @@ export class TableInstance {
       const activePlayers = getActivePlayers(this.gameState);
       if (activePlayers.length <= 1) {
         this.actionController.clearTimers();
-        this.gameState = determineWinner(this.gameState);
+        this.gameState = determineWinner(this.gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
         this.broadcastGameState();
         this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
         return;
@@ -713,16 +713,18 @@ export class TableInstance {
     this.pendingEarlyFolds.clear();
 
     // ハンドヒストリー保存 (fire-and-forget)
-    const seats = this.playerManager.getSeats();
+    // getSeats()は参照を返すため、非同期処理中にunseatPlayerで変更されないようコピーを取る
+    const seatsSnapshot = this.playerManager.getSeats().map(s => s ? { ...s } : null);
     this.historyRecorder.recordHandComplete(
       this.id,
       this.blinds,
       this.gameState,
-      seats
+      seatsSnapshot
     ).catch(err => console.error('Hand history save failed:', err));
 
     // Showdown - reveal cards for ALL active players (showdownをhand_completeより先に送信)
     // ランアウト時は handleAllInRunOut() で既に送信済みなのでスキップ
+    const seats = this.playerManager.getSeats();
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1 && !this.showdownSentDuringRunOut) {
       const activePlayers = getActivePlayers(this.gameState);
       const showdownPlayers = activePlayers.map(p => {
@@ -768,6 +770,7 @@ export class TableInstance {
         amount: w.amount,
         handName: w.handName,
       })),
+      rake: this.gameState.rake,
     };
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 
@@ -791,10 +794,13 @@ export class TableInstance {
     const delay = wasShowdown ? TABLE_CONSTANTS.NEXT_HAND_SHOWDOWN_DELAY_MS : TABLE_CONSTANTS.NEXT_HAND_DELAY_MS;
     await new Promise(resolve => setTimeout(resolve, delay));
 
-    // Remove busted players
+    // Remove busted players and players who left during hand
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
-      if (seat && seat.chips <= 0) {
+      if (!seat) continue;
+      if (seat.leftForFastFold) {
+        this.playerManager.unseatPlayer(i);
+      } else if (seat.chips <= 0) {
         // Notify player they're busted (table:busted, NOT table:error)
         seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
         this.unseatPlayer(seat.odId);
