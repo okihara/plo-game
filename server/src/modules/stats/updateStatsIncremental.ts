@@ -60,7 +60,7 @@ function emptyIncrement(): StatsIncrement {
 }
 
 /** 1ハンド分のスタッツ増分を計算する */
-function computeIncrementForPlayer(
+export function computeIncrementForPlayer(
   userId: string,
   userSeat: number,
   profit: number,
