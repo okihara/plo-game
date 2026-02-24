@@ -122,6 +122,18 @@ function complementMissingFolds(
     ? sortedSeats
     : [...sortedSeats.slice(3), ...sortedSeats.slice(0, 3)];
 
+  // 全員フォールドでBBが勝った場合、BBにfoldを補完しない
+  const existingFolds = preflopActions.filter(a => a.action === 'fold').length;
+  if (existingFolds + missingSeats.size >= players.length) {
+    for (let i = preflopOrder.length - 1; i >= 0; i--) {
+      if (missingSeats.has(preflopOrder[i])) {
+        missingSeats.delete(preflopOrder[i]);
+        break;
+      }
+    }
+    if (missingSeats.size === 0) return actions;
+  }
+
   const seatOrderMap = new Map(preflopOrder.map((seat, idx) => [seat, idx]));
   const playerBySeat = new Map(players.map(p => [p.seatPosition, p]));
 
