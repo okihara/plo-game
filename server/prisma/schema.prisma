@@ -111,6 +111,8 @@ model PlayerStatsCache {
   threeBetOpportunity  Int      @default(0)
   foldTo3BetCount      Int      @default(0)
   faced3BetCount       Int      @default(0)
+  fourBetCount         Int      @default(0)
+  fourBetOpportunity   Int      @default(0)
   aggressiveActions    Int      @default(0)
   totalPostflopActions Int      @default(0)
   cbetCount            Int      @default(0)

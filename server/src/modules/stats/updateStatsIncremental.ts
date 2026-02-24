@@ -37,6 +37,8 @@ interface StatsIncrement {
   threeBetOpportunity: number;
   foldTo3BetCount: number;
   faced3BetCount: number;
+  fourBetCount: number;
+  fourBetOpportunity: number;
   aggressiveActions: number;
   totalPostflopActions: number;
   cbetCount: number;
@@ -53,6 +55,7 @@ function emptyIncrement(): StatsIncrement {
     handsPlayed: 0, winCount: 0, totalProfit: 0, totalAllInEVProfit: 0, detailedHands: 0,
     vpipCount: 0, pfrCount: 0,
     threeBetCount: 0, threeBetOpportunity: 0, foldTo3BetCount: 0, faced3BetCount: 0,
+    fourBetCount: 0, fourBetOpportunity: 0,
     aggressiveActions: 0, totalPostflopActions: 0,
     cbetCount: 0, cbetOpportunity: 0, foldToCbetCount: 0, facedCbetCount: 0,
     sawFlopCount: 0, wtsdCount: 0, wsdCount: 0,
@@ -166,6 +169,36 @@ export function computeIncrementForPlayer(
           if (action.action === 'fold') inc.foldTo3BetCount = 1;
           break;
         }
+      }
+    }
+  }
+
+  // 4Bet
+  {
+    let raiseCount = 0;
+    let threeBettorId: string | null = null;
+
+    for (const action of preflopActions) {
+      const isRaise = action.action === 'raise' || action.action === 'bet';
+
+      if (isRaise) {
+        raiseCount++;
+        if (raiseCount === 2) {
+          threeBettorId = action.odId;
+        }
+        if (raiseCount === 3) {
+          if (action.odId === userId) {
+            inc.fourBetCount = 1;
+            inc.fourBetOpportunity = 1;
+          }
+          break;
+        }
+      }
+
+      // User acts after 3-bet (not the 3-bettor) → 4-bet opportunity
+      if (raiseCount === 2 && !isRaise && action.odId === userId && threeBettorId !== userId) {
+        inc.fourBetOpportunity = 1;
+        break;
       }
     }
   }
@@ -303,6 +336,8 @@ export async function updatePlayerStats(
           threeBetOpportunity: { increment: inc.threeBetOpportunity },
           foldTo3BetCount: { increment: inc.foldTo3BetCount },
           faced3BetCount: { increment: inc.faced3BetCount },
+          fourBetCount: { increment: inc.fourBetCount },
+          fourBetOpportunity: { increment: inc.fourBetOpportunity },
           aggressiveActions: { increment: inc.aggressiveActions },
           totalPostflopActions: { increment: inc.totalPostflopActions },
           cbetCount: { increment: inc.cbetCount },

@@ -12,6 +12,7 @@ interface PlayerStats {
   vpip: number;
   pfr: number;
   threeBet: number;
+  fourBet: number;
   afq: number;
   cbet: number;
   foldToCbet: number;
@@ -156,21 +157,28 @@ export function ProfilePopup({
                 <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
               </div>
             ) : stats ? (
-              <div className="grid grid-cols-3 gap-[2.5cqw]">
-                <StatItem label="Hands" value={stats.handsPlayed.toLocaleString()} />
-                <StatItem label="Win Rate" value={`${stats.winRate.toFixed(1)}%`} />
-                <StatItem label="Profit" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
-                <StatItem label="EV Profit" value={formatProfit(stats.totalAllInEVProfit ?? stats.totalProfit)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
-                <StatItem label="VPIP" value={`${stats.vpip.toFixed(1)}%`} />
-                <StatItem label="PFR" value={`${stats.pfr.toFixed(1)}%`} />
-                <StatItem label="3Bet" value={`${stats.threeBet.toFixed(1)}%`} />
-                <StatItem label="AFq" value={`${stats.afq.toFixed(1)}%`} />
-                <StatItem label="CBet" value={`${stats.cbet.toFixed(1)}%`} />
-                <StatItem label="Fold to CB" value={`${stats.foldToCbet.toFixed(1)}%`} />
-                <StatItem label="Fold to 3B" value={`${stats.foldTo3Bet.toFixed(1)}%`} />
-                <StatItem label="WTSD" value={`${stats.wtsd.toFixed(1)}%`} />
-                <StatItem label="W$SD" value={`${stats.wsd.toFixed(1)}%`} />
-              </div>
+              <>
+                {/* 収支セクション */}
+                <div className="grid grid-cols-3 gap-[2.5cqw] mb-[4cqw]">
+                  <StatItem label="総ハンド数" value={stats.handsPlayed.toLocaleString()} />
+                  <StatItem label="実収支" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
+                  <StatItem label="Win Rate" value={formatRate(stats.winRate)} color={stats.winRate >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
+                  <div />
+                  <StatItem label="収支 (EV)" value={formatProfit(stats.totalAllInEVProfit ?? stats.totalProfit)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
+                  <StatItem label="Win Rate (EV)" value={formatRate((stats.totalAllInEVProfit ?? stats.totalProfit) / stats.handsPlayed)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
+                </div>
+                {/* ポーカースタッツ */}
+                <div className="grid grid-cols-3 gap-[2.5cqw]">
+                  <StatItem label="VPIP" value={`${stats.vpip.toFixed(1)}%`} />
+                  <StatItem label="PFR" value={`${stats.pfr.toFixed(1)}%`} />
+                  <StatItem label="3Bet" value={`${stats.threeBet.toFixed(1)}%`} />
+                  <StatItem label="4Bet" value={`${stats.fourBet.toFixed(1)}%`} />
+                  <StatItem label="AFq" value={`${stats.afq.toFixed(1)}%`} />
+                  <StatItem label="CBet" value={`${stats.cbet.toFixed(1)}%`} />
+                  <StatItem label="Fold to CB" value={`${stats.foldToCbet.toFixed(1)}%`} />
+                  <StatItem label="Fold to 3B" value={`${stats.foldTo3Bet.toFixed(1)}%`} />
+                </div>
+              </>
             ) : (
               <div className="grid grid-cols-2 gap-[3cqw]">
                 <StatItem label="Hands" value="—" isPlaceholder />
@@ -178,7 +186,7 @@ export function ProfilePopup({
                 <StatItem label="VPIP" value="—" isPlaceholder />
                 <StatItem label="PFR" value="—" isPlaceholder />
                 <StatItem label="3Bet" value="—" isPlaceholder />
-                <StatItem label="WTSD" value="—" isPlaceholder />
+                <StatItem label="4Bet" value="—" isPlaceholder />
               </div>
             )}
           </div>
@@ -272,14 +280,21 @@ function formatProfit(profit: number): string {
   return `${sign}${profit.toLocaleString()}`;
 }
 
+function formatRate(rate: number): string {
+  const sign = rate >= 0 ? '+' : '';
+  return `${sign}${rate.toFixed(1)}`;
+}
+
 const statInfo: Record<string, { desc: string; formula: string }> = {
-  Hands:       { desc: 'プレイしたハンド数', formula: '参加ハンドの合計' },
-  'Win Rate':  { desc: '勝利したハンドの割合', formula: '勝利数 ÷ 総ハンド数 × 100' },
-  Profit:      { desc: '総損益（チップ）', formula: '全ハンドの獲得チップ合計' },
-  'EV Profit': { desc: 'オールイン時のエクイティに基づく期待損益', formula: 'Σ(エクイティ × ポット額 - ベット額)' },
+  '総ハンド数':   { desc: 'プレイしたハンド数', formula: '参加ハンドの合計' },
+  '実収支':      { desc: '総損益（チップ）', formula: '全ハンドの獲得チップ合計' },
+  'Win Rate':  { desc: '1ハンドあたりの実損益', formula: '実収支 ÷ 総ハンド数' },
+  '収支 (EV)': { desc: 'オールイン時のエクイティに基づく期待損益', formula: 'Σ(エクイティ × ポット額 - ベット額)' },
+  'Win Rate (EV)': { desc: '1ハンドあたりのEV期待損益', formula: 'EV損益合計 ÷ 総ハンド数' },
   VPIP:        { desc: '自発的にポットに参加した割合', formula: '(コール+レイズ) ÷ 総ハンド数 × 100' },
   PFR:         { desc: 'プリフロップでレイズした割合', formula: 'PFレイズ数 ÷ 総ハンド数 × 100' },
   '3Bet':      { desc: 'プリフロップで3ベットした割合', formula: '3ベット数 ÷ 3ベット機会数 × 100' },
+  '4Bet':      { desc: 'プリフロップで4ベットした割合', formula: '4ベット数 ÷ 4ベット機会数 × 100' },
   AFq:         { desc: 'ポストフロップのアグレッション頻度', formula: '(ベット+レイズ) ÷ (ベット+レイズ+コール+フォールド) × 100' },
   CBet:        { desc: 'PFレイザーがフロップでベットした割合', formula: 'Cベット数 ÷ Cベット機会数 × 100' },
   'Fold to CB': { desc: 'Cベットに対してフォールドした割合', formula: 'CB被フォールド数 ÷ CB被回数 × 100' },
@@ -317,10 +332,7 @@ function StatItem({ label, value, isPlaceholder, color }: StatItemProps) {
 
   return (
     <div className="text-center relative">
-      <div className={`text-[4.5cqw] font-bold ${isPlaceholder ? 'text-cream-400' : color || 'text-cream-900'}`}>
-        {value}
-      </div>
-      <div className="text-cream-600 text-[2.5cqw] flex items-center justify-center gap-[1cqw]">
+      <div className="text-cream-600 text-[2.5cqw] flex items-center justify-center gap-[1cqw] mb-[0.5cqw]">
         {label}
         {info && !isPlaceholder && (
           <span
@@ -330,6 +342,9 @@ function StatItem({ label, value, isPlaceholder, color }: StatItemProps) {
             i
           </span>
         )}
+      </div>
+      <div className={`text-[4.5cqw] font-bold ${isPlaceholder ? 'text-cream-400' : color || 'text-cream-900'}`}>
+        {value}
       </div>
       {showTooltip && info && (
         <div

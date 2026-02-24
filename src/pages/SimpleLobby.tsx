@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 
 interface SimpleLobbyProps {
@@ -31,6 +32,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
+  const [showRanking, setShowRanking] = useState(false);
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -188,8 +190,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   Stats
                 </button>
                 <button
-                  disabled
-                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold transition-all flex items-center justify-center gap-[1cqw] opacity-40 cursor-not-allowed"
+                  onClick={() => setShowRanking(true)}
+                  className="flex-1 py-[2cqw] bg-cream-100 border border-cream-300 rounded-[2cqw] text-cream-700 font-bold hover:bg-cream-200 active:scale-[0.97] transition-all flex items-center justify-center gap-[1cqw]"
                 >
                   <svg className="w-[3.5cqw] h-[3.5cqw]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
                   順位
@@ -330,6 +332,14 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           userId={user.id}
           isSelf
           onClose={() => setShowProfile(false)}
+        />
+      )}
+
+      {/* Ranking Popup */}
+      {showRanking && user && (
+        <RankingPopup
+          userId={user.id}
+          onClose={() => setShowRanking(false)}
         />
       )}
     </div>

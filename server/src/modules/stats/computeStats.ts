@@ -2,12 +2,13 @@
 
 export interface PlayerStats {
   handsPlayed: number;
-  winRate: number;      // 勝ちハンド数 / 全ハンド数 (%)
+  winRate: number;      // 実収支 / 総ハンド数 (chips/hand)
   totalProfit: number;
   totalAllInEVProfit: number;
   vpip: number;         // Voluntarily Put money In Pot (%)
   pfr: number;          // Pre-Flop Raise (%)
   threeBet: number;     // 3-Bet (%)
+  fourBet: number;      // 4-Bet (%)
   afq: number;          // Aggression Frequency (%) - postflop
   cbet: number;         // Continuation Bet (%)
   foldToCbet: number;   // Fold to C-Bet (%)
@@ -75,6 +76,8 @@ export function computeStats(handHistories: HandData[], userId: string): PlayerS
   let threeBetOpportunity = 0;
   let foldTo3BetCount = 0;
   let faced3BetCount = 0;
+  let fourBetCount = 0;
+  let fourBetOpportunity = 0;
 
   // Postflop aggression
   let aggressiveActions = 0; // bet + raise
@@ -215,6 +218,36 @@ export function computeStats(handHistories: HandData[], userId: string): PlayerS
       }
     }
 
+    // === 4Bet ===
+    {
+      let raiseCount = 0;
+      let threeBettorId: string | null = null;
+
+      for (const action of preflopActions) {
+        const isRaise = action.action === 'raise' || action.action === 'bet';
+
+        if (isRaise) {
+          raiseCount++;
+          if (raiseCount === 2) {
+            threeBettorId = action.odId;
+          }
+          if (raiseCount === 3) {
+            if (action.odId === userId) {
+              fourBetCount++;
+              fourBetOpportunity++;
+            }
+            break;
+          }
+        }
+
+        // User acts after 3-bet (not the 3-bettor) → 4-bet opportunity
+        if (raiseCount === 2 && !isRaise && action.odId === userId && threeBettorId !== userId) {
+          fourBetOpportunity++;
+          break;
+        }
+      }
+    }
+
     // === Saw Flop / WTSD / W$SD ===
     const handReachedFlop = flopActions.length > 0 || hand.communityCards.length >= 3;
     const sawFlop = handReachedFlop && !foldedPreflop;
@@ -297,12 +330,13 @@ export function computeStats(handHistories: HandData[], userId: string): PlayerS
 
   return {
     handsPlayed,
-    winRate: pct(winCount, handsPlayed),
+    winRate: handsPlayed > 0 ? totalProfit / handsPlayed : 0,
     totalProfit,
     totalAllInEVProfit,
     vpip: pct(vpipCount, detailedHands),
     pfr: pct(pfrCount, detailedHands),
     threeBet: pct(threeBetCount, threeBetOpportunity),
+    fourBet: pct(fourBetCount, fourBetOpportunity),
     afq: pct(aggressiveActions, totalPostflopActions),
     cbet: pct(cbetCount, cbetOpportunity),
     foldToCbet: pct(foldToCbetCount, facedCbetCount),

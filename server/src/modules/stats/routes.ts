@@ -18,12 +18,13 @@ export async function statsRoutes(fastify: FastifyInstance) {
 
     const stats: PlayerStats = {
       handsPlayed: cache.handsPlayed,
-      winRate: pct(cache.winCount, cache.handsPlayed),
+      winRate: cache.handsPlayed > 0 ? cache.totalProfit / cache.handsPlayed : 0,
       totalProfit: cache.totalProfit,
       totalAllInEVProfit: cache.totalAllInEVProfit,
       vpip: pct(cache.vpipCount, cache.detailedHands),
       pfr: pct(cache.pfrCount, cache.detailedHands),
       threeBet: pct(cache.threeBetCount, cache.threeBetOpportunity),
+      fourBet: pct(cache.fourBetCount, cache.fourBetOpportunity),
       afq: pct(cache.aggressiveActions, cache.totalPostflopActions),
       cbet: pct(cache.cbetCount, cache.cbetOpportunity),
       foldToCbet: pct(cache.foldToCbetCount, cache.facedCbetCount),
@@ -58,5 +59,41 @@ export async function statsRoutes(fastify: FastifyInstance) {
     });
 
     return { points };
+  });
+
+  // ランキング（全プレイヤー）
+  fastify.get('/rankings', async () => {
+    const MIN_HANDS = 10;
+
+    const caches = await prisma.playerStatsCache.findMany({
+      where: {
+        handsPlayed: { gte: MIN_HANDS },
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            avatarUrl: true,
+            nameMasked: true,
+            useTwitterAvatar: true,
+            provider: true,
+          },
+        },
+      },
+    });
+
+    const rankings = caches.map(cache => ({
+      userId: cache.userId,
+      username: cache.user.username,
+      avatarUrl: cache.user.useTwitterAvatar ? (cache.user.avatarUrl ?? null) : null,
+      nameMasked: cache.user.nameMasked,
+      isBot: cache.user.provider === 'bot',
+      handsPlayed: cache.handsPlayed,
+      totalAllInEVProfit: cache.totalAllInEVProfit,
+      winCount: cache.winCount,
+    }));
+
+    return { rankings };
   });
 }
