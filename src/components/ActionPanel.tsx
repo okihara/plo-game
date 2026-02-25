@@ -21,7 +21,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
   // ファストフォールド: ターン前でもフォールド可能（BBプリフロップ除く）
   const isBB = myPlayer.position === 'BB';
   const canFastFold = !!isFastFold && !isMyTurn && !myPlayer.folded && !state.isHandComplete
-    && !(isBB && state.currentStreet === 'preflop');
+    && !(isBB && state.currentStreet === 'preflop') && !canCheck;
   const isShortStack = toCall > 0 && myPlayer.chips < toCall;
 
   // オンラインモード用のシンプルなレイズ判定
@@ -176,7 +176,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
                 : 'bg-gradient-to-b from-gray-500 to-gray-600'
             }`}
           >
-            フォールド
+            FOLD
           </button>
         </div>
         <button
@@ -188,7 +188,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
               : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
           }`}
         >
-          {toCall === 0 ? 'チェック' : `コール ${formatChips(toCall)}`}
+          {toCall === 0 ? 'CHECK' : `CALL ${formatChips(toCall)}`}
         </button>
         <button
           onClick={() => handleAction(isShortStack ? 'allin' : sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
@@ -199,7 +199,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
               : 'bg-gradient-to-b from-amber-500 to-amber-600'
           }`}
         >
-          {isShortStack || sliderValue >= myPlayer.chips ? `オールイン ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `ベット ${formatChips(sliderValue)}` : `レイズ ${formatChips(sliderValue)}`}
+          {isShortStack || sliderValue >= myPlayer.chips ? `ALL IN ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `BET ${formatChips(sliderValue)}` : `RAISE ${formatChips(sliderValue)}`}
         </button>
       </div>
     </div>
