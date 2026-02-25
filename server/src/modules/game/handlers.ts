@@ -77,6 +77,21 @@ export async function handleFastFold(socket: AuthenticatedSocket, tableManager: 
   }
 }
 
+export async function handleDisconnect(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
+  console.log(`Player disconnected: ${socket.odId}`);
+
+  handleFastFold(socket, tableManager)
+
+  try {
+    const table = tableManager.getPlayerTable(socket.odId!);
+    if (table) {
+      await unseatAndCashOut(table, socket.odId!, tableManager);
+    }
+  } catch (err) {
+    console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
+  }
+}
+
 export async function handleMatchmakingJoin(
   socket: AuthenticatedSocket,
   data: { blinds: string; isFastFold?: boolean },
@@ -173,18 +188,6 @@ export async function handleMatchmakingLeave(socket: AuthenticatedSocket, tableM
   }
 }
 
-export async function handleDisconnect(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
-  console.log(`Player disconnected: ${socket.odId}`);
-
-  try {
-    const table = tableManager.getPlayerTable(socket.odId!);
-    if (table) {
-      await unseatAndCashOut(table, socket.odId!, tableManager);
-    }
-  } catch (err) {
-    console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
-  }
-}
 
 export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: number }, tableManager: TableManager): void {
   const table = tableManager.getPlayerTable(socket.odId!);

@@ -301,27 +301,7 @@ export class TableInstance {
       return true;
     }
 
-    // 現在のプレイヤー: 通常通りフォールド処理
-    const result = this.foldProcessor.processFold(this.gameState, {
-      seatIndex,
-      playerId: odId,
-      wasCurrentPlayer: true,
-    });
-    this.gameState = result.gameState;
-
-    // アクティブプレイヤーが1人以下 → ハンド終了
-    const activePlayers = getActivePlayers(this.gameState);
-    if (activePlayers.length <= 1) {
-      this.actionController.clearTimers();
-      this.gameState = determineWinner(this.gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
-      this.broadcastGameState();
-      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
-      return true;
-    }
-
-    this.actionController.clearTimers();
-    this.advanceToNextPlayer();
-    return true;
+    return this.handleAction(odId, "fold", 0);
   }
 
   public triggerMaybeStartHand(): void {
