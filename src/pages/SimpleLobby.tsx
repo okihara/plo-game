@@ -149,15 +149,17 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                         onClick={() => setShowProfile(true)}
                       />
                     )}
-                    <button
-                      onClick={() => setShowSettings(true)}
-                      className="absolute -bottom-[0.5cqw] -right-[0.5cqw] w-[5cqw] h-[5cqw] bg-white border border-cream-300 rounded-full flex items-center justify-center shadow-sm hover:bg-cream-100 active:scale-90 transition-all"
-                    >
-                      <svg className="w-[3cqw] h-[3cqw] text-cream-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                    </button>
                   </div>
                   <div>
-                    <div className="text-[4cqw] text-cream-900 font-bold">{user.username}</div>
+                    <div className="flex items-center gap-[1.5cqw]">
+                      <span className="text-[4cqw] text-cream-900 font-bold">{user.username}</span>
+                      <button
+                        onClick={() => setShowSettings(true)}
+                        className="px-[1.5cqw] py-[0.3cqw] text-[2.2cqw] text-cream-600 font-semibold bg-cream-100 border border-cream-300 rounded-[1cqw] hover:bg-cream-200 active:scale-95 transition-all"
+                      >
+                        プライバシー設定
+                      </button>
+                    </div>
                     <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">
                       <span className="text-[3.5cqw] font-bold text-forest">{user.balance}</span>
                       <button
