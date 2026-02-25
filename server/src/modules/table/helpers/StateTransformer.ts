@@ -26,7 +26,7 @@ export class StateTransformer {
         seatNumber: seatIndex,
         chips: player?.chips ?? seat.chips,
         currentBet: player?.currentBet ?? 0,
-        folded: true,
+        folded: player?.folded ?? false,
         isAllIn: false,
         hasActed: true,
         isConnected: false,
