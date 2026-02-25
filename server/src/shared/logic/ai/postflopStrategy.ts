@@ -155,6 +155,37 @@ function playStrongMade(
   numOpponents: number
 ): { action: Action; amount: number } {
   const toCall = state.currentBet - state.players[playerIndex].currentBet;
+  const street = state.currentStreet;
+
+  // === リバーでの大きなベットに対する判断（PLOではツーペア〜ストレートは脆弱） ===
+  if (street === 'river' && toCall > 0) {
+    const betToPotRatio = toCall / Math.max(1, state.pot);
+
+    // ツーペア (rank 3): リバーの大きなベットにはかなりフォールド
+    if (handEval.madeHandRank === 3) {
+      if (betToPotRatio >= 0.6) {
+        // ポットの60%以上 → パーソナリティに応じて40-75%フォールド
+        const baseFoldChance = 0.55 - personality.aggression * 0.2;
+        const sizingBonus = (betToPotRatio - 0.6) * 0.5;
+        const foldChance = Math.min(0.85, baseFoldChance + sizingBonus);
+        if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+      }
+    }
+
+    // セット (rank 4): スケアリーボードの大きなベットに慎重
+    if (handEval.madeHandRank === 4 && betToPotRatio >= 0.7) {
+      if (boardTexture.flushPossible || boardTexture.straightPossible) {
+        const foldChance = Math.min(0.50, 0.25 - personality.aggression * 0.1 + (betToPotRatio - 0.7) * 0.4);
+        if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+      }
+    }
+
+    // ストレート (rank 5): フラッシュ完成ボードの大きなベットに慎重
+    if (handEval.madeHandRank === 5 && boardTexture.flushPossible && betToPotRatio >= 0.7) {
+      const foldChance = Math.min(0.40, 0.20 - personality.aggression * 0.1 + (betToPotRatio - 0.7) * 0.35);
+      if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+    }
+  }
 
   // ペアボードでフルハウス以下 + アグレッシブな相手 → 慎重に
   if (boardTexture.isPaired && handEval.madeHandRank < 7) {
@@ -191,7 +222,7 @@ function playStrongMade(
     if (raiseAction) {
       const sizePct = decideBetSize({
         pot: state.pot,
-        street: state.currentStreet,
+        street,
         spr,
         boardTexture,
         handEval,
@@ -208,19 +239,23 @@ function playStrongMade(
   const checkAction = validActions.find(a => a.action === 'check');
   if (checkAction) return { action: 'check', amount: 0 };
 
-  // コール
+  // コール: エクイティがポットオッズを上回る場合
   if (handEval.estimatedEquity > potOdds) {
     const callAction = validActions.find(a => a.action === 'call');
     if (callAction) return { action: 'call', amount: callAction.minAmount };
   }
 
-  // ポットオッズが合わない大きなベット → フォールド
-  if (toCall > state.pot * 0.5 && handEval.estimatedEquity < 0.35) {
+  // リバーでエクイティがポットオッズに足りない → フォールド
+  if (street === 'river') {
     return { action: 'fold', amount: 0 };
   }
 
-  const callAction = validActions.find(a => a.action === 'call');
-  if (callAction) return { action: 'call', amount: callAction.minAmount };
+  // フロップ/ターンではインプライドオッズを考慮して緩めにコール
+  if (toCall <= state.pot * 0.5) {
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
   return { action: 'fold', amount: 0 };
 }
 
@@ -366,8 +401,32 @@ function playOnePair(
 ): { action: Action; amount: number } {
   const player = state.players[state.currentPlayerIndex];
   const toCall = state.currentBet - player.currentBet;
+  const street = state.currentStreet;
 
-  // トップペア以上 (strength > 0.4) なら継続
+  // リバーではワンペアは非常に弱い（PLO）→ 大きなベットにはフォールド
+  if (street === 'river' && toCall > 0) {
+    const betToPotRatio = toCall / Math.max(1, state.pot);
+
+    // ポットの40%以上のベット → ほぼフォールド
+    if (betToPotRatio >= 0.4) {
+      // トップペアで高strength + アグレッシブ性格 → たまにコール
+      if (handEval.strength > 0.5 && Math.random() < personality.aggression * 0.15) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      return { action: 'fold', amount: 0 };
+    }
+
+    // 小さなベット（40%未満）→ トップペアならコール
+    if (handEval.strength > 0.4) {
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+    }
+
+    return { action: 'fold', amount: 0 };
+  }
+
+  // フロップ/ターン: トップペア以上 (strength > 0.4) なら継続
   if (handEval.strength > 0.4) {
     const checkAction = validActions.find(a => a.action === 'check');
     if (checkAction) return { action: 'check', amount: 0 };
