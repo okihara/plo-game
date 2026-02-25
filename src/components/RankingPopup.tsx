@@ -1,9 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { maskName } from '../utils';
+import { fetchRankings } from '../utils/rankingsCache';
 
-const API_BASE = import.meta.env.VITE_SERVER_URL || '';
-
-interface RankingEntry {
+export interface RankingEntry {
   userId: string;
   username: string;
   avatarUrl: string | null;
@@ -14,7 +13,8 @@ interface RankingEntry {
   winCount: number;
 }
 
-const MAX_DISPLAY = 30;
+const MAX_DISPLAY_ALL = 30;
+const MAX_DISPLAY_PERIOD = 15;
 
 interface RankingPopupProps {
   userId: string;
@@ -22,8 +22,34 @@ interface RankingPopupProps {
 }
 
 type Tab = 'profit' | 'winrate';
+type Period = 'daily' | 'weekly' | 'all';
 
-function formatProfit(value: number): string {
+const PERIOD_LABELS: Record<Period, string> = {
+  daily: '今日',
+  weekly: '週間',
+  all: '全期間',
+};
+
+const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
+
+function formatPeriodRange(period: Period): string | null {
+  if (period === 'all') return null;
+  const now = new Date();
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAYS[d.getDay()]})`;
+  if (period === 'daily') {
+    return fmt(now);
+  }
+  // 今週の月曜〜日曜
+  const monday = new Date(now);
+  const day = monday.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  monday.setDate(monday.getDate() - diff);
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  return `${fmt(monday)} ~ ${fmt(sunday)}`;
+}
+
+export function formatProfit(value: number): string {
   const formatted = Math.abs(value).toLocaleString();
   return value >= 0 ? `+${formatted}` : `-${formatted}`;
 }
@@ -38,17 +64,16 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('profit');
+  const [period, setPeriod] = useState<Period>('weekly');
   const myRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/stats/rankings`, { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : null))
-      .then(data => {
-        if (data?.rankings) setRankings(data.rankings);
-      })
-      .catch(() => {})
+    setLoading(true);
+    fetchRankings(period)
+      .then(setRankings)
+      .catch(() => setRankings([]))
       .finally(() => setLoading(false));
-  }, []);
+  }, [period]);
 
   // ESCキーで閉じる
   useEffect(() => {
@@ -73,7 +98,8 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
   });
 
   const myRank = allSorted.findIndex(r => r.userId === userId) + 1;
-  const sorted = allSorted.slice(0, MAX_DISPLAY);
+  const maxDisplay = period === 'all' ? MAX_DISPLAY_ALL : MAX_DISPLAY_PERIOD;
+  const sorted = allSorted.slice(0, maxDisplay);
 
   return (
     <div
@@ -92,6 +118,30 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               ×
             </button>
           </div>
+
+          {/* Period selector */}
+          <div className="flex mx-[5cqw] mb-[2cqw] gap-[1.5cqw]">
+            {(['daily', 'weekly', 'all'] as Period[]).map(p => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`flex-1 py-[1.5cqw] text-[2.8cqw] font-bold rounded-[2cqw] border transition-all ${
+                  period === p
+                    ? 'bg-cream-900 text-white border-cream-900'
+                    : 'bg-white text-cream-500 border-cream-300 hover:text-cream-700 hover:border-cream-400'
+                }`}
+              >
+                {PERIOD_LABELS[p]}
+              </button>
+            ))}
+          </div>
+
+          {/* Period range label */}
+          {formatPeriodRange(period) && (
+            <div className="text-center text-[2.5cqw] text-cream-500 mb-[2cqw]">
+              {formatPeriodRange(period)}
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex mx-[5cqw] mb-[3cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">

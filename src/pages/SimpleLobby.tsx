@@ -4,6 +4,7 @@ import { ProfilePopup } from '../components/ProfilePopup';
 import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { SettingConfig } from '../components/SettingConfig';
+import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
@@ -111,15 +112,15 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
     <div className="h-full w-full light-bg relative overflow-hidden">
       <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[4cqw] h-full min-h-0 overflow-y-auto">
         {/* Logo & Mascot */}
-        <div className="text-center mb-[5cqw]">
-          <div className="w-[28cqw] h-[28cqw] mx-auto mb-[2cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60">
+        <div className="text-center mb-[3cqw]">
+          <div className="w-[20cqw] h-[20cqw] mx-auto mb-[1.5cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60">
             <img
               src="/images/plo_baby.png"
               alt="Baby PLO"
               className="w-full h-full object-cover scale-125"
             />
           </div>
-          <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
+          <h1 className="text-[6cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
           {maintenance?.isActive && (
             <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-red-50 border border-red-300 rounded-[2cqw] text-[2.5cqw] text-red-700 leading-relaxed">
               <p className="font-bold text-[3cqw] text-red-800 text-center">メンテナンス中</p>
@@ -220,11 +221,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             </div>
           )}
 
-          {/* Chip refill notice */}
-          <div className="mb-[4cqw] text-center text-[3.5cqw] text-cream-500">
-            毎朝7:00にチップが補充されます
-          </div>
-
           {/* Tables - Fast Fold */}
           <div className="space-y-[2.5cqw]">
             {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
@@ -242,6 +238,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-[3cqw]">
+                      <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
                       <span className={`px-[2cqw] py-[0.6cqw] text-[2.5cqw] font-bold rounded-[1cqw] ${
                         table.enabled
                           ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
@@ -249,14 +246,13 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       }`}>
                         Fast Fold
                       </span>
-                      <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
                     </div>
                     <div className="flex items-center gap-[2cqw] text-[2.8cqw]">
                       <span className="text-cream-600">buy-in: {table.buyIn}</span>
                       {table.enabled ? (
                         <>
                           <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white rounded-[1.5cqw] bg-amber-500">参加する</span>
-                          <span className="text-amber-600">{count}人</span>
+                          <span className="text-amber-600 w-[8cqw] text-right">{count}人</span>
                         </>
                       ) : (
                         <span className="text-cream-500">準備中</span>
@@ -292,7 +288,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       {table.enabled ? (
                         <>
                           <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white rounded-[1.5cqw] bg-forest">参加する</span>
-                          <span className="text-forest">{count}人</span>
+                          <span className="text-forest w-[8cqw] text-right">{count}人</span>
                         </>
                       ) : (
                         <span className="text-cream-500">準備中</span>
@@ -303,6 +299,9 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               );
             })}
           </div>
+
+          {/* Mini Leaderboard */}
+          <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} />
 
           {/* Footer */}
           <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">

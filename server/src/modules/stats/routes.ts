@@ -1,6 +1,11 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
+import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import type { PlayerStats } from './computeStats.js';
+
+// ランキングキャッシュ（60秒TTL）
+const rankingsCache = new Map<string, { data: unknown; expiresAt: number }>();
+const CACHE_TTL_MS = 60_000;
 
 export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
@@ -61,39 +66,111 @@ export async function statsRoutes(fastify: FastifyInstance) {
     return { points };
   });
 
-  // ランキング（全プレイヤー）
-  fastify.get('/rankings', async () => {
+  // ランキング（全プレイヤー）— period: all | weekly | daily
+  fastify.get('/rankings', async (request: FastifyRequest) => {
+    const { period = 'all' } = request.query as { period?: string };
     const MIN_HANDS = 10;
 
-    const caches = await prisma.playerStatsCache.findMany({
-      where: {
-        handsPlayed: { gte: MIN_HANDS },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            avatarUrl: true,
-            nameMasked: true,
-            useTwitterAvatar: true,
-            provider: true,
+    // キャッシュチェック（60秒TTL）
+    const cacheKey = `rankings:${period}`;
+    const cached = rankingsCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
+
+    let result: { rankings: unknown[] };
+
+    if (period === 'all') {
+      // 全期間: PlayerStatsCacheから取得（高速）
+      const caches = await prisma.playerStatsCache.findMany({
+        where: {
+          handsPlayed: { gte: MIN_HANDS },
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              avatarUrl: true,
+              nameMasked: true,
+              useTwitterAvatar: true,
+              provider: true,
+            },
           },
         },
-      },
-    });
+      });
 
-    const rankings = caches.map(cache => ({
-      userId: cache.userId,
-      username: cache.user.username,
-      avatarUrl: cache.user.useTwitterAvatar ? (cache.user.avatarUrl ?? null) : null,
-      nameMasked: cache.user.nameMasked,
-      isBot: cache.user.provider === 'bot',
-      handsPlayed: cache.handsPlayed,
-      totalAllInEVProfit: cache.totalAllInEVProfit,
-      winCount: cache.winCount,
-    }));
+      result = {
+        rankings: caches.map(cache => ({
+          userId: cache.userId,
+          username: cache.user.username,
+          avatarUrl: cache.user.useTwitterAvatar ? (cache.user.avatarUrl ?? null) : null,
+          nameMasked: cache.user.nameMasked,
+          isBot: cache.user.provider === 'bot',
+          handsPlayed: cache.handsPlayed,
+          totalAllInEVProfit: cache.totalAllInEVProfit,
+          winCount: cache.winCount,
+        })),
+      };
+    } else {
+      // daily / weekly: Raw SQLでDB側集計
+      const now = new Date();
+      const startDate = new Date(now);
+      if (period === 'daily') {
+        startDate.setHours(0, 0, 0, 0);
+      } else {
+        // 今週の月曜 00:00（月曜始まり）
+        const day = startDate.getDay(); // 0=日, 1=月, ..., 6=土
+        const diff = day === 0 ? 6 : day - 1; // 日曜は6日前の月曜
+        startDate.setDate(startDate.getDate() - diff);
+        startDate.setHours(0, 0, 0, 0);
+      }
 
-    return { rankings };
+      const rows = await prisma.$queryRaw<Array<{
+        userId: string;
+        username: string;
+        avatarUrl: string | null;
+        nameMasked: boolean;
+        useTwitterAvatar: boolean;
+        provider: string;
+        handsPlayed: bigint;
+        totalAllInEVProfit: bigint;
+        winCount: bigint;
+      }>>(Prisma.sql`
+        SELECT
+          hp."userId",
+          u."username",
+          u."avatarUrl",
+          u."nameMasked",
+          u."useTwitterAvatar",
+          u."provider",
+          COUNT(*)                                              AS "handsPlayed",
+          SUM(COALESCE(hp."allInEVProfit", hp."profit"))        AS "totalAllInEVProfit",
+          SUM(CASE WHEN hp."profit" > 0 THEN 1 ELSE 0 END)     AS "winCount"
+        FROM "HandHistoryPlayer" hp
+        JOIN "HandHistory" hh ON hp."handHistoryId" = hh."id"
+        JOIN "User" u ON hp."userId" = u."id"
+        WHERE hp."userId" IS NOT NULL
+          AND hh."createdAt" >= ${startDate}
+        GROUP BY hp."userId", u."username", u."avatarUrl", u."nameMasked", u."useTwitterAvatar", u."provider"
+        HAVING COUNT(*) >= ${MIN_HANDS}
+      `);
+
+      result = {
+        rankings: rows.map(r => ({
+          userId: r.userId,
+          username: r.username,
+          avatarUrl: r.useTwitterAvatar ? (r.avatarUrl ?? null) : null,
+          nameMasked: r.nameMasked,
+          isBot: r.provider === 'bot',
+          handsPlayed: Number(r.handsPlayed),
+          totalAllInEVProfit: Number(r.totalAllInEVProfit),
+          winCount: Number(r.winCount),
+        })),
+      };
+    }
+
+    rankingsCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+    return result;
   });
 }
