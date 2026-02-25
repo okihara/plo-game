@@ -42,31 +42,6 @@ export class FoldProcessor {
   }
 
   /**
-   * 切断されたプレイヤーのFold処理（ブロードキャストあり）
-   */
-  processDisconnectedFold(
-    gameState: GameState,
-    seatIndex: number,
-    playerId: string
-  ): GameState {
-    const player = gameState.players[seatIndex];
-
-    if (!player || player.folded) {
-      return gameState;
-    }
-
-    player.folded = true;
-
-    this.broadcast.emitToRoom('game:action_taken', {
-      playerId,
-      action: 'fold',
-      amount: 0,
-    });
-
-    return gameState;
-  }
-
-  /**
    * サイレントFold（ブロードキャストなし）
    * タイムアウト時の内部状態更新用
    */
