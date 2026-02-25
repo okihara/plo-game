@@ -181,7 +181,7 @@ export function Player({
     : null;
 
   return (
-    <div className={`absolute flex flex-col items-center transition-all duration-300 ${positionStyles[positionIndex]} ${isWinner ? 'z-[30]' : ''}`}>
+    <div className={`absolute flex flex-col items-center ${positionStyles[positionIndex]} ${isWinner ? 'z-[30]' : ''}`}>
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-12cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
