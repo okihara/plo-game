@@ -17,13 +17,14 @@ interface TableOption {
   blinds: string;
   blindsLabel: string;
   buyIn: number;
+  rake: string;
   enabled: boolean;
   isFastFold: boolean;
 }
 
 const TABLE_OPTIONS: TableOption[] = [
-  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true, isFastFold: false },
-  { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, enabled: true, isFastFold: true },
+  { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false },
+  { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: true },
 ];
 
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
@@ -240,8 +241,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                     <div className="flex items-center gap-[2.5cqw]">
                       <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
                       <div className="flex flex-col items-start">
-                        <span className="text-[2.8cqw] font-bold text-white/90">Fast Fold</span>
-                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn}</span>
+                        <span className="text-[2.8cqw] font-bold text-white/90">PLO Fast Fold</span>
+                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn} / rake: {table.rake}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-[2cqw]">
@@ -280,7 +281,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
                       <div className="flex flex-col items-start">
                         <span className="text-[2.8cqw] font-bold text-white/90">PLO</span>
-                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn}</span>
+                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn} / rake: {table.rake}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-[2cqw]">
