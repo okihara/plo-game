@@ -230,29 +230,25 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   key={table.id}
                   onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
-                  className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
+                  className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
                     table.enabled && !maintenance?.isActive
-                      ? 'bg-white border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] hover:bg-cream-50 hover:border-cream-400 hover:shadow-[0_4px_16px_rgba(139,126,106,0.15)] active:scale-[0.98]'
+                      ? 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 shadow-[0_4px_12px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(245,158,11,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
                       : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-[3cqw]">
-                      <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
-                      <span className={`px-[2cqw] py-[0.6cqw] text-[2.5cqw] font-bold rounded-[1cqw] ${
-                        table.enabled
-                          ? 'bg-amber-500/10 text-amber-600 border border-amber-500/20'
-                          : 'bg-cream-300/50 text-cream-500'
-                      }`}>
-                        Fast Fold
-                      </span>
+                    <div className="flex items-center gap-[2.5cqw]">
+                      <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
+                      <div className="flex flex-col items-start">
+                        <span className="text-[2.8cqw] font-bold text-white/90">Fast Fold</span>
+                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-[2cqw] text-[2.8cqw]">
-                      <span className="text-cream-600">buy-in: {table.buyIn}</span>
+                    <div className="flex items-center gap-[2cqw]">
                       {table.enabled ? (
                         <>
-                          <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white rounded-[1.5cqw] bg-amber-500">参加する</span>
-                          <span className="text-amber-600 w-[8cqw] text-right">{count}人</span>
+                          <span className="text-[2.8cqw] text-white/80">{count}人</span>
+                          <svg className="w-[4cqw] h-[4cqw] text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                         </>
                       ) : (
                         <span className="text-cream-500">準備中</span>
@@ -273,22 +269,25 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   key={table.id}
                   onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
-                  className={`w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-200 border ${
+                  className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
                     table.enabled && !maintenance?.isActive
-                      ? 'bg-white border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] hover:bg-cream-50 hover:border-cream-400 hover:shadow-[0_4px_16px_rgba(139,126,106,0.15)] active:scale-[0.98]'
+                      ? 'bg-gradient-to-b from-forest-light to-forest border-forest/40 shadow-[0_4px_12px_rgba(45,90,61,0.3),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
                       : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-[3cqw]">
-                      <span className="text-[5cqw] font-bold text-cream-900">{table.blindsLabel}</span>
+                    <div className="flex items-center gap-[2.5cqw]">
+                      <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
+                      <div className="flex flex-col items-start">
+                        <span className="text-[2.8cqw] font-bold text-white/90">PLO</span>
+                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-[2cqw] text-[2.8cqw]">
-                      <span className="text-cream-600">buy-in: {table.buyIn}</span>
+                    <div className="flex items-center gap-[2cqw]">
                       {table.enabled ? (
                         <>
-                          <span className="px-[2cqw] py-[0.5cqw] text-[2.5cqw] font-bold text-white rounded-[1.5cqw] bg-forest">参加する</span>
-                          <span className="text-forest w-[8cqw] text-right">{count}人</span>
+                          <span className="text-[2.8cqw] text-white/80">{count}人</span>
+                          <svg className="w-[4cqw] h-[4cqw] text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                         </>
                       ) : (
                         <span className="text-cream-500">準備中</span>
