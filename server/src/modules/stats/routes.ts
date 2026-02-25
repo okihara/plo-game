@@ -45,11 +45,21 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId/profit-history', async (request: FastifyRequest) => {
     const { userId } = request.params as { userId: string };
 
-    const rows = await prisma.handHistoryPlayer.findMany({
-      where: { userId },
-      orderBy: { handHistory: { createdAt: 'asc' } },
-      select: { profit: true, finalHand: true, allInEVProfit: true },
-    });
+    const [rows, cache] = await Promise.all([
+      prisma.handHistoryPlayer.findMany({
+        where: { userId },
+        orderBy: { handHistory: { createdAt: 'asc' } },
+        select: { profit: true, finalHand: true, allInEVProfit: true },
+      }),
+      prisma.playerStatsCache.findUnique({
+        where: { userId },
+        select: { totalProfit: true, totalAllInEVProfit: true },
+      }),
+    ]);
+
+    // スタッツキャッシュからEV補正値を計算
+    // DB の allInEVProfit はほとんど NULL のため、キャッシュの差分を使って補正する
+    const cacheEvDiff = cache ? cache.totalAllInEVProfit - cache.totalProfit : 0;
 
     let cumTotal = 0;
     let cumSD = 0;
@@ -62,6 +72,14 @@ export async function statsRoutes(fastify: FastifyInstance) {
       if (sd) cumSD += r.profit; else cumNoSD += r.profit;
       return { p: r.profit, c: cumTotal, s: cumSD, n: cumNoSD, e: cumEV };
     });
+
+    // allInEVProfit が全てNULLの場合(cumEV === cumTotal)、キャッシュの差分で補正
+    if (points.length > 0 && cumEV === cumTotal && cacheEvDiff !== 0) {
+      // EV差分をハンド位置に比例して段階的に適用
+      for (let i = 0; i < points.length; i++) {
+        points[i].e = Math.round(points[i].c + cacheEvDiff * ((i + 1) / points.length));
+      }
+    }
 
     return { points };
   });
