@@ -14,7 +14,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "jsx": "react-jsx"
+    "jsx": "react-jsx",
+    "paths": {
+      "@plo/shared": ["./packages/shared/src/index.ts"],
+      "@plo/shared/*": ["./packages/shared/src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "packages/shared/src"]
 }

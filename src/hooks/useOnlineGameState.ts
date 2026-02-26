@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
 import { playActionSound, playDealSound } from '../services/actionSound';
-import type { ClientGameState, OnlinePlayer } from '../../server/src/shared/types/websocket';
+import type { ClientGameState, OnlinePlayer } from '@plo/shared';
 import type { Card, Action, GameState, Player, Position } from '../logic/types';
 
 // ============================================
@@ -144,6 +144,7 @@ function convertClientStateToGameState(
     bigBlind: clientState.bigBlind,
     currentPlayerIndex: clientState.currentPlayerSeat ?? -1,
     lastRaiserIndex: -1,
+    lastFullRaiseBet: 0,
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],

@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
-import type { ClientGameState } from '../../server/src/shared/types/websocket';
+import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState, Player, Position } from '../logic/types';
 import type { LastAction, ActionTimeoutAt } from './useOnlineGameState';
 
@@ -88,6 +88,7 @@ function convertToSpectatorGameState(
     bigBlind: clientState.bigBlind,
     currentPlayerIndex: clientState.currentPlayerSeat ?? 0,
     lastRaiserIndex: -1,
+    lastFullRaiseBet: 0,
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
