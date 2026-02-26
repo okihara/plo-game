@@ -3,6 +3,7 @@
 import { GameState, Player } from '../../../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
 import { SeatInfo, PendingAction } from '../types.js';
+import { maskName } from '../../../shared/utils.js';
 
 export class StateTransformer {
   /**
@@ -16,11 +17,13 @@ export class StateTransformer {
   ): OnlinePlayer | null {
     if (!seat) return null;
 
+    const displayName = seat.nameMasked ? maskName(seat.odName) : seat.odName;
+
     // FastFold移動済みプレイヤー: folded状態で表示を維持
     if (seat.leftForFastFold) {
       return {
         odId: seat.odId,
-        odName: seat.odName,
+        odName: displayName,
         avatarId: seat.avatarId,
         avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
@@ -30,7 +33,6 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: false,
-        nameMasked: seat.nameMasked,
       };
     }
 
@@ -38,7 +40,7 @@ export class StateTransformer {
     if (seat.waitingForNextHand) {
       return {
         odId: seat.odId,
-        odName: seat.odName,
+        odName: displayName,
         avatarId: seat.avatarId,
         avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
@@ -48,13 +50,12 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: seat.socket?.connected ?? false,
-        nameMasked: seat.nameMasked,
       };
     }
 
     return {
       odId: seat.odId,
-      odName: seat.odName,
+      odName: displayName,
       avatarId: seat.avatarId,
       avatarUrl: seat.avatarUrl,
       seatNumber: seatIndex,
@@ -64,7 +65,6 @@ export class StateTransformer {
       isAllIn: player?.isAllIn ?? false,
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
-      nameMasked: seat.nameMasked,
     };
   }
 

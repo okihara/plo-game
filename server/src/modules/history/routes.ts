@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
+import { maskName } from '../../shared/utils.js';
 
 export async function handHistoryRoutes(fastify: FastifyInstance) {
   // Auth middleware
@@ -48,7 +49,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
                   finalHand: true,
                   profit: true,
                   user: {
-                    select: { avatarUrl: true, useTwitterAvatar: true },
+                    select: { avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
                   },
                 },
               },
@@ -71,15 +72,18 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       isWinner: ph.handHistory.winners.includes(userId),
       dealerPosition: ph.handHistory.dealerPosition,
       createdAt: ph.handHistory.createdAt,
-      players: ph.handHistory.players.map(p => ({
-        username: p.username || `Seat ${p.seatPosition + 1}`,
+      players: ph.handHistory.players.map(p => {
+        const rawName = p.username || `Seat ${p.seatPosition + 1}`;
+        return {
+        username: (p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName,
         avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
         finalHand: p.finalHand,
         profit: p.profit,
         isCurrentUser: p.userId === userId,
-      })),
+      };
+      }),
     }));
 
     return { hands, total, limit: take, offset: skip };
@@ -102,7 +106,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
             finalHand: true,
             profit: true,
             user: {
-              select: { username: true, avatarUrl: true, useTwitterAvatar: true },
+              select: { username: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
             },
           },
         },
@@ -124,15 +128,18 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       actions: hand.actions,
       dealerPosition: hand.dealerPosition,
       createdAt: hand.createdAt,
-      players: hand.players.map(p => ({
-        username: p.username || p.user?.username || `Seat ${p.seatPosition + 1}`,
-        avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
-        seatPosition: p.seatPosition,
-        holeCards: p.holeCards,
-        finalHand: p.finalHand,
-        profit: p.profit,
-        isCurrentUser: p.userId === userId,
-      })),
+      players: hand.players.map(p => {
+        const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
+        return {
+          username: (p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName,
+          avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
+          seatPosition: p.seatPosition,
+          holeCards: p.holeCards,
+          finalHand: p.finalHand,
+          profit: p.profit,
+          isCurrentUser: p.userId === userId,
+        };
+      }),
     };
   });
 }

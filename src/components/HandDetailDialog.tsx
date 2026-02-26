@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { evaluatePLOHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
-import { maskName } from '../utils';
+
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
 
 export interface HandDetailPlayer {
@@ -85,7 +85,7 @@ function computeStreetStartPots(actions: HandDetailAction[]): Record<string, num
 }
 
 function displayName(player: { isCurrentUser: boolean; username: string }): string {
-  return player.isCurrentUser ? player.username : maskName(player.username);
+  return player.username;
 }
 
 /** プリフロでアクション記録がないプレイヤーに fold を補完（ポジション順の正しい位置に挿入） */
@@ -251,12 +251,6 @@ function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[
   const streetStartPot = computeStreetStartPots(hand.actions);
   const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
 
-  const seatToPlayer = useMemo(() => {
-    const map = new Map<number, HandDetailPlayer>();
-    for (const p of hand.players) map.set(p.seatPosition, p);
-    return map;
-  }, [hand.players]);
-
   let lastStreet = '';
   let isFirstHeader = true;
 
@@ -269,8 +263,7 @@ function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[
         const isFirst = isFirstHeader;
         if (showHeader) isFirstHeader = false;
 
-        const player = seatToPlayer.get(a.seatIndex);
-        const name = player?.isCurrentUser ? a.odName : maskName(a.odName);
+        const name = a.odName;
 
         return (
           <div key={i}>

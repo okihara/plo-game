@@ -1,12 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { maskName } from '../utils';
 import { fetchRankings } from '../utils/rankingsCache';
 
 export interface RankingEntry {
   userId: string;
   username: string;
   avatarUrl: string | null;
-  nameMasked: boolean;
   isBot: boolean;
   handsPlayed: number;
   totalAllInEVProfit: number;
@@ -183,8 +181,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                 {sorted.map((entry, i) => {
                   const rank = i + 1;
                   const isMe = entry.userId === userId;
-                  const displayName =
-                    isMe ? entry.username : entry.nameMasked ? maskName(entry.username) : entry.username;
+                  const displayName = entry.username;
                   const value =
                     tab === 'profit'
                       ? formatProfit(entry.totalAllInEVProfit)

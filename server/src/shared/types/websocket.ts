@@ -74,7 +74,6 @@ export interface OnlinePlayer {
   isAllIn: boolean;
   hasActed: boolean;
   isConnected: boolean;
-  nameMasked: boolean;  // 他プレイヤーに名前をマスク表示するか
 }
 
 // Client-safe game state (hides other players' hole cards)

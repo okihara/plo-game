@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { maskName } from '../utils';
 import type { RankingEntry } from './RankingPopup';
 import { formatProfit } from './RankingPopup';
 import { fetchRankings } from '../utils/rankingsCache';
@@ -56,11 +55,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
       <div className="space-y-[1.5cqw]">
         {sorted.map((entry, i) => {
           const isMe = entry.userId === userId;
-          const displayName = isMe
-            ? entry.username
-            : entry.nameMasked
-              ? maskName(entry.username)
-              : entry.username;
+          const displayName = entry.username;
           const profit = entry.totalAllInEVProfit;
 
           return (
