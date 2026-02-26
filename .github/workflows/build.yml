@@ -43,5 +43,8 @@ jobs:
 
       - run: pnpm install
 
+      - run: pnpm exec prisma generate
+        working-directory: server
+
       - run: npx tsc --noEmit
         working-directory: server
