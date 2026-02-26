@@ -101,14 +101,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             />
           </div>
           <h1 className="text-[8cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
-          <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 leading-relaxed">
-            <p className="font-bold text-[3cqw] text-amber-800 mb-[1cqw] text-center">現在テスト中</p>
-            <ul className="space-y-[0.3cqw]">
-              <li>・データが予告なくリセットされる場合があります</li>
-              <li>・チップに実際の価値はありません</li>
-              <li>・不具合があればお気軽にお知らせください</li>
-            </ul>
-          </div>
+          <p className="mt-[2cqw] text-[2.8cqw] text-cream-500 text-center">無料で遊べるPLOポーカー</p>
         </div>
 
         {/* User Info or Login */}

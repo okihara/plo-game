@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
+import { InternalBotSpawner } from './InternalBotSpawner.js';
 
 interface QueuedPlayer {
   odId: string;
@@ -11,18 +12,33 @@ interface QueuedPlayer {
   queuedAt: number;
 }
 
+// 人間プレイヤーが待機中のとき、Bot投入するまでの待機時間
+const BOT_FILL_DELAY_MS = 5000;
+// Bot投入する最大数（テーブルを埋めるのに必要な数）
+const BOT_FILL_COUNT = 3;
+
 export class MatchmakingPool {
   private io: Server;
   private tableManager: TableManager;
   private queues: Map<string, QueuedPlayer[]> = new Map(); // blinds -> players
   private processingInterval: ReturnType<typeof setInterval> | null = null;
+  private botSpawner: InternalBotSpawner | null = null;
+  private botFillScheduled: Set<string> = new Set(); // blinds that already have bot fill scheduled
+  private serverPort: number;
 
-  constructor(io: Server, tableManager: TableManager) {
+  constructor(io: Server, tableManager: TableManager, serverPort?: number) {
     this.io = io;
     this.tableManager = tableManager;
+    this.serverPort = serverPort || parseInt(process.env.PORT || '3001', 10);
 
     // Start queue processing
     this.startProcessing();
+  }
+
+  /** サーバー起動後にBot自動投入を有効化 */
+  public enableAutoFill(): void {
+    this.botSpawner = new InternalBotSpawner(this.serverPort);
+    console.log('[MatchmakingPool] Auto-fill bots enabled');
   }
 
   // Add player to matchmaking queue
@@ -134,8 +150,50 @@ export class MatchmakingPool {
     this.processingInterval = setInterval(() => {
       for (const blinds of this.queues.keys()) {
         this.processQueue(blinds);
+        this.maybeScheduleBotFill(blinds);
       }
     }, 500); // Check every 500ms
+  }
+
+  /**
+   * 人間プレイヤーが一定時間待機中で、テーブルにプレイヤーが不足している場合、
+   * Botを自動投入してゲームを開始させる
+   */
+  private maybeScheduleBotFill(blinds: string): void {
+    if (!this.botSpawner) return;
+
+    const queue = this.queues.get(blinds);
+    if (!queue || queue.length === 0) return;
+
+    // 既にこのブラインドにBot投入スケジュール済みならスキップ
+    if (this.botFillScheduled.has(blinds)) return;
+
+    // Bot自身がキューにいる場合はスキップ（人間プレイヤーのみ対象）
+    const hasHumanWaiting = queue.some(p => !p.odId.startsWith('guest_') && !p.odName.includes('bot'));
+    if (!hasHumanWaiting) return;
+
+    // 最も長く待っているプレイヤーの待ち時間をチェック
+    const now = Date.now();
+    const longestWait = Math.max(...queue.map(p => now - p.queuedAt));
+
+    if (longestWait >= BOT_FILL_DELAY_MS) {
+      this.botFillScheduled.add(blinds);
+      console.log(`[MatchmakingPool] Auto-filling bots for ${blinds} (waited ${Math.round(longestWait / 1000)}s)`);
+
+      this.botSpawner.spawnBots(BOT_FILL_COUNT, blinds)
+        .then(() => {
+          console.log(`[MatchmakingPool] Bots spawned for ${blinds}`);
+        })
+        .catch(err => {
+          console.error(`[MatchmakingPool] Bot spawn failed:`, err);
+        })
+        .finally(() => {
+          // 30秒後に再度Bot投入可能にする
+          setTimeout(() => {
+            this.botFillScheduled.delete(blinds);
+          }, 30000);
+        });
+    }
   }
 
   // Stop processing
@@ -143,6 +201,7 @@ export class MatchmakingPool {
     if (this.processingInterval) {
       clearInterval(this.processingInterval);
     }
+    this.botSpawner?.disconnectAll();
   }
 
   // Get queue status

@@ -102,6 +102,9 @@ const start = async () => {
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 
+    // サーバー起動後にBot自動投入を有効化（サーバーがlistenした後でないと接続できない）
+    matchmakingPool.enableAutoFill();
+
     console.log(`✅ Server running on http://localhost:${env.PORT}`);
     console.log(`✅ WebSocket ready on ws://localhost:${env.PORT}`);
     console.log(`✅ Status dashboard: http://localhost:${env.PORT}/admin/status`);

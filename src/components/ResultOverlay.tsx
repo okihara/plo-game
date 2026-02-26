@@ -66,6 +66,16 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
     }
   }, [animationComplete, iWon, myWinAmount]);
 
+  const handleShareToX = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    const handName = winnerInfo?.handName ? ` (${winnerInfo.handName})` : '';
+    const amount = formatChips(myWinAmount);
+    const text = `Baby PLOで+${amount}チップ獲得${handName}\n\n無料PLOポーカーで対戦しよう!`;
+    const url = window.location.origin;
+    const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(shareUrl, '_blank', 'noopener,noreferrer');
+  }, [winnerInfo, myWinAmount, formatChips]);
+
   // 勝者がいない場合は表示しない
   if (!hasWinners || !winnerInfo) {
     return null;
@@ -88,9 +98,17 @@ export function ResultOverlay({ state, mySeat }: ResultOverlayProps) {
             {winnerInfo.handName && (
               <div className="text-[2.8vh] font-semibold text-gray-200 mb-[2.5vh]">{winnerInfo.handName}</div>
             )}
-            <div className="text-[3vh] font-bold text-yellow-400 mb-[3.5vh] animate-amount-pop">
+            <div className="text-[3vh] font-bold text-yellow-400 mb-[2vh] animate-amount-pop">
               +{formatChips(animationComplete ? myWinAmount : displayedAmount)}
             </div>
+            {animationComplete && (
+              <button
+                onClick={handleShareToX}
+                className="px-[2vh] py-[1vh] text-[1.8vh] font-bold bg-white text-black rounded-full hover:bg-gray-200 active:scale-95 transition-all"
+              >
+                Xでシェア
+              </button>
+            )}
           </>
         ) : (
           <>
