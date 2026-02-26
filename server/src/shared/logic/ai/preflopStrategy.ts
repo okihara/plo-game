@@ -43,6 +43,16 @@ export function getPreflopDecision(
     return playPremium(state, validActions, effectiveStrength, facingRaise, personality);
   }
 
+  // === 3ベットに直面（相手が3ベット → foldTo3Betで判断） ===
+  if (facingRaise && state.currentBet > state.bigBlind * 3) {
+    // 3ベットに対するフォールド判断: ハンド強度で補正
+    const strengthBonus = Math.max(0, (effectiveStrength - vpipThreshold) * 1.5);
+    const adjustedFoldRate = Math.max(0.10, personality.foldTo3Bet - strengthBonus);
+    if (effectiveStrength < 0.75 && random < adjustedFoldRate) {
+      return { action: 'fold', amount: 0 };
+    }
+  }
+
   // === 3ベット判断 ===
   if (facingRaise && effectiveStrength > pfrThreshold + 0.10) {
     const threeBetDecision = evaluate3Bet(

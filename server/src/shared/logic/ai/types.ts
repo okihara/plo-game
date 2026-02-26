@@ -26,14 +26,18 @@ export interface ExtendedBoardTexture extends BoardTexture {
 export interface BotPersonality {
   name: string;
   // プリフロップ
-  vpip: number;           // 参加頻度 (0.15-0.45)
-  pfr: number;            // プリフロップレイズ頻度 (0.10-0.35)
-  threeBetFreq: number;   // 3ベット頻度 (0.03-0.15)
+  vpip: number;           // 参加頻度 (0.20-0.38)
+  pfr: number;            // プリフロップレイズ頻度 (0.14-0.30)
+  threeBetFreq: number;   // 3ベット頻度 (0.05-0.13)
   // ポストフロップ
-  cbetFreq: number;       // Cベット頻度 (0.30-0.80)
-  aggression: number;     // 全体アグレッション (0.3-1.2)
-  bluffFreq: number;      // ブラフ傾向 (0.05-0.25)
-  slowplayFreq: number;   // スロープレイ傾向 (0.05-0.30)
+  cbetFreq: number;       // Cベット頻度 (0.50-0.75)
+  aggression: number;     // 全体アグレッション (0.55-1.00)
+  bluffFreq: number;      // ブラフ傾向 (0.06-0.18)
+  slowplayFreq: number;   // スロープレイ傾向 (0.05-0.20)
+  // フォールド傾向（over-fold制御）
+  foldTo3Bet: number;     // 3ベットに対するフォールド頻度 (0.40-0.70)
+  foldToCbet: number;     // Cベットに対するフォールド頻度 (0.35-0.60)
+  foldToRiverBet: number; // リバーベットに対するフォールド頻度 (0.40-0.70)
 }
 
 // 相手統計情報
