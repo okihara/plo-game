@@ -3,7 +3,7 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   ClientGameState,
-} from '../../server/src/shared/types/websocket';
+} from '@plo/shared';
 import type { Card, Action } from '../logic/types';
 
 // 本番では同一オリジン（空文字）、開発ではlocalhost:3001
