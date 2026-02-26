@@ -8,7 +8,7 @@ import { AuthenticatedSocket } from './authMiddleware.js';
 // FFテーブルにハンド完了後の再割り当てコールバックを設定
 export function setupFastFoldCallback(table: TableInstance, tableManager: TableManager): void {
   if (!table.isFastFold || table.onFastFoldReassign) return;
-  table.onFastFoldReassign = (players) => {
+  table.onFastFoldReassign = async (players) => {
     for (const p of players) {
       tableManager.removePlayerFromTracking(p.odId);
 
@@ -28,7 +28,7 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
       const newTable = tableManager.getOrCreateTable(table.blinds, true, table.id);
       setupFastFoldCallback(newTable, tableManager);
 
-      const seatNumber = newTable.seatPlayer(
+      const seatNumber = await newTable.seatPlayer(
         p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
         { skipJoinedEmit: true },
         p.nameMasked
@@ -37,7 +37,7 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
       if (seatNumber !== null) {
         tableManager.setPlayerTable(p.odId, newTable.id);
         p.socket.emit('table:change', { tableId: newTable.id, seat: seatNumber });
-        newTable.triggerMaybeStartHand();
+        await newTable.triggerMaybeStartHand();
       } else {
         cashOutPlayer(p.odId, p.chips, table.id).catch(e => console.error('[FastFold] cashOut error:', e));
         p.socket.emit('table:left');
@@ -54,7 +54,7 @@ export async function handleFastFoldMove(
   tableManager: TableManager
 ): Promise<void> {
   // 1. 現テーブルから静かに離席（チップを持って出る）
-  const unseatResult = currentTable.unseatForFastFold(odId);
+  const unseatResult = await currentTable.unseatForFastFold(odId);
   if (!unseatResult) {
     console.warn(`[FastFold] unseatForFastFold failed for ${odId}`);
     return;
@@ -99,7 +99,7 @@ export async function handleFastFoldMove(
   }
 
   // 5. 新テーブルに着席（バイイン控除なし、チップをそのまま持ち越し）
-  const seatNumber = newTable.seatPlayer(
+  const seatNumber = await newTable.seatPlayer(
     odId,
     user.username,
     socket as Socket,
@@ -118,7 +118,7 @@ export async function handleFastFoldMove(
     socket.emit('table:change', { tableId: newTable.id, seat: seatNumber });
 
     // 8. 新テーブルのハンド開始を試行
-    newTable.triggerMaybeStartHand();
+    await newTable.triggerMaybeStartHand();
   } else {
     // 席がない場合はチップを返金してテーブル離脱扱い
     await cashOutPlayer(odId, unseatResult.chips, currentTable.id);

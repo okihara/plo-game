@@ -9,7 +9,7 @@ import { handleFastFoldMove, setupFastFoldCallback } from './fastFoldService.js'
 
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
-  const result = table.unseatPlayer(odId);
+  const result = await table.unseatPlayer(odId);
   tableManager.removePlayerFromTracking(odId);
   if (result) {
     await cashOutPlayer(result.odId, result.chips, table.id);
@@ -37,7 +37,7 @@ export async function handleGameAction(
     return;
   }
 
-  const success = table.handleAction(socket.odId!, data.action, data.amount || 0);
+  const success = await table.handleAction(socket.odId!, data.action, data.amount || 0);
   if (!success) {
     socket.emit('table:error', { message: 'Invalid action' });
     return;
@@ -65,7 +65,7 @@ export async function handleFastFold(socket: AuthenticatedSocket, tableManager: 
     return;
   }
 
-  const success = table.handleEarlyFold(socket.odId!);
+  const success = await table.handleEarlyFold(socket.odId!);
   if (!success) {
     return;
   }
@@ -151,7 +151,7 @@ export async function handleMatchmakingJoin(
     }
 
     // Seat player
-    const seatNumber = table.seatPlayer(
+    const seatNumber = await table.seatPlayer(
       socket.odId!,
       user.username,
       socket,
@@ -164,7 +164,7 @@ export async function handleMatchmakingJoin(
 
     if (seatNumber !== null) {
       tableManager.setPlayerTable(socket.odId!, table.id);
-      table.triggerMaybeStartHand();
+      await table.triggerMaybeStartHand();
     } else {
       // Seating failed - refund
       await cashOutPlayer(socket.odId!, buyIn);
@@ -189,14 +189,14 @@ export async function handleMatchmakingLeave(socket: AuthenticatedSocket, tableM
 }
 
 
-export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: number }, tableManager: TableManager): void {
+export async function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: number }, tableManager: TableManager): Promise<void> {
   const table = tableManager.getPlayerTable(socket.odId!);
   if (!table) {
     socket.emit('table:error', { message: '[debug] Not seated at a table' });
     return;
   }
 
-  const success = table.debugSetChips(socket.odId!, data.chips);
+  const success = await table.debugSetChips(socket.odId!, data.chips);
   if (success) {
     console.log(`[debug] Set chips for ${socket.odId} to ${data.chips}`);
   } else {

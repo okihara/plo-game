@@ -1,4 +1,5 @@
-// アクションフロー制御・タイマー管理
+// アクション検証・次プレイヤー探索
+// タイマー管理は TimerScheduler に移動済み
 
 import { GameState, Action } from '../../../shared/logic/types.js';
 import { getValidActions, getActivePlayers, applyAction, determineWinner, wouldAdvanceStreet } from '../../../shared/logic/gameEngine.js';
@@ -20,10 +21,7 @@ export interface AdvanceResult {
 }
 
 export class ActionController {
-  private actionTimer: NodeJS.Timeout | null = null;
-  private streetTransitionTimer: NodeJS.Timeout | null = null;
   private pendingAction: PendingAction | null = null;
-  private actionGeneration = 0;
 
   constructor(private broadcast: BroadcastService) {}
 
@@ -31,31 +29,11 @@ export class ActionController {
     return this.pendingAction;
   }
 
-  /**
-   * 全タイマーをクリア
-   */
-  clearTimers(): void {
-    this.actionGeneration++;
-    if (this.actionTimer) {
-      clearTimeout(this.actionTimer);
-      this.actionTimer = null;
-    }
-    if (this.streetTransitionTimer) {
-      clearTimeout(this.streetTransitionTimer);
-      this.streetTransitionTimer = null;
-    }
-    this.pendingAction = null;
+  setPendingAction(action: PendingAction | null): void {
+    this.pendingAction = action;
   }
 
-  /**
-   * アクションタイマーのみクリア
-   */
-  clearActionTimer(): void {
-    this.actionGeneration++;
-    if (this.actionTimer) {
-      clearTimeout(this.actionTimer);
-      this.actionTimer = null;
-    }
+  clearPendingAction(): void {
     this.pendingAction = null;
   }
 
@@ -85,8 +63,8 @@ export class ActionController {
       return { success: false, gameState, streetChanged: false, handComplete: false };
     }
 
-    // タイマークリア
-    this.clearActionTimer();
+    // pendingAction をクリア（タイマーのクリアは呼び出し元の TableInstance が担当）
+    this.pendingAction = null;
 
     // ストリート変更を事前検出（applyAction前に判定）
     const willAdvanceStreet = wouldAdvanceStreet(gameState, seatIndex, action, amount);
@@ -148,96 +126,5 @@ export class ActionController {
 
     gameState.currentPlayerIndex = nextIndex;
     return { gameState, nextIndex, handComplete: false };
-  }
-
-  /**
-   * 次のアクションをリクエスト
-   */
-  requestNextAction(
-    gameState: GameState,
-    seats: (SeatInfo | null)[],
-    onTimeout: (playerId: string, seatIndex: number) => void,
-    onDisconnectedFold: () => void
-  ): void {
-    if (gameState.isHandComplete) return;
-
-    const currentPlayerIndex = gameState.currentPlayerIndex;
-
-    // currentPlayerIndex が -1 の場合（全員オールインなど）
-    if (currentPlayerIndex === -1) {
-      return;
-    }
-
-    const currentSeat = seats[currentPlayerIndex];
-
-    // 切断・離席済みプレイヤーの処理（FoldProcessorに委譲）
-    if (!currentSeat || !currentSeat.socket) {
-      onDisconnectedFold();
-      return;
-    }
-
-    const validActions = getValidActions(gameState, currentPlayerIndex);
-
-    // ダッシュボード用のpendingAction設定
-    this.pendingAction = {
-      playerId: currentSeat.odId,
-      playerName: currentSeat.odName,
-      seatNumber: currentPlayerIndex,
-      validActions: validActions.map(a => ({
-        action: a.action,
-        minAmount: a.minAmount,
-        maxAmount: a.maxAmount,
-      })),
-      requestedAt: Date.now(),
-      timeoutMs: TABLE_CONSTANTS.ACTION_TIMEOUT_MS,
-    };
-
-    // アクション要求を送信
-    this.broadcast.emitToSocket(
-      currentSeat.socket,
-      currentSeat.odId,
-      'game:action_required',
-      {
-        playerId: currentSeat.odId,
-        validActions,
-        timeoutMs: TABLE_CONSTANTS.ACTION_TIMEOUT_MS,
-      }
-    );
-
-    // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）
-    const playerIdForTimeout = currentSeat.odId;
-    const seatIndexForTimeout = currentPlayerIndex;
-    const gen = ++this.actionGeneration;
-
-    this.actionTimer = setTimeout(() => {
-      if (this.actionGeneration !== gen) return;
-      onTimeout(playerIdForTimeout, seatIndexForTimeout);
-    }, TABLE_CONSTANTS.ACTION_TIMEOUT_MS);
-  }
-
-  /**
-   * アクション演出待ちの遅延処理（ストリート変更前の一拍）
-   */
-  scheduleActionAnimation(callback: () => void): void {
-    if (this.streetTransitionTimer) {
-      clearTimeout(this.streetTransitionTimer);
-    }
-    this.streetTransitionTimer = setTimeout(() => {
-      this.streetTransitionTimer = null;
-      callback();
-    }, TABLE_CONSTANTS.ACTION_ANIMATION_DELAY_MS);
-  }
-
-  /**
-   * ストリート遷移の遅延処理（コミュニティカード確認時間）
-   */
-  scheduleStreetTransition(callback: () => void): void {
-    if (this.streetTransitionTimer) {
-      clearTimeout(this.streetTransitionTimer);
-    }
-    this.streetTransitionTimer = setTimeout(() => {
-      this.streetTransitionTimer = null;
-      callback();
-    }, TABLE_CONSTANTS.STREET_TRANSITION_DELAY_MS);
   }
 }
