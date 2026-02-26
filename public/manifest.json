@@ -1,0 +1,22 @@
+{
+  "name": "Baby PLO - PLOポーカー",
+  "short_name": "Baby PLO",
+  "description": "スマホで気軽に遊べるPot Limit Omahaポーカー",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#000000",
+  "theme_color": "#2d5a3d",
+  "icons": [
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png",
+      "sizes": "32x32",
+      "type": "image/png"
+    }
+  ]
+}

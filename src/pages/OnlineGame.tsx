@@ -11,6 +11,7 @@ import {
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { ShareButton } from '../components/ShareButton';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
@@ -249,6 +250,16 @@ export function OnlineGame({ blinds, onBack }: OnlineGameProps) {
           />
 
           <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} />
+
+          {/* Win Share Button */}
+          {(() => {
+            const myWin = gameState.winners.find(w => w.playerId === humanPlayerIdx);
+            return myWin && myWin.amount > 0 ? (
+              <div className="absolute bottom-[2%] right-[3%] z-[60]">
+                <ShareButton winAmount={myWin.amount} handName={myWin.handName} blinds={blinds} />
+              </div>
+            ) : null;
+          })()}
 
           {/* <ResultOverlay state={gameState} mySeat={humanPlayerIdx} /> */}
 

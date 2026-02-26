@@ -119,13 +119,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               )}
             </div>
           )}
-          <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-amber-50 border border-amber-300 rounded-[2cqw] text-[2.5cqw] text-amber-700 leading-relaxed">
-            <p className="font-bold text-[3cqw] text-amber-800 mb-[1cqw] text-center">現在テスト中</p>
-            <ul className="space-y-[0.3cqw]">
-              <li>・データが予告なくリセットされる場合があります</li>
-              <li>・チップに実際の価値はありません</li>
-              <li>・不具合があればお気軽にお知らせください</li>
-            </ul>
+          <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-forest/5 border border-forest/20 rounded-[2cqw] text-[2.5cqw] text-cream-700 leading-relaxed">
+            <p className="text-center">無料で遊べるプレイマネーPLO！フィードバックは<a href="https://x.com/okkichan3" className="text-forest underline">@okkichan3</a>まで</p>
           </div>
         </div>
 
