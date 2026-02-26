@@ -21,9 +21,10 @@ function getWeekRange(): string {
 interface LobbyLeaderboardProps {
   userId?: string;
   onShowFull: () => void;
+  refreshKey?: number;
 }
 
-export function LobbyLeaderboard({ userId, onShowFull }: LobbyLeaderboardProps) {
+export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeaderboardProps) {
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loaded, setLoaded] = useState(false);
 
@@ -32,7 +33,7 @@ export function LobbyLeaderboard({ userId, onShowFull }: LobbyLeaderboardProps) 
       .then(setRankings)
       .catch(() => {})
       .finally(() => setLoaded(true));
-  }, []);
+  }, [refreshKey]);
 
   const sorted = [...rankings]
     .sort((a, b) => b.totalAllInEVProfit - a.totalAllInEVProfit)

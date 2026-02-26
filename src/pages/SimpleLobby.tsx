@@ -36,6 +36,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
+  const [rankingRefreshKey, setRankingRefreshKey] = useState(0);
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -303,7 +304,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           </div>
 
           {/* Mini Leaderboard */}
-          <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} />
+          <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} refreshKey={rankingRefreshKey} />
 
           {/* Footer */}
           <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">
@@ -350,7 +351,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
       {showRanking && user && (
         <RankingPopup
           userId={user.id}
-          onClose={() => setShowRanking(false)}
+          onClose={() => { setShowRanking(false); setRankingRefreshKey(k => k + 1); }}
         />
       )}
 
