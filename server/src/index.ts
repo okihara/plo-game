@@ -63,13 +63,16 @@ await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
 
-// 本番環境：フロントエンドの静的ファイルを配信
+// 静的ファイル配信
+const staticRoot = env.NODE_ENV === 'production'
+  ? path.join(__dirname, '../../dist')
+  : path.join(__dirname, '../../public');
+await fastify.register(fastifyStatic, {
+  root: staticRoot,
+  prefix: '/',
+});
+
 if (env.NODE_ENV === 'production') {
-  const distPath = path.join(__dirname, '../../dist');
-  await fastify.register(fastifyStatic, {
-    root: distPath,
-    prefix: '/',
-  });
 
   // SPA フォールバック（API・admin以外のルートはindex.htmlを返す）
   fastify.setNotFoundHandler(async (request, reply) => {

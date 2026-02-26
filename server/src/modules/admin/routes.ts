@@ -307,6 +307,8 @@ export function adminRoutes(deps: AdminDependencies) {
           provider: u.provider,
           balance: u.bankroll?.balance ?? 0,
           handsPlayed: u._count.handHistories,
+          nameMasked: u.nameMasked,
+          useTwitterAvatar: u.useTwitterAvatar,
           createdAt: u.createdAt.toISOString(),
           lastLoginAt: u.lastLoginAt?.toISOString() ?? null,
         })),
