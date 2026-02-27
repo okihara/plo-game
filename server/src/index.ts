@@ -19,6 +19,8 @@ import { handHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
 import { maintenanceService } from './modules/maintenance/MaintenanceService.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
+import { announcementService } from './modules/announcement/AnnouncementService.js';
+import { announcementRoutes } from './modules/announcement/routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,8 +112,9 @@ const start = async () => {
 
     const { tableManager } = setupGameSocket(io, fastify);
 
-    // Initialize maintenance service
+    // Initialize services
     await maintenanceService.initialize(io);
+    announcementService.initialize(io);
     maintenanceService.setOnDeactivate(() => {
       for (const info of tableManager.getTablesInfo()) {
         const table = tableManager.getTable(info.id);
@@ -123,6 +126,7 @@ const start = async () => {
     await fastify.register(adminRoutes({ io, tableManager }));
     await fastify.register(lobbyRoutes({ tableManager }));
     await fastify.register(maintenanceRoutes());
+    await fastify.register(announcementRoutes());
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 

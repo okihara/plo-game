@@ -41,6 +41,7 @@ export interface OnlineGameHookResult {
   actionTimeoutMs: number | null;
   showdownHandNames: Map<number, string>;
   maintenanceStatus: { isActive: boolean; message: string } | null;
+  announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
 
   // アクション
@@ -179,6 +180,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
 
   // Refs
@@ -431,6 +433,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onMaintenanceStatus: (data) => {
         setMaintenanceStatus(data);
       },
+      onAnnouncementStatus: (data) => {
+        setAnnouncementStatus(data);
+      },
     });
 
     return () => {
@@ -499,6 +504,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     actionTimeoutMs,
     showdownHandNames,
     maintenanceStatus,
+    announcementStatus,
     bustedMessage,
     connect,
     disconnect,

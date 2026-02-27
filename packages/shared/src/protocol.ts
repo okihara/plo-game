@@ -58,6 +58,9 @@ export interface ServerToClientEvents {
 
   // Maintenance
   'maintenance:status': (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
+
+  // Announcement (no play restriction)
+  'announcement:status': (data: { isActive: boolean; message: string }) => void;
 }
 
 // ========== Shared Types ==========
