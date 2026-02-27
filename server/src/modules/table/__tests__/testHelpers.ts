@@ -145,6 +145,60 @@ export function getRoomEmits(io: Server, eventName: string): unknown[] {
     .map(([, data]: [string, unknown]) => data);
 }
 
+/**
+ * 全員allinまで進める。
+ * buyIn を小さく設定して呼ぶこと（例: buyIn=6, blinds='1/2'）
+ * 各プレイヤーのaction_requiredから'allin'アクションを探して実行する。
+ */
+export function allPlayersAllIn(
+  table: TableInstance,
+  odIds: string[],
+  sockets: Socket[],
+  seatMap: number[]
+): void {
+  let safety = 20;
+  while (safety-- > 0) {
+    const state = table.getClientGameState();
+    if (state.currentPlayerSeat === null) break;
+
+    const idx = seatMap.indexOf(state.currentPlayerSeat);
+    if (idx === -1) break;
+
+    const odId = odIds[idx];
+    const socket = sockets[idx];
+
+    // action_requiredから有効アクションを取得
+    const actionEmits = getSocketEmits(socket, 'game:action_required');
+
+    if (actionEmits.length === 0) break;
+
+    const lastAction = actionEmits[actionEmits.length - 1] as {
+      validActions: { action: string; minAmount: number; maxAmount: number }[];
+    };
+
+    // allin > call > check の優先度で実行
+    const allinInfo = lastAction.validActions.find(a => a.action === 'allin');
+    if (allinInfo) {
+      table.handleAction(odId, 'allin', allinInfo.minAmount);
+      continue;
+    }
+
+    const callInfo = lastAction.validActions.find(a => a.action === 'call');
+    if (callInfo) {
+      table.handleAction(odId, 'call', callInfo.minAmount);
+      continue;
+    }
+
+    const checkInfo = lastAction.validActions.find(a => a.action === 'check');
+    if (checkInfo) {
+      table.handleAction(odId, 'check', 0);
+      continue;
+    }
+
+    break;
+  }
+}
+
 /** ソケットカウンターをリセット（beforeEach用） */
 export function resetSocketCounter(): void {
   socketCounter = 0;

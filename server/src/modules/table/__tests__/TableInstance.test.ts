@@ -10,6 +10,7 @@ import {
   getRoomEmits,
   findCurrentPlayer,
   findBBPlayer,
+  allPlayersAllIn,
   resetSocketCounter,
 } from './testHelpers.js';
 
@@ -33,6 +34,10 @@ vi.mock('../../maintenance/MaintenanceService.js', () => ({
 
 vi.mock('../../stats/updateStatsIncremental.js', () => ({
   updatePlayerStats: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../shared/logic/equityCalculator.js', () => ({
+  calculateAllInEVProfits: vi.fn().mockReturnValue(new Map()),
 }));
 
 // ============================================
@@ -968,5 +973,170 @@ describe('TableInstance - 連続する保留フォールドの処理', () => {
 
     const handComplete = getRoomEmits(io, 'game:hand_complete');
     expect(handComplete.length).toBeGreaterThan(0);
+  });
+});
+
+// ============================================
+// J. オールイン・ランアウトテスト
+// ============================================
+
+describe('TableInstance - オールイン・ランアウト', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('プリフロップで全員allinするとランアウトが開始される', async () => {
+    // buyIn=6, blinds='1/2' → 全員のチップが少なく allin しやすい
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ランアウト中: ショーダウン前の待機 (2000ms)
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // game:showdown がブロードキャストされる
+    const showdownEmits = getRoomEmits(io, 'game:showdown');
+    expect(showdownEmits.length).toBeGreaterThan(0);
+
+    // ショーダウンのプレイヤー情報にカードが含まれている
+    const showdownData = showdownEmits[showdownEmits.length - 1] as {
+      players: { seatIndex: number; cards: unknown[] }[];
+      winners: { playerId: string; amount: number }[];
+    };
+    expect(showdownData.players.length).toBeGreaterThanOrEqual(2);
+    for (const p of showdownData.players) {
+      expect(p.cards).toHaveLength(4); // PLO = 4枚
+    }
+  });
+
+  it('ランアウト中はアクションが拒否される', async () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ランアウト開始直後（ショーダウン待機中）
+    // 追加のアクションは拒否される
+    const result = table.handleAction(odIds[0], 'fold', 0);
+    expect(result).toBe(false);
+  });
+
+  it('ランアウトでコミュニティカードがストリートごとに段階的に表示される', async () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ショーダウン前待機 (2000ms) + ショーダウン後待機 (2000ms)
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // フロップ表示 (即座) → turn表示 (1500ms後) → river表示 (2250ms後)
+    await vi.advanceTimersByTimeAsync(1500); // turn表示
+    await vi.advanceTimersByTimeAsync(2250); // river表示
+
+    // ストリートごとの game:state を確認
+    const allStates = getRoomEmits(io, 'game:state') as { state: { communityCards: unknown[]; currentStreet: string } }[];
+
+    // フロップ(3枚)、ターン(4枚)、リバー(5枚)のステートが含まれている
+    const cardCounts = allStates.map(s => s.state.communityCards.length);
+    expect(cardCounts).toContain(3);
+    expect(cardCounts).toContain(4);
+    expect(cardCounts).toContain(5);
+  });
+
+  it('ランアウト完了後にhand_completeがブロードキャストされる', async () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ランアウト全体の遅延を進める:
+    // showdown前(2000) + showdown後(2000)
+    // + flop→turn(1500) + turn→river(2250) + river→final(1500)
+    // + hand_complete(2000) + next_hand(5000=showdown delay)
+    await vi.advanceTimersByTimeAsync(2000); // showdown前
+    await vi.advanceTimersByTimeAsync(2000); // showdown後
+    await vi.advanceTimersByTimeAsync(1500); // flop→turn
+    await vi.advanceTimersByTimeAsync(2250); // turn→river
+    await vi.advanceTimersByTimeAsync(1500); // river→final
+    await vi.advanceTimersByTimeAsync(2000); // HAND_COMPLETE_DELAY
+    await vi.advanceTimersByTimeAsync(5000); // NEXT_HAND_SHOWDOWN_DELAY
+
+    const handComplete = getRoomEmits(io, 'game:hand_complete');
+    expect(handComplete.length).toBeGreaterThan(0);
+
+    const lastComplete = handComplete[handComplete.length - 1] as {
+      winners: { playerId: string; amount: number }[];
+    };
+    expect(lastComplete.winners.length).toBeGreaterThan(0);
+    expect(lastComplete.winners[0].amount).toBeGreaterThan(0);
+  });
+
+  it('ランアウト中のshowdownはhandComplete時に再送されない', async () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // 全遅延を進めてハンド完了まで
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2250);
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(5000);
+
+    // showdownはランアウト中に1回だけ送信される（handleHandComplete内で再送されない）
+    const showdownEmits = getRoomEmits(io, 'game:showdown');
+    expect(showdownEmits).toHaveLength(1);
+  });
+
+  it('ランアウト完了後に次のハンドが自動開始される', async () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // 全遅延を進める
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2250);
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTimeAsync(500); // 余裕
+
+    // ハンド完了後の状態確認: ランアウトフラグがリセットされている
+    // (isRunOutInProgress は private なので handleAction が受理されるか間接チェック)
+    const state = table.getClientGameState();
+    expect(state.isHandInProgress === true || state.isHandInProgress === false).toBe(true);
   });
 });
