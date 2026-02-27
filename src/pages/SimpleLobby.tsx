@@ -143,7 +143,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           )}
           {announcement?.isActive && !maintenance?.isActive && (
             <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-blue-50 border border-blue-300 rounded-[2cqw] text-[2.5cqw] text-blue-700 leading-relaxed">
-              <p className="mt-[0.5cqw] text-center">{announcement.message}</p>
+              <p className="mt-[0.5cqw] text-center whitespace-pre-line">{announcement.message}</p>
             </div>
           )}
         </div>

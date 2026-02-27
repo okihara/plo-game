@@ -141,7 +141,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
       {/* お知らせバナー */}
       {announcementStatus?.isActive && !maintenanceStatus?.isActive && (
         <div className="absolute top-[3%] left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="bg-blue-600/85 text-white text-center py-[0.5cqw] px-[3cqw] rounded-[1.5cqw]"
+          <div className="bg-blue-600/85 text-white text-center py-[0.5cqw] px-[3cqw] rounded-[1.5cqw] whitespace-pre-line"
                style={{ fontSize: '2.3vw' }}>
             {announcementStatus.message}
           </div>
