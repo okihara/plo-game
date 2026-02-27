@@ -65,15 +65,40 @@ export function setupRunningHand(options?: {
   playerCount?: number;
   blinds?: string;
   buyIn?: number;
+  isFastFold?: boolean;
 }): { table: TableInstance; io: Server; odIds: string[]; sockets: Socket[]; seatMap: number[] } {
-  const { playerCount = 3, blinds = '1/2', buyIn = 600 } = options ?? {};
+  const { playerCount = 3, blinds = '1/2', buyIn = 600, isFastFold = false } = options ?? {};
 
   const io = createMockIO();
-  const table = new TableInstance(io, blinds, false);
+  const table = new TableInstance(io, blinds, isFastFold);
   const { odIds, sockets, seatMap } = seatNPlayers(table, playerCount, buyIn);
   table.triggerMaybeStartHand();
 
   return { table, io, odIds, sockets, seatMap };
+}
+
+/**
+ * dealerSeat から BB の席番号を算出する（POSITIONS配列: BTN=0, SB=+1, BB=+2）。
+ * seatMap/odIds 配列の中でBBに該当するプレイヤーを返す。
+ */
+export function findBBPlayer(
+  table: TableInstance,
+  odIds: string[],
+  sockets: Socket[],
+  seatMap: number[]
+): { odId: string; socket: Socket; playerIndex: number; seatIndex: number } | null {
+  const state = table.getClientGameState();
+  const bbSeat = (state.dealerSeat + 2) % 6;
+
+  const idx = seatMap.indexOf(bbSeat);
+  if (idx === -1) return null;
+
+  return {
+    odId: odIds[idx],
+    socket: sockets[idx],
+    playerIndex: idx,
+    seatIndex: bbSeat,
+  };
 }
 
 /**

@@ -9,6 +9,7 @@ import {
   getSocketEmits,
   getRoomEmits,
   findCurrentPlayer,
+  findBBPlayer,
   resetSocketCounter,
 } from './testHelpers.js';
 
@@ -437,5 +438,250 @@ describe('TableInstance - タイムアウト', () => {
 
     // 2人fold → ハンド完了 → 余分なアクションは発生しない
     expect(actionsAfterTimeout).toBe(actionsAfterSecondFold);
+  });
+});
+
+// ============================================
+// E. FastFold テスト
+// ============================================
+
+describe('TableInstance - FastFold', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  // --- handleEarlyFold ---
+
+  describe('handleEarlyFold', () => {
+    it('自分のターンでなければ保留されてtrueを返す', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(current).not.toBeNull();
+
+      // 手番でないプレイヤーを探す
+      const nonCurrent = odIds.find(id => id !== current!.odId)!;
+
+      const result = table.handleEarlyFold(nonCurrent);
+      expect(result).toBe(true);
+    });
+
+    it('保留フォールドは手番が回ってきた時に処理される', () => {
+      const { table, io, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(current).not.toBeNull();
+
+      // 手番でないプレイヤーを1人earlyFold
+      const nonCurrentIdx = odIds.findIndex(id => id !== current!.odId);
+      table.handleEarlyFold(odIds[nonCurrentIdx]);
+
+      // 手番が回るまで他のプレイヤーがアクション
+      // earlyFoldしたプレイヤーの手番が来たら自動foldされるはず
+      let safety = 10;
+      while (safety-- > 0) {
+        const cur = findCurrentPlayer(table, odIds, sockets, seatMap);
+        if (!cur) break;
+        if (cur.odId === odIds[nonCurrentIdx]) {
+          // earlyFold済みなのにまだ手番にいるのはおかしい → 自動処理されたはず
+          // ここには来ないはず
+          break;
+        }
+        table.handleAction(cur.odId, 'fold', 0);
+      }
+
+      // earlyFoldしたプレイヤーのアクションがfoldとしてブロードキャストされている
+      const actions = getRoomEmits(io, 'game:action_taken') as { playerId: string; action: string }[];
+      const earlyFoldAction = actions.find(a => a.playerId === odIds[nonCurrentIdx]);
+      expect(earlyFoldAction).toBeDefined();
+      expect(earlyFoldAction!.action).toBe('fold');
+    });
+
+    it('自分のターンなら即座にフォールドされる', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(current).not.toBeNull();
+
+      const result = table.handleEarlyFold(current!.odId);
+      expect(result).toBe(true);
+
+      // 手番が次のプレイヤーに移っている
+      const next = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(next).not.toBeNull();
+      expect(next!.odId).not.toBe(current!.odId);
+    });
+
+    it('BBはプリフロップでFastFoldできない', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const bb = findBBPlayer(table, odIds, sockets, seatMap);
+      expect(bb).not.toBeNull();
+
+      // プリフロップ中
+      expect(table.getClientGameState().currentStreet).toBe('preflop');
+
+      const result = table.handleEarlyFold(bb!.odId);
+      expect(result).toBe(false);
+    });
+
+    it('既にフォールド済みのプレイヤーはfalseを返す', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(current).not.toBeNull();
+
+      // 正規foldする
+      table.handleAction(current!.odId, 'fold', 0);
+
+      // 既にfold済みなのでearlyFoldも失敗する
+      const result = table.handleEarlyFold(current!.odId);
+      expect(result).toBe(false);
+    });
+
+    it('ハンド未開始ではfalseを返す', () => {
+      const io = createMockIO();
+      const table = new TableInstance(io, '1/2', true);
+      seatNPlayers(table, 6);
+      // triggerMaybeStartHand しない
+
+      const result = table.handleEarlyFold('player_0');
+      expect(result).toBe(false);
+    });
+  });
+
+  // --- unseatForFastFold ---
+
+  describe('unseatForFastFold', () => {
+    it('odIdとchipsとsocketが返る', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      // まずfoldしてからFF離席
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(current).not.toBeNull();
+      table.handleAction(current!.odId, 'fold', 0);
+
+      const result = table.unseatForFastFold(current!.odId);
+      expect(result).not.toBeNull();
+      expect(result!.odId).toBe(current!.odId);
+      expect(result!.chips).toBeTypeOf('number');
+      expect(result!.socket).toBe(current!.socket);
+    });
+
+    it('ソケットがルームから離脱する', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      table.handleAction(current!.odId, 'fold', 0);
+      table.unseatForFastFold(current!.odId);
+
+      expect(current!.socket.leave).toHaveBeenCalledWith(`table:${table.id}`);
+    });
+
+    it('table:leftは送信されない', () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      table.handleAction(current!.odId, 'fold', 0);
+      table.unseatForFastFold(current!.odId);
+
+      const leftEmits = getSocketEmits(current!.socket, 'table:left');
+      expect(leftEmits).toHaveLength(0);
+    });
+
+    it('存在しないプレイヤーはnullを返す', () => {
+      const { table } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const result = table.unseatForFastFold('nonexistent');
+      expect(result).toBeNull();
+    });
+  });
+
+  // --- onFastFoldReassign ---
+
+  describe('onFastFoldReassign', () => {
+    it('ハンド完了後にコールバックが呼ばれる', async () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const reassignFn = vi.fn();
+      table.onFastFoldReassign = reassignFn;
+
+      // 全員foldでハンド終了（5人fold → 残り1人勝利）
+      for (let i = 0; i < 5; i++) {
+        const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+        if (!current) break;
+        table.handleAction(current.odId, 'fold', 0);
+      }
+
+      // handleHandComplete の遅延を進める
+      await vi.advanceTimersByTimeAsync(2000); // HAND_COMPLETE_DELAY
+      await vi.advanceTimersByTimeAsync(2000); // NEXT_HAND_DELAY
+
+      expect(reassignFn).toHaveBeenCalledTimes(1);
+
+      // コールバックにプレイヤー情報が渡される
+      const players = reassignFn.mock.calls[0][0] as { odId: string; chips: number; socket: unknown }[];
+      expect(players.length).toBeGreaterThan(0);
+      for (const p of players) {
+        expect(p.odId).toBeTruthy();
+        expect(p.chips).toBeTypeOf('number');
+        expect(p.socket).toBeTruthy();
+      }
+    });
+
+    it('FF離席済みプレイヤーはコールバックに含まれない', async () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      const reassignFn = vi.fn();
+      table.onFastFoldReassign = reassignFn;
+
+      // 最初のプレイヤーをfold → unseatForFastFold
+      const first = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(first).not.toBeNull();
+      table.handleAction(first!.odId, 'fold', 0);
+      table.unseatForFastFold(first!.odId);
+
+      // 残りを全員fold
+      for (let i = 0; i < 4; i++) {
+        const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+        if (!current) break;
+        table.handleAction(current.odId, 'fold', 0);
+      }
+
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
+
+      expect(reassignFn).toHaveBeenCalledTimes(1);
+
+      const players = reassignFn.mock.calls[0][0] as { odId: string }[];
+      const movedPlayer = players.find(p => p.odId === first!.odId);
+      expect(movedPlayer).toBeUndefined();
+    });
+
+    it('コールバック未設定なら通常のmaybeStartHandが呼ばれる', async () => {
+      const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+      // onFastFoldReassign を設定しない
+
+      // 全員foldでハンド終了
+      for (let i = 0; i < 5; i++) {
+        const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+        if (!current) break;
+        table.handleAction(current.odId, 'fold', 0);
+      }
+
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(2000);
+      await vi.advanceTimersByTimeAsync(500);
+
+      // FFコールバックがないので通常の次ハンド開始
+      expect(table.isHandInProgress).toBe(true);
+    });
   });
 });
