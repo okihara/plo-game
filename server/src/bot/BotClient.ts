@@ -26,6 +26,7 @@ interface BotConfig {
   name: string;
   avatarUrl: string | null;
   disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
+  midHandDisconnectChance?: number; // ハンド中（他プレイヤーのターン時）に強制切断する確率 (0-1)
   defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
   isFastFold?: boolean; // ファストフォールドテーブルに参加するか
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
@@ -177,6 +178,11 @@ export class BotClient {
           action: data.action,
           amount: data.amount,
         });
+
+        // テスト用: ハンド中に強制切断（自分のターンでない時）
+        if (data.seat !== this.seatNumber) {
+          this.maybeMidHandDisconnect();
+        }
       });
 
       this.socket.on('game:action_required', (data: {
@@ -537,6 +543,31 @@ export class BotClient {
   async leaveMatchmaking(blinds: string): Promise<void> {
     if (!this.socket) return;
     this.socket.emit('matchmaking:leave', { blinds });
+  }
+
+  /**
+   * テスト用: ハンド中に強制切断（table:leave を送らずソケットを切る）
+   * サーバー側の handleDisconnect パスを通す
+   */
+  private maybeMidHandDisconnect(): void {
+    const chance = this.config.midHandDisconnectChance ?? 0;
+    if (chance <= 0 || Math.random() >= chance) return;
+
+    const delay = 200 + Math.random() * 800;
+    console.log(`[${this.config.name}] Mid-hand forced disconnect in ${Math.round(delay)}ms`);
+    setTimeout(() => {
+      if (!this.socket || !this.isConnected) return;
+      // table:leave を送らずに直接切断 → handleDisconnect が発火
+      this.stopStuckCheck();
+      this.socket.disconnect();
+      this.socket = null;
+      this.isConnected = false;
+      this.playerId = null;
+      this.tableId = null;
+      this.seatNumber = -1;
+      this.holeCards = [];
+      this.gameState = null;
+    }, delay);
   }
 
   private maybeDisconnectRandomly(): void {
