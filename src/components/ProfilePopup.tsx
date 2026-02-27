@@ -104,15 +104,15 @@ export function ProfilePopup({
           </button>
 
           {/* Avatar */}
-          <div className="flex flex-col items-center mb-[4cqw]">
-            <div className="w-[28cqw] h-[28cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[1.2cqw] border-cream-300 overflow-hidden mb-[3cqw]">
+          <div className="flex flex-col items-center mb-[3cqw]">
+            <div className="w-[16cqw] h-[16cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[0.8cqw] border-cream-300 overflow-hidden mb-[2cqw]">
               {avatarImage ? (
                 <img src={avatarImage} alt={name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[10cqw]">👤</div>
+                <div className="w-full h-full flex items-center justify-center text-[6cqw]">👤</div>
               )}
             </div>
-            <h2 className="text-[6cqw] font-bold text-cream-900">{name}</h2>
+            <h2 className="text-[4cqw] font-bold text-cream-900">{name}</h2>
           </div>
 
           {/* Badges (実バッジがある場合のみ表示) */}

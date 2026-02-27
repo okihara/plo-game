@@ -38,7 +38,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
     .sort((a, b) => b.totalAllInEVProfit - a.totalAllInEVProfit)
     .slice(0, 10);
 
-  if (!loaded || sorted.length === 0) return null;
+  if (sorted.length === 0 && loaded) return null;
 
   return (
     <div
@@ -52,6 +52,11 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
         </div>
         <span className="text-[2.5cqw] text-cream-400">もっと見る &gt;</span>
       </div>
+      {!loaded ? (
+        <div className="flex justify-center py-[3cqw]">
+          <div className="w-[5cqw] h-[5cqw] border-[0.5cqw] border-cream-300 border-t-cream-600 rounded-full animate-spin" />
+        </div>
+      ) : (
       <div className="space-y-[1.5cqw]">
         {sorted.map((entry, i) => {
           const isMe = entry.userId === userId;
@@ -83,6 +88,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
           );
         })}
       </div>
+      )}
     </div>
   );
 }
