@@ -37,6 +37,7 @@ interface BotManagerConfig {
   botCount: number;
   blinds: string;
   isFastFold?: boolean;
+  midHandDisconnectChance?: number;
 }
 
 export class BotManager {
@@ -117,6 +118,7 @@ export class BotManager {
       avatarUrl: BOT_AVATARS[avatarIndex],
       defaultBlinds: this.config.blinds,
       isFastFold: this.config.isFastFold,
+      midHandDisconnectChance: this.config.midHandDisconnectChance,
       onJoinFailed: (failedBot, reason) => this.handleJoinFailed(failedBot, reason),
     });
 
