@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { Pencil } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { ProfileEditDialog } from '../components/ProfileEditDialog';
 import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 
@@ -30,6 +32,7 @@ const TABLE_OPTIONS: TableOption[] = [
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
+  const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
@@ -152,6 +155,12 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   <div>
                     <div className="flex items-center gap-[1.5cqw]">
                       <span className="text-[4cqw] text-cream-900 font-bold">{user.displayName || user.username}</span>
+                      <button
+                        onClick={() => setShowProfileEdit(true)}
+                        className="text-cream-700 hover:text-cream-900 transition-colors"
+                      >
+                        <Pencil className="w-[3cqw] h-[3cqw]" />
+                      </button>
                     </div>
                     <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">
                       <span className="text-[3.5cqw] font-bold text-forest">{user.balance}</span>
@@ -330,6 +339,18 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           onProfileUpdated={refreshUser}
           twitterAvatarUrl={user.twitterAvatarUrl}
           useTwitterAvatar={user.useTwitterAvatar}
+        />
+      )}
+
+      {/* Profile Edit Dialog */}
+      {showProfileEdit && user && (
+        <ProfileEditDialog
+          currentName={user.displayName || user.username}
+          currentAvatarUrl={user.avatarUrl ?? null}
+          twitterAvatarUrl={user.twitterAvatarUrl ?? null}
+          useTwitterAvatar={user.useTwitterAvatar ?? false}
+          onClose={() => setShowProfileEdit(false)}
+          onSaved={() => { setShowProfileEdit(false); refreshUser(); }}
         />
       )}
 
