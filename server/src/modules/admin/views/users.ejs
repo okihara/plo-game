@@ -103,7 +103,7 @@
     <h1>ユーザー一覧</h1>
 
     <div class="toolbar">
-      <input type="text" class="search-input" id="searchInput" placeholder="ユーザー名 / メールで検索...">
+      <input type="text" class="search-input" id="searchInput" placeholder="ユーザー名 / 表示名で検索...">
       <div class="filter-group">
         <button class="filter-btn active" data-filter="all">全て</button>
         <button class="filter-btn" data-filter="human">人間</button>
@@ -117,7 +117,6 @@
         <tr>
           <th data-sort="username">ユーザー名 <span class="arrow"></span></th>
           <th>表示名</th>
-          <th data-sort="email">メール <span class="arrow"></span></th>
           <th data-sort="provider">認証 <span class="arrow"></span></th>
           <th data-sort="nameMasked">名前 <span class="arrow"></span></th>
           <th>Xアイコン</th>
@@ -129,7 +128,7 @@
         </tr>
       </thead>
       <tbody id="usersBody">
-        <tr><td colspan="11" class="loading">読み込み中...</td></tr>
+        <tr><td colspan="10" class="loading">読み込み中...</td></tr>
       </tbody>
     </table>
 
@@ -157,7 +156,7 @@
         renderUsers(data);
       } catch (e) {
         console.error('fetchUsers error:', e);
-        document.getElementById('usersBody').innerHTML = '<tr><td colspan="11" class="loading" style="color:#ef4444">読み込みエラー: ' + escapeHtml(e.message) + '</td></tr>';
+        document.getElementById('usersBody').innerHTML = '<tr><td colspan="10" class="loading" style="color:#ef4444">読み込みエラー: ' + escapeHtml(e.message) + '</td></tr>';
       }
     }
 
@@ -171,7 +170,6 @@
         return '<tr>' +
           '<td>' + avatar + '<span class="username">' + escapeHtml(u.username) + '</span></td>' +
           '<td>' + (u.displayName ? escapeHtml(u.displayName) : '<span style="color:#64748b">-</span>') + '</td>' +
-          '<td>' + escapeHtml(u.email) + '</td>' +
           '<td><span class="provider-badge' + pCls + '">' + u.provider + '</span></td>' +
           '<td>' + (u.nameMasked ? '🔒' : '🔓') + '</td>' +
           '<td>' + (u.twitterAvatarUrl ? '<img class="avatar" src="' + u.twitterAvatarUrl + '" alt="">' : '-') + '</td>' +
@@ -183,7 +181,7 @@
         '</tr>';
       }).join('');
 
-      if (!data.users.length) html = '<tr><td colspan="11" class="loading">該当ユーザーなし</td></tr>';
+      if (!data.users.length) html = '<tr><td colspan="10" class="loading">該当ユーザーなし</td></tr>';
       document.getElementById('usersBody').innerHTML = html;
 
       document.getElementById('pagination').innerHTML =

@@ -263,7 +263,8 @@ function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[
         const isFirst = isFirstHeader;
         if (showHeader) isFirstHeader = false;
 
-        const name = a.odName;
+        const player = hand.players.find(p => p.seatPosition === a.seatIndex);
+        const name = player ? displayName(player) : a.odName;
 
         return (
           <div key={i}>
