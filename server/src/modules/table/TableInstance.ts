@@ -156,23 +156,29 @@ export class TableInstance {
       !this.gameState.isHandComplete &&
       this.gameState.currentPlayerIndex === seatIndex;
 
-    // 保留フォールドがあれば削除（通常の離席処理で対応するため）
+    // 保留フォールドがあれば削除（離席処理で再設定するため）
     this.pendingEarlyFolds.delete(seatIndex);
 
     // If in a hand, fold the player and keep seat info for history/display
     if (this.gameState && !this.gameState.isHandComplete) {
       this.playerManager.markLeftForFastFold(seatIndex);
 
-      const result = this.foldProcessor.processFold(this.gameState, {
-        seatIndex,
-        playerId: odId,
-        wasCurrentPlayer: wasCurrentPlayer ?? false,
-      });
-      this.gameState = result.gameState;
+      if (wasCurrentPlayer) {
+        // 自分のターン → 即座にフォールド
+        const result = this.foldProcessor.processFold(this.gameState, {
+          seatIndex,
+          playerId: odId,
+          wasCurrentPlayer: true,
+        });
+        this.gameState = result.gameState;
 
-      if (result.requiresAdvance) {
-        this.actionController.clearTimers();
-        this.advanceToNextPlayer();
+        if (result.requiresAdvance) {
+          this.actionController.clearTimers();
+          this.advanceToNextPlayer();
+        }
+      } else {
+        // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
+        this.pendingEarlyFolds.set(seatIndex, odId);
       }
     } else {
       this.playerManager.unseatPlayer(seatIndex);
