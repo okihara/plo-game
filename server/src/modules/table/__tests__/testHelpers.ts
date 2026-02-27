@@ -129,8 +129,8 @@ export function findCurrentPlayer(
 export function getSocketEmits(socket: Socket, eventName: string): unknown[] {
   const emitFn = socket.emit as ReturnType<typeof vi.fn>;
   return emitFn.mock.calls
-    .filter(([event]: [string]) => event === eventName)
-    .map(([, data]: [string, unknown]) => data);
+    .filter((args: unknown[]) => args[0] === eventName)
+    .map((args: unknown[]) => args[1]);
 }
 
 /** io.to().emit のモックから特定イベントの引数を取得 */
@@ -141,8 +141,8 @@ export function getRoomEmits(io: Server, eventName: string): unknown[] {
   const roomMock = toFn.mock.results[0].value;
   const emitFn = roomMock.emit as ReturnType<typeof vi.fn>;
   return emitFn.mock.calls
-    .filter(([event]: [string]) => event === eventName)
-    .map(([, data]: [string, unknown]) => data);
+    .filter((args: unknown[]) => args[0] === eventName)
+    .map((args: unknown[]) => args[1]);
 }
 
 /**

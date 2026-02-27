@@ -39,14 +39,6 @@ interface ProfilePopupProps {
 // avatarIdから画像パスを生成
 const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
 
-// userIdから短いハッシュ文字列を生成
-function shortHash(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) {
-    h = ((h << 5) - h + id.charCodeAt(i)) | 0;
-  }
-  return (h >>> 0).toString(36).slice(0, 6).padStart(6, '0');
-}
 
 export function ProfilePopup({
   name,
