@@ -1,5 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
+import { Pencil } from 'lucide-react';
 import { ProfitChart } from './ProfitChart';
+import { ProfileEditDialog } from './ProfileEditDialog';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -28,10 +30,15 @@ interface ProfilePopupProps {
   badges?: string[];
   isSelf?: boolean;
   onClose: () => void;
+  onProfileUpdated?: () => void;
+  twitterAvatarUrl?: string | null;
+  useTwitterAvatar?: boolean;
+  initialShowEdit?: boolean;
 }
 
 // avatarIdから画像パスを生成
 const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
+
 
 export function ProfilePopup({
   name,
@@ -41,10 +48,15 @@ export function ProfilePopup({
   badges = [],
   isSelf = false,
   onClose,
+  onProfileUpdated,
+  twitterAvatarUrl,
+  useTwitterAvatar = false,
+  initialShowEdit = false,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showEditDialog, setShowEditDialog] = useState(initialShowEdit);
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
 
   // スタッツ＆収支推移をAPIから並列取得
@@ -74,12 +86,16 @@ export function ProfilePopup({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (showEditDialog) {
+          setShowEditDialog(false);
+        } else {
+          onClose();
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, showEditDialog]);
 
   // 背景クリックで閉じる
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -104,15 +120,25 @@ export function ProfilePopup({
           </button>
 
           {/* Avatar */}
-          <div className="flex flex-col items-center mb-[4cqw]">
-            <div className="w-[28cqw] h-[28cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[1.2cqw] border-cream-300 overflow-hidden mb-[3cqw]">
+          <div className="flex flex-col items-center mb-[3cqw]">
+            <div className="w-[16cqw] h-[16cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[0.8cqw] border-cream-300 overflow-hidden mb-[2cqw]">
               {avatarImage ? (
                 <img src={avatarImage} alt={name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[10cqw]">👤</div>
+                <div className="w-full h-full flex items-center justify-center text-[6cqw]">👤</div>
               )}
             </div>
-            <h2 className="text-[6cqw] font-bold text-cream-900">{name}</h2>
+            <div className="flex items-center gap-[1.5cqw]">
+              <h2 className="text-[4cqw] font-bold text-cream-900">{name}</h2>
+              {isSelf && (
+                <button
+                  onClick={() => setShowEditDialog(true)}
+                  className="text-cream-700 hover:text-cream-900"
+                >
+                  <Pencil className="w-[3.5cqw] h-[3.5cqw]" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Badges (実バッジがある場合のみ表示) */}
@@ -188,9 +214,28 @@ export function ProfilePopup({
 
         </div>
       </div>
+
+      {/* Edit Dialog */}
+      {showEditDialog && (
+        <ProfileEditDialog
+          currentName={name}
+          currentAvatarUrl={avatarUrl ?? null}
+          twitterAvatarUrl={twitterAvatarUrl ?? null}
+          useTwitterAvatar={useTwitterAvatar}
+          onClose={() => setShowEditDialog(false)}
+          onSaved={() => {
+            setShowEditDialog(false);
+            onProfileUpdated?.();
+          }}
+        />
+      )}
     </div>
   );
 }
+
+// ============================================
+// Helpers
+// ============================================
 
 function formatProfit(profit: number): string {
   const sign = profit >= 0 ? '+' : '';

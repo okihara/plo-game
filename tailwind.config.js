@@ -40,6 +40,7 @@ export default {
         'flip-card': 'flip-card 0.6s ease forwards',
         'fade-in': 'fade-in 0.3s ease',
         'scale-in': 'scale-in 0.2s ease-out forwards',
+        'bounce-subtle': 'bounce-subtle 2s ease-in-out infinite',
       },
       keyframes: {
         'pulse-glow': {
@@ -71,6 +72,10 @@ export default {
         'scale-in': {
           '0%': { opacity: '0', transform: 'scale(0.9)' },
           '100%': { opacity: '1', transform: 'scale(1)' },
+        },
+        'bounce-subtle': {
+          '0%, 100%': { transform: 'translateX(-50%) translateY(0)' },
+          '50%': { transform: 'translateX(-50%) translateY(-15%)' },
         },
       },
     },

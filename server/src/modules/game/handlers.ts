@@ -154,10 +154,11 @@ export async function handleMatchmakingJoin(
       user.username,
       socket,
       buyIn,
-      user.useTwitterAvatar ? (user.avatarUrl ?? null) : '/images/icons/anonymous.svg',
+      user.avatarUrl,
       undefined,
       undefined,
-      user.nameMasked
+      user.nameMasked,
+      user.displayName
     );
 
     if (seatNumber !== null) {

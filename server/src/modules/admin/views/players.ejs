@@ -89,6 +89,7 @@
       <thead>
         <tr>
           <th>プレイヤー</th>
+          <th>表示名</th>
           <th>種別</th>
           <th>バランス</th>
           <th>テーブル</th>
@@ -97,7 +98,7 @@
         </tr>
       </thead>
       <tbody id="playersBody">
-        <tr><td colspan="6" class="loading">読み込み中...</td></tr>
+        <tr><td colspan="7" class="loading">読み込み中...</td></tr>
       </tbody>
     </table>
 
@@ -139,7 +140,7 @@
 
       if (!data.players.length) {
         document.getElementById('playersBody').innerHTML =
-          '<tr><td colspan="6" class="loading">接続中のプレイヤーなし</td></tr>';
+          '<tr><td colspan="7" class="loading">接続中のプレイヤーなし</td></tr>';
         return;
       }
 
@@ -162,6 +163,7 @@
 
         return '<tr>' +
           '<td>' + avatar + '<span class="username">' + escapeHtml(p.username) + '</span></td>' +
+          '<td>' + (p.displayName ? escapeHtml(p.displayName) : '<span style="color:#64748b">-</span>') + '</td>' +
           '<td><span class="provider-badge' + pCls + '">' + providerLabel + '</span></td>' +
           '<td class="balance">' + formatChips(p.balance) + '</td>' +
           '<td>' + tableCell + '</td>' +

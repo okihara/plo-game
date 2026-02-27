@@ -31,7 +31,8 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
       const seatNumber = newTable.seatPlayer(
         p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
         { skipJoinedEmit: true },
-        p.nameMasked
+        p.nameMasked,
+        p.displayName
       );
 
       if (seatNumber !== null) {
@@ -104,10 +105,11 @@ export async function handleFastFoldMove(
     user.username,
     socket as Socket,
     unseatResult.chips,
-    user.useTwitterAvatar ? (user.avatarUrl ?? null) : '/images/icons/anonymous.svg',
+    user.avatarUrl,
     undefined,
     { skipJoinedEmit: true },
-    user.nameMasked
+    user.nameMasked,
+    user.displayName
   );
 
   if (seatNumber !== null) {

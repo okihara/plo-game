@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType } from '../logic';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff } from 'lucide-react';
@@ -16,7 +17,7 @@ import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 import { BustedScreen } from '../components/BustedScreen';
-import { wsService } from '../services/websocket';
+
 import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 
 interface OnlineGameProps {
@@ -52,6 +53,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   } = useOnlineGameState(blinds, isFastFold);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
+  const { user } = useAuth();
 
   const [analysisEnabled, setAnalysisEnabled] = useState(false);
   const [showHandName, setShowHandName] = useState(true);
@@ -230,21 +232,6 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
                   </button>
-                  {import.meta.env.DEV && (
-                    <>
-                      <div className="border-t border-gray-700 my-1" />
-                      <button
-                        onClick={() => {
-                            wsService.debugSetChips(6);
-                          setShowSettingsMenu(false);
-                        }}
-                        className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-700"
-                        style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
-                      >
-                        🐛 Chips → 6
-                      </button>
-                    </>
-                  )}
                 </div>
               )}
             </div>
@@ -323,6 +310,8 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
               userId={selectedPlayer.odId}
               isSelf={selectedPlayer.id === humanPlayerIdx}
               onClose={() => setSelectedPlayer(null)}
+              twitterAvatarUrl={selectedPlayer.id === humanPlayerIdx ? user?.twitterAvatarUrl : undefined}
+              useTwitterAvatar={selectedPlayer.id === humanPlayerIdx ? user?.useTwitterAvatar : undefined}
             />
           )}
 

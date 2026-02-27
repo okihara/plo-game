@@ -245,6 +245,7 @@ export function adminRoutes(deps: AdminDependencies) {
         return {
           odId: si.odId,
           username: user?.username ?? 'Unknown',
+          displayName: user?.displayName ?? null,
           avatarUrl: user?.avatarUrl ?? null,
           provider: user?.provider ?? 'unknown',
           isBot: si.isBot,
@@ -281,7 +282,7 @@ export function adminRoutes(deps: AdminDependencies) {
         conditions.push({
           OR: [
             { username: { contains: search, mode: 'insensitive' as const } },
-            { email: { contains: search, mode: 'insensitive' as const } },
+            { displayName: { contains: search, mode: 'insensitive' as const } },
           ],
         });
       }
@@ -317,8 +318,9 @@ export function adminRoutes(deps: AdminDependencies) {
         users: users.map(u => ({
           id: u.id,
           username: u.username,
-          email: u.email,
+          displayName: u.displayName,
           avatarUrl: u.avatarUrl,
+          twitterAvatarUrl: u.twitterAvatarUrl,
           provider: u.provider,
           balance: u.bankroll?.balance ?? 0,
           handsPlayed: u._count.handHistories,

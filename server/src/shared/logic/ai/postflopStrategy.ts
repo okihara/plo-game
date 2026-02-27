@@ -48,12 +48,13 @@ export function getPostflopDecision(
   }
 
   // === 0b. リバーベットに対するフォールド判断 ===
+  // PLOではリバーベットは非常に強いレンジ。ワンペア以下はほぼフォールドすべき
   if (toCall > 0 && street === 'river' && handEval.madeHandRank <= 2) {
     const betToPotRatio = toCall / Math.max(1, state.pot);
-    // ベットサイズが大きいほどフォールド率UP
-    const sizeBonus = Math.max(0, (betToPotRatio - 0.3) * 0.3);
-    const strengthBonus = handEval.strength > 0.5 ? 0.10 : 0;
-    const adjustedFoldRate = Math.max(0.15, personality.foldToRiverBet + sizeBonus - strengthBonus);
+    // ベットサイズが大きいほどフォールド率UP（PLOリバーベットには高いフォールド率が適切）
+    const sizeBonus = Math.max(0, (betToPotRatio - 0.2) * 0.5);
+    const strengthBonus = handEval.strength > 0.6 ? 0.08 : 0;
+    const adjustedFoldRate = Math.max(0.55, personality.foldToRiverBet + 0.15 + sizeBonus - strengthBonus);
     if (Math.random() < adjustedFoldRate) {
       return { action: 'fold', amount: 0 };
     }
@@ -267,6 +268,15 @@ function playStrongMade(
 
   // コール: エクイティがポットオッズを上回る場合
   if (handEval.estimatedEquity > potOdds) {
+    // リバーでツーペア以下はベットに対して慎重に（相手のレンジは強い）
+    if (street === 'river' && toCall > 0 && handEval.madeHandRank <= 3) {
+      const betToPotRatio = toCall / Math.max(1, state.pot);
+      // ツーペアでも中〜大きなベットには高い確率でフォールド
+      const riverFoldChance = Math.min(0.75, personality.foldToRiverBet + betToPotRatio * 0.3);
+      if (Math.random() < riverFoldChance) {
+        return { action: 'fold', amount: 0 };
+      }
+    }
     const callAction = validActions.find(a => a.action === 'call');
     if (callAction) return { action: 'call', amount: callAction.minAmount };
   }
@@ -362,8 +372,10 @@ function playDraw(
   const toCall = state.currentBet - player.currentBet;
 
   // リバーではドローの価値なし → メイドハンドの強さだけで判断
+  // PLOではドロー外れのワンペアでコールはほぼ常に負ける
   if (street === 'river') {
-    if (handEval.madeHandRank >= 2 && handEval.estimatedEquity > potOdds) {
+    if (handEval.madeHandRank >= 3 && handEval.estimatedEquity > potOdds) {
+      // ツーペア以上のメイドハンドがあればコール検討
       const callAction = validActions.find(a => a.action === 'call');
       if (callAction && toCall > 0) return { action: 'call', amount: callAction.minAmount };
     }
@@ -429,22 +441,22 @@ function playOnePair(
   const toCall = state.currentBet - player.currentBet;
   const street = state.currentStreet;
 
-  // リバーではワンペアは非常に弱い（PLO）→ 大きなベットにはフォールド
+  // リバーではワンペアは非常に弱い（PLO）→ ほぼフォールド
   if (street === 'river' && toCall > 0) {
     const betToPotRatio = toCall / Math.max(1, state.pot);
 
-    // ポットの40%以上のベット → ほぼフォールド
-    if (betToPotRatio >= 0.4) {
-      // トップペアで高strength + アグレッシブ性格 → たまにコール
-      if (handEval.strength > 0.5 && Math.random() < personality.aggression * 0.15) {
+    // ポットの30%以上のベット → ほぼフォールド
+    if (betToPotRatio >= 0.3) {
+      // オーバーペア級の高strength + アグレッシブ性格 → 稀にヒーローコール
+      if (handEval.strength > 0.6 && Math.random() < personality.aggression * 0.06) {
         const callAction = validActions.find(a => a.action === 'call');
         if (callAction) return { action: 'call', amount: callAction.minAmount };
       }
       return { action: 'fold', amount: 0 };
     }
 
-    // 小さなベット（40%未満）→ トップペアならコール
-    if (handEval.strength > 0.4) {
+    // 非常に小さなベット（30%未満）→ 強いトップペアのみコール
+    if (handEval.strength > 0.55) {
       const callAction = validActions.find(a => a.action === 'call');
       if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
