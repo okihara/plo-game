@@ -317,8 +317,10 @@ export function adminRoutes(deps: AdminDependencies) {
         users: users.map(u => ({
           id: u.id,
           username: u.username,
+          displayName: u.displayName,
           email: u.email,
           avatarUrl: u.avatarUrl,
+          twitterAvatarUrl: u.twitterAvatarUrl,
           provider: u.provider,
           balance: u.bankroll?.balance ?? 0,
           handsPlayed: u._count.handHistories,

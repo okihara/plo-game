@@ -307,6 +307,20 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(400).send({ error: '名前は1〜12文字で入力してください' });
       }
 
+      // 重複チェック（自分以外で同じdisplayNameまたはusernameを持つユーザーがいないか）
+      const existing = await prisma.user.findFirst({
+        where: {
+          id: { not: userId },
+          OR: [
+            { displayName: trimmed },
+            { username: trimmed, displayName: null },
+          ],
+        },
+      });
+      if (existing) {
+        return reply.code(409).send({ error: 'この名前は既に使われています' });
+      }
+
       const user = await prisma.user.update({
         where: { id: userId },
         data: { displayName: trimmed },

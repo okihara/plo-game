@@ -157,9 +157,13 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       <span className="text-[4cqw] text-cream-900 font-bold">{user.displayName || user.username}</span>
                       <button
                         onClick={() => setShowProfileEdit(true)}
-                        className="text-cream-700 hover:text-cream-900 transition-colors"
+                        className="text-cream-700 hover:text-cream-900 transition-colors relative"
                       >
                         <Pencil className="w-[3cqw] h-[3cqw]" />
+                        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[2cqw] px-[2cqw] py-[0.8cqw] bg-cream-900 text-white text-[2cqw] rounded-[1.5cqw] whitespace-nowrap animate-bounce-subtle">
+                          名前・アイコンを変更
+                          <span className="absolute top-full left-1/2 -translate-x-1/2 border-l-[1.2cqw] border-r-[1.2cqw] border-t-[1.2cqw] border-l-transparent border-r-transparent border-t-cream-900" />
+                        </span>
                       </button>
                     </div>
                     <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">

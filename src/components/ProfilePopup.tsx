@@ -137,10 +137,7 @@ export function ProfilePopup({
               )}
             </div>
             <div className="flex items-center gap-[1.5cqw]">
-              <h2 className="text-[4cqw] font-bold text-cream-900">{name}
-              {userId && !userId.startsWith('guest_') && !userId.startsWith('bot_') && (
-                <span>#{shortHash(userId)}</span>
-              )}</h2>
+              <h2 className="text-[4cqw] font-bold text-cream-900">{name}</h2>
               {isSelf && (
                 <button
                   onClick={() => setShowEditDialog(true)}
