@@ -1,6 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, determineWinner, calculateSidePots } from '../../shared/logic/gameEngine.js';
+import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
@@ -164,18 +164,9 @@ export class TableInstance {
       this.playerManager.markLeftForFastFold(seatIndex);
 
       if (wasCurrentPlayer) {
-        // 自分のターン → 即座にフォールド
-        const result = this.foldProcessor.processFold(this.gameState, {
-          seatIndex,
-          playerId: odId,
-          wasCurrentPlayer: true,
-        });
-        this.gameState = result.gameState;
-
-        if (result.requiresAdvance) {
-          this.actionController.clearTimers();
-          this.advanceToNextPlayer();
-        }
+        // 自分のターン → applyAction('fold') 経由で正規のフォールド処理
+        this.actionController.clearTimers();
+        this.handleAction(odId, 'fold', 0);
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -490,52 +481,29 @@ export class TableInstance {
     }
 
     // Pending early fold: 手番が回ってきたプレイヤーの保留フォールドを処理
-    while (this.pendingEarlyFolds.has(this.gameState.currentPlayerIndex)) {
+    // handleAction → applyAction('fold') で正規のフォールド処理を行う
+    // handleAction 内で requestNextAction が再帰的に呼ばれ、連続する pending fold も処理される
+    if (this.pendingEarlyFolds.has(this.gameState.currentPlayerIndex)) {
       const seatIndex = this.gameState.currentPlayerIndex;
       const odId = this.pendingEarlyFolds.get(seatIndex)!;
-
-      // フォールド処理（game:action_taken をブロードキャスト）
-      const foldResult = this.foldProcessor.processFold(this.gameState, {
-        seatIndex,
-        playerId: odId,
-        wasCurrentPlayer: true,
-      });
-      this.gameState = foldResult.gameState;
-
-      // unseatForFastFoldで既にmarkLeftForFastFold済み
       this.pendingEarlyFolds.delete(seatIndex);
-
-      // アクティブプレイヤーが1人以下 → ハンド終了
-      const activePlayers = getActivePlayers(this.gameState);
-      if (activePlayers.length <= 1) {
-        this.actionController.clearTimers();
-        this.gameState = determineWinner(this.gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
-        this.broadcastGameState();
-        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
-        return;
-      }
-
-      // 次のプレイヤーへ進む
-      const advResult = this.actionController.advanceToNextPlayer(
-        this.gameState,
-        this.playerManager.getSeats()
-      );
-      this.gameState = advResult.gameState;
-
-      if (advResult.handComplete) {
-        this.broadcastGameState();
-        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
-        return;
-      }
-
-      // ループ継続: 次のプレイヤーも pending fold かチェック
+      this.handleAction(odId, 'fold', 0);
+      return;
     }
 
     this.actionController.requestNextAction(
       this.gameState,
       this.playerManager.getSeats(),
       (playerId, seatIndex) => this.handleActionTimeout(playerId, seatIndex),
-      () => this.advanceToNextPlayer()
+      () => {
+        // 切断済みプレイヤーのフォールド: handleAction 経由で正規処理
+        if (!this.gameState) return;
+        const idx = this.gameState.currentPlayerIndex;
+        const seat = this.playerManager.getSeat(idx);
+        if (seat?.odId) {
+          this.handleAction(seat.odId, 'fold', 0);
+        }
+      }
     );
   }
 
