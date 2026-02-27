@@ -211,6 +211,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           email: `${twitterUsername}@twitter.placeholder`,
           username: twitterUsername,
           avatarUrl,
+          twitterAvatarUrl: avatarUrl,
         });
 
         const jwt = fastify.jwt.sign({ userId: user.id }, { expiresIn: '7d' });
@@ -260,6 +261,16 @@ export async function authRoutes(fastify: FastifyInstance) {
       return { error: 'User not found' };
     }
 
+    // twitterAvatarUrl が未設定のTwitterユーザーはavatarUrlからバックフィル
+    let twitterAvatarUrl = user.twitterAvatarUrl;
+    if (!twitterAvatarUrl && user.provider === 'twitter' && user.avatarUrl) {
+      twitterAvatarUrl = user.avatarUrl;
+      prisma.user.update({
+        where: { id: user.id },
+        data: { twitterAvatarUrl },
+      }).catch(() => {});
+    }
+
     const loginBonusAvailable = await isLoginBonusAvailable(user.id);
 
     return {
@@ -268,6 +279,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       username: user.username,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      twitterAvatarUrl,
       balance: user.bankroll?.balance ?? 0,
       loginBonusAvailable,
       nameMasked: user.nameMasked,
@@ -403,6 +415,7 @@ async function findOrCreateUser(data: {
   email: string;
   username: string;
   avatarUrl: string | null;
+  twitterAvatarUrl?: string | null;
 }) {
   let user = await prisma.user.findUnique({
     where: {
@@ -427,6 +440,7 @@ async function findOrCreateUser(data: {
         email: data.email,
         username,
         avatarUrl: data.avatarUrl,
+        twitterAvatarUrl: data.twitterAvatarUrl ?? null,
         provider: data.provider,
         providerId: data.providerId,
         lastLoginAt: new Date(),
@@ -436,8 +450,11 @@ async function findOrCreateUser(data: {
       },
     });
   } else {
-    // useTwitterAvatar=true の場合のみ avatarUrl を更新（プリセットアバター選択を保持）
-    const updateData: Record<string, unknown> = { lastLoginAt: new Date() };
+    // twitterAvatarUrl は毎ログイン時に更新、avatarUrl は useTwitterAvatar=true の場合のみ更新
+    const updateData: Record<string, unknown> = {
+      lastLoginAt: new Date(),
+      twitterAvatarUrl: data.twitterAvatarUrl ?? user.twitterAvatarUrl,
+    };
     if (user.useTwitterAvatar) {
       updateData.avatarUrl = data.avatarUrl;
     }

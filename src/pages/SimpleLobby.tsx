@@ -360,6 +360,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           isSelf
           onClose={() => setShowProfile(false)}
           onProfileUpdated={refreshUser}
+          twitterAvatarUrl={user.twitterAvatarUrl}
           useTwitterAvatar={user.useTwitterAvatar}
         />
       )}

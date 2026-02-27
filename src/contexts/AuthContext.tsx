@@ -6,6 +6,7 @@ interface User {
   username: string;
   displayName: string | null;
   avatarUrl: string | null;
+  twitterAvatarUrl: string | null;
   balance: number;
   loginBonusAvailable: boolean;
   nameMasked: boolean;

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType } from '../logic';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff } from 'lucide-react';
@@ -52,6 +53,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   } = useOnlineGameState(blinds, isFastFold);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
+  const { user } = useAuth();
 
   const [analysisEnabled, setAnalysisEnabled] = useState(false);
   const [showHandName, setShowHandName] = useState(true);
@@ -323,6 +325,8 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
               userId={selectedPlayer.odId}
               isSelf={selectedPlayer.id === humanPlayerIdx}
               onClose={() => setSelectedPlayer(null)}
+              twitterAvatarUrl={selectedPlayer.id === humanPlayerIdx ? user?.twitterAvatarUrl : undefined}
+              useTwitterAvatar={selectedPlayer.id === humanPlayerIdx ? user?.useTwitterAvatar : undefined}
             />
           )}
 

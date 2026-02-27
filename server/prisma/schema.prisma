@@ -13,6 +13,7 @@ model User {
   username      String    @unique
   displayName   String?
   avatarUrl     String?
+  twitterAvatarUrl String?
   provider      String    // google, discord, apple
   providerId    String
   createdAt     DateTime  @default(now())
