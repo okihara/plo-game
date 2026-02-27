@@ -5,6 +5,7 @@ import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
+import { announcementService } from '../announcement/AnnouncementService.js';
 
 interface AdminDependencies {
   io: Server;
@@ -70,6 +71,10 @@ interface ServerStats {
     isActive: boolean;
     message: string;
     activatedAt: string | null;
+  };
+  announcement: {
+    isActive: boolean;
+    message: string;
   };
 }
 
@@ -163,6 +168,7 @@ export function adminRoutes(deps: AdminDependencies) {
           rss: memUsage.rss,
         },
         maintenance: maintenanceService.getStatus(),
+        announcement: announcementService.getStatus(),
       };
     });
 
@@ -170,6 +176,15 @@ export function adminRoutes(deps: AdminDependencies) {
     fastify.post('/api/admin/maintenance', async (request) => {
       const { active, message } = request.body as { active: boolean; message?: string };
       return maintenanceService.toggle(active, message || '');
+    });
+
+    // Announcement (no play restriction)
+    fastify.post('/api/admin/announcement', async (request) => {
+      const { message } = request.body as { message?: string };
+      if (message) {
+        return announcementService.set(message);
+      }
+      return announcementService.clear();
     });
 
     // Connected players API

@@ -47,6 +47,7 @@ class WebSocketService {
     onSpectating?: (tableId: string) => void;
     onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
     onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
+    onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -181,6 +182,12 @@ class WebSocketService {
       this.socket.on('maintenance:status', (data) => {
         wsLog('maintenance:status', data);
         this.listeners.onMaintenanceStatus?.(data);
+      });
+
+      // Announcement events
+      this.socket.on('announcement:status', (data) => {
+        wsLog('announcement:status', data);
+        this.listeners.onAnnouncementStatus?.(data);
       });
 
       // Timeout for initial connection

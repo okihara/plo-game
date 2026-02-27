@@ -42,6 +42,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
     actionTimeoutMs,
     showdownHandNames,
     maintenanceStatus,
+    announcementStatus,
     bustedMessage,
     connect,
     disconnect,
@@ -134,6 +135,15 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>
             メンテナンス予定 - 現在のハンド終了後、新しいハンドは開始されません
             {maintenanceStatus.message && ` (${maintenanceStatus.message})`}
+          </div>
+        </div>
+      )}
+      {/* お知らせバナー */}
+      {announcementStatus?.isActive && !maintenanceStatus?.isActive && (
+        <div className="absolute top-[3%] left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="bg-blue-600/85 text-white text-center py-[0.5cqw] px-[3cqw] rounded-[1.5cqw] whitespace-pre-line"
+               style={{ fontSize: '2.3vw' }}>
+            {announcementStatus.message}
           </div>
         </div>
       )}

@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { FastifyInstance } from 'fastify';
 import { TableManager } from '../table/TableManager.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
+import { announcementService } from '../announcement/AnnouncementService.js';
 import { setupAuthMiddleware, AuthenticatedSocket } from './authMiddleware.js';
 import { setupFastFoldCallback } from './fastFoldService.js';
 import {
@@ -36,6 +37,9 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     if (maintenanceService.isMaintenanceActive()) {
       socket.emit('maintenance:status', maintenanceService.getStatus());
+    }
+    if (announcementService.isAnnouncementActive()) {
+      socket.emit('announcement:status', announcementService.getStatus());
     }
 
     socket.on('table:leave', () => handleTableLeave(socket, tableManager));

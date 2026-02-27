@@ -34,6 +34,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
   const [rankingRefreshKey, setRankingRefreshKey] = useState(0);
@@ -63,9 +64,18 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         }
       } catch { /* ignore */ }
     };
+    const fetchAnnouncement = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/announcement/status`);
+        if (res.ok) {
+          setAnnouncement(await res.json());
+        }
+      } catch { /* ignore */ }
+    };
     fetchCounts();
     fetchMaintenance();
-    const interval = setInterval(() => { fetchCounts(); fetchMaintenance(); }, 10000);
+    fetchAnnouncement();
+    const interval = setInterval(() => { fetchCounts(); fetchMaintenance(); fetchAnnouncement(); }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -129,6 +139,11 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               {maintenance.message && (
                 <p className="mt-[1cqw] text-center">{maintenance.message}</p>
               )}
+            </div>
+          )}
+          {announcement?.isActive && !maintenance?.isActive && (
+            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-blue-50 border border-blue-300 rounded-[2cqw] text-[2.5cqw] text-blue-700 leading-relaxed">
+              <p className="mt-[0.5cqw] text-center whitespace-pre-line">{announcement.message}</p>
             </div>
           )}
         </div>
