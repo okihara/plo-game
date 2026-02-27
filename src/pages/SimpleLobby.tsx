@@ -354,11 +354,13 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
       {/* Profile Popup */}
       {showProfile && user && (
         <ProfilePopup
-          name={user.username}
+          name={user.displayName || user.username}
           avatarUrl={user.avatarUrl}
           userId={user.id}
           isSelf
           onClose={() => setShowProfile(false)}
+          onProfileUpdated={refreshUser}
+          useTwitterAvatar={user.useTwitterAvatar}
         />
       )}
 

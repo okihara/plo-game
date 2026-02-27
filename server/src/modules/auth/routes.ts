@@ -266,12 +266,48 @@ export async function authRoutes(fastify: FastifyInstance) {
       id: user.id,
       email: user.email,
       username: user.username,
+      displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       balance: user.bankroll?.balance ?? 0,
       loginBonusAvailable,
       nameMasked: user.nameMasked,
       useTwitterAvatar: user.useTwitterAvatar,
     };
+  });
+
+  // Update display name
+  fastify.patch('/display-name', {
+    preHandler: async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch (err) {
+        return reply.code(401).send({ error: 'Unauthorized' });
+      }
+    },
+  }, async (request: FastifyRequest, reply) => {
+    const { userId } = request.user as { userId: string };
+    const { displayName } = request.body as { displayName: string | null };
+
+    // バリデーション: null(リセット)または1〜12文字の文字列
+    if (displayName !== null) {
+      const trimmed = displayName.trim();
+      if (trimmed.length < 1 || trimmed.length > 12) {
+        return reply.code(400).send({ error: '名前は1〜12文字で入力してください' });
+      }
+
+      const user = await prisma.user.update({
+        where: { id: userId },
+        data: { displayName: trimmed },
+      });
+      return { displayName: user.displayName };
+    }
+
+    // null = リセット（Twitter名に戻す）
+    const user = await prisma.user.update({
+      where: { id: userId },
+      data: { displayName: null },
+    });
+    return { displayName: user.displayName };
   });
 
   // Toggle name masking
@@ -295,8 +331,8 @@ export async function authRoutes(fastify: FastifyInstance) {
     return { nameMasked: user.nameMasked };
   });
 
-  // Toggle Twitter avatar usage
-  fastify.patch('/twitter-avatar', {
+  // Update avatar (preset or Twitter)
+  fastify.patch('/avatar', {
     preHandler: async (request, reply) => {
       try {
         await request.jwtVerify();
@@ -306,14 +342,14 @@ export async function authRoutes(fastify: FastifyInstance) {
     },
   }, async (request: FastifyRequest) => {
     const { userId } = request.user as { userId: string };
-    const { useTwitterAvatar } = request.body as { useTwitterAvatar: boolean };
+    const { avatarUrl, useTwitterAvatar } = request.body as { avatarUrl: string; useTwitterAvatar: boolean };
 
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { useTwitterAvatar },
+      data: { avatarUrl, useTwitterAvatar },
     });
 
-    return { useTwitterAvatar: user.useTwitterAvatar };
+    return { avatarUrl: user.avatarUrl, useTwitterAvatar: user.useTwitterAvatar };
   });
 
   // Logout
@@ -400,12 +436,14 @@ async function findOrCreateUser(data: {
       },
     });
   } else {
+    // useTwitterAvatar=true の場合のみ avatarUrl を更新（プリセットアバター選択を保持）
+    const updateData: Record<string, unknown> = { lastLoginAt: new Date() };
+    if (user.useTwitterAvatar) {
+      updateData.avatarUrl = data.avatarUrl;
+    }
     user = await prisma.user.update({
       where: { id: user.id },
-      data: {
-        lastLoginAt: new Date(),
-        avatarUrl: data.avatarUrl,
-      },
+      data: updateData,
     });
   }
 

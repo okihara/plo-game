@@ -101,10 +101,10 @@ export async function handleFastFoldMove(
   // 5. 新テーブルに着席（バイイン控除なし、チップをそのまま持ち越し）
   const seatNumber = newTable.seatPlayer(
     odId,
-    user.username,
+    user.displayName || user.username,
     socket as Socket,
     unseatResult.chips,
-    user.useTwitterAvatar ? (user.avatarUrl ?? null) : '/images/icons/anonymous.svg',
+    user.avatarUrl,
     undefined,
     { skipJoinedEmit: true },
     user.nameMasked

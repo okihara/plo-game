@@ -151,10 +151,10 @@ export async function handleMatchmakingJoin(
     // Seat player
     const seatNumber = table.seatPlayer(
       socket.odId!,
-      user.username,
+      user.displayName || user.username,
       socket,
       buyIn,
-      user.useTwitterAvatar ? (user.avatarUrl ?? null) : '/images/icons/anonymous.svg',
+      user.avatarUrl,
       undefined,
       undefined,
       user.nameMasked
