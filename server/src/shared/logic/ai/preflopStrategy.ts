@@ -1,10 +1,9 @@
-import { GameState, Action, Card } from '../types.js';
+import { GameState, Action } from '../types.js';
 import { getValidActions } from '../gameEngine.js';
-import { getRankValue } from '../deck.js';
 import { BotPersonality, OpponentModel } from './types.js';
 
 // 既存のプリフロップ評価をインポート
-import { evaluatePreFlopStrength, getPreFlopEvaluation } from '../cpuAI.js';
+import { getPreFlopEvaluation, PreFlopEvaluation } from '../cpuAI.js';
 
 /**
  * プリフロップの意思決定。
@@ -19,8 +18,8 @@ export function getPreflopDecision(
 ): { action: Action; amount: number } {
   const player = state.players[playerIndex];
   const validActions = getValidActions(state, playerIndex);
-  const handStrength = evaluatePreFlopStrength(player.holeCards);
   const evaluation = getPreFlopEvaluation(player.holeCards);
+  const handStrength = evaluation.score;
   const effectiveStrength = Math.min(1, handStrength + positionBonus);
 
   const toCall = state.currentBet - player.currentBet;
@@ -29,6 +28,14 @@ export function getPreflopDecision(
 
   const facingRaise = state.currentBet > state.bigBlind;
   const facingBigRaise = toCall > state.pot * 0.5;
+
+  // プリフロップのレイズ回数で3bet/4bet状況を検出
+  // raiseCount=1: オープンレイズ, =2: 3bet, >=3: 4bet+
+  const preflopRaiseCount = state.handHistory.filter(
+    a => a.action === 'raise' || a.action === 'allin'
+  ).length;
+  const facing3Bet = preflopRaiseCount >= 2;
+  const facing4Bet = preflopRaiseCount >= 3;
 
   // VPIP閾値: パーソナリティに基づいてハンド参加閾値を計算
   // vpip=0.40なら effectiveStrength 0.20以上で参加
@@ -43,17 +50,22 @@ export function getPreflopDecision(
     return playPremium(state, validActions, effectiveStrength, facingRaise, personality);
   }
 
-  // === 3ベットに直面（相手が3ベット → foldTo3Betで判断） ===
-  if (facingRaise && state.currentBet > state.bigBlind * 3) {
-    // 3ベットに対するフォールド判断: ハンド強度で補正
-    const strengthBonus = Math.max(0, (effectiveStrength - vpipThreshold) * 1.5);
-    const adjustedFoldRate = Math.max(0.10, personality.foldTo3Bet - strengthBonus);
-    if (effectiveStrength < 0.75 && random < adjustedFoldRate) {
-      return { action: 'fold', amount: 0 };
+  // === 4ベット以上に直面: プレミアム以外はほぼフォールド ===
+  if (facing4Bet) {
+    // 非常に強い手（0.65+）かつ構造が良い場合のみコール
+    if (effectiveStrength > 0.65 && (evaluation.hasPair || evaluation.isDoubleSuited)) {
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
+    return { action: 'fold', amount: 0 };
   }
 
-  // === 3ベット判断 ===
+  // === 3ベットに直面: ハンド構造を考慮した判断 ===
+  if (facing3Bet) {
+    return facing3BetDecision(effectiveStrength, evaluation, validActions, personality, random);
+  }
+
+  // === 3ベット判断（オープンレイズに対して re-raise） ===
   if (facingRaise && effectiveStrength > pfrThreshold + 0.10) {
     const threeBetDecision = evaluate3Bet(
       state, validActions, effectiveStrength, personality, positionBonus, random
@@ -124,6 +136,62 @@ export function getPreflopDecision(
       return { action: raiseAction.action, amount: raiseAction.minAmount };
     }
   }
+
+  return { action: 'fold', amount: 0 };
+}
+
+/**
+ * 3ベットに直面した場合の判断。
+ * ハンド強度だけでなく構造（スーテッド・コネクティビティ・ダングラー）を考慮。
+ * PLOでは3betポットでのプレイアビリティが重要。
+ */
+function facing3BetDecision(
+  effectiveStrength: number,
+  evaluation: PreFlopEvaluation,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  personality: BotPersonality,
+  random: number
+): { action: Action; amount: number } {
+  // 3ベットに対する最低必要強度（パーソナリティ依存）
+  // TAG (vpip=0.20): ~0.52, LAG (vpip=0.38): ~0.49
+  const minStrength = 0.40 + (1 - personality.vpip) * 0.15;
+
+  // 最低強度未満は即フォールド
+  if (effectiveStrength < minStrength) {
+    return { action: 'fold', amount: 0 };
+  }
+
+  // ハンド構造チェック: 3betポットでプレイアビリティが高いか
+  // - ダブルスーテッド: フラッシュドロー2つでエクイティ実現しやすい
+  // - ランダウン（ダングラー無し）: ストレートドロー豊富
+  // - シングルスーテッド + ラップポテンシャル: ドロー力あり
+  // - ペア + スーテッド + ダングラー無し: セット狙い + バックアップドロー
+  const hasGoodStructure = (
+    evaluation.isDoubleSuited ||
+    (evaluation.isRundown && !evaluation.hasDangler) ||
+    (evaluation.isSingleSuited && evaluation.hasWrap) ||
+    (evaluation.hasPair && !evaluation.hasDangler &&
+     (evaluation.hasAceSuited || evaluation.isSingleSuited || evaluation.isDoubleSuited))
+  );
+
+  if (!hasGoodStructure) {
+    // 構造が悪い手は高確率でフォールド（最低55%、foldTo3Bet+15%）
+    const foldRate = Math.max(0.55, personality.foldTo3Bet + 0.15);
+    if (random < foldRate) {
+      return { action: 'fold', amount: 0 };
+    }
+  }
+
+  // 構造が良い手でもパーソナリティベースのフォールド判定
+  const strengthBonus = Math.max(0, (effectiveStrength - minStrength) * 0.8);
+  const adjustedFoldRate = Math.max(0.10, personality.foldTo3Bet - strengthBonus);
+  if (random < adjustedFoldRate) {
+    return { action: 'fold', amount: 0 };
+  }
+
+  // コール
+  const callAction = validActions.find(a => a.action === 'call');
+  if (callAction) return { action: 'call', amount: callAction.minAmount };
 
   return { action: 'fold', amount: 0 };
 }
