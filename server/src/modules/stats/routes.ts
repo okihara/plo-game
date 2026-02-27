@@ -110,6 +110,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
             select: {
               id: true,
               username: true,
+              displayName: true,
               avatarUrl: true,
               nameMasked: true,
               useTwitterAvatar: true,
@@ -122,7 +123,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       result = {
         rankings: caches.map(cache => ({
           userId: cache.userId,
-          username: cache.user.nameMasked ? maskName(cache.user.username) : cache.user.username,
+          username: cache.user.displayName ? cache.user.displayName : (cache.user.nameMasked ? maskName(cache.user.username) : cache.user.username),
           avatarUrl: cache.user.useTwitterAvatar ? (cache.user.avatarUrl ?? null) : null,
           isBot: cache.user.provider === 'bot',
           handsPlayed: cache.handsPlayed,
@@ -147,6 +148,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       const rows = await prisma.$queryRaw<Array<{
         userId: string;
         username: string;
+        displayName: string | null;
         avatarUrl: string | null;
         nameMasked: boolean;
         useTwitterAvatar: boolean;
@@ -158,6 +160,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         SELECT
           hp."userId",
           u."username",
+          u."displayName",
           u."avatarUrl",
           u."nameMasked",
           u."useTwitterAvatar",
@@ -170,14 +173,14 @@ export async function statsRoutes(fastify: FastifyInstance) {
         JOIN "User" u ON hp."userId" = u."id"
         WHERE hp."userId" IS NOT NULL
           AND hh."createdAt" >= ${startDate}
-        GROUP BY hp."userId", u."username", u."avatarUrl", u."nameMasked", u."useTwitterAvatar", u."provider"
+        GROUP BY hp."userId", u."username", u."displayName", u."avatarUrl", u."nameMasked", u."useTwitterAvatar", u."provider"
         HAVING COUNT(*) >= ${MIN_HANDS}
       `);
 
       result = {
         rankings: rows.map(r => ({
           userId: r.userId,
-          username: r.nameMasked ? maskName(r.username) : r.username,
+          username: r.displayName ? r.displayName : (r.nameMasked ? maskName(r.username) : r.username),
           avatarUrl: r.useTwitterAvatar ? (r.avatarUrl ?? null) : null,
           isBot: r.provider === 'bot',
           handsPlayed: Number(r.handsPlayed),

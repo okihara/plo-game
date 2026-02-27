@@ -17,7 +17,7 @@ import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 import { BustedScreen } from '../components/BustedScreen';
-import { wsService } from '../services/websocket';
+
 import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 
 interface OnlineGameProps {
@@ -232,21 +232,6 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
                   </button>
-                  {import.meta.env.DEV && (
-                    <>
-                      <div className="border-t border-gray-700 my-1" />
-                      <button
-                        onClick={() => {
-                            wsService.debugSetChips(6);
-                          setShowSettingsMenu(false);
-                        }}
-                        className="w-full px-4 py-3 text-left text-red-400 hover:bg-gray-700"
-                        style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
-                      >
-                        🐛 Chips → 6
-                      </button>
-                    </>
-                  )}
                 </div>
               )}
             </div>

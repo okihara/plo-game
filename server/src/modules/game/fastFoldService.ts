@@ -31,7 +31,8 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
       const seatNumber = newTable.seatPlayer(
         p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
         { skipJoinedEmit: true },
-        p.nameMasked
+        p.nameMasked,
+        p.displayName
       );
 
       if (seatNumber !== null) {
@@ -101,13 +102,14 @@ export async function handleFastFoldMove(
   // 5. 新テーブルに着席（バイイン控除なし、チップをそのまま持ち越し）
   const seatNumber = newTable.seatPlayer(
     odId,
-    user.displayName || user.username,
+    user.username,
     socket as Socket,
     unseatResult.chips,
     user.avatarUrl,
     undefined,
     { skipJoinedEmit: true },
-    user.nameMasked
+    user.nameMasked,
+    user.displayName
   );
 
   if (seatNumber !== null) {

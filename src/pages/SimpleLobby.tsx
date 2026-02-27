@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
-import { SettingConfig } from '../components/SettingConfig';
+
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 
 interface SimpleLobbyProps {
@@ -30,7 +30,7 @@ const TABLE_OPTIONS: TableOption[] = [
 export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
-  const [addingChips, setAddingChips] = useState(false);
+
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
@@ -38,7 +38,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
   const [rankingRefreshKey, setRankingRefreshKey] = useState(0);
-  const [showSettings, setShowSettings] = useState(false);
+
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -97,23 +97,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
     }
   };
 
-  const handleDebugAddChips = async () => {
-    const apiBase = import.meta.env.VITE_SERVER_URL || '';
-    setAddingChips(true);
-    try {
-      const res = await fetch(`${apiBase}/api/bankroll/debug-add`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (res.ok) {
-        await refreshUser();
-      }
-    } catch (err) {
-      console.error('Failed to add debug chips:', err);
-    } finally {
-      setAddingChips(false);
-    }
-  };
 
   const handleLogin = () => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
@@ -168,13 +151,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   </div>
                   <div>
                     <div className="flex items-center gap-[1.5cqw]">
-                      <span className="text-[4cqw] text-cream-900 font-bold">{user.username}</span>
-                      <button
-                        onClick={() => setShowSettings(true)}
-                        className="px-[1.5cqw] py-[0.3cqw] text-[2.2cqw] text-cream-600 font-semibold bg-cream-100 border border-cream-300 rounded-[1cqw] hover:bg-cream-200 active:scale-95 transition-all"
-                      >
-                        プライバシー設定
-                      </button>
+                      <span className="text-[4cqw] text-cream-900 font-bold">{user.displayName || user.username}</span>
                     </div>
                     <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">
                       <span className="text-[3.5cqw] font-bold text-forest">{user.balance}</span>
@@ -185,15 +162,6 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                       >
                         {claimingBonus ? '...' : user.loginBonusAvailable ? '600まで補填' : '受取済み'}
                       </button>
-                      {import.meta.env.DEV && (
-                        <button
-                          onClick={handleDebugAddChips}
-                          disabled={addingChips}
-                          className="px-[1.5cqw] py-[0.5cqw] text-[2.2cqw] bg-cream-200 text-cream-600 font-bold rounded-[1cqw] hover:bg-cream-300 disabled:opacity-40 transition-all"
-                        >
-                          +10,000
-                        </button>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -373,10 +341,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
         />
       )}
 
-      {/* Settings Popup */}
-      {showSettings && user && (
-        <SettingConfig onClose={() => setShowSettings(false)} />
-      )}
+
     </div>
   );
 }

@@ -7,6 +7,7 @@ import { TABLE_CONSTANTS } from '../constants.js';
 export interface SeatPlayerParams {
   odId: string;
   odName: string;
+  displayName?: string | null;
   socket: Socket;
   buyIn: number;
   avatarUrl?: string | null;
@@ -34,7 +35,7 @@ export class PlayerManager {
    * プレイヤーを着席させる
    */
   seatPlayer(params: SeatPlayerParams): number | null {
-    const { odId, odName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress, nameMasked } = params;
+    const { odId, odName, displayName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress, nameMasked } = params;
 
     // 空き席を探す
     let seatIndex = preferredSeat ?? -1;
@@ -52,6 +53,7 @@ export class PlayerManager {
     this.seats[seatIndex] = {
       odId,
       odName,
+      displayName: displayName ?? null,
       avatarId,
       avatarUrl: avatarUrl ?? null,
       socket,

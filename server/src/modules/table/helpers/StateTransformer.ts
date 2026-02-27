@@ -17,7 +17,10 @@ export class StateTransformer {
   ): OnlinePlayer | null {
     if (!seat) return null;
 
-    const displayName = seat.nameMasked ? maskName(seat.odName) : seat.odName;
+    // displayNameがあればそのまま表示、なければusername(odName)にマスクをかける
+    const displayName = seat.displayName
+      ? seat.displayName
+      : (seat.nameMasked ? maskName(seat.odName) : seat.odName);
 
     // FastFold移動済みプレイヤー: folded状態で表示を維持
     if (seat.leftForFastFold) {

@@ -151,13 +151,14 @@ export async function handleMatchmakingJoin(
     // Seat player
     const seatNumber = table.seatPlayer(
       socket.odId!,
-      user.displayName || user.username,
+      user.username,
       socket,
       buyIn,
       user.avatarUrl,
       undefined,
       undefined,
-      user.nameMasked
+      user.nameMasked,
+      user.displayName
     );
 
     if (seatNumber !== null) {

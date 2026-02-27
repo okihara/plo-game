@@ -49,7 +49,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
                   finalHand: true,
                   profit: true,
                   user: {
-                    select: { avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
+                    select: { displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
                   },
                 },
               },
@@ -75,7 +75,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       players: ph.handHistory.players.map(p => {
         const rawName = p.username || `Seat ${p.seatPosition + 1}`;
         return {
-        username: (p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName,
+        username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
         avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
@@ -106,7 +106,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
             finalHand: true,
             profit: true,
             user: {
-              select: { username: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
+              select: { username: true, displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
             },
           },
         },
@@ -131,7 +131,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       players: hand.players.map(p => {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
         return {
-          username: (p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName,
+          username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
           avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
           seatPosition: p.seatPosition,
           holeCards: p.holeCards,

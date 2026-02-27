@@ -31,7 +31,7 @@ export class TableInstance {
   public isFastFold: boolean = false;
 
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
-  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; avatarUrl: string | null; nameMasked: boolean }[]) => void;
+  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
 
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
@@ -89,7 +89,8 @@ export class TableInstance {
     avatarUrl?: string | null,
     preferredSeat?: number,
     options?: { skipJoinedEmit?: boolean },
-    nameMasked?: boolean
+    nameMasked?: boolean,
+    displayName?: string | null
   ): number | null {
     const seatIndex = this.playerManager.seatPlayer({
       odId,
@@ -100,6 +101,7 @@ export class TableInstance {
       preferredSeat,
       isHandInProgress: this.isHandInProgress,
       nameMasked,
+      displayName,
     });
 
     if (seatIndex === null) {
@@ -764,7 +766,7 @@ export class TableInstance {
 
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
-      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; avatarUrl: string | null; nameMasked: boolean }[] = [];
+      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[] = [];
       const currentSeats = this.playerManager.getSeats();
       for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
         const seat = currentSeats[i];
@@ -782,6 +784,7 @@ export class TableInstance {
             chips: seat.chips,
             socket: seat.socket,
             odName: seat.odName,
+            displayName: seat.displayName,
             avatarUrl: seat.avatarUrl,
             nameMasked: seat.nameMasked,
           });

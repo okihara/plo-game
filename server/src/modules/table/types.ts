@@ -4,14 +4,15 @@ import { Socket } from 'socket.io';
 
 export interface SeatInfo {
   odId: string;
-  odName: string;
+  odName: string; // username（マスク対象）
+  displayName?: string | null; // 表示名（設定済みならマスクしない）
   avatarId: number;
   avatarUrl: string | null; // Twitter/OAuth profile image URL
   socket: Socket | null;
   chips: number;
   buyIn: number;
   waitingForNextHand: boolean; // ハンド中に着席した場合、次のハンドから参加
-  nameMasked: boolean; // 他プレイヤーに名前をマスク表示するか
+  nameMasked: boolean; // 他プレイヤーにusernameをマスク表示するか
   leftForFastFold?: boolean; // FastFold移動済み（表示用に席情報を残す）
 }
 
