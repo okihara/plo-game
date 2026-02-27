@@ -338,8 +338,8 @@ function ProfileEditDialog({
       className="absolute inset-0 bg-black/60 flex items-center justify-center z-[250]"
       onClick={handleBackdropClick}
     >
-      <div className="@container w-[80cqw]">
-        <div className="bg-white rounded-[5cqw] p-[6cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.3)] animate-scale-in relative max-h-[80dvh] flex flex-col">
+      <div className="@container w-[80cqw] h-full flex items-center justify-center" onClick={handleBackdropClick}>
+        <div className="bg-white rounded-[5cqw] p-[6cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.3)] animate-scale-in relative max-h-[80%] flex flex-col">
           {/* Close */}
           <button
             onClick={onClose}
