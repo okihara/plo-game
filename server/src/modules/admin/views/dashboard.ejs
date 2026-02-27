@@ -170,6 +170,14 @@
         <button class="maint-btn" style="background:#ef4444" onclick="toggleMaintenance(true)">ON</button>
         <button class="maint-btn" style="background:#22c55e" onclick="toggleMaintenance(false)">OFF</button>
       </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">お知らせ</span>
+        <span id="announcementStatus" class="sb-value"></span>
+        <textarea id="announcementMessage" placeholder="お知らせ文言（改行可）" rows="2" style="background:#0f172a;color:#e2e8f0;border:1px solid #334155;border-radius:4px;padding:2px 6px;font-size:10px;width:180px;resize:vertical;vertical-align:middle;"></textarea>
+        <button class="maint-btn" style="background:#3b82f6" onclick="setAnnouncement()">送信</button>
+        <button class="maint-btn" style="background:#64748b" onclick="clearAnnouncement()">消す</button>
+      </div>
     </div>
 
     <!-- Tables -->
@@ -241,6 +249,17 @@
       } else {
         me.textContent = 'OFF';
         me.className = 'sb-value success';
+      }
+
+      var ae = document.getElementById('announcementStatus');
+      if (d.announcement && d.announcement.isActive) {
+        ae.textContent = d.announcement.message;
+        ae.className = 'sb-value';
+        ae.style.color = '#60a5fa';
+      } else {
+        ae.textContent = 'なし';
+        ae.className = 'sb-value';
+        ae.style.color = '#64748b';
       }
 
       renderTables(d.tables.details);
@@ -325,6 +344,31 @@
       }).join('');
 
       document.getElementById('tablesList').innerHTML = html || '<p style="color:#64748b">テーブルなし</p>';
+    }
+
+    async function setAnnouncement() {
+      var msg = document.getElementById('announcementMessage').value;
+      if (!msg) return;
+      try {
+        await fetch(apiUrl('/api/admin/announcement'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg }),
+        });
+        fetchStats();
+      } catch (e) { alert('Failed: ' + e.message); }
+    }
+
+    async function clearAnnouncement() {
+      try {
+        await fetch(apiUrl('/api/admin/announcement'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        });
+        document.getElementById('announcementMessage').value = '';
+        fetchStats();
+      } catch (e) { alert('Failed: ' + e.message); }
     }
 
     async function toggleMaintenance(active) {

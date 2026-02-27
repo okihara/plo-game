@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
 import { playActionSound, playDealSound } from '../services/actionSound';
-import type { ClientGameState, OnlinePlayer } from '../../server/src/shared/types/websocket';
+import type { ClientGameState, OnlinePlayer } from '@plo/shared';
 import type { Card, Action, GameState, Player, Position } from '../logic/types';
 
 // ============================================
@@ -41,6 +41,7 @@ export interface OnlineGameHookResult {
   actionTimeoutMs: number | null;
   showdownHandNames: Map<number, string>;
   maintenanceStatus: { isActive: boolean; message: string } | null;
+  announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
 
   // アクション
@@ -144,6 +145,7 @@ function convertClientStateToGameState(
     bigBlind: clientState.bigBlind,
     currentPlayerIndex: clientState.currentPlayerSeat ?? -1,
     lastRaiserIndex: -1,
+    lastFullRaiseBet: 0,
     handHistory: [],
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
@@ -178,6 +180,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
 
   // Refs
@@ -430,6 +433,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onMaintenanceStatus: (data) => {
         setMaintenanceStatus(data);
       },
+      onAnnouncementStatus: (data) => {
+        setAnnouncementStatus(data);
+      },
     });
 
     return () => {
@@ -498,6 +504,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     actionTimeoutMs,
     showdownHandNames,
     maintenanceStatus,
+    announcementStatus,
     bustedMessage,
     connect,
     disconnect,

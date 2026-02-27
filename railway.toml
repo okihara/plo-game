@@ -1,9 +1,9 @@
 [build]
 builder = "nixpacks"
-buildCommand = "npm run build:all"
+buildCommand = "npm i -g pnpm && pnpm install && pnpm run build:all"
 
 [deploy]
-startCommand = "cd server && npx prisma db push --schema=./prisma/schema.prisma && npm run start"
+startCommand = "cd server && npx prisma db push --schema=./prisma/schema.prisma && node --import tsx src/index.ts"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
