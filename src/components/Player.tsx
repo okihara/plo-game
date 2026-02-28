@@ -86,19 +86,6 @@ const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = 
   5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
 };
 
-
-// CPUアバター画像マッピング（オフラインモード用フォールバック）
-const cpuAvatars: Record<string, string> = {
-  'Miko': '/images/icons/avatar1.png',
-  'Kento': '/images/icons/avatar2.png',
-  'Luna': '/images/icons/avatar3.png',
-  'Hiro': '/images/icons/avatar4.png',
-  'Tomoka': '/images/icons/avatar5.png',
-};
-
-// avatarIdから画像パスを生成
-const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
-
 export function Player({
   player,
   positionIndex,
@@ -117,8 +104,6 @@ export function Player({
   isSpectator = false,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
-  // positionIndex === 0 が自分の位置
-  const isMe = positionIndex === 0;
 
   // ショウダウン時のカード公開アニメーション
   const [isRevealing, setIsRevealing] = useState(false);
@@ -147,11 +132,7 @@ export function Player({
   }, [player.currentBet]);
 
   // avatarUrlがあればそれを優先（Twitterプロフィール画像）、なければavatarIdまたはオフラインモードのフォールバック
-  const avatarImage = player.avatarUrl
-    ? player.avatarUrl
-    : (player.avatarId !== undefined
-      ? getAvatarImage(player.avatarId)
-      : (isMe ? '/images/icons/avatar0.png' : cpuAvatars[player.name]));
+  const avatarImage = player ? player.avatarUrl : "./images/icons/anonymous.svg"
   const showActionMarker = !!lastAction;
 
   // タイマー表示用の残り時間

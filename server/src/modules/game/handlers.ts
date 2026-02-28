@@ -154,7 +154,7 @@ export async function handleMatchmakingJoin(
       user.username,
       socket,
       buyIn,
-      user.avatarUrl,
+      user.avatarUrl || "/images/icons/anonymous.svg",
       undefined,
       undefined,
       user.nameMasked,
