@@ -269,11 +269,32 @@ describe('getPostflopDecision', () => {
   });
 
   // =============================================================
-  // シチュエーション × キャラクター → コール率 統計テスト
+  // nutRank × ベットサイズ × ボード × キャラクター → コール率
   // =============================================================
 
   describe('シチュエーション別コール率', () => {
     const TRIALS = 500;
+
+    // --- キャラクター定義 ---
+    const CHARACTERS = {
+      TatsuyaN:  { name: 'TatsuyaN',  foldToRiverBet: 0.50, aggression: 0.80 },
+      YuHayashi: { name: 'YuHayashi', foldToRiverBet: 0.50, aggression: 0.80 },
+      yuna0312:  { name: 'yuna0312',  foldToRiverBet: 0.58, aggression: 0.60 },
+    } as const;
+
+    // --- ボード定義 ---
+    const BOARDS = {
+      dry:   { flushPossible: false, isPaired: false },
+      flush: { flushPossible: true,  isPaired: false },
+      paired:{ flushPossible: false, isPaired: true  },
+    } as const;
+
+    // --- madeHandRank 目安 ---
+    // nutRank 1 → ナッツフラッシュ (rank 6)
+    // nutRank 2 → セカンドナッツフラッシュ (rank 6) / ストレート (rank 5)
+    // nutRank 3 → ストレート (rank 5)
+    // nutRank 4 → セット (rank 4)
+    // nutRank 5 → ツーペア (rank 3)
 
     /** 指定条件でN回試行し、コール率を返す */
     function measureCallRate(params: {
@@ -282,15 +303,15 @@ describe('getPostflopDecision', () => {
       madeHandRank: number;
       nutRank?: number;
       estimatedEquity?: number;
-      flushPossible?: boolean;
-      isPaired?: boolean;
-      personality: Partial<import('../types.js').BotPersonality>;
+      board: keyof typeof BOARDS;
+      character: keyof typeof CHARACTERS;
     }): number {
       const {
         betSize, pot = 100, madeHandRank, nutRank,
-        estimatedEquity = 0.3, flushPossible = false,
-        isPaired = false, personality: personalityOverrides,
+        estimatedEquity = 0.3, board, character,
       } = params;
+      const boardDef = BOARDS[board];
+      const charDef = CHARACTERS[character];
 
       let callCount = 0;
       for (let i = 0; i < TRIALS; i++) {
@@ -302,11 +323,11 @@ describe('getPostflopDecision', () => {
           nutRank,
         });
         const boardTexture = makeBoardTexture({
-          flushPossible,
-          isWet: flushPossible,
-          isPaired,
+          flushPossible: boardDef.flushPossible,
+          isWet: boardDef.flushPossible,
+          isPaired: boardDef.isPaired,
         });
-        const personality = makePersonality(personalityOverrides);
+        const personality = makePersonality(charDef);
         const streetHistory = makeStreetHistory();
 
         const decision = getPostflopDecision(
@@ -317,144 +338,157 @@ describe('getPostflopDecision', () => {
       return callCount / TRIALS;
     }
 
-    // --- フラッシュ完成ボード + ツーペア ---
-
-    describe('フラッシュ完成ボード + ツーペア vs ポットベット', () => {
-      const scenario = {
-        betSize: 100, pot: 100, madeHandRank: 3,
-        nutRank: 5, estimatedEquity: 0.15, flushPossible: true,
-      };
-
-      it('TatsuyaN: コール率 10% 以下', () => {
+    // =========================================================
+    // nutRank 1 (ナッツ) — 絶対にフォールドしない
+    // =========================================================
+    describe('nutRank 1 (ナッツ)', () => {
+      it.each([
+        { board: 'flush' as const, bet: 'ポットベット', betSize: 100 },
+        { board: 'dry'   as const, bet: 'ポットベット', betSize: 100 },
+        { board: 'paired'as const, bet: 'ポットベット', betSize: 100 },
+      ])('$board ボード + $bet → 全キャラ コール率 100%', ({ board, betSize }) => {
         mathRandomSpy.mockRestore();
-        const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
-        });
-        expect(callRate).toBeLessThanOrEqual(0.10);
-      });
-
-      it('YuHayashi: コール率 10% 以下', () => {
-        mathRandomSpy.mockRestore();
-        const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'YuHayashi', foldToRiverBet: 0.50, aggression: 0.80 },
-        });
-        expect(callRate).toBeLessThanOrEqual(0.10);
-      });
-
-      it('yuna0312: コール率 10% 以下', () => {
-        mathRandomSpy.mockRestore();
-        const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'yuna0312', foldToRiverBet: 0.58, aggression: 0.60 },
-        });
-        expect(callRate).toBeLessThanOrEqual(0.10);
+        for (const char of Object.keys(CHARACTERS) as (keyof typeof CHARACTERS)[]) {
+          const callRate = measureCallRate({
+            betSize, madeHandRank: 6, nutRank: 1,
+            estimatedEquity: 0.95, board, character: char,
+          });
+          expect(callRate).toBe(1.0);
+        }
       });
     });
 
-    describe('フラッシュ完成ボード + ツーペア vs ハーフポットベット', () => {
-      const scenario = {
-        betSize: 50, pot: 100, madeHandRank: 3,
-        nutRank: 5, estimatedEquity: 0.15, flushPossible: true,
-      };
-
-      it('TatsuyaN: コール率 25% 以下', () => {
+    // =========================================================
+    // nutRank 2 (セカンドナッツ) — ほとんどコール
+    // =========================================================
+    describe('nutRank 2 (セカンドナッツ)', () => {
+      it.each([
+        { board: 'dry'   as const, bet: 'ポットベット',     betSize: 100, minCall: 0.75 },
+        { board: 'dry'   as const, bet: 'ハーフポットベット', betSize: 50,  minCall: 0.85 },
+        { board: 'flush' as const, bet: 'ポットベット',     betSize: 100, minCall: 0.70 },
+      ])('$board ボード + $bet → 全キャラ コール率 $minCall 以上', ({ board, betSize, minCall }) => {
         mathRandomSpy.mockRestore();
-        const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
-        });
-        expect(callRate).toBeLessThanOrEqual(0.25);
-      });
-
-      it('yuna0312: コール率 25% 以下', () => {
-        mathRandomSpy.mockRestore();
-        const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'yuna0312', foldToRiverBet: 0.58, aggression: 0.60 },
-        });
-        expect(callRate).toBeLessThanOrEqual(0.25);
+        for (const char of Object.keys(CHARACTERS) as (keyof typeof CHARACTERS)[]) {
+          const callRate = measureCallRate({
+            betSize, madeHandRank: 6, nutRank: 2,
+            estimatedEquity: 0.85, board, character: char,
+          });
+          expect(callRate).toBeGreaterThanOrEqual(minCall);
+        }
       });
     });
 
-    // --- フラッシュ完成ボード + セット ---
-
-    describe('フラッシュ完成ボード + セット vs ポットベット', () => {
-      const scenario = {
-        betSize: 100, pot: 100, madeHandRank: 4,
-        nutRank: 4, estimatedEquity: 0.20, flushPossible: true,
-      };
-
-      it('TatsuyaN: コール率 10% 以下', () => {
+    // =========================================================
+    // nutRank 3 — ベットサイズで判断が分かれる
+    // =========================================================
+    describe('nutRank 3', () => {
+      it.each([
+        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 50,  min: 0.40, max: 0.80 },
+        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 100, min: 0.20, max: 0.60 },
+        { char: 'yuna0312'  as const, board: 'dry' as const, betSize: 100, min: 0.15, max: 0.55 },
+      ])('$char / $board ボード / betSize=$betSize → コール率 $min-$max', ({ char, board, betSize, min, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+          betSize, madeHandRank: 5, nutRank: 3,
+          estimatedEquity: 0.55, board, character: char,
         });
-        expect(callRate).toBeLessThanOrEqual(0.10);
+        expect(callRate).toBeGreaterThanOrEqual(min);
+        expect(callRate).toBeLessThanOrEqual(max);
+      });
+
+      // フラッシュボードでは nutRank 3 でもフラッシュ未保持ならさらに下がる
+      it.each([
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.10 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.10 },
+      ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          betSize, madeHandRank: 5, nutRank: 3,
+          estimatedEquity: 0.25, board: 'flush', character: char,
+        });
+        expect(callRate).toBeLessThanOrEqual(max);
       });
     });
 
-    // --- ドライボード + ツーペア (フラッシュなし) ---
-
-    describe('ドライボード + ツーペア vs ポットベット', () => {
-      const scenario = {
-        betSize: 100, pot: 100, madeHandRank: 3,
-        nutRank: 4, estimatedEquity: 0.35, flushPossible: false,
-      };
-
-      it('TatsuyaN: コール率 10-40%', () => {
+    // =========================================================
+    // nutRank 4 — 高確率でフォールド
+    // =========================================================
+    describe('nutRank 4', () => {
+      it.each([
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, min: 0.05, max: 0.30 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  min: 0.10, max: 0.45 },
+        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, min: 0.03, max: 0.20 },
+        { char: 'TatsuyaN'  as const, board: 'paired'as const, betSize: 100, min: 0.00, max: 0.20 },
+      ])('$char / $board ボード / betSize=$betSize → コール率 $min-$max', ({ char, board, betSize, min, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+          betSize, madeHandRank: 4, nutRank: 4,
+          estimatedEquity: 0.30, board, character: char,
         });
-        expect(callRate).toBeGreaterThan(0.10);
-        expect(callRate).toBeLessThan(0.40);
+        expect(callRate).toBeGreaterThanOrEqual(min);
+        expect(callRate).toBeLessThanOrEqual(max);
       });
 
-      it('yuna0312: コール率 3-20%（堅いプレイヤー）', () => {
+      // フラッシュボード + セット → ほぼフォールド
+      it.each([
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.10 },
+        { char: 'YuHayashi' as const, betSize: 100, max: 0.10 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.10 },
+      ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'yuna0312', foldToRiverBet: 0.58, aggression: 0.60 },
+          betSize, madeHandRank: 4, nutRank: 4,
+          estimatedEquity: 0.20, board: 'flush', character: char,
         });
-        expect(callRate).toBeGreaterThan(0.03);
-        expect(callRate).toBeLessThan(0.20);
-      });
-    });
-
-    // --- ナッツフラッシュ on フラッシュボード ---
-
-    describe('フラッシュ完成ボード + ナッツフラッシュ vs ポットベット', () => {
-      it('全キャラクター: コール率 100%', () => {
-        mathRandomSpy.mockRestore();
-        const callRate = measureCallRate({
-          betSize: 100, pot: 100, madeHandRank: 6,
-          nutRank: 1, estimatedEquity: 0.95, flushPossible: true,
-          personality: { foldToRiverBet: 0.50 },
-        });
-        expect(callRate).toBe(1.0);
+        expect(callRate).toBeLessThanOrEqual(max);
       });
     });
 
-    // --- ペアボード + ツーペア vs ポットベット ---
-
-    describe('ペアボード + ツーペア vs ポットベット', () => {
-      const scenario = {
-        betSize: 100, pot: 100, madeHandRank: 3,
-        nutRank: 5, estimatedEquity: 0.20,
-        flushPossible: false, isPaired: true,
-      };
-
-      it('TatsuyaN: コール率 20% 以下', () => {
+    // =========================================================
+    // nutRank 5+ — ほぼフォールド
+    // =========================================================
+    describe('nutRank 5+ (ツーペア以下)', () => {
+      // ドライボードでもポットベットにはほぼフォールド
+      it.each([
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, max: 0.25 },
+        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, max: 0.15 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  max: 0.40 },
+      ])('$char / $board ボード / betSize=$betSize → コール率 $max 以下', ({ char, board, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
-          ...scenario,
-          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+          betSize, madeHandRank: 3, nutRank: 5,
+          estimatedEquity: 0.20, board, character: char,
         });
-        expect(callRate).toBeLessThanOrEqual(0.20);
+        expect(callRate).toBeLessThanOrEqual(max);
+      });
+
+      // フラッシュボード → ポットベットにほぼ絶対フォールド
+      it.each([
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.05 },
+        { char: 'YuHayashi' as const, betSize: 100, max: 0.05 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.05 },
+        { char: 'TatsuyaN'  as const, betSize: 50,  max: 0.25 },
+        { char: 'yuna0312'  as const, betSize: 50,  max: 0.25 },
+      ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          betSize, madeHandRank: 3, nutRank: 5,
+          estimatedEquity: 0.15, board: 'flush', character: char,
+        });
+        expect(callRate).toBeLessThanOrEqual(max);
+      });
+
+      // ペアボード + ツーペア → フルハウスの脅威
+      it.each([
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.20 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.15 },
+      ])('$char / paired ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          betSize, madeHandRank: 3, nutRank: 5,
+          estimatedEquity: 0.20, board: 'paired', character: char,
+        });
+        expect(callRate).toBeLessThanOrEqual(max);
       });
     });
   });
