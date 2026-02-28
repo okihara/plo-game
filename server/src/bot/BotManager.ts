@@ -24,13 +24,9 @@ const BOT_NAMES = [
   'momo_plo', 'KeisukeS', 'sayaka88', 'AkiraM', 'yuzuki13',
   'ShinjiK', 'rika_ace', 'HikaruN', 'tomomi55', 'GoT08',
 ];
-const BOT_AVATARS = [
-  '/images/icons/avatar1.png',
-  '/images/icons/avatar2.png',
-  '/images/icons/avatar3.png',
-  '/images/icons/avatar4.png',
-  '/images/icons/avatar5.png',
-];
+const BOT_AVATARS = Array.from({ length: 70 }, (_, i) =>
+  `/images/icons/icon_${String(i + 1).padStart(3, '0')}.png`
+);
 
 interface BotManagerConfig {
   serverUrl: string;

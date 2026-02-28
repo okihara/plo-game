@@ -35,7 +35,7 @@ async function findOrCreateBotUser(botName: string, botAvatar: string | null) {
   } else {
     user = await prisma.user.update({
       where: { id: user.id },
-      data: { lastLoginAt: new Date(), avatarUrl: botAvatar },
+      data: { lastLoginAt: new Date() },
     });
   }
 
