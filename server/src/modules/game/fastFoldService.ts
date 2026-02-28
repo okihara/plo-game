@@ -8,6 +8,14 @@ import { AuthenticatedSocket } from './authMiddleware.js';
 // FFテーブルにハンド完了後の再割り当てコールバックを設定
 export function setupFastFoldCallback(table: TableInstance, tableManager: TableManager): void {
   if (!table.isFastFold || table.onFastFoldReassign) return;
+  // タイムアウトフォールド時もテーブル移動
+  if (!table.onTimeoutFold) {
+    table.onTimeoutFold = (odId: string, socket: Socket) => {
+      handleFastFoldMove(socket as AuthenticatedSocket, table, odId, tableManager)
+        .catch(err => console.error('[FastFold] timeout fold move failed:', err));
+    };
+  }
+
   table.onFastFoldReassign = (players) => {
     for (const p of players) {
       tableManager.removePlayerFromTracking(p.odId);
