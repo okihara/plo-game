@@ -33,6 +33,9 @@ export class TableInstance {
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
   public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
 
+  // ファストフォールド: タイムアウトフォールド時にテーブル移動するコールバック
+  public onTimeoutFold?: (odId: string, socket: Socket) => void;
+
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
@@ -515,12 +518,17 @@ export class TableInstance {
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
       // チェック可能ならチェック、そうでなければフォールド
+      let action: Action = 'fold';
       if (this.gameState) {
         const validActions = getValidActions(this.gameState, seatIndex);
         const canCheck = validActions.some(a => a.action === 'check');
-        this.handleAction(playerId, canCheck ? 'check' : 'fold', 0);
-      } else {
-        this.handleAction(playerId, 'fold', 0);
+        action = canCheck ? 'check' : 'fold';
+      }
+      this.handleAction(playerId, action, 0);
+
+      // ファストフォールド: タイムアウトフォールド後にテーブル移動
+      if (action === 'fold' && seat.socket && this.onTimeoutFold) {
+        this.onTimeoutFold(playerId, seat.socket);
       }
     } else {
       // Player already left, but game might be stuck - advance if needed
