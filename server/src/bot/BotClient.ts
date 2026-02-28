@@ -382,31 +382,42 @@ export class BotClient {
     const pot = this.gameState?.pot ?? 0;
 
     // ベース遅延 (ms)
-    let base = 1200;
-    let variance = 1200;
+    let base = 2000;
+    let variance = 2000;
 
     // --- アクション種別による調整 ---
 
-    // チェックやフォールドは速め
+    // チェックやフォールドは比較的速め
     if (action === 'check') {
-      base = 600;
-      variance = 900;
+      base = 1500;
+      variance = 1500;
     } else if (action === 'fold') {
-      base = 750;
-      variance = 1050;
+      base = 1800;
+      variance = 1500;
     }
 
-    // コールは少し悩む
+    // コールはしっかり悩む（スナップコール防止）
     if (action === 'call') {
-      base = 1500;
-      variance = 1200;
+      base = 3000;
+      variance = 2500;
     }
 
     // ベット/レイズは考える
     if (action === 'bet' || action === 'raise') {
-      base = 1800;
-      variance = 1500;
+      base = 3000;
+      variance = 2500;
     }
+
+    // --- ストリート補正（後のストリートほど判断が重い） ---
+
+    if (street === 'flop') {
+      base += 500;
+      variance += 500;
+    } else if (street === 'turn') {
+      base += 1000;
+      variance += 800;
+    }
+    // リバーの補正は下記のシチュエーション補正で処理
 
     // --- シチュエーション補正 ---
 
@@ -418,42 +429,36 @@ export class BotClient {
       ).length;
       if (preflopRaises >= 2) {
         // 3betに直面 → 長考
-        base += 2250;
-        variance += 1200;
+        base += 2500;
+        variance += 1500;
       }
     }
 
-    // リバーで大きなベットに直面している（ポットの50%以上）
+    // リバーでベットに直面している
     if (street === 'river') {
       const callAction = validActions.find(a => a.action === 'call');
       if (callAction && callAction.minAmount > 0) {
         const betRatio = callAction.minAmount / Math.max(pot, 1);
         if (betRatio >= 0.5) {
           // 大きいベットに直面 → 長考
-          base += 2250 + betRatio * 1500;
-          variance += 1500;
+          base += 3000 + betRatio * 2000;
+          variance += 2000;
         } else if (betRatio >= 0.25) {
-          base += 1200;
-          variance += 750;
+          base += 1500;
+          variance += 1000;
         }
       }
-      // リバーで自分がベット/レイズする場合も少し考える
+      // リバーで自分がベット/レイズする場合も考える
       if (action === 'bet' || action === 'raise') {
-        base += 1200;
-        variance += 750;
+        base += 1500;
+        variance += 1000;
       }
-    }
-
-    // ターンも少し長めに
-    if (street === 'turn') {
-      base += 600;
-      variance += 450;
     }
 
     // オールインは最も悩む（自分のスタックの大部分を投入する場合）
     if (action === 'allin') {
-      base += 3000;
-      variance += 2250;
+      base += 4000;
+      variance += 3000;
     }
     // コール額がスタックの50%以上ならオールイン級の長考
     if (action === 'call') {
@@ -461,15 +466,20 @@ export class BotClient {
       if (myPlayer) {
         const callAction = validActions.find(a => a.action === 'call');
         if (callAction && callAction.minAmount > myPlayer.chips * 0.5) {
-          base += 2250;
-          variance += 1500;
+          base += 3000;
+          variance += 2000;
         }
       }
     }
 
-    // 最大15秒、最小450msにクランプ（持ち時間20秒）
+    // ランダムな長考（人間らしさ）: 約12%の確率で追加タンク
+    if (Math.random() < 0.12) {
+      base += 3000 + Math.random() * 4000;
+    }
+
+    // 最大15秒、最小1200msにクランプ（持ち時間20秒）
     const delay = base + Math.random() * variance;
-    return Math.max(450, Math.min(15000, delay));
+    return Math.max(1200, Math.min(15000, delay));
   }
 
   private sendAction(action: Action, amount: number): void {
