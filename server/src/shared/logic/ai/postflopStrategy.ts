@@ -49,14 +49,20 @@ export function getPostflopDecision(
 
   // === 0b. リバーベットに対するフォールド判断 ===
   // PLOではリバーベットは非常に強いレンジ。ワンペア以下はほぼフォールドすべき
-  if (toCall > 0 && street === 'river' && handEval.madeHandRank <= 2) {
-    const betToPotRatio = toCall / Math.max(1, state.pot);
-    // ベットサイズが大きいほどフォールド率UP（PLOリバーベットには高いフォールド率が適切）
-    const sizeBonus = Math.max(0, (betToPotRatio - 0.2) * 0.5);
-    const strengthBonus = handEval.strength > 0.6 ? 0.08 : 0;
-    const adjustedFoldRate = Math.max(0.55, personality.foldToRiverBet + 0.15 + sizeBonus - strengthBonus);
-    if (Math.random() < adjustedFoldRate) {
+  if (toCall > 0 && street === 'river') {
+    // ハイカード以下（rank 0-1）: リバーベットに対して100%フォールド
+    if (handEval.madeHandRank <= 1) {
       return { action: 'fold', amount: 0 };
+    }
+    // ワンペア（rank 2）
+    if (handEval.madeHandRank === 2) {
+      const betToPotRatio = toCall / Math.max(1, state.pot);
+      const sizeBonus = Math.max(0, (betToPotRatio - 0.2) * 0.5);
+      const strengthBonus = handEval.strength > 0.6 ? 0.08 : 0;
+      const adjustedFoldRate = Math.max(0.55, personality.foldToRiverBet + 0.15 + sizeBonus - strengthBonus);
+      if (Math.random() < adjustedFoldRate) {
+        return { action: 'fold', amount: 0 };
+      }
     }
   }
 
@@ -105,10 +111,12 @@ export function getPostflopDecision(
   const checkAction = validActions.find(a => a.action === 'check');
   if (checkAction) return { action: 'check', amount: 0 };
 
-  // 非常に安いならコール
+  // 非常に安いならコール（ただしリバーではワンペア以下でコールしない）
   if (potOdds < 0.1 && toCall < player.chips * 0.03) {
-    const callAction = validActions.find(a => a.action === 'call');
-    if (callAction) return { action: 'call', amount: callAction.minAmount };
+    if (!(street === 'river' && handEval.madeHandRank <= 2)) {
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+    }
   }
 
   return { action: 'fold', amount: 0 };
