@@ -35,7 +35,6 @@ interface BotManagerConfig {
   isFastFold?: boolean;
   midHandDisconnectChance?: number;
   maxHandsPerSession?: number; // セッション上限ハンド数
-  cooldownMs?: number; // 離席後の補充待機時間（ミリ秒）
 }
 
 export class BotManager {
@@ -44,7 +43,6 @@ export class BotManager {
   private usedNames: Set<string> = new Set();
   private isRunning = false;
   private healthCheckInterval: NodeJS.Timeout | null = null;
-  private cooldownQueue: number[] = []; // 補充可能時刻の配列
 
   constructor(config: BotManagerConfig) {
     this.config = {
@@ -209,35 +207,37 @@ export class BotManager {
         }
       }
 
-      // Remove dead bots → クールダウンキューに追加
-      const cooldownMs = this.config.cooldownMs ?? 0;
+      // Remove dead bots
       for (const playerId of deadBots) {
         this.bots.delete(playerId);
         console.log(`Removed dead bot: ${playerId}`);
-        if (cooldownMs > 0) {
-          this.cooldownQueue.push(Date.now() + cooldownMs);
-        }
       }
 
-      // クールダウンキューの期限切れエントリを常にクリーンアップ
-      const now = Date.now();
-      const readyCount = this.cooldownQueue.filter(t => t <= now).length;
-      this.cooldownQueue = this.cooldownQueue.filter(t => t > now);
-
-      // Skip replacing bots if total players for this blinds level exceeds limit
       const totalPlayers = await this.getPlayerCountForBlinds();
-      if (totalPlayers >= this.config.botCount) {
-        if (deadBots.length > 0) {
-          console.log(`[HealthCheck] Skipping bot replacement: ${totalPlayers} players at ${this.config.blinds} (limit: ${this.config.botCount})`);
+
+      // ボットが過剰な場合、能動的に削減（ゲーム中でないボットを優先）
+      const excess = totalPlayers - this.config.botCount;
+      if (excess > 0) {
+        const botsToRemove = Math.min(excess, this.bots.size);
+        const candidates = [...this.bots.entries()]
+          .sort((a, b) => Number(a[1].isInGame()) - Number(b[1].isInGame()))
+          .slice(0, botsToRemove);
+        for (const [playerId, bot] of candidates) {
+          this.bots.delete(playerId);
+          this.usedNames.delete(bot.getName());
+          bot.disconnect().catch(err => console.error('Bot reduction disconnect error:', err));
+        }
+        if (candidates.length > 0) {
+          console.log(`[HealthCheck] Reduced ${candidates.length} bots (total: ${totalPlayers}, target: ${this.config.botCount})`);
         }
         return;
       }
 
-      // 補充数 = 即時補充分（クールダウンなし or 初回起動） + クールダウン期限切れ分
-      const deficit = this.config.botCount - this.bots.size - this.cooldownQueue.length;
-      const botsToCreate = cooldownMs > 0
-        ? readyCount // クールダウンあり: 期限切れ分のみ補充
-        : Math.max(0, deficit); // クールダウンなし: 従来通り即補充
+      // totalPlayers == botCount なら補充不要
+      if (totalPlayers >= this.config.botCount) return;
+
+      const deficit = this.config.botCount - this.bots.size;
+      const botsToCreate = Math.max(0, deficit);
 
       for (let i = 0; i < botsToCreate; i++) {
         try {
