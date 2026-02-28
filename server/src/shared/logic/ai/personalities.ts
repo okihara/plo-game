@@ -188,8 +188,12 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
 // デフォルト（HaruSun相当のバランス型）
 const DEFAULT_PERSONALITY: BotPersonality = BOT_PERSONALITIES['HaruSun'];
 
-// パーソナリティテンプレート配列（ハッシュ割り当て用）
-const PERSONALITY_TEMPLATES = Object.values(BOT_PERSONALITIES);
+// 好成績パーソナリティ3種（ハッシュ割り当て用）
+const STRONG_PERSONALITIES = [
+  BOT_PERSONALITIES['TatsuyaN'],  // バランスやや攻撃的
+  BOT_PERSONALITIES['YuHayashi'], // バランスTAG
+  BOT_PERSONALITIES['yuna0312'],  // セミTAG（やや受動的）
+];
 
 /** 名前から決定的にハッシュ値を生成 */
 function nameHash(str: string): number {
@@ -203,15 +207,11 @@ function nameHash(str: string): number {
 
 /**
  * ボット名からパーソナリティを取得。
- * 既存定義にない名前はハッシュベースで20体のテンプレートから割り当て。
+ * 全ボット共通で好成績3種（TatsuyaN, YuHayashi, yuna0312）からハッシュで割り当て。
  */
 export function getPersonality(botName: string): BotPersonality {
-  if (BOT_PERSONALITIES[botName]) {
-    return BOT_PERSONALITIES[botName];
-  }
-  // 名前のハッシュで既存テンプレートから決定的に選択
-  const idx = nameHash(botName) % PERSONALITY_TEMPLATES.length;
-  return { ...PERSONALITY_TEMPLATES[idx], name: botName };
+  const idx = nameHash(botName) % STRONG_PERSONALITIES.length;
+  return { ...STRONG_PERSONALITIES[idx], name: botName };
 }
 
 export { DEFAULT_PERSONALITY, BOT_PERSONALITIES };

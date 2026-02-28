@@ -29,6 +29,7 @@ interface BotConfig {
   midHandDisconnectChance?: number; // ハンド中（他プレイヤーのターン時）に強制切断する確率 (0-1)
   defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
   isFastFold?: boolean; // ファストフォールドテーブルに参加するか
+  maxHandsPerSession?: number; // セッション上限ハンド数（到達で自動離席）
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
 }
 
@@ -213,6 +214,18 @@ export class BotClient {
         this.handsPlayed++;
         this.holeCards = [];
         this.handActions = [];
+
+        // セッション上限チェック（上限到達で離席）
+        if (this.config.maxHandsPerSession && this.handsPlayed >= this.config.maxHandsPerSession) {
+          const delay = 1000 + Math.random() * 2000;
+          console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting in ${Math.round(delay)}ms`);
+          setTimeout(() => {
+            if (this.isConnected) {
+              this.disconnect();
+            }
+          }, delay);
+          return;
+        }
 
         // 一定確率で意図的に切断（人間らしさを演出）
         this.maybeDisconnectRandomly();

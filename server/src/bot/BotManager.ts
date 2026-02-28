@@ -34,6 +34,8 @@ interface BotManagerConfig {
   blinds: string;
   isFastFold?: boolean;
   midHandDisconnectChance?: number;
+  maxHandsPerSession?: number; // セッション上限ハンド数
+  cooldownMs?: number; // 離席後の補充待機時間（ミリ秒）
 }
 
 export class BotManager {
@@ -42,6 +44,7 @@ export class BotManager {
   private usedNames: Set<string> = new Set();
   private isRunning = false;
   private healthCheckInterval: NodeJS.Timeout | null = null;
+  private cooldownQueue: number[] = []; // 補充可能時刻の配列
 
   constructor(config: BotManagerConfig) {
     this.config = {
@@ -108,6 +111,13 @@ export class BotManager {
     }
 
     const avatarIndex = Math.floor(Math.random() * BOT_AVATARS.length);
+    // セッション上限に±20のランダム幅を持たせ、全ボット一斉離脱を防ぐ
+    let maxHands = this.config.maxHandsPerSession;
+    if (maxHands) {
+      const variance = Math.floor(maxHands * 0.25);
+      maxHands = maxHands - variance + Math.floor(Math.random() * variance * 2);
+    }
+
     const bot = new BotClient({
       serverUrl: this.config.serverUrl,
       name,
@@ -115,6 +125,7 @@ export class BotManager {
       defaultBlinds: this.config.blinds,
       isFastFold: this.config.isFastFold,
       midHandDisconnectChance: this.config.midHandDisconnectChance,
+      maxHandsPerSession: maxHands,
       onJoinFailed: (failedBot, reason) => this.handleJoinFailed(failedBot, reason),
     });
 
@@ -198,11 +209,20 @@ export class BotManager {
         }
       }
 
-      // Remove dead bots
+      // Remove dead bots → クールダウンキューに追加
+      const cooldownMs = this.config.cooldownMs ?? 0;
       for (const playerId of deadBots) {
         this.bots.delete(playerId);
         console.log(`Removed dead bot: ${playerId}`);
+        if (cooldownMs > 0) {
+          this.cooldownQueue.push(Date.now() + cooldownMs);
+        }
       }
+
+      // クールダウンキューの期限切れエントリを常にクリーンアップ
+      const now = Date.now();
+      const readyCount = this.cooldownQueue.filter(t => t <= now).length;
+      this.cooldownQueue = this.cooldownQueue.filter(t => t > now);
 
       // Skip replacing bots if total players for this blinds level exceeds limit
       const totalPlayers = await this.getPlayerCountForBlinds();
@@ -213,8 +233,12 @@ export class BotManager {
         return;
       }
 
-      // Replace dead bots
-      const botsToCreate = this.config.botCount - this.bots.size;
+      // 補充数 = 即時補充分（クールダウンなし or 初回起動） + クールダウン期限切れ分
+      const deficit = this.config.botCount - this.bots.size - this.cooldownQueue.length;
+      const botsToCreate = cooldownMs > 0
+        ? readyCount // クールダウンあり: 期限切れ分のみ補充
+        : Math.max(0, deficit); // クールダウンなし: 従来通り即補充
+
       for (let i = 0; i < botsToCreate; i++) {
         try {
           const bot = await this.createBot();
