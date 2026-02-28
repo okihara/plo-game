@@ -233,10 +233,10 @@ export class BotManager {
         return;
       }
 
-      // totalPlayers == botCount なら補充不要
+      // totalPlayers が目標以上なら補充不要
       if (totalPlayers >= this.config.botCount) return;
 
-      const deficit = this.config.botCount - this.bots.size;
+      const deficit = this.config.botCount - totalPlayers;
       const botsToCreate = Math.max(0, deficit);
 
       for (let i = 0; i < botsToCreate; i++) {
