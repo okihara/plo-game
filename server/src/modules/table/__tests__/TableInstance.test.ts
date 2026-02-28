@@ -851,6 +851,72 @@ describe('TableInstance - タイムアウト時のチェック判定', () => {
 });
 
 // ============================================
+// G2. タイムアウトフォールド時のonTimeoutFoldコールバック
+// ============================================
+
+describe('TableInstance - タイムアウトフォールド時のonTimeoutFoldコールバック', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('FastFoldテーブルでタイムアウトフォールドするとonTimeoutFoldが呼ばれる', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+    const onTimeoutFold = vi.fn();
+    table.onTimeoutFold = onTimeoutFold;
+
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+
+    // タイムアウトを発火
+    vi.advanceTimersByTime(20000);
+
+    expect(onTimeoutFold).toHaveBeenCalledWith(current!.odId, current!.socket);
+  });
+
+  it('タイムアウトでチェックになる場合はonTimeoutFoldが呼ばれない', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, isFastFold: true, blinds: '1/2' });
+
+    const onTimeoutFold = vi.fn();
+    table.onTimeoutFold = onTimeoutFold;
+
+    // BB以外のプレイヤーが全員コール
+    let safety = 10;
+    while (safety-- > 0) {
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      if (!current) break;
+
+      const bb = findBBPlayer(table, odIds, sockets, seatMap);
+      if (current.odId === bb?.odId) break;
+      table.handleAction(current.odId, 'call', 2);
+    }
+
+    // BBの手番でタイムアウト → チェックになるはず
+    const bb = findBBPlayer(table, odIds, sockets, seatMap);
+    const currentNow = findCurrentPlayer(table, odIds, sockets, seatMap);
+    if (currentNow && bb && currentNow.odId === bb.odId) {
+      vi.advanceTimersByTime(20000);
+      expect(onTimeoutFold).not.toHaveBeenCalled();
+    }
+  });
+
+  it('通常テーブルではonTimeoutFoldが設定されていなくてもエラーにならない', () => {
+    const { table } = setupRunningHand({ playerCount: 3, isFastFold: false });
+
+    // onTimeoutFold未設定でタイムアウト → エラーなく動作する
+    expect(() => {
+      vi.advanceTimersByTime(20000);
+    }).not.toThrow();
+  });
+});
+
+// ============================================
 // H. StateTransformer - premature fold表示バグ修正
 // ============================================
 
