@@ -192,6 +192,15 @@ function playStrongMade(
   const toCall = state.currentBet - state.players[playerIndex].currentBet;
   const street = state.currentStreet;
 
+  // === リバーでフラッシュ完成ボード + フラッシュ未保持 → 大ベットにほぼフォールド ===
+  if (street === 'river' && toCall > 0 && boardTexture.flushPossible && handEval.madeHandRank < 6) {
+    const betToPotRatio = toCall / Math.max(1, state.pot);
+    if (betToPotRatio >= 0.5) {
+      const foldChance = Math.min(0.95, 0.80 + (betToPotRatio - 0.5) * 0.3);
+      if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+    }
+  }
+
   // === リバーでの nutRank ベースのフォールド判断 ===
   if (street === 'river' && toCall > 0 && handEval.nutRank !== undefined) {
     const betToPotRatio = toCall / Math.max(1, state.pot);

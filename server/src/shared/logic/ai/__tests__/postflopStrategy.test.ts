@@ -212,7 +212,7 @@ describe('getPostflopDecision', () => {
 
   describe('統計的テスト', () => {
     it('nutRank 4+ のリバー大ベットに対して50%以上フォールド', () => {
-      mathRandomSpy.mockRestore(); // 実際のランダムを使う
+      mathRandomSpy.mockRestore();
 
       let foldCount = 0;
       const trials = 200;
@@ -236,7 +236,6 @@ describe('getPostflopDecision', () => {
       }
 
       const foldRate = foldCount / trials;
-      // nutRank 5 + 80% pot bet → 高いフォールド率（50%以上）を期待
       expect(foldRate).toBeGreaterThan(0.5);
     });
 
@@ -266,6 +265,197 @@ describe('getPostflopDecision', () => {
       }
 
       expect(foldCount).toBe(0);
+    });
+  });
+
+  // =============================================================
+  // シチュエーション × キャラクター → コール率 統計テスト
+  // =============================================================
+
+  describe('シチュエーション別コール率', () => {
+    const TRIALS = 500;
+
+    /** 指定条件でN回試行し、コール率を返す */
+    function measureCallRate(params: {
+      betSize: number;
+      pot?: number;
+      madeHandRank: number;
+      nutRank?: number;
+      estimatedEquity?: number;
+      flushPossible?: boolean;
+      isPaired?: boolean;
+      personality: Partial<import('../types.js').BotPersonality>;
+    }): number {
+      const {
+        betSize, pot = 100, madeHandRank, nutRank,
+        estimatedEquity = 0.3, flushPossible = false,
+        isPaired = false, personality: personalityOverrides,
+      } = params;
+
+      let callCount = 0;
+      for (let i = 0; i < TRIALS; i++) {
+        const state = makeRiverFacingBet(betSize, pot);
+        const handEval = makeHandEval({
+          madeHandRank,
+          strength: madeHandRank * 0.15,
+          estimatedEquity,
+          nutRank,
+        });
+        const boardTexture = makeBoardTexture({
+          flushPossible,
+          isWet: flushPossible,
+          isPaired,
+        });
+        const personality = makePersonality(personalityOverrides);
+        const streetHistory = makeStreetHistory();
+
+        const decision = getPostflopDecision(
+          state, 0, handEval, boardTexture, streetHistory, personality, 0
+        );
+        if (decision.action !== 'fold') callCount++;
+      }
+      return callCount / TRIALS;
+    }
+
+    // --- フラッシュ完成ボード + ツーペア ---
+
+    describe('フラッシュ完成ボード + ツーペア vs ポットベット', () => {
+      const scenario = {
+        betSize: 100, pot: 100, madeHandRank: 3,
+        nutRank: 5, estimatedEquity: 0.15, flushPossible: true,
+      };
+
+      it('TatsuyaN: コール率 10% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.10);
+      });
+
+      it('YuHayashi: コール率 10% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'YuHayashi', foldToRiverBet: 0.50, aggression: 0.80 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.10);
+      });
+
+      it('yuna0312: コール率 10% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'yuna0312', foldToRiverBet: 0.58, aggression: 0.60 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.10);
+      });
+    });
+
+    describe('フラッシュ完成ボード + ツーペア vs ハーフポットベット', () => {
+      const scenario = {
+        betSize: 50, pot: 100, madeHandRank: 3,
+        nutRank: 5, estimatedEquity: 0.15, flushPossible: true,
+      };
+
+      it('TatsuyaN: コール率 25% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.25);
+      });
+
+      it('yuna0312: コール率 25% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'yuna0312', foldToRiverBet: 0.58, aggression: 0.60 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.25);
+      });
+    });
+
+    // --- フラッシュ完成ボード + セット ---
+
+    describe('フラッシュ完成ボード + セット vs ポットベット', () => {
+      const scenario = {
+        betSize: 100, pot: 100, madeHandRank: 4,
+        nutRank: 4, estimatedEquity: 0.20, flushPossible: true,
+      };
+
+      it('TatsuyaN: コール率 10% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.10);
+      });
+    });
+
+    // --- ドライボード + ツーペア (フラッシュなし) ---
+
+    describe('ドライボード + ツーペア vs ポットベット', () => {
+      const scenario = {
+        betSize: 100, pot: 100, madeHandRank: 3,
+        nutRank: 4, estimatedEquity: 0.35, flushPossible: false,
+      };
+
+      it('TatsuyaN: コール率 10-40%', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+        });
+        expect(callRate).toBeGreaterThan(0.10);
+        expect(callRate).toBeLessThan(0.40);
+      });
+
+      it('yuna0312: コール率 3-20%（堅いプレイヤー）', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'yuna0312', foldToRiverBet: 0.58, aggression: 0.60 },
+        });
+        expect(callRate).toBeGreaterThan(0.03);
+        expect(callRate).toBeLessThan(0.20);
+      });
+    });
+
+    // --- ナッツフラッシュ on フラッシュボード ---
+
+    describe('フラッシュ完成ボード + ナッツフラッシュ vs ポットベット', () => {
+      it('全キャラクター: コール率 100%', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          betSize: 100, pot: 100, madeHandRank: 6,
+          nutRank: 1, estimatedEquity: 0.95, flushPossible: true,
+          personality: { foldToRiverBet: 0.50 },
+        });
+        expect(callRate).toBe(1.0);
+      });
+    });
+
+    // --- ペアボード + ツーペア vs ポットベット ---
+
+    describe('ペアボード + ツーペア vs ポットベット', () => {
+      const scenario = {
+        betSize: 100, pot: 100, madeHandRank: 3,
+        nutRank: 5, estimatedEquity: 0.20,
+        flushPossible: false, isPaired: true,
+      };
+
+      it('TatsuyaN: コール率 20% 以下', () => {
+        mathRandomSpy.mockRestore();
+        const callRate = measureCallRate({
+          ...scenario,
+          personality: { name: 'TatsuyaN', foldToRiverBet: 0.50, aggression: 0.80 },
+        });
+        expect(callRate).toBeLessThanOrEqual(0.20);
+      });
     });
   });
 });
