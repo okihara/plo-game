@@ -4,6 +4,7 @@ import { evaluatePLOHand } from '../handEvaluator.js';
 import { ExtendedHandEval, ExtendedBoardTexture } from './types.js';
 import { estimateHandEquity } from './equityEstimator.js';
 import { analyzeBlockers } from './blockerAnalysis.js';
+import { analyzeRiverNuts } from './nutsAnalysis.js';
 
 /**
  * 拡張ハンド評価。
@@ -57,6 +58,15 @@ export function evaluateHandExtended(
     madeHand.rank, communityCards, boardTexture
   );
 
+  // リバー時のナッツ分析
+  let nutRank: number | undefined;
+  let possibleBetterHands: string[] | undefined;
+  if (communityCards.length === 5) {
+    const nutsAnalysis = analyzeRiverNuts(holeCards, communityCards, madeHand.rank, madeHand.highCards);
+    nutRank = nutsAnalysis.nutRank;
+    possibleBetterHands = nutsAnalysis.possibleBetterHands;
+  }
+
   return {
     strength,
     madeHandRank: madeHand.rank,
@@ -69,6 +79,8 @@ export function evaluateHandExtended(
     estimatedEquity,
     blockerScore: blockers.blockerScore,
     vulnerabilityToDraws,
+    nutRank,
+    possibleBetterHands,
   };
 }
 

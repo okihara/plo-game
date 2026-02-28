@@ -67,7 +67,9 @@ export function getPostflopDecision(
   }
 
   // === 1. モンスターハンド: ナッツまたはセミナッツ ===
-  if (handEval.isNuts || (handEval.isNearNuts && handEval.madeHandRank >= 5)) {
+  const isRiverNuts = street === 'river' && handEval.nutRank === 1;
+  const isNonRiverNuts = street !== 'river' && (handEval.isNuts || (handEval.isNearNuts && handEval.madeHandRank >= 5));
+  if (isRiverNuts || isNonRiverNuts) {
     return playMonster(state, validActions, handEval, boardTexture, spr, personality, streetHistory, playerIndex);
   }
 
@@ -190,34 +192,40 @@ function playStrongMade(
   const toCall = state.currentBet - state.players[playerIndex].currentBet;
   const street = state.currentStreet;
 
-  // === リバーでの大きなベットに対する判断（PLOではツーペア〜ストレートは脆弱） ===
-  if (street === 'river' && toCall > 0) {
+  // === リバーでの nutRank ベースのフォールド判断 ===
+  if (street === 'river' && toCall > 0 && handEval.nutRank !== undefined) {
     const betToPotRatio = toCall / Math.max(1, state.pot);
+    const nr = handEval.nutRank;
 
-    // ツーペア (rank 3): リバーの大きなベットにはかなりフォールド
-    if (handEval.madeHandRank === 3) {
-      if (betToPotRatio >= 0.6) {
-        // foldToRiverBet をベースに、ベットサイズとアグレッションで補正
-        const baseFoldChance = personality.foldToRiverBet + 0.05 - personality.aggression * 0.1;
-        const sizingBonus = (betToPotRatio - 0.6) * 0.4;
-        const foldChance = Math.min(0.85, baseFoldChance + sizingBonus);
-        if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
-      }
+    // nutRank 1 (ナッツ): フォールドしない → この関数に来る前に playMonster で処理済み
+    // nutRank 2 (セカンドナッツ): 大ベット(>70%pot)のみ低確率フォールド
+    if (nr === 2 && betToPotRatio >= 0.7) {
+      const foldChance = personality.foldToRiverBet * 0.3;
+      if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
     }
-
-    // セット (rank 4): スケアリーボードの大きなベットに慎重
-    if (handEval.madeHandRank === 4 && betToPotRatio >= 0.7) {
-      if (boardTexture.flushPossible || boardTexture.straightPossible) {
-        const baseFoldChance = personality.foldToRiverBet * 0.5;
-        const foldChance = Math.min(0.50, baseFoldChance + (betToPotRatio - 0.7) * 0.3);
-        if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
-      }
+    // nutRank 3: 中〜大ベット(>50%pot)に対してフォールド検討
+    if (nr === 3 && betToPotRatio >= 0.5) {
+      const sizingBonus = (betToPotRatio - 0.5) * 0.3;
+      const foldChance = Math.min(0.70, personality.foldToRiverBet * 0.6 + sizingBonus);
+      if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
     }
+    // nutRank 4+: ベット(>40%pot)に対して高確率フォールド
+    if (nr >= 4 && betToPotRatio >= 0.4) {
+      const sizingBonus = (betToPotRatio - 0.4) * 0.4;
+      const foldChance = Math.min(0.85, personality.foldToRiverBet * 0.9 + sizingBonus);
+      if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+    }
+  }
 
-    // ストレート (rank 5): フラッシュ完成ボードの大きなベットに慎重
-    if (handEval.madeHandRank === 5 && boardTexture.flushPossible && betToPotRatio >= 0.7) {
-      const baseFoldChance = personality.foldToRiverBet * 0.4;
-      const foldChance = Math.min(0.40, baseFoldChance + (betToPotRatio - 0.7) * 0.3);
+  // リバーで nutRank が未計算の場合（フォールバック: 従来ロジック）
+  if (street === 'river' && toCall > 0 && handEval.nutRank === undefined) {
+    const betToPotRatio = toCall / Math.max(1, state.pot);
+    if (handEval.madeHandRank === 3 && betToPotRatio >= 0.6) {
+      const foldChance = Math.min(0.85, personality.foldToRiverBet + 0.05 + (betToPotRatio - 0.6) * 0.4);
+      if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+    }
+    if (handEval.madeHandRank === 4 && betToPotRatio >= 0.7 && (boardTexture.flushPossible || boardTexture.straightPossible)) {
+      const foldChance = Math.min(0.50, personality.foldToRiverBet * 0.5 + (betToPotRatio - 0.7) * 0.3);
       if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
     }
   }
@@ -276,13 +284,19 @@ function playStrongMade(
 
   // コール: エクイティがポットオッズを上回る場合
   if (handEval.estimatedEquity > potOdds) {
-    // リバーでツーペア以下はベットに対して慎重に（相手のレンジは強い）
-    if (street === 'river' && toCall > 0 && handEval.madeHandRank <= 3) {
+    // リバーで nutRank が高い（ナッツから遠い）場合は慎重に
+    if (street === 'river' && toCall > 0) {
       const betToPotRatio = toCall / Math.max(1, state.pot);
-      // ツーペアでも中〜大きなベットには高い確率でフォールド
-      const riverFoldChance = Math.min(0.75, personality.foldToRiverBet + betToPotRatio * 0.3);
-      if (Math.random() < riverFoldChance) {
-        return { action: 'fold', amount: 0 };
+      const nr = handEval.nutRank ?? 99;
+      // nutRank 4+で中ベット以上 → フォールド寄り
+      if (nr >= 4 && betToPotRatio >= 0.3) {
+        const riverFoldChance = Math.min(0.80, personality.foldToRiverBet + betToPotRatio * 0.3);
+        if (Math.random() < riverFoldChance) return { action: 'fold', amount: 0 };
+      }
+      // nutRank 3で大ベット → フォールド検討
+      if (nr === 3 && betToPotRatio >= 0.5) {
+        const riverFoldChance = Math.min(0.60, personality.foldToRiverBet * 0.5 + betToPotRatio * 0.2);
+        if (Math.random() < riverFoldChance) return { action: 'fold', amount: 0 };
       }
     }
     const callAction = validActions.find(a => a.action === 'call');
