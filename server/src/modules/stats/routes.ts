@@ -124,7 +124,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         rankings: caches.map(cache => ({
           userId: cache.userId,
           username: cache.user.displayName ? cache.user.displayName : (cache.user.nameMasked ? maskName(cache.user.username) : cache.user.username),
-          avatarUrl: cache.user.useTwitterAvatar ? (cache.user.avatarUrl ?? null) : null,
+          avatarUrl: cache.user.avatarUrl ?? null,
           isBot: cache.user.provider === 'bot',
           handsPlayed: cache.handsPlayed,
           totalAllInEVProfit: cache.totalAllInEVProfit,
@@ -181,7 +181,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         rankings: rows.map(r => ({
           userId: r.userId,
           username: r.displayName ? r.displayName : (r.nameMasked ? maskName(r.username) : r.username),
-          avatarUrl: r.useTwitterAvatar ? (r.avatarUrl ?? null) : null,
+          avatarUrl: r.avatarUrl ?? null,
           isBot: r.provider === 'bot',
           handsPlayed: Number(r.handsPlayed),
           totalAllInEVProfit: Number(r.totalAllInEVProfit),
