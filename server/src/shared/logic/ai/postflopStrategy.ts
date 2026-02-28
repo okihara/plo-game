@@ -267,7 +267,34 @@ function playStrongMade(
     }
   }
 
-  // ベット/レイズ
+  // === リバーで nutRank が低い（ナッツに近い）→ 高頻度バリューベット ===
+  if (street === 'river' && handEval.nutRank !== undefined && handEval.nutRank <= 3) {
+    const nr = handEval.nutRank;
+    let valueBetChance: number;
+    if (nr === 2) {
+      // セカンドナッツ: 80-90%でベット/レイズ（ウェットボードでは高め）
+      valueBetChance = 0.80 + personality.aggression * 0.10;
+      if (boardTexture.isWet) valueBetChance += 0.05;
+    } else {
+      // サードナッツ: 55-70%でベット/レイズ
+      valueBetChance = 0.55 + personality.aggression * 0.15;
+      if (boardTexture.isWet) valueBetChance += 0.05;
+    }
+
+    if (Math.random() < valueBetChance) {
+      const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+      if (raiseAction) {
+        const sizePct = decideBetSize({
+          pot: state.pot, street, spr, boardTexture, handEval,
+          isAggressor: streetHistory.preflopAggressor === playerIndex, numOpponents, personality,
+        });
+        const amount = calculateBetAmount(sizePct, state.pot, raiseAction.minAmount, raiseAction.maxAmount);
+        return { action: raiseAction.action, amount };
+      }
+    }
+  }
+
+  // ベット/レイズ（nutRank 4+ or 未計算のフォールバック）
   const random = Math.random();
   if (random > (1 - personality.aggression * 0.6)) {
     const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
