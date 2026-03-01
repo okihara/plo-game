@@ -34,6 +34,7 @@ interface BotManagerConfig {
   blinds: string;
   isFastFold?: boolean;
   midHandDisconnectChance?: number;
+  maxHandsPerSession?: number; // セッション上限ハンド数
 }
 
 export class BotManager {
@@ -108,6 +109,13 @@ export class BotManager {
     }
 
     const avatarIndex = Math.floor(Math.random() * BOT_AVATARS.length);
+    // セッション上限に±20のランダム幅を持たせ、全ボット一斉離脱を防ぐ
+    let maxHands = this.config.maxHandsPerSession;
+    if (maxHands) {
+      const variance = Math.floor(maxHands * 0.25);
+      maxHands = maxHands - variance + Math.floor(Math.random() * variance * 2);
+    }
+
     const bot = new BotClient({
       serverUrl: this.config.serverUrl,
       name,
@@ -115,6 +123,7 @@ export class BotManager {
       defaultBlinds: this.config.blinds,
       isFastFold: this.config.isFastFold,
       midHandDisconnectChance: this.config.midHandDisconnectChance,
+      maxHandsPerSession: maxHands,
       onJoinFailed: (failedBot, reason) => this.handleJoinFailed(failedBot, reason),
     });
 
@@ -204,17 +213,32 @@ export class BotManager {
         console.log(`Removed dead bot: ${playerId}`);
       }
 
-      // Skip replacing bots if total players for this blinds level exceeds limit
       const totalPlayers = await this.getPlayerCountForBlinds();
-      if (totalPlayers >= this.config.botCount) {
-        if (deadBots.length > 0) {
-          console.log(`[HealthCheck] Skipping bot replacement: ${totalPlayers} players at ${this.config.blinds} (limit: ${this.config.botCount})`);
+
+      // ボットが過剰な場合、能動的に削減（ゲーム中でないボットを優先）
+      const excess = totalPlayers - this.config.botCount;
+      if (excess > 0) {
+        const botsToRemove = Math.min(excess, this.bots.size);
+        const candidates = [...this.bots.entries()]
+          .sort((a, b) => Number(a[1].isInGame()) - Number(b[1].isInGame()))
+          .slice(0, botsToRemove);
+        for (const [playerId, bot] of candidates) {
+          this.bots.delete(playerId);
+          this.usedNames.delete(bot.getName());
+          bot.disconnect().catch(err => console.error('Bot reduction disconnect error:', err));
+        }
+        if (candidates.length > 0) {
+          console.log(`[HealthCheck] Reduced ${candidates.length} bots (total: ${totalPlayers}, target: ${this.config.botCount})`);
         }
         return;
       }
 
-      // Replace dead bots
-      const botsToCreate = this.config.botCount - this.bots.size;
+      // totalPlayers が目標以上なら補充不要
+      if (totalPlayers >= this.config.botCount) return;
+
+      const deficit = this.config.botCount - totalPlayers;
+      const botsToCreate = Math.max(0, deficit);
+
       for (let i = 0; i < botsToCreate; i++) {
         try {
           const bot = await this.createBot();

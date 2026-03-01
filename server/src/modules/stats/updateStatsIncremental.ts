@@ -4,6 +4,7 @@ import { prisma } from '../../config/database.js';
 import { GameState } from '../../shared/logic/types.js';
 import { SeatInfo } from '../table/types.js';
 import { computeIncrementForPlayer } from './statsComputation.js';
+import { checkHandCountBadges } from '../badges/badgeService.js';
 
 export { computeIncrementForPlayer } from './statsComputation.js';
 
@@ -95,5 +96,13 @@ export async function updatePlayerStats(
     );
   }
 
-  await Promise.all(upserts);
+  const results = await Promise.all(upserts);
+
+  // バッジチェック (fire-and-forget)
+  for (const result of results) {
+    const cache = result as { userId: string; handsPlayed: number };
+    checkHandCountBadges(cache.userId, cache.handsPlayed).catch(err =>
+      console.error('Badge check failed:', err)
+    );
+  }
 }

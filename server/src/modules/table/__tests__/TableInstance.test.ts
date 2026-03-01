@@ -851,6 +851,82 @@ describe('TableInstance - タイムアウト時のチェック判定', () => {
 });
 
 // ============================================
+// G2. タイムアウトフォールド時のonTimeoutFoldコールバック
+// ============================================
+
+describe('TableInstance - タイムアウトフォールド時のonTimeoutFoldコールバック', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('FastFoldテーブルでタイムアウトフォールドするとonTimeoutFoldが呼ばれる', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true });
+
+    const onTimeoutFold = vi.fn();
+    table.onTimeoutFold = onTimeoutFold;
+
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+
+    // タイムアウトを発火
+    vi.advanceTimersByTime(20000);
+
+    expect(onTimeoutFold).toHaveBeenCalledWith(current!.odId, current!.socket);
+  });
+
+  it('タイムアウトでチェックになる場合はonTimeoutFoldが呼ばれない', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true, blinds: '1/2' });
+
+    const onTimeoutFold = vi.fn();
+    table.onTimeoutFold = onTimeoutFold;
+
+    // BB以外の全員がコール → BBオプション（チェック可能）に到達させる
+    let safety = 10;
+    while (safety-- > 0) {
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      if (!current) break;
+      // action_requiredから正しいcall amountを取得
+      const actionEmits = getSocketEmits(current.socket, 'game:action_required');
+      const lastAction = actionEmits[actionEmits.length - 1] as {
+        validActions: { action: string; minAmount: number }[];
+      };
+      const callInfo = lastAction?.validActions.find(a => a.action === 'call');
+      const checkInfo = lastAction?.validActions.find(a => a.action === 'check');
+      if (checkInfo) break; // チェック可能 = BBオプション到達
+      if (!callInfo) break;
+      table.handleAction(current.odId, 'call', callInfo.minAmount);
+    }
+
+    // チェック可能な手番がBBであることを確認
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    const bb = findBBPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+    expect(bb).not.toBeNull();
+    expect(current!.odId).toBe(bb!.odId);
+    expect(table.getClientGameState().currentStreet).toBe('preflop');
+
+    // タイムアウト → チェックになるのでonTimeoutFoldは呼ばれない
+    vi.advanceTimersByTime(20000);
+    expect(onTimeoutFold).not.toHaveBeenCalled();
+  });
+
+  it('通常テーブルではonTimeoutFoldが設定されていなくてもエラーにならない', () => {
+    const { table } = setupRunningHand({ playerCount: 3, isFastFold: false });
+
+    // onTimeoutFold未設定でタイムアウト → エラーなく動作する
+    expect(() => {
+      vi.advanceTimersByTime(20000);
+    }).not.toThrow();
+  });
+});
+
+// ============================================
 // H. StateTransformer - premature fold表示バグ修正
 // ============================================
 

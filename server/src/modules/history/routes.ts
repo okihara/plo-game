@@ -76,7 +76,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
         const rawName = p.username || `Seat ${p.seatPosition + 1}`;
         return {
         username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
-        avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
+        avatarUrl: p.user?.avatarUrl ?? null,
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
         finalHand: p.finalHand,
@@ -132,7 +132,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
         return {
           username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
-          avatarUrl: p.user?.useTwitterAvatar ? (p.user.avatarUrl ?? null) : null,
+          avatarUrl: p.user?.avatarUrl ?? null,
           seatPosition: p.seatPosition,
           holeCards: p.holeCards,
           finalHand: p.finalHand,

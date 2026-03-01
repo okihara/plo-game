@@ -82,6 +82,9 @@ export interface ExtendedHandEval {
   estimatedEquity: number;      // アウツベースの推定エクイティ
   blockerScore: number;         // ブロッカースコア (0-1)
   vulnerabilityToDraws: number; // ドローに対する脆弱性 (0-1)
+  // リバーナッツ分析（リバーのみ）
+  nutRank?: number;              // 1=ナッツ, 2=セカンドナッツ, ...
+  possibleBetterHands?: string[]; // 自分より上の手の種類
 }
 
 // ブロッカー分析結果

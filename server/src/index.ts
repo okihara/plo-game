@@ -21,6 +21,7 @@ import { maintenanceService } from './modules/maintenance/MaintenanceService.js'
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { announcementService } from './modules/announcement/AnnouncementService.js';
 import { announcementRoutes } from './modules/announcement/routes.js';
+import { startRankingBadgeScheduler } from './modules/badges/rankingBadgeScheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -127,6 +128,9 @@ const start = async () => {
     await fastify.register(lobbyRoutes({ tableManager }));
     await fastify.register(maintenanceRoutes());
     await fastify.register(announcementRoutes());
+
+    // Badge scheduler
+    startRankingBadgeScheduler();
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 

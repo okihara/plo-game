@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import type { PlayerStats } from './computeStats.js';
 import { maskName } from '../../shared/utils.js';
+import { getUserBadges, groupBadgesForDisplay } from '../badges/badgeService.js';
 
 // ランキングキャッシュ（60秒TTL）
 const rankingsCache = new Map<string, { data: unknown; expiresAt: number }>();
@@ -12,12 +13,15 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
     const { userId } = request.params as { userId: string };
 
-    const cache = await prisma.playerStatsCache.findUnique({
-      where: { userId },
-    });
+    const [cache, rawBadges] = await Promise.all([
+      prisma.playerStatsCache.findUnique({ where: { userId } }),
+      getUserBadges(userId),
+    ]);
+
+    const badges = groupBadgesForDisplay(rawBadges);
 
     if (!cache || cache.handsPlayed === 0) {
-      return { stats: null, handsAnalyzed: 0 };
+      return { stats: null, handsAnalyzed: 0, badges };
     }
 
     const pct = (num: number, denom: number) => denom > 0 ? (num / denom) * 100 : 0;
@@ -39,7 +43,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       wsd: pct(cache.wsdCount, cache.wtsdCount),
     };
 
-    return { stats, handsAnalyzed: cache.handsPlayed };
+    return { stats, handsAnalyzed: cache.handsPlayed, badges };
   });
 
   // 収支推移データ（グラフ用）
@@ -124,7 +128,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         rankings: caches.map(cache => ({
           userId: cache.userId,
           username: cache.user.displayName ? cache.user.displayName : (cache.user.nameMasked ? maskName(cache.user.username) : cache.user.username),
-          avatarUrl: cache.user.useTwitterAvatar ? (cache.user.avatarUrl ?? null) : null,
+          avatarUrl: cache.user.avatarUrl ?? null,
           isBot: cache.user.provider === 'bot',
           handsPlayed: cache.handsPlayed,
           totalAllInEVProfit: cache.totalAllInEVProfit,
@@ -135,14 +139,26 @@ export async function statsRoutes(fastify: FastifyInstance) {
       // daily / weekly: Raw SQLでDB側集計
       const now = new Date();
       const startDate = new Date(now);
+      // JST 7:00 = UTC 22:00（前日）をリセット基準にする
+      const JST_RESET_HOUR_UTC = 22; // JST 7:00
+
+      // 今日のリセット時刻（UTC 22:00）を求め、まだ到達していなければ前日に戻す
+      const todayReset = new Date(now);
+      todayReset.setUTCHours(JST_RESET_HOUR_UTC, 0, 0, 0);
+      if (now < todayReset) {
+        todayReset.setUTCDate(todayReset.getUTCDate() - 1);
+      }
+
       if (period === 'daily') {
-        startDate.setHours(0, 0, 0, 0);
+        startDate.setTime(todayReset.getTime());
       } else {
-        // 今週の月曜 00:00（月曜始まり）
-        const day = startDate.getDay(); // 0=日, 1=月, ..., 6=土
-        const diff = day === 0 ? 6 : day - 1; // 日曜は6日前の月曜
-        startDate.setDate(startDate.getDate() - diff);
-        startDate.setHours(0, 0, 0, 0);
+        // 今週の月曜 JST 7:00（月曜始まり）
+        // todayReset（UTC 22:00）+ 9h = JST翌日7:00 なので、JST基準の曜日を求める
+        const jstDay = new Date(todayReset.getTime() + 9 * 60 * 60 * 1000);
+        const dayOfWeek = jstDay.getUTCDay(); // 0=日, 1=月, ..., 6=土
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        startDate.setTime(todayReset.getTime());
+        startDate.setUTCDate(startDate.getUTCDate() - daysFromMonday);
       }
 
       const rows = await prisma.$queryRaw<Array<{
@@ -181,7 +197,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         rankings: rows.map(r => ({
           userId: r.userId,
           username: r.displayName ? r.displayName : (r.nameMasked ? maskName(r.username) : r.username),
-          avatarUrl: r.useTwitterAvatar ? (r.avatarUrl ?? null) : null,
+          avatarUrl: r.avatarUrl ?? null,
           isBot: r.provider === 'bot',
           handsPlayed: Number(r.handsPlayed),
           totalAllInEVProfit: Number(r.totalAllInEVProfit),

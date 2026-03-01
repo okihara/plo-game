@@ -35,7 +35,7 @@ function formatPeriodRange(period: Period): string | null {
   const now = new Date();
   const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAYS[d.getDay()]})`;
   if (period === 'daily') {
-    return fmt(now);
+    return `${fmt(now)} — 朝7時リセット`;
   }
   // 今週の月曜〜日曜
   const monday = new Date(now);
