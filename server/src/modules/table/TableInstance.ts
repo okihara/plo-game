@@ -532,10 +532,10 @@ export class TableInstance {
       const validActions = getValidActions(this.gameState, seatIndex);
       const canCheck = validActions.some(a => a.action === 'check');
       const action: Action = canCheck ? 'check' : 'fold';
-      this.handleAction(playerId, action, 0);
+      const handled = this.handleAction(playerId, action, 0);
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
-      if (action === 'fold' && seat.socket && this.onTimeoutFold) {
+      if (action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
         await this.onTimeoutFold(playerId, seat.socket);
       }
     } else {
