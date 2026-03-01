@@ -21,6 +21,9 @@ export const TABLE_CONSTANTS = {
   RAKE_PERCENT: 0.05,  // 5%
   RAKE_CAP_BB: 3,      // キャップ = 3BB
 
+  // AFK検出
+  MAX_CONSECUTIVE_TIMEOUTS: 5,  // 連続タイムアウト回数でAFK退席
+
   // ダッシュボード
   MAX_MESSAGE_LOG: 50,
 } as const;

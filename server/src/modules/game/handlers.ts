@@ -6,6 +6,7 @@ import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { cashOutPlayer, deductBuyIn } from '../auth/bankroll.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
 import { handleFastFoldMove, setupFastFoldCallback } from './fastFoldService.js';
+import { setupAfkCallback } from './afkService.js';
 
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
@@ -43,6 +44,9 @@ export async function handleGameAction(
     return;
   }
 
+  // 手動アクション → 連続タイムアウトカウンターをリセット
+  tableManager.resetTimeout(socket.odId!);
+
   // ファストフォールド: フォールド後に別テーブルへ移動
   if (table.isFastFold && data.action === 'fold') {
     try {
@@ -69,6 +73,9 @@ export async function handleFastFold(socket: AuthenticatedSocket, tableManager: 
   if (!success) {
     return;
   }
+
+  // 手動アクション → 連続タイムアウトカウンターをリセット
+  tableManager.resetTimeout(socket.odId!);
 
   try {
     await handleFastFoldMove(socket, table, socket.odId!, tableManager);
@@ -132,6 +139,7 @@ export async function handleMatchmakingJoin(
     // Find available table or create one
     const isFastFold = data.isFastFold ?? false;
     const table = tableManager.getOrCreateTable(blinds, isFastFold);
+    setupAfkCallback(table, tableManager);
     if (isFastFold) setupFastFoldCallback(table, tableManager);
 
     // Deduct buy-in

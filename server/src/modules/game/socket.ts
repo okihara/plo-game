@@ -15,6 +15,7 @@ import {
   handleDebugSetChips,
   handleSpectate,
 } from './handlers.js';
+import { setupAfkCallback } from './afkService.js';
 
 interface GameSocketDependencies {
   tableManager: TableManager;
@@ -24,9 +25,11 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   const tableManager = new TableManager(io);
 
   // Create default tables
-  tableManager.createTable('1/3', false); // Regular table
+  const defaultTable = tableManager.createTable('1/3', false); // Regular table
+  setupAfkCallback(defaultTable, tableManager);
   const defaultFfTable = tableManager.createTable('1/3', true); // Fast fold table
   setupFastFoldCallback(defaultFfTable, tableManager);
+  setupAfkCallback(defaultFfTable, tableManager);
 
   // Authentication middleware
   setupAuthMiddleware(io, fastify);

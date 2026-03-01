@@ -4,6 +4,7 @@ import { TableInstance } from '../table/TableInstance.js';
 import { prisma } from '../../config/database.js';
 import { cashOutPlayer } from '../auth/bankroll.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
+import { setupAfkCallback } from './afkService.js';
 
 // FFテーブルにハンド完了後の再割り当てコールバックを設定
 export function setupFastFoldCallback(table: TableInstance, tableManager: TableManager): void {
@@ -27,6 +28,7 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
 
       const newTable = tableManager.getOrCreateTable(table.blinds, true, table.id);
       setupFastFoldCallback(newTable, tableManager);
+      setupAfkCallback(newTable, tableManager);
 
       const seatNumber = newTable.seatPlayer(
         p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
@@ -79,6 +81,7 @@ export async function handleFastFoldMove(
     currentTable.id
   );
   setupFastFoldCallback(newTable, tableManager);
+  setupAfkCallback(newTable, tableManager);
 
   // 4. ユーザー情報を取得
   const user = await prisma.user.findUnique({
