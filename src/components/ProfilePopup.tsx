@@ -22,12 +22,21 @@ interface PlayerStats {
   wsd: number;
 }
 
+interface DisplayBadge {
+  category: string;
+  type: string;
+  label: string;
+  description: string;
+  icon: string;
+  count: number;
+  awardedAt: string;
+}
+
 interface ProfilePopupProps {
   name: string;
   avatarUrl?: string | null;
   avatarId?: number;
   userId?: string;
-  badges?: string[];
   isSelf?: boolean;
   onClose: () => void;
   onProfileUpdated?: () => void;
@@ -45,7 +54,6 @@ export function ProfilePopup({
   avatarUrl,
   avatarId,
   userId,
-  badges = [],
   isSelf = false,
   onClose,
   onProfileUpdated,
@@ -54,6 +62,7 @@ export function ProfilePopup({
   initialShowEdit = false,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(initialShowEdit);
@@ -78,6 +87,7 @@ export function ProfilePopup({
     }
     Promise.all(fetches).then(([statsData, historyData]) => {
       if (statsData?.stats) setStats(statsData.stats);
+      if (statsData?.badges) setBadges(statsData.badges);
       if (historyData?.points) setProfitHistory(historyData.points);
     }).finally(() => setLoading(false));
   }, [userId, isSelf]);
@@ -141,15 +151,25 @@ export function ProfilePopup({
             </div>
           </div>
 
-          {/* Badges (実バッジがある場合のみ表示) */}
+          {/* Badges */}
           {badges.length > 0 && (
-            <div className="flex justify-center gap-[2.5cqw] mb-[5cqw]">
-              {badges.map((_, i) => (
+            <div className="flex flex-wrap justify-center gap-[2.5cqw] mb-[4cqw]">
+              {badges.map((badge) => (
                 <div
-                  key={i}
-                  className="w-[12cqw] h-[12cqw] rounded-full bg-yellow-500/20 border border-yellow-500/40 flex items-center justify-center text-[5cqw]"
+                  key={badge.type}
+                  className="flex flex-col items-center gap-[0.5cqw]"
                 >
-                  🏆
+                  <div className="relative w-[10cqw] h-[10cqw] rounded-full bg-cream-100 border border-cream-300 flex items-center justify-center text-[5cqw] shadow-sm">
+                    {badge.icon}
+                    {badge.count > 1 && (
+                      <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[2cqw] font-bold rounded-full min-w-[4cqw] h-[4cqw] flex items-center justify-center px-[0.5cqw]">
+                        ×{badge.count}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[2cqw] text-cream-600 font-medium">
+                    {badge.label}
+                  </span>
                 </div>
               ))}
             </div>

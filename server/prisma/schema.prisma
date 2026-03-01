@@ -26,6 +26,7 @@ model User {
   statsCache    PlayerStatsCache?
   transactions  Transaction[]
   handHistories HandHistoryPlayer[]
+  badges        Badge[]
 
   @@unique([provider, providerId])
   @@index([email])
@@ -137,6 +138,18 @@ model DailyBonus {
   claimedAt DateTime @default(now())
 
   @@index([odId, claimedAt])
+}
+
+model Badge {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // "hands_100", "hands_500", "hands_1000", "hands_5000", "daily_rank_1", "weekly_rank_1"
+  awardedAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, type])
 }
 
 model MaintenanceMode {

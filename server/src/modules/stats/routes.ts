@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import type { PlayerStats } from './computeStats.js';
 import { maskName } from '../../shared/utils.js';
+import { getUserBadges, groupBadgesForDisplay } from '../badges/badgeService.js';
 
 // ランキングキャッシュ（60秒TTL）
 const rankingsCache = new Map<string, { data: unknown; expiresAt: number }>();
@@ -12,12 +13,15 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
     const { userId } = request.params as { userId: string };
 
-    const cache = await prisma.playerStatsCache.findUnique({
-      where: { userId },
-    });
+    const [cache, rawBadges] = await Promise.all([
+      prisma.playerStatsCache.findUnique({ where: { userId } }),
+      getUserBadges(userId),
+    ]);
+
+    const badges = groupBadgesForDisplay(rawBadges);
 
     if (!cache || cache.handsPlayed === 0) {
-      return { stats: null, handsAnalyzed: 0 };
+      return { stats: null, handsAnalyzed: 0, badges };
     }
 
     const pct = (num: number, denom: number) => denom > 0 ? (num / denom) * 100 : 0;
@@ -39,7 +43,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       wsd: pct(cache.wsdCount, cache.wtsdCount),
     };
 
-    return { stats, handsAnalyzed: cache.handsPlayed };
+    return { stats, handsAnalyzed: cache.handsPlayed, badges };
   });
 
   // 収支推移データ（グラフ用）
