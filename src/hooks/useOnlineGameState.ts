@@ -17,6 +17,10 @@ export interface LastAction {
 // アクションタイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
 export type ActionTimeoutAt = number;
 
+export type PrivateMode =
+  | { type: 'create'; blinds: string }
+  | { type: 'join'; inviteCode: string };
+
 export interface OnlineGameHookResult {
   // 接続状態
   isConnecting: boolean;
@@ -43,6 +47,7 @@ export interface OnlineGameHookResult {
   maintenanceStatus: { isActive: boolean; message: string } | null;
   announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
+  privateTableInfo: { inviteCode: string } | null;
 
   // アクション
   connect: () => Promise<void>;
@@ -157,7 +162,7 @@ function convertClientStateToGameState(
 // メインフック
 // ============================================
 
-export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false, privateMode?: PrivateMode): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -182,6 +187,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
+  const [privateTableInfo, setPrivateTableInfo] = useState<{ inviteCode: string } | null>(null);
 
   // Refs
   const prevStreetRef = useRef<string | null>(null);
@@ -253,8 +259,14 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // ============================================
 
   const joinMatchmaking = useCallback(() => {
-    wsService.joinMatchmaking(blinds, isFastFold);
-  }, [blinds, isFastFold]);
+    if (privateMode?.type === 'create') {
+      wsService.createPrivateTable(privateMode.blinds);
+    } else if (privateMode?.type === 'join') {
+      wsService.joinPrivateTable(privateMode.inviteCode);
+    } else {
+      wsService.joinMatchmaking(blinds, isFastFold);
+    }
+  }, [blinds, isFastFold, privateMode]);
 
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();
@@ -436,6 +448,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onAnnouncementStatus: (data) => {
         setAnnouncementStatus(data);
       },
+      onPrivateCreated: (data) => {
+        setPrivateTableInfo({ inviteCode: data.inviteCode });
+        setTableId(data.tableId);
+      },
     });
 
     return () => {
@@ -506,6 +522,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
+    privateTableInfo,
     connect,
     disconnect,
     joinMatchmaking,

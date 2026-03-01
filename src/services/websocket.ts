@@ -48,6 +48,7 @@ class WebSocketService {
     onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
     onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
+    onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -190,6 +191,12 @@ class WebSocketService {
         this.listeners.onAnnouncementStatus?.(data);
       });
 
+      // Private table events
+      this.socket.on('private:created', (data) => {
+        wsLog('private:created', data);
+        this.listeners.onPrivateCreated?.(data);
+      });
+
       // Timeout for initial connection
       this.connectionTimeoutId = setTimeout(() => {
         if (!settled) {
@@ -250,6 +257,15 @@ class WebSocketService {
   // Spectator
   spectateTable(tableId: string): void {
     this.socket?.emit('table:spectate', { tableId });
+  }
+
+  // Private table
+  createPrivateTable(blinds: string): void {
+    this.socket?.emit('private:create', { blinds });
+  }
+
+  joinPrivateTable(inviteCode: string): void {
+    this.socket?.emit('private:join', { inviteCode });
   }
 
 }

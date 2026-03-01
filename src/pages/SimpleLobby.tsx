@@ -10,6 +10,8 @@ import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
+  onCreatePrivate: (blinds: string) => void;
+  onJoinPrivate: (inviteCode: string) => void;
 }
 
 interface TableOption {
@@ -29,12 +31,13 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: true },
 ];
 
-export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: SimpleLobbyProps) {
   const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   const [claimingBonus, setClaimingBonus] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
@@ -299,6 +302,44 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
               );
             })}
           </div>
+
+          {/* Private Table */}
+          {user && (
+            <div className="mt-[2.5cqw] bg-white border border-cream-300 rounded-[3cqw] p-[4cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
+              <h2 className="text-[3.5cqw] font-bold text-cream-900 mb-[3cqw]">プライベートテーブル</h2>
+
+              {/* 招待コード入力 */}
+              <div className="flex gap-[2cqw] mb-[3cqw]">
+                <input
+                  type="text"
+                  placeholder="招待コード"
+                  value={inviteCodeInput}
+                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
+                  maxLength={5}
+                  className="flex-1 px-[3cqw] py-[2cqw] text-[3.5cqw] border border-cream-300 rounded-[2cqw] text-cream-900 placeholder-cream-400 text-center tracking-[0.3em] font-mono uppercase bg-cream-50"
+                />
+                <button
+                  onClick={() => { if (inviteCodeInput.length >= 4) { onJoinPrivate(inviteCodeInput); setInviteCodeInput(''); } }}
+                  disabled={inviteCodeInput.length < 4 || !!maintenance?.isActive}
+                  className="px-[4cqw] py-[2cqw] text-[3cqw] bg-forest text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97]"
+                >
+                  参加
+                </button>
+              </div>
+
+              {/* テーブル作成 */}
+              <div className="border-t border-cream-200 pt-[3cqw]">
+                <p className="text-[2.5cqw] text-cream-500 mb-[2cqw]">テーブルを作成して友達を招待</p>
+                <button
+                  onClick={() => onCreatePrivate('1/3')}
+                  disabled={!!maintenance?.isActive}
+                  className="w-full py-[2.5cqw] text-[3cqw] bg-cream-800 text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97]"
+                >
+                  PLO 1/3 テーブルを作成
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Mini Leaderboard */}
           <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} refreshKey={rankingRefreshKey} />

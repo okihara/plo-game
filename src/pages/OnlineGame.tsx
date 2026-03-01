@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useOnlineGameState } from '../hooks/useOnlineGameState';
+import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType } from '../logic';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Volume2, VolumeOff } from 'lucide-react';
+import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
@@ -23,10 +23,11 @@ import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 interface OnlineGameProps {
   blinds: string;
   isFastFold?: boolean;
+  privateMode?: PrivateMode;
   onBack: () => void;
 }
 
-export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -45,12 +46,13 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
+    privateTableInfo,
     connect,
     disconnect,
     joinMatchmaking,
     handleAction,
     handleFastFold,
-  } = useOnlineGameState(blinds, isFastFold);
+  } = useOnlineGameState(blinds, isFastFold, privateMode);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
   const { user } = useAuth();
@@ -61,6 +63,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
+  const [inviteCopied, setInviteCopied] = useState(false);
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -137,6 +140,28 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>
             メンテナンス予定 - 現在のハンド終了後、新しいハンドは開始されません
             {maintenanceStatus.message && ` (${maintenanceStatus.message})`}
+          </div>
+        </div>
+      )}
+      {/* 招待コード共有パネル（プライベートテーブル作成時） */}
+      {privateTableInfo && (
+        <div className="absolute top-[6%] left-0 right-0 z-50 flex justify-center pointer-events-none">
+          <div className="bg-white/95 rounded-[3cqw] shadow-lg px-[5cqw] py-[3cqw] text-center mx-[4cqw] pointer-events-auto">
+            <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>招待コード</p>
+            <p className="font-bold text-cream-900 tracking-[0.3em] font-mono" style={{ fontSize: 'min(4vh, 7vw)' }}>{privateTableInfo.inviteCode}</p>
+            <button
+              onClick={() => {
+                const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
+                navigator.clipboard.writeText(url).then(() => {
+                  setInviteCopied(true);
+                  setTimeout(() => setInviteCopied(false), 2000);
+                });
+              }}
+              className="mt-[2cqw] px-[4cqw] py-[1.5cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] mx-auto transition-all active:scale-[0.97]"
+              style={{ fontSize: 'min(1.4vh, 2.3vw)' }}
+            >
+              {inviteCopied ? <><Check style={{ width: 'min(2vh, 3.5vw)', height: 'min(2vh, 3.5vw)' }} /> コピー済み</> : <><Copy style={{ width: 'min(2vh, 3.5vw)', height: 'min(2vh, 3.5vw)' }} /> 招待リンクをコピー</>}
+            </button>
           </div>
         </div>
       )}
