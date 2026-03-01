@@ -175,9 +175,6 @@ export function ProfilePopup({
                         </span>
                       )}
                     </div>
-                    <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
-                      {badge.label}
-                    </span>
                   </div>
                 ))}
               </div>
@@ -189,9 +186,9 @@ export function ProfilePopup({
                     ref={badgeTooltipRef}
                     className="absolute z-[300] top-full mt-[1cqw] left-0 right-0 bg-cream-900 border border-cream-700 rounded-[2cqw] p-[3cqw] shadow-xl"
                   >
-                    <div className="text-white text-[2.8cqw] font-semibold mb-[1cqw]">{badge.label}</div>
-                    <div className="text-white/60 text-[2.2cqw] italic mb-[1cqw]">{badge.flavor}</div>
-                    <div className="text-white/40 text-[2cqw]">{badge.description}</div>
+                    <div className="text-white text-[3.8cqw] font-semibold mb-[1cqw]">{badge.label}</div>
+                    <div className="text-white/60 text-[3.3cqw] italic mb-[1cqw]">{badge.flavor}</div>
+                    <div className="text-white/40 text-[3cqw]">{badge.description}</div>
                   </div>
                 );
               })()}
