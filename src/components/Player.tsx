@@ -173,6 +173,24 @@ export function Player({
 
       {/* Avatar with Timer Ring */}
       <div className="relative">
+        {/* Ranking Badge Aura */}
+        {!player.folded && (() => {
+          const hasWeekly = player.rankingBadges?.includes('weekly_rank_1');
+          const hasDaily = player.rankingBadges?.includes('daily_rank_1');
+          if (!hasWeekly && !hasDaily) return null;
+          const gradientClass = hasWeekly
+            ? 'from-cyan-400 via-emerald-300 to-cyan-400'
+            : 'from-purple-400 via-fuchsia-300 to-purple-400';
+          return (
+            <>
+              <div className={`absolute inset-[-2.5cqw] w-[27cqw] h-[27cqw] rounded-full bg-gradient-to-r ${gradientClass} animate-spin opacity-30`}
+                style={{ animationDuration: '6s', filter: 'blur(3px)' }} />
+              <div className={`absolute inset-[-1.5cqw] w-[25cqw] h-[25cqw] rounded-full bg-gradient-to-r ${gradientClass} animate-spin opacity-50`}
+                style={{ animationDuration: '6s' }} />
+              <div className="absolute inset-[-0.5cqw] w-[23cqw] h-[23cqw] rounded-full bg-gray-900" />
+            </>
+          );
+        })()}
         {/* Current Player Glow Ring */}
         {isCurrentPlayer && (
           <div className="absolute inset-0 w-[22cqw] h-[22cqw] rounded-full animate-ping bg-amber-400/40" />

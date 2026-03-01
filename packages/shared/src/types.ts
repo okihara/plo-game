@@ -23,6 +23,7 @@ export interface Player {
   avatarId?: number;
   avatarUrl?: string | null;  // Twitter/OAuth profile image URL
   odId?: string;  // Online user ID (for stats lookup)
+  rankingBadges?: string[];  // ランキングバッジ ('daily_rank_1', 'weekly_rank_1')
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';

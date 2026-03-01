@@ -14,6 +14,7 @@ export interface SeatInfo {
   waitingForNextHand: boolean; // ハンド中に着席した場合、次のハンドから参加
   nameMasked: boolean; // 他プレイヤーにusernameをマスク表示するか
   leftForFastFold?: boolean; // FastFold移動済み（表示用に席情報を残す）
+  rankingBadges?: string[]; // ランキングバッジ ('daily_rank_1', 'weekly_rank_1')
 }
 
 // ダッシュボード用：送信メッセージログ

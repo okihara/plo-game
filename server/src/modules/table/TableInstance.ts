@@ -31,7 +31,7 @@ export class TableInstance {
   public isFastFold: boolean = false;
 
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
-  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
+  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; rankingBadges?: string[] }[]) => void;
 
   // ファストフォールド: タイムアウトフォールド時にテーブル移動するコールバック
   public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
@@ -93,7 +93,8 @@ export class TableInstance {
     preferredSeat?: number,
     options?: { skipJoinedEmit?: boolean },
     nameMasked?: boolean,
-    displayName?: string | null
+    displayName?: string | null,
+    rankingBadges?: string[]
   ): number | null {
     const seatIndex = this.playerManager.seatPlayer({
       odId,
@@ -105,6 +106,7 @@ export class TableInstance {
       isHandInProgress: this.isHandInProgress,
       nameMasked,
       displayName,
+      rankingBadges,
     });
 
     if (seatIndex === null) {
@@ -781,7 +783,7 @@ export class TableInstance {
 
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
-      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[] = [];
+      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; rankingBadges?: string[] }[] = [];
       const currentSeats = this.playerManager.getSeats();
       for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
         const seat = currentSeats[i];
@@ -802,6 +804,7 @@ export class TableInstance {
             displayName: seat.displayName,
             avatarUrl: seat.avatarUrl,
             nameMasked: seat.nameMasked,
+            rankingBadges: seat.rankingBadges,
           });
           // 静かに離席（ルーム離脱 + 席クリア）
           seat.socket.leave(this.roomName);

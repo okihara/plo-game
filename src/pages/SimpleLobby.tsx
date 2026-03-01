@@ -119,6 +119,7 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             />
           </div>
           <h1 className="text-[6cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
+          <p className="text-[2.5cqw] text-cream-600 mt-[0.5cqw]">いつでも入って、いつでも抜ける 気軽に遊べるPLOアプリ</p>
           {maintenance?.isActive && (
             <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-red-50 border border-red-300 rounded-[2cqw] text-[2.5cqw] text-red-700 leading-relaxed">
               <p className="font-bold text-[3cqw] text-red-800 text-center">メンテナンス中</p>

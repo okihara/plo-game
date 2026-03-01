@@ -77,6 +77,7 @@ export interface OnlinePlayer {
   isAllIn: boolean;
   hasActed: boolean;
   isConnected: boolean;
+  rankingBadges?: string[];  // ランキングバッジ ('daily_rank_1', 'weekly_rank_1')
 }
 
 // Client-safe game state (hides other players' hole cards)

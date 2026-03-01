@@ -39,7 +39,8 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
         p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
         { skipJoinedEmit: true },
         p.nameMasked,
-        p.displayName
+        p.displayName,
+        p.rankingBadges
       );
 
       if (seatNumber !== null) {
@@ -87,10 +88,18 @@ export async function handleFastFoldMove(
   );
   setupFastFoldCallback(newTable, tableManager);
 
-  // 4. ユーザー情報を取得
-  const user = await prisma.user.findUnique({
-    where: { id: odId },
-  });
+  // 4. ユーザー情報 + ランキングバッジを取得
+  const [user, rankingBadgeRows] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: odId },
+    }),
+    prisma.badge.findMany({
+      where: { userId: odId, type: { in: ['daily_rank_1', 'weekly_rank_1'] } },
+      select: { type: true },
+      orderBy: { awardedAt: 'asc' },
+    }),
+  ]);
+  const rankingBadges = [...new Set((rankingBadgeRows as { type: string }[]).map(b => b.type))];
 
   if (!user) {
     console.error(`[FastFold] User not found: ${odId}`);
@@ -116,7 +125,8 @@ export async function handleFastFoldMove(
     undefined,
     { skipJoinedEmit: true },
     user.nameMasked,
-    user.displayName
+    user.displayName,
+    rankingBadges
   );
 
   if (seatNumber !== null) {
