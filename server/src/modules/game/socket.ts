@@ -14,6 +14,8 @@ import {
   handleDisconnect,
   handleDebugSetChips,
   handleSpectate,
+  handlePrivateCreate,
+  handlePrivateJoin,
 } from './handlers.js';
 
 interface GameSocketDependencies {
@@ -49,6 +51,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager));
     socket.on('disconnect', () => handleDisconnect(socket, tableManager));
     socket.on('table:spectate', (data) => handleSpectate(socket, data, tableManager));
+    socket.on('private:create', (data) => handlePrivateCreate(socket, data, tableManager));
+    socket.on('private:join', (data) => handlePrivateJoin(socket, data, tableManager));
 
     if (process.env.NODE_ENV !== 'production') {
       socket.on('debug:set_chips', (data) => handleDebugSetChips(socket, data, tableManager));

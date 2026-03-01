@@ -2,6 +2,7 @@ import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SimpleLobby } from './pages/SimpleLobby';
 import { OnlineGame } from './pages/OnlineGame';
+import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { HandHistory } from './pages/HandHistory';
 import { SpectatorView } from './pages/SpectatorView';
@@ -14,6 +15,7 @@ import './index.css';
 function App() {
   const [blinds, setBlinds] = useState<string | null>(null);
   const [isFastFold, setIsFastFold] = useState(false);
+  const [privateMode, setPrivateMode] = useState<PrivateMode | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
@@ -27,8 +29,16 @@ function App() {
     return <PlayerDebug />;
   }
 
-  const isGameScreen = !!blinds && currentPath === '/' ;
+  const isGameScreen = (!!blinds || !!privateMode) && (currentPath === '/' || currentPath.startsWith('/private/'));
   const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
+
+  const goBackToLobby = () => {
+    setBlinds(null);
+    setIsFastFold(false);
+    setPrivateMode(null);
+    window.history.pushState({}, '', '/');
+    setCurrentPath('/');
+  };
 
   let page;
   if (currentPath.startsWith('/spectate/')) {
@@ -36,23 +46,28 @@ function App() {
     page = (
       <SpectatorView
         tableId={tableId}
-        onBack={() => {
-          window.history.pushState({}, '', '/');
-          setCurrentPath('/');
-        }}
+        onBack={goBackToLobby}
       />
     );
   } else if (currentPath === '/history') {
     page = (
-      <HandHistory onBack={() => {
-        window.history.pushState({}, '', '/');
-        setCurrentPath('/');
-      }} />
+      <HandHistory onBack={goBackToLobby} />
     );
+  } else if (currentPath.startsWith('/private/')) {
+    const code = currentPath.replace('/private/', '');
+    page = <OnlineGame blinds="1/3" privateMode={{ type: 'join', inviteCode: code }} onBack={goBackToLobby} />;
+  } else if (privateMode) {
+    page = <OnlineGame blinds={blinds || '1/3'} isFastFold={false} privateMode={privateMode} onBack={goBackToLobby} />;
   } else if (blinds) {
-    page = <OnlineGame blinds={blinds} isFastFold={isFastFold} onBack={() => { setBlinds(null); setIsFastFold(false); }} />;
+    page = <OnlineGame blinds={blinds} isFastFold={isFastFold} onBack={goBackToLobby} />;
   } else {
-    page = <SimpleLobby onPlayOnline={(selectedBlinds, fastFold) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); }} />;
+    page = (
+      <SimpleLobby
+        onPlayOnline={(selectedBlinds, fastFold) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); }}
+        onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
+        onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
+      />
+    );
   }
 
   return (

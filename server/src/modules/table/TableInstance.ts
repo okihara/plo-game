@@ -29,6 +29,8 @@ export class TableInstance {
   public readonly bigBlind: number;
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
+  public readonly isPrivate: boolean = false;
+  public readonly inviteCode: string | null = null;
 
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
   public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
@@ -59,10 +61,12 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private readonly spectatorManager: SpectatorManager;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
+    this.isPrivate = options?.isPrivate ?? false;
+    this.inviteCode = options?.inviteCode ?? null;
 
     const [sb, bb] = blinds.split('/').map(Number);
     this.smallBlind = sb;
@@ -334,6 +338,7 @@ export class TableInstance {
       players: this.getPlayerCount(),
       maxPlayers: this.maxPlayers,
       isFastFold: this.isFastFold,
+      isPrivate: this.isPrivate,
     };
   }
 
@@ -399,6 +404,7 @@ export class TableInstance {
   }
 
   private get minPlayersToStart(): number {
+    if (this.isPrivate) return 2;
     return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
   }
 
