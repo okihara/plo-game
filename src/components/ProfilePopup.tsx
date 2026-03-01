@@ -122,7 +122,7 @@ export function ProfilePopup({
         <div className="px-[4cqw] pt-[4cqw] pb-[2cqw] relative">
 
           {/* Avatar + Name */}
-          <div className="flex items-center gap-[3cqw] mb-[2.5cqw]">
+          <div className="flex items-center gap-[3cqw] mb-[1.5cqw]">
             <div className="w-[12cqw] h-[12cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[0.6cqw] border-cream-300 overflow-hidden shrink-0">
               {avatarImage ? (
                 <img src={avatarImage} alt={name} className="w-full h-full object-cover" />
@@ -141,30 +141,31 @@ export function ProfilePopup({
                 </button>
               )}
             </div>
-            {/* Badges (inline with avatar) */}
-            {badges.length > 0 && (
-              <div className="flex gap-[1.5cqw] ml-auto shrink-0">
-                {badges.map((badge) => (
-                  <div
-                    key={badge.type}
-                    className="flex flex-col items-center"
-                  >
-                    <div className="relative w-[8cqw] h-[8cqw] rounded-full bg-cream-100 border border-cream-300 flex items-center justify-center text-[4cqw]">
-                      {badge.icon}
-                      {badge.count > 1 && (
-                        <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[1.8cqw] font-bold rounded-full min-w-[3.5cqw] h-[3.5cqw] flex items-center justify-center px-[0.3cqw]">
-                          ×{badge.count}
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
-                      {badge.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </div>
+
+          {/* Badges */}
+          {badges.length > 0 && (
+            <div className="flex gap-[2cqw] mb-[2.5cqw]">
+              {badges.map((badge) => (
+                <div
+                  key={badge.type}
+                  className="flex flex-col items-center"
+                >
+                  <div className="relative w-[8cqw] h-[8cqw] rounded-full bg-cream-100 border border-cream-300 flex items-center justify-center text-[4cqw]">
+                    {badge.icon}
+                    {badge.count > 1 && (
+                      <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[1.8cqw] font-bold rounded-full min-w-[3.5cqw] h-[3.5cqw] flex items-center justify-center px-[0.3cqw]">
+                        ×{badge.count}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
+                    {badge.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Stats */}
           <div className="bg-cream-100 rounded-[3cqw] p-[3.5cqw]">
