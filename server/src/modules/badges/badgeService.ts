@@ -6,6 +6,7 @@ export const BADGE_CATEGORIES = {
   HANDS: 'hands',
   DAILY_RANK: 'daily_rank',
   WEEKLY_RANK: 'weekly_rank',
+  SPECIAL: 'special',
 } as const;
 
 type BadgeCategory = typeof BADGE_CATEGORIES[keyof typeof BADGE_CATEGORIES];
@@ -14,27 +15,27 @@ interface BadgeMeta {
   category: BadgeCategory;
   label: string;
   description: string;
-  icon: string;
+  flavor: string;
+  imageUrl: string;
 }
 
 const BADGE_META: Record<string, BadgeMeta> = {
-  hands_100:     { category: 'hands', label: '100 Hands',   description: '100ハンドプレイ',              icon: '🃏' },
-  hands_500:     { category: 'hands', label: '500 Hands',   description: '500ハンドプレイ',              icon: '🎴' },
-  hands_1000:    { category: 'hands', label: '1K Hands',    description: '1,000ハンドプレイ',            icon: '🔥' },
-  hands_5000:    { category: 'hands', label: '5K Hands',    description: '5,000ハンドプレイ',            icon: '💎' },
-  daily_rank_1:  { category: 'daily_rank',  label: 'Daily #1',  description: 'デイリーランキング1位',  icon: '🥇' },
-  weekly_rank_1: { category: 'weekly_rank', label: 'Weekly #1', description: 'ウィークリーランキング1位', icon: '🏆' },
+  hands_1000:    { category: 'hands', label: '1000 Hands',  description: '1000ハンドプレイ',             flavor: 'テーブルに根を下ろし始めた',           imageUrl: '/images/badges/hands_1000.png' },
+  hands_3000:    { category: 'hands', label: '3000 Hands',  description: '3000ハンドプレイ',             flavor: 'もうフィッシュとは呼ばせない',          imageUrl: '/images/badges/hands_3000.png' },
+  hands_10000:   { category: 'hands', label: '10K Hands',   description: '10,000ハンドプレイ',           flavor: 'グラインダーの称号は伊達じゃない',      imageUrl: '/images/badges/hands_10000.png' },
+  daily_rank_1:  { category: 'daily_rank',  label: 'Daily #1',  description: 'デイリーランキング1位',  flavor: '今日のテーブルの支配者',               imageUrl: '/images/badges/daily_rank.png' },
+  weekly_rank_1: { category: 'weekly_rank', label: 'Weekly #1', description: 'ウィークリーランキング1位', flavor: '一週間の頂点に立つ者',              imageUrl: '/images/badges/weekly_rank.png' },
+  first_penguin: { category: 'special', label: '1st Penguin', description: 'アーリーアダプター（2026/3/1以前にプレイ）', flavor: '未知の海に最初に飛び込んだ勇者', imageUrl: '/images/badges/penguin.png' },
 };
 
 const HAND_MILESTONES = [
-  { threshold: 100,  type: 'hands_100' },
-  { threshold: 500,  type: 'hands_500' },
-  { threshold: 1000, type: 'hands_1000' },
-  { threshold: 5000, type: 'hands_5000' },
+  { threshold: 1000,  type: 'hands_1000' },
+  { threshold: 3000,  type: 'hands_3000' },
+  { threshold: 10000, type: 'hands_10000' },
 ];
 
 // ハンド数バッジの優先順位（高い方が優先）
-const HANDS_PRIORITY = ['hands_5000', 'hands_1000', 'hands_500', 'hands_100'];
+const HANDS_PRIORITY = ['hands_10000', 'hands_3000', 'hands_1000'];
 
 // --- バッジ付与 ---
 
@@ -80,7 +81,8 @@ export interface DisplayBadge {
   type: string;
   label: string;
   description: string;
-  icon: string;
+  flavor: string;
+  imageUrl: string;
   count: number;
   awardedAt: string;
 }
@@ -101,7 +103,8 @@ export function groupBadgesForDisplay(badges: { type: string; awardedAt: Date }[
         type: highestType,
         label: meta.label,
         description: meta.description,
-        icon: meta.icon,
+        flavor: meta.flavor,
+        imageUrl: meta.imageUrl,
         count: 1,
         awardedAt: badge.awardedAt.toISOString(),
       });
@@ -119,9 +122,27 @@ export function groupBadgesForDisplay(badges: { type: string; awardedAt: Date }[
         type: rankType,
         label: meta.label,
         description: meta.description,
-        icon: meta.icon,
+        flavor: meta.flavor,
+        imageUrl: meta.imageUrl,
         count: rankBadges.length,
         awardedAt: latest.awardedAt.toISOString(),
+      });
+    }
+  }
+
+  // スペシャルカテゴリ: 1回限り（存在すれば表示）
+  for (const badge of badges) {
+    const meta = BADGE_META[badge.type];
+    if (meta?.category === 'special') {
+      result.push({
+        category: meta.category,
+        type: badge.type,
+        label: meta.label,
+        description: meta.description,
+        flavor: meta.flavor,
+        imageUrl: meta.imageUrl,
+        count: 1,
+        awardedAt: badge.awardedAt.toISOString(),
       });
     }
   }

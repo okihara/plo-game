@@ -27,7 +27,8 @@ interface DisplayBadge {
   type: string;
   label: string;
   description: string;
-  icon: string;
+  flavor: string;
+  imageUrl: string;
   count: number;
   awardedAt: string;
 }
@@ -63,6 +64,8 @@ export function ProfilePopup({
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStats | null>(null);
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
+  const [activeBadge, setActiveBadge] = useState<string | null>(null);
+  const badgeTooltipRef = useRef<HTMLDivElement>(null);
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(initialShowEdit);
@@ -107,6 +110,22 @@ export function ProfilePopup({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose, showEditDialog]);
 
+  // バッジツールチップの外側タップで閉じる
+  useEffect(() => {
+    if (!activeBadge) return;
+    const handleOutside = (e: MouseEvent | TouchEvent) => {
+      if (badgeTooltipRef.current && !badgeTooltipRef.current.contains(e.target as Node)) {
+        setActiveBadge(null);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    document.addEventListener('touchstart', handleOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleOutside);
+      document.removeEventListener('touchstart', handleOutside);
+    };
+  }, [activeBadge]);
+
   // 背景クリックで閉じる
   const handleBackdropClick = (e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
@@ -145,25 +164,44 @@ export function ProfilePopup({
 
           {/* Badges */}
           {badges.length > 0 && (
-            <div className="flex gap-[2cqw] mb-[2.5cqw]">
-              {badges.map((badge) => (
-                <div
-                  key={badge.type}
-                  className="flex flex-col items-center"
-                >
-                  <div className="relative w-[8cqw] h-[8cqw] rounded-full bg-cream-100 border border-cream-300 flex items-center justify-center text-[4cqw]">
-                    {badge.icon}
-                    {badge.count > 1 && (
-                      <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[1.8cqw] font-bold rounded-full min-w-[3.5cqw] h-[3.5cqw] flex items-center justify-center px-[0.3cqw]">
-                        ×{badge.count}
-                      </span>
-                    )}
+            <div className="relative mb-[2.5cqw]">
+              <div className="flex gap-[2cqw]">
+                {badges.map((badge) => (
+                  <div
+                    key={badge.type}
+                    className="flex flex-col items-center"
+                    onClick={(e) => { e.stopPropagation(); setActiveBadge(v => v === badge.type ? null : badge.type); }}
+                  >
+                    <div className="relative w-[8cqw] h-[8cqw]">
+                      <div className="w-full h-full rounded-full bg-cream-100 border border-cream-300 overflow-hidden">
+                        <img src={badge.imageUrl} alt={badge.label} className="w-full h-full object-cover" />
+                      </div>
+                      {badge.count > 1 && (
+                        <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[1.8cqw] font-bold rounded-full min-w-[3.5cqw] h-[3.5cqw] flex items-center justify-center px-[0.3cqw]">
+                          ×{badge.count}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
+                      {badge.label}
+                    </span>
                   </div>
-                  <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
-                    {badge.label}
-                  </span>
-                </div>
-              ))}
+                ))}
+              </div>
+              {activeBadge && (() => {
+                const badge = badges.find(b => b.type === activeBadge);
+                if (!badge) return null;
+                return (
+                  <div
+                    ref={badgeTooltipRef}
+                    className="absolute z-[300] top-full mt-[1cqw] left-0 right-0 bg-cream-900 border border-cream-700 rounded-[2cqw] p-[3cqw] shadow-xl"
+                  >
+                    <div className="text-white text-[2.8cqw] font-semibold mb-[1cqw]">{badge.label}</div>
+                    <div className="text-white/60 text-[2.2cqw] italic mb-[1cqw]">{badge.flavor}</div>
+                    <div className="text-white/40 text-[2cqw]">{badge.description}</div>
+                  </div>
+                );
+              })()}
             </div>
           )}
 
