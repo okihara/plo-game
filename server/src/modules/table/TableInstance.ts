@@ -34,7 +34,7 @@ export class TableInstance {
   public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
 
   // ファストフォールド: タイムアウトフォールド時にテーブル移動するコールバック
-  public onTimeoutFold?: (odId: string, socket: Socket) => void;
+  public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
 
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
@@ -499,7 +499,10 @@ export class TableInstance {
     this.actionController.requestNextAction(
       this.gameState,
       this.playerManager.getSeats(),
-      (playerId, seatIndex) => this.handleActionTimeout(playerId, seatIndex),
+      (playerId, seatIndex) => {
+        this.handleActionTimeout(playerId, seatIndex)
+          .catch(err => console.error(`[Table ${this.id}] handleActionTimeout error:`, err));
+      },
       () => {
         // 切断済みプレイヤーのフォールド: handleAction 経由で正規処理
         if (!this.gameState) return;
@@ -512,7 +515,7 @@ export class TableInstance {
     );
   }
 
-  private handleActionTimeout(playerId: string, seatIndex: number): void {
+  private async handleActionTimeout(playerId: string, seatIndex: number): Promise<void> {
     console.warn(`[Table ${this.id}] Action timeout: playerId=${playerId}, seat=${seatIndex}`);
 
     if (!this.gameState) {
@@ -533,7 +536,7 @@ export class TableInstance {
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
       if (action === 'fold' && seat.socket && this.onTimeoutFold) {
-        this.onTimeoutFold(playerId, seat.socket);
+        await this.onTimeoutFold(playerId, seat.socket);
       }
     } else {
       // Player already left, but game might be stuck - advance if needed

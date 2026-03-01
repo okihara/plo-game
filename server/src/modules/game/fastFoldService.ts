@@ -10,9 +10,8 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
   if (!table.isFastFold || table.onFastFoldReassign) return;
   // タイムアウトフォールド時もテーブル移動
   if (!table.onTimeoutFold) {
-    table.onTimeoutFold = (odId: string, socket: Socket) => {
-      handleFastFoldMove(socket as AuthenticatedSocket, table, odId, tableManager)
-        .catch(err => console.error('[FastFold] timeout fold move failed:', err));
+    table.onTimeoutFold = async (odId: string, socket: Socket) => {
+      await handleFastFoldMove(socket as AuthenticatedSocket, table, odId, tableManager);
     };
   }
 
