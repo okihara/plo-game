@@ -145,7 +145,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
       )}
       {/* 招待コード共有パネル（プライベートテーブル作成時） */}
       {privateTableInfo && (
-        <div className="absolute top-[6%] left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <div className="absolute top-[6%] left-0 right-0 z-[160] flex justify-center pointer-events-none">
           <div className="bg-white/95 rounded-[3cqw] shadow-lg px-[5cqw] py-[3cqw] text-center mx-[4cqw] pointer-events-auto">
             <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>招待コード</p>
             <p className="font-bold text-cream-900 tracking-[0.3em] font-mono" style={{ fontSize: 'min(4vh, 7vw)' }}>{privateTableInfo.inviteCode}</p>

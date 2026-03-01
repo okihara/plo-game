@@ -79,7 +79,6 @@ export class TableManager {
   // Get all tables info for lobby (excludes private tables)
   public getTablesInfo() {
     return Array.from(this.tables.values())
-      .filter(t => !t.isPrivate)
       .map(t => t.getTableInfo());
   }
 
