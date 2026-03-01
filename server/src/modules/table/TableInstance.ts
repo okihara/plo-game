@@ -514,16 +514,21 @@ export class TableInstance {
 
   private handleActionTimeout(playerId: string, seatIndex: number): void {
     console.warn(`[Table ${this.id}] Action timeout: playerId=${playerId}, seat=${seatIndex}`);
+
+    if (!this.gameState) {
+      console.error(`[Table ${this.id}] Action timeout but no gameState: playerId=${playerId}, seat=${seatIndex}`);
+      const seat = this.playerManager.getSeat(seatIndex);
+      seat?.socket?.emit('table:error', { message: 'ゲーム状態が見つかりません。再接続してください。' });
+      return;
+    }
+
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
       // チェック可能ならチェック、そうでなければフォールド
-      let action: Action = 'fold';
-      if (this.gameState) {
-        const validActions = getValidActions(this.gameState, seatIndex);
-        const canCheck = validActions.some(a => a.action === 'check');
-        action = canCheck ? 'check' : 'fold';
-      }
+      const validActions = getValidActions(this.gameState, seatIndex);
+      const canCheck = validActions.some(a => a.action === 'check');
+      const action: Action = canCheck ? 'check' : 'fold';
       this.handleAction(playerId, action, 0);
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
@@ -532,8 +537,7 @@ export class TableInstance {
       }
     } else {
       // Player already left, but game might be stuck - advance if needed
-      if (this.gameState &&
-          !this.gameState.isHandComplete &&
+      if (!this.gameState.isHandComplete &&
           this.gameState.currentPlayerIndex === seatIndex) {
         // Game is stuck waiting for this player, advance
         this.gameState = this.foldProcessor.processSilentFold(this.gameState, seatIndex);
