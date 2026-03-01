@@ -126,13 +126,6 @@ export function ProfilePopup({
     };
   }, [activeBadge]);
 
-  // 背景クリックで閉じる
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-      onClose();
-    }
-  };
-
   return (
     <div
       className="absolute inset-0 bg-white z-[200] flex flex-col"
