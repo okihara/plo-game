@@ -135,14 +135,26 @@ export async function statsRoutes(fastify: FastifyInstance) {
       // daily / weekly: Raw SQLでDB側集計
       const now = new Date();
       const startDate = new Date(now);
+      // JST 7:00 = UTC 22:00（前日）をリセット基準にする
+      const JST_RESET_HOUR_UTC = 22; // JST 7:00
+
+      // 今日のリセット時刻（UTC 22:00）を求め、まだ到達していなければ前日に戻す
+      const todayReset = new Date(now);
+      todayReset.setUTCHours(JST_RESET_HOUR_UTC, 0, 0, 0);
+      if (now < todayReset) {
+        todayReset.setUTCDate(todayReset.getUTCDate() - 1);
+      }
+
       if (period === 'daily') {
-        startDate.setHours(0, 0, 0, 0);
+        startDate.setTime(todayReset.getTime());
       } else {
-        // 今週の月曜 00:00（月曜始まり）
-        const day = startDate.getDay(); // 0=日, 1=月, ..., 6=土
-        const diff = day === 0 ? 6 : day - 1; // 日曜は6日前の月曜
-        startDate.setDate(startDate.getDate() - diff);
-        startDate.setHours(0, 0, 0, 0);
+        // 今週の月曜 JST 7:00（月曜始まり）
+        // todayReset（UTC 22:00）+ 9h = JST翌日7:00 なので、JST基準の曜日を求める
+        const jstDay = new Date(todayReset.getTime() + 9 * 60 * 60 * 1000);
+        const dayOfWeek = jstDay.getUTCDay(); // 0=日, 1=月, ..., 6=土
+        const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        startDate.setTime(todayReset.getTime());
+        startDate.setUTCDate(startDate.getUTCDate() - daysFromMonday);
       }
 
       const rows = await prisma.$queryRaw<Array<{
