@@ -103,6 +103,7 @@ function convertOnlinePlayerToPlayer(
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
     odId: online.odId,
+    rankingBadges: online.rankingBadges,
   };
 }
 

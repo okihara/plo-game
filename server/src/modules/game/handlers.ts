@@ -112,11 +112,19 @@ export async function handleMatchmakingJoin(
     const [, bb] = parts.map(Number);
     const buyIn = bb * 100; // $300 for $1/$3
 
-    // Check balance and get user info
-    const user = await prisma.user.findUnique({
-      where: { id: socket.odId },
-      include: { bankroll: true },
-    });
+    // Check balance and get user info + ranking badges
+    const [user, rankingBadgeRows] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: socket.odId },
+        include: { bankroll: true },
+      }),
+      prisma.badge.findMany({
+        where: { userId: socket.odId!, type: { in: ['daily_rank_1', 'weekly_rank_1'] } },
+        select: { type: true },
+        orderBy: { awardedAt: 'asc' },
+      }),
+    ]);
+    const rankingBadges = [...new Set((rankingBadgeRows as { type: string }[]).map(b => b.type))];
 
     if (!user?.bankroll || user.bankroll.balance < buyIn) {
       socket.emit('table:error', { message: 'Insufficient balance for minimum buy-in' });
@@ -158,7 +166,8 @@ export async function handleMatchmakingJoin(
       undefined,
       undefined,
       user.nameMasked,
-      user.displayName
+      user.displayName,
+      rankingBadges
     );
 
     if (seatNumber !== null) {
