@@ -175,9 +175,6 @@ export function ProfilePopup({
                         </span>
                       )}
                     </div>
-                    <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
-                      {badge.label}
-                    </span>
                   </div>
                 ))}
               </div>
