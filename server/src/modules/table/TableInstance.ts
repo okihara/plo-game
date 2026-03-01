@@ -33,6 +33,11 @@ export class TableInstance {
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
   public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
 
+  // AFK検出: タイムアウト通知コールバック。戻り値trueならAFK退席対象
+  public onPlayerTimedOut?: (odId: string) => boolean;
+  // AFK検出: 退席時のキャッシュアウト通知コールバック
+  public onAfkRemoval?: (odId: string, chips: number) => void;
+
   private gameState: GameState | null = null;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
@@ -46,6 +51,9 @@ export class TableInstance {
 
   // ファストフォールド: 手番が来るまで保留するフォールド (seatIndex → odId)
   private pendingEarlyFolds: Map<number, string> = new Map();
+
+  // AFK検出: ハンド完了時にAFK退席する対象
+  private pendingAfkRemovals = new Set<string>();
 
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
@@ -522,6 +530,12 @@ export class TableInstance {
       } else {
         this.handleAction(playerId, 'fold', 0);
       }
+
+      // AFK検出: 連続タイムアウトをカウントし、閾値超えたら退席予約
+      if (this.onPlayerTimedOut?.(playerId)) {
+        console.warn(`[Table ${this.id}] AFK removal scheduled: playerId=${playerId}`);
+        this.pendingAfkRemovals.add(playerId);
+      }
     } else {
       // Player already left, but game might be stuck - advance if needed
       if (this.gameState &&
@@ -749,6 +763,22 @@ export class TableInstance {
     // ショーダウン時はカードを確認する時間を長めに取る
     const delay = wasShowdown ? TABLE_CONSTANTS.NEXT_HAND_SHOWDOWN_DELAY_MS : TABLE_CONSTANTS.NEXT_HAND_DELAY_MS;
     await new Promise(resolve => setTimeout(resolve, delay));
+
+    // AFK退席: 連続タイムアウトで退席予約されたプレイヤーを処理
+    for (const afkOdId of this.pendingAfkRemovals) {
+      // unseatPlayer前にAFK通知を送信（unseatPlayerがtable:leftを送る前に）
+      const afkSeatIndex = this.playerManager.findSeatByOdId(afkOdId);
+      if (afkSeatIndex !== -1) {
+        const afkSeat = this.playerManager.getSeat(afkSeatIndex);
+        afkSeat?.socket?.emit('table:busted', { message: '放置のためテーブルから退席しました' });
+      }
+      const result = this.unseatPlayer(afkOdId);
+      if (result) {
+        console.warn(`[Table ${this.id}] AFK removed: odId=${afkOdId}, chips=${result.chips}`);
+        this.onAfkRemoval?.(result.odId, result.chips);
+      }
+    }
+    this.pendingAfkRemovals.clear();
 
     // Remove busted players and players who left during hand
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {

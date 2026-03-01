@@ -4,6 +4,7 @@ import { TableInstance } from './TableInstance.js';
 export class TableManager {
   private tables: Map<string, TableInstance> = new Map();
   private playerTables: Map<string, string> = new Map(); // odId -> tableId
+  private consecutiveTimeouts: Map<string, number> = new Map(); // odId -> 連続タイムアウト回数
   private io: Server;
 
   constructor(io: Server) {
@@ -91,6 +92,19 @@ export class TableManager {
   // Remove player from tracking
   public removePlayerFromTracking(odId: string): void {
     this.playerTables.delete(odId);
+    this.consecutiveTimeouts.delete(odId);
+  }
+
+  // AFK検出: 連続タイムアウト回数をインクリメントして新しい値を返す
+  public incrementTimeout(odId: string): number {
+    const count = (this.consecutiveTimeouts.get(odId) || 0) + 1;
+    this.consecutiveTimeouts.set(odId, count);
+    return count;
+  }
+
+  // AFK検出: 手動アクション時に連続タイムアウトカウンターをリセット
+  public resetTimeout(odId: string): void {
+    this.consecutiveTimeouts.delete(odId);
   }
 
   // Clean up empty tables (except one for each blind level)
