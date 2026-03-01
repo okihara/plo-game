@@ -881,29 +881,39 @@ describe('TableInstance - タイムアウトフォールド時のonTimeoutFold�
   });
 
   it('タイムアウトでチェックになる場合はonTimeoutFoldが呼ばれない', () => {
-    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, isFastFold: true, blinds: '1/2' });
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 6, isFastFold: true, blinds: '1/2' });
 
     const onTimeoutFold = vi.fn();
     table.onTimeoutFold = onTimeoutFold;
 
-    // BB以外のプレイヤーが全員コール
+    // BB以外の全員がコール → BBオプション（チェック可能）に到達させる
     let safety = 10;
     while (safety-- > 0) {
       const current = findCurrentPlayer(table, odIds, sockets, seatMap);
       if (!current) break;
-
-      const bb = findBBPlayer(table, odIds, sockets, seatMap);
-      if (current.odId === bb?.odId) break;
-      table.handleAction(current.odId, 'call', 2);
+      // action_requiredから正しいcall amountを取得
+      const actionEmits = getSocketEmits(current.socket, 'game:action_required');
+      const lastAction = actionEmits[actionEmits.length - 1] as {
+        validActions: { action: string; minAmount: number }[];
+      };
+      const callInfo = lastAction?.validActions.find(a => a.action === 'call');
+      const checkInfo = lastAction?.validActions.find(a => a.action === 'check');
+      if (checkInfo) break; // チェック可能 = BBオプション到達
+      if (!callInfo) break;
+      table.handleAction(current.odId, 'call', callInfo.minAmount);
     }
 
-    // BBの手番でタイムアウト → チェックになるはず
+    // チェック可能な手番がBBであることを確認
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
     const bb = findBBPlayer(table, odIds, sockets, seatMap);
-    const currentNow = findCurrentPlayer(table, odIds, sockets, seatMap);
-    if (currentNow && bb && currentNow.odId === bb.odId) {
-      vi.advanceTimersByTime(20000);
-      expect(onTimeoutFold).not.toHaveBeenCalled();
-    }
+    expect(current).not.toBeNull();
+    expect(bb).not.toBeNull();
+    expect(current!.odId).toBe(bb!.odId);
+    expect(table.getClientGameState().currentStreet).toBe('preflop');
+
+    // タイムアウト → チェックになるのでonTimeoutFoldは呼ばれない
+    vi.advanceTimersByTime(20000);
+    expect(onTimeoutFold).not.toHaveBeenCalled();
   });
 
   it('通常テーブルではonTimeoutFoldが設定されていなくてもエラーにならない', () => {
