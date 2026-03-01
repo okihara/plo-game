@@ -116,76 +116,67 @@ export function ProfilePopup({
 
   return (
     <div
-      className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200]"
-      onClick={handleBackdropClick}
+      className="absolute inset-0 bg-white z-[200] flex flex-col"
     >
-      <div className="@container w-[80cqw]">
-        <div className="bg-white rounded-[5cqw] p-[6cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.2)] animate-scale-in relative max-h-[85dvh] overflow-y-auto">
-          {/* Close Button */}
-          <button
-            onClick={onClose}
-            className="absolute top-[3cqw] right-[3cqw] text-cream-400 hover:text-cream-900 text-[7cqw] leading-none"
-          >
-            ×
-          </button>
+      <div className="@container w-full flex-1 overflow-y-auto">
+        <div className="px-[4cqw] pt-[4cqw] pb-[2cqw] relative">
 
-          {/* Avatar */}
-          <div className="flex flex-col items-center mb-[3cqw]">
-            <div className="w-[16cqw] h-[16cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[0.8cqw] border-cream-300 overflow-hidden mb-[2cqw]">
+          {/* Avatar + Name */}
+          <div className="flex items-center gap-[3cqw] mb-[2.5cqw]">
+            <div className="w-[12cqw] h-[12cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[0.6cqw] border-cream-300 overflow-hidden shrink-0">
               {avatarImage ? (
                 <img src={avatarImage} alt={name} className="w-full h-full object-cover" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[6cqw]">👤</div>
+                <div className="w-full h-full flex items-center justify-center text-[5cqw]">👤</div>
               )}
             </div>
-            <div className="flex items-center gap-[1.5cqw]">
-              <h2 className="text-[4cqw] font-bold text-cream-900">{name}</h2>
+            <div className="flex items-center gap-[1.5cqw] min-w-0">
+              <h2 className="text-[4.5cqw] font-bold text-cream-900 truncate">{name}</h2>
               {isSelf && (
                 <button
                   onClick={() => setShowEditDialog(true)}
-                  className="text-cream-700 hover:text-cream-900"
+                  className="text-cream-700 hover:text-cream-900 shrink-0"
                 >
                   <Pencil className="w-[3.5cqw] h-[3.5cqw]" />
                 </button>
               )}
             </div>
+            {/* Badges (inline with avatar) */}
+            {badges.length > 0 && (
+              <div className="flex gap-[1.5cqw] ml-auto shrink-0">
+                {badges.map((badge) => (
+                  <div
+                    key={badge.type}
+                    className="flex flex-col items-center"
+                  >
+                    <div className="relative w-[8cqw] h-[8cqw] rounded-full bg-cream-100 border border-cream-300 flex items-center justify-center text-[4cqw]">
+                      {badge.icon}
+                      {badge.count > 1 && (
+                        <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[1.8cqw] font-bold rounded-full min-w-[3.5cqw] h-[3.5cqw] flex items-center justify-center px-[0.3cqw]">
+                          ×{badge.count}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[1.8cqw] text-cream-500 mt-[0.3cqw]">
+                      {badge.label}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {/* Badges */}
-          {badges.length > 0 && (
-            <div className="flex flex-wrap justify-center gap-[2.5cqw] mb-[4cqw]">
-              {badges.map((badge) => (
-                <div
-                  key={badge.type}
-                  className="flex flex-col items-center gap-[0.5cqw]"
-                >
-                  <div className="relative w-[10cqw] h-[10cqw] rounded-full bg-cream-100 border border-cream-300 flex items-center justify-center text-[5cqw] shadow-sm">
-                    {badge.icon}
-                    {badge.count > 1 && (
-                      <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[2cqw] font-bold rounded-full min-w-[4cqw] h-[4cqw] flex items-center justify-center px-[0.5cqw]">
-                        ×{badge.count}
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[2cqw] text-cream-600 font-medium">
-                    {badge.label}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
           {/* Stats */}
-          <div className="bg-cream-100 rounded-[4cqw] p-[5cqw]">
+          <div className="bg-cream-100 rounded-[3cqw] p-[3.5cqw]">
             {loading ? (
-              <div className="flex flex-col items-center py-[4cqw]">
-                <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
-                <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
+              <div className="flex flex-col items-center py-[3cqw]">
+                <div className="w-[5cqw] h-[5cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
+                <p className="text-cream-500 text-[2.5cqw] mt-[1.5cqw]">読み込み中...</p>
               </div>
             ) : stats ? (
               <>
                 {/* 収支セクション */}
-                <div className="grid grid-cols-3 gap-[2.5cqw] mb-[4cqw]">
+                <div className="grid grid-cols-3 gap-x-[2cqw] gap-y-[1.5cqw] mb-[2.5cqw]">
                   <StatItem label="総ハンド数" value={stats.handsPlayed.toLocaleString()} />
                   <StatItem label="実収支" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
                   <StatItem label="Win Rate" value={formatRate(stats.winRate)} color={stats.winRate >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
@@ -194,7 +185,7 @@ export function ProfilePopup({
                   <StatItem label="Win Rate (EV)" value={formatRate((stats.totalAllInEVProfit ?? stats.totalProfit) / stats.handsPlayed)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
                 </div>
                 {/* ポーカースタッツ */}
-                <div className="grid grid-cols-3 gap-[2.5cqw]">
+                <div className="grid grid-cols-4 gap-x-[1.5cqw] gap-y-[1.5cqw]">
                   <StatItem label="VPIP" value={`${stats.vpip.toFixed(1)}%`} />
                   <StatItem label="PFR" value={`${stats.pfr.toFixed(1)}%`} />
                   <StatItem label="3Bet" value={`${stats.threeBet.toFixed(1)}%`} />
@@ -206,7 +197,7 @@ export function ProfilePopup({
                 </div>
               </>
             ) : (
-              <div className="grid grid-cols-2 gap-[3cqw]">
+              <div className="grid grid-cols-3 gap-[2cqw]">
                 <StatItem label="Hands" value="—" isPlaceholder />
                 <StatItem label="Win Rate" value="—" isPlaceholder />
                 <StatItem label="VPIP" value="—" isPlaceholder />
@@ -217,22 +208,31 @@ export function ProfilePopup({
             )}
           </div>
 
-
           {/* No Stats Notice */}
           {!loading && !stats && (
-            <p className="text-cream-500 text-[3cqw] text-center mt-[3cqw]">
+            <p className="text-cream-500 text-[2.5cqw] text-center mt-[2cqw]">
               スタッツはハンドをプレイすると表示されます
             </p>
           )}
 
           {/* Profit Chart (self only) */}
           {isSelf && !loading && profitHistory.length >= 2 && (
-            <div className="bg-cream-100 rounded-[4cqw] p-[5cqw] mt-[3cqw]">
+            <div className="bg-cream-100 rounded-[3cqw] p-[3.5cqw] mt-[2cqw]">
               <ProfitChart points={profitHistory} />
             </div>
           )}
 
         </div>
+      </div>
+
+      {/* Close Button */}
+      <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
+        <button
+          onClick={onClose}
+          className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"
+        >
+          閉じる
+        </button>
       </div>
 
       {/* Edit Dialog */}
