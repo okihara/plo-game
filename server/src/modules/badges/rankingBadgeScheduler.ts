@@ -2,7 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { awardRankingBadge } from './badgeService.js';
 
-const JST_RESET_HOUR_UTC = 22; // UTC 22:00 = JST 7:00
+const JST_RESET_HOUR_UTC = 18; // UTC 18:00 = JST 3:00
 const MIN_HANDS = 10;
 
 /** 前期間のランキング1位にバッジを付与 */
@@ -66,7 +66,7 @@ export function startRankingBadgeScheduler(): void {
     const utcHour = now.getUTCHours();
     const utcMinute = now.getUTCMinutes();
 
-    // UTC 22:00台（最初の5分間）のみ処理
+    // UTC 18:00台（最初の5分間）のみ処理
     if (utcHour !== JST_RESET_HOUR_UTC || utcMinute > 5) return;
 
     const dateKey = now.toISOString().slice(0, 10);
@@ -96,5 +96,5 @@ export function startRankingBadgeScheduler(): void {
   };
 
   setInterval(check, CHECK_INTERVAL_MS);
-  console.log('[BadgeScheduler] Started (checking every 60s at UTC 22:00 / JST 7:00)');
+  console.log('[BadgeScheduler] Started (checking every 60s at UTC 18:00 / JST 3:00)');
 }

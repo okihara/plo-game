@@ -41,15 +41,15 @@ export async function cashOutPlayer(odId: string, chips: number, tableId?: strin
   }
 }
 
-/** 直近の JST 7:00 (= UTC 22:00) の境界を返す */
-function getJst7amBoundary(): Date {
+/** 直近の JST 3:00 (= UTC 18:00) の境界を返す */
+function getJst3amBoundary(): Date {
   const now = new Date();
-  const today22utc = new Date(Date.UTC(
-    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 22, 0, 0,
+  const today18utc = new Date(Date.UTC(
+    now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 18, 0, 0,
   ));
-  return now < today22utc
-    ? new Date(today22utc.getTime() - 24 * 60 * 60 * 1000)
-    : today22utc;
+  return now < today18utc
+    ? new Date(today18utc.getTime() - 24 * 60 * 60 * 1000)
+    : today18utc;
 }
 
 /** ログインボーナスが取得可能かチェック */
@@ -57,7 +57,7 @@ export async function isLoginBonusAvailable(userId: string): Promise<boolean> {
   const bankroll = await prisma.bankroll.findUnique({ where: { userId } });
   if (!bankroll || bankroll.balance >= LOGIN_BONUS_TARGET) return false;
 
-  const boundary = getJst7amBoundary();
+  const boundary = getJst3amBoundary();
   const existing = await prisma.transaction.findFirst({
     where: { userId, type: 'LOGIN_BONUS', createdAt: { gte: boundary } },
   });
