@@ -7,8 +7,8 @@ on:
     branches: [main, develop]
 
 jobs:
-  build-client:
-    name: Client (tsc + vite build)
+  build:
+    name: Build (client + server)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -24,27 +24,13 @@ jobs:
 
       - run: pnpm install
 
-      - run: pnpm run build
+      - name: Client (tsc + vite build)
+        run: pnpm run build
 
-  build-server:
-    name: Server (tsc --noEmit)
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: pnpm
-
-      - run: pnpm install
-
-      - run: pnpm exec prisma generate
+      - name: Server (prisma generate)
+        run: pnpm exec prisma generate
         working-directory: server
 
-      - run: npx tsc --noEmit
+      - name: Server (tsc --noEmit)
+        run: pnpm exec tsc --noEmit
         working-directory: server
