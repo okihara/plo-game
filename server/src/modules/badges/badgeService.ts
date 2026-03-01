@@ -20,12 +20,12 @@ interface BadgeMeta {
 }
 
 const BADGE_META: Record<string, BadgeMeta> = {
-  hands_1000:    { category: 'hands', label: '1000 Hands',  description: '1000ハンドプレイ',             flavor: 'テーブルに根を下ろし始めた',           imageUrl: '/images/badges/hands_1000.png' },
-  hands_3000:    { category: 'hands', label: '3000 Hands',  description: '3000ハンドプレイ',             flavor: 'もうフィッシュとは呼ばせない',          imageUrl: '/images/badges/hands_3000.png' },
-  hands_10000:   { category: 'hands', label: '10K Hands',   description: '10,000ハンドプレイ',           flavor: 'グラインダーの称号は伊達じゃない',      imageUrl: '/images/badges/hands_10000.png' },
-  daily_rank_1:  { category: 'daily_rank',  label: 'Daily #1',  description: 'デイリーランキング1位',  flavor: '今日のテーブルの支配者',               imageUrl: '/images/badges/daily_rank.png' },
-  weekly_rank_1: { category: 'weekly_rank', label: 'Weekly #1', description: 'ウィークリーランキング1位', flavor: '一週間の頂点に立つ者',              imageUrl: '/images/badges/weekly_rank.png' },
-  first_penguin: { category: 'special', label: '1st Penguin', description: 'アーリーアダプター（2026/3/1以前にプレイ）', flavor: '未知の海に最初に飛び込んだ勇者', imageUrl: '/images/badges/penguin.png' },
+  hands_1000:    { category: 'hands', label: '1000 Hands',  description: '1000ハンドプレイ',             flavor: '紙束',                           imageUrl: '/images/badges/hands_1000.png' },
+  hands_3000:    { category: 'hands', label: '3000 Hands',  description: '3000ハンドプレイ',             flavor: '辞書',                        imageUrl: '/images/badges/hands_3000.png' },
+  hands_10000:   { category: 'hands', label: '10K Hands',   description: '10,000ハンドプレイ',           flavor: '図書館',                imageUrl: '/images/badges/hands_10000.png' },
+  daily_rank_1:  { category: 'daily_rank',  label: 'Daily Crown',  description: 'デイリーランキング1位',  flavor: 'あの日のチップは全てあなたの手に',                           imageUrl: '/images/badges/daily_rank.png' },
+  weekly_rank_1: { category: 'weekly_rank', label: 'Weekly Crown', description: 'ウィークリーランキング1位', flavor: '不眠不休の王',                          imageUrl: '/images/badges/weekly_rank.png' },
+  first_penguin: { category: 'special', label: '1st Penguin', description: '2026/3/1以前に1ハンド以上をプレイ', flavor: '誰も知らないアプリに最初に飛び込んだ勇者の証 ありがとうございます', imageUrl: '/images/badges/penguin.png' },
 };
 
 const HAND_MILESTONES = [

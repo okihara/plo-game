@@ -172,7 +172,7 @@ export function ProfilePopup({
                     className="flex flex-col items-center"
                     onClick={(e) => { e.stopPropagation(); setActiveBadge(v => v === badge.type ? null : badge.type); }}
                   >
-                    <div className="relative w-[8cqw] h-[8cqw]">
+                    <div className="relative w-[11cqw] h-[11cqw]">
                       <div className="w-full h-full rounded-full bg-cream-100 border border-cream-300 overflow-hidden">
                         <img src={badge.imageUrl} alt={badge.label} className="w-full h-full object-cover" />
                       </div>
