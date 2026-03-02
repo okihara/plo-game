@@ -10,6 +10,8 @@ import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
+  onCreatePrivate: (blinds: string) => void;
+  onJoinPrivate: (inviteCode: string) => void;
 }
 
 interface TableOption {
@@ -29,18 +31,20 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: true },
 ];
 
-export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: SimpleLobbyProps) {
   const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
 
   const [claimingBonus, setClaimingBonus] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [showRanking, setShowRanking] = useState(false);
   const [rankingRefreshKey, setRankingRefreshKey] = useState(0);
+  const [showPrivateDialog, setShowPrivateDialog] = useState(false);
 
 
   useEffect(() => {
@@ -232,9 +236,9 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
-                    table.enabled && !maintenance?.isActive
+                    table.enabled && !maintenance?.isActive && user
                       ? 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 shadow-[0_4px_12px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(245,158,11,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
+                      : 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -261,8 +265,8 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
             })}
           </div>
 
-          {/* Tables - Normal */}
-          <div className="mt-[2.5cqw] space-y-[2.5cqw]">
+          {/* Tables - Normal + Private */}
+          <div className="mt-[2.5cqw] flex gap-[2cqw]">
             {TABLE_OPTIONS.filter(t => !t.isFastFold).map((table) => {
               const count = playerCounts[table.blinds] ?? 0;
               return (
@@ -270,34 +274,40 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
                   key={table.id}
                   onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
-                  className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
-                    table.enabled && !maintenance?.isActive
+                  className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
+                    table.enabled && !maintenance?.isActive && user
                       ? 'bg-gradient-to-b from-forest-light to-forest border-forest/40 shadow-[0_4px_12px_rgba(45,90,61,0.3),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
+                      : 'bg-gradient-to-b from-forest-light to-forest border-forest/40 opacity-50 cursor-not-allowed'
                   }`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-[2.5cqw]">
-                      <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
-                      <div className="flex flex-col items-start">
-                        <span className="text-[2.8cqw] font-bold text-white/90">PLO</span>
-                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn} / rake: {table.rake}</span>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-[2cqw]">
-                      {table.enabled ? (
-                        <>
-                          <span className="text-[2.8cqw] text-white/80">{count}人</span>
-                          <svg className="w-[4cqw] h-[4cqw] text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-                        </>
-                      ) : (
-                        <span className="text-cream-500">準備中</span>
-                      )}
+                  <div className="flex items-center justify-center gap-[2cqw]">
+                    <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[2.8cqw] font-bold text-white/90">PLO</span>
+                      <span className="text-[2cqw] text-white/70">{table.buyIn} / {table.rake}</span>
+                      <span className="text-[2cqw] text-white/70">{count}人</span>
                     </div>
                   </div>
                 </button>
               );
             })}
+            <button
+              onClick={() => user && !maintenance?.isActive && setShowPrivateDialog(true)}
+              disabled={!user || !!maintenance?.isActive}
+              className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
+                user && !maintenance?.isActive
+                  ? 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 shadow-[0_4px_12px_rgba(139,126,106,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(139,126,106,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(139,126,106,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
+                  : 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 opacity-50 cursor-not-allowed'
+              }`}
+            >
+              <div className="flex items-center justify-center gap-[2cqw]">
+                <svg className="w-[5cqw] h-[5cqw] text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <div className="flex flex-col items-start">
+                  <span className="text-[2.8cqw] font-bold text-white/90">プライベート</span>
+                  <span className="text-[2cqw] text-white/70">1/3</span>
+                </div>
+              </div>
+            </button>
           </div>
 
           {/* Mini Leaderboard */}
@@ -357,6 +367,61 @@ export function SimpleLobby({ onPlayOnline }: SimpleLobbyProps) {
           onClose={() => setShowProfileEdit(false)}
           onSaved={() => { setShowProfileEdit(false); refreshUser(); }}
         />
+      )}
+
+      {/* Private Table Dialog */}
+      {showPrivateDialog && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={() => setShowPrivateDialog(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative w-[85%] bg-white rounded-[4cqw] shadow-2xl overflow-hidden p-[5cqw]"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-[4cqw] font-bold text-cream-900 text-center mb-[4cqw]">プライベートテーブル</h2>
+
+            {/* 招待コードで参加 */}
+            <div className="mb-[4cqw]">
+              <p className="text-[2.8cqw] text-cream-600 mb-[2cqw]">招待コードで参加</p>
+              <div className="flex gap-[2cqw]">
+                <input
+                  type="text"
+                  placeholder="コード入力"
+                  value={inviteCodeInput}
+                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
+                  maxLength={5}
+                  className="flex-1 px-[3cqw] py-[2.5cqw] text-[3.5cqw] border border-cream-300 rounded-[2cqw] text-cream-900 placeholder-cream-400 text-center tracking-[0.3em] font-mono uppercase bg-cream-50"
+                />
+                <button
+                  onClick={() => { if (inviteCodeInput.length >= 4) { onJoinPrivate(inviteCodeInput); setInviteCodeInput(''); setShowPrivateDialog(false); } }}
+                  disabled={inviteCodeInput.length < 4 || !!maintenance?.isActive}
+                  className="px-[5cqw] py-[2.5cqw] text-[3cqw] bg-forest text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97]"
+                >
+                  参加
+                </button>
+              </div>
+            </div>
+
+            {/* テーブル作成 */}
+            <div className="border-t border-cream-200 pt-[4cqw]">
+              <p className="text-[2.8cqw] text-cream-600 mb-[2cqw]">新しいテーブルを作成</p>
+              <button
+                onClick={() => { onCreatePrivate('1/3'); setShowPrivateDialog(false); }}
+                disabled={!!maintenance?.isActive}
+                className="w-full py-[3cqw] text-[3.5cqw] bg-cream-800 text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97] shadow-[0_4px_12px_rgba(139,126,106,0.3)]"
+              >
+                PLO 1/3 テーブルを作成
+              </button>
+            </div>
+
+            {/* 閉じるボタン */}
+            <button
+              onClick={() => setShowPrivateDialog(false)}
+              className="mt-[4cqw] w-full py-[2.5cqw] text-[3cqw] text-cream-500 hover:text-cream-700 transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Ranking Popup */}

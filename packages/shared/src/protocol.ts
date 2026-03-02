@@ -16,6 +16,10 @@ export interface ClientToServerEvents {
   // Matchmaking pool
   'matchmaking:join': (data: { blinds: string; isFastFold?: boolean }) => void;
   'matchmaking:leave': () => void;
+
+  // Private table
+  'private:create': (data: { blinds: string }) => void;
+  'private:join': (data: { inviteCode: string }) => void;
 }
 
 // ========== Server -> Client Events ==========
@@ -23,6 +27,7 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   // Connection
   'connection:established': (data: { playerId: string }) => void;
+  'connection:displaced': (data: { reason: string }) => void;
 
   // Table events
   'table:joined': (data: { tableId: string; seat: number }) => void;
@@ -61,6 +66,9 @@ export interface ServerToClientEvents {
 
   // Announcement (no play restriction)
   'announcement:status': (data: { isActive: boolean; message: string }) => void;
+
+  // Private table
+  'private:created': (data: { tableId: string; inviteCode: string }) => void;
 }
 
 // ========== Shared Types ==========
@@ -107,6 +115,7 @@ export interface TableInfo {
   players: number;
   maxPlayers: number;
   isFastFold: boolean;
+  isPrivate?: boolean;
 }
 
 // Socket authentication data

@@ -48,6 +48,8 @@ class WebSocketService {
     onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
     onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
+    onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
+    onDisplaced?: () => void;
   } = {};
 
   connect(): Promise<string> {
@@ -108,6 +110,16 @@ class WebSocketService {
       this.socket.on('disconnect', () => {
         wsLog('disconnect');
         this.listeners.onDisconnected?.();
+      });
+
+      this.socket.on('connection:displaced', ({ reason }) => {
+        wsLog('connection:displaced', { reason });
+        this.listeners.onDisplaced?.();
+        // サーバーからの強制切断（io server disconnect）では自動再接続されないが、
+        // 念のためsocket参照をクリーンアップ
+        this.socket?.disconnect();
+        this.socket = null;
+        this.playerId = null;
       });
 
       // Table events
@@ -190,6 +202,12 @@ class WebSocketService {
         this.listeners.onAnnouncementStatus?.(data);
       });
 
+      // Private table events
+      this.socket.on('private:created', (data) => {
+        wsLog('private:created', data);
+        this.listeners.onPrivateCreated?.(data);
+      });
+
       // Timeout for initial connection
       this.connectionTimeoutId = setTimeout(() => {
         if (!settled) {
@@ -250,6 +268,15 @@ class WebSocketService {
   // Spectator
   spectateTable(tableId: string): void {
     this.socket?.emit('table:spectate', { tableId });
+  }
+
+  // Private table
+  createPrivateTable(blinds: string): void {
+    this.socket?.emit('private:create', { blinds });
+  }
+
+  joinPrivateTable(inviteCode: string): void {
+    this.socket?.emit('private:join', { inviteCode });
   }
 
 }
