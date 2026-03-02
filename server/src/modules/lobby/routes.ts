@@ -11,7 +11,7 @@ export function lobbyRoutes(deps: LobbyDependencies) {
   return async function (fastify: FastifyInstance) {
     // Player counts per blind level
     fastify.get('/api/lobby/tables', async () => {
-      const tablesInfo = tableManager.getTablesInfo();
+      const tablesInfo = tableManager.getTablesInfo().filter(t => !t.isPrivate);
       const blindLevels = ['1/3', '2/5', '5/10'];
       const results: { blinds: string; playerCount: number; isFastFold: boolean }[] = [];
       for (const blinds of blindLevels) {

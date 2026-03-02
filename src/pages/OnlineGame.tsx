@@ -65,7 +65,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [inviteCopied, setInviteCopied] = useState(false);
-  const [invitePanelDismissed, setInvitePanelDismissed] = useState(false);
+  const [showInvitePopover, setShowInvitePopover] = useState(false);
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -172,34 +172,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
           </div>
         </div>
       )}
-      {/* 招待コード共有パネル（プライベートテーブル） */}
-      {privateTableInfo && !invitePanelDismissed && (
-        <div className="absolute top-[6%] left-0 right-0 z-[160] flex justify-center pointer-events-none">
-          <div className="bg-white/95 rounded-[3cqw] shadow-lg px-[5cqw] py-[3cqw] text-center mx-[4cqw] pointer-events-auto relative">
-            <button
-              onClick={() => setInvitePanelDismissed(true)}
-              className="absolute top-[1.5cqw] right-[1.5cqw] text-cream-400 hover:text-cream-700 transition-colors"
-            >
-              <X style={{ width: 'min(2.5vh, 4vw)', height: 'min(2.5vh, 4vw)' }} />
-            </button>
-            <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>招待コード</p>
-            <p className="font-bold text-cream-900 tracking-[0.3em] font-mono" style={{ fontSize: 'min(4vh, 7vw)' }}>{privateTableInfo.inviteCode}</p>
-            <button
-              onClick={() => {
-                const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
-                navigator.clipboard.writeText(url).then(() => {
-                  setInviteCopied(true);
-                  setTimeout(() => setInviteCopied(false), 2000);
-                });
-              }}
-              className="mt-[2cqw] px-[4cqw] py-[1.5cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] mx-auto transition-all active:scale-[0.97]"
-              style={{ fontSize: 'min(1.4vh, 2.3vw)' }}
-            >
-              {inviteCopied ? <><Check style={{ width: 'min(2vh, 3.5vw)', height: 'min(2vh, 3.5vw)' }} /> コピー済み</> : <><Copy style={{ width: 'min(2vh, 3.5vw)', height: 'min(2vh, 3.5vw)' }} /> 招待リンクをコピー</>}
-            </button>
-          </div>
-        </div>
-      )}
       {/* お知らせバナー */}
       {announcementStatus?.isActive && !maintenanceStatus?.isActive && (
         <div className="absolute top-[3%] left-0 right-0 z-50 flex justify-center pointer-events-none">
@@ -297,6 +269,46 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
             </div>
             </div>
           </div>
+      {/* 招待コードボタン（プライベートテーブル） */}
+      {privateTableInfo && (
+        <div className="absolute top-[9%] right-[4%] z-[160]">
+          <div className="relative">
+            <button
+              onClick={() => setShowInvitePopover(!showInvitePopover)}
+              className="flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] bg-white/90 rounded-full shadow-md text-cream-800 transition-all active:scale-[0.97]"
+              style={{ fontSize: '2.5cqw' }}
+            >
+              <span className="font-mono font-bold tracking-wider">招待コード</span>
+            </button>
+            {showInvitePopover && (
+              <>
+                <div className="fixed inset-0 z-[159]" onClick={() => setShowInvitePopover(false)} />
+                <div className="absolute top-full right-0 mt-1 z-[160] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw]">
+                  <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: '2.5cqw' }}>招待コード</p>
+                  <p className="font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw]" style={{ fontSize: '6cqw' }}>
+                    {privateTableInfo.inviteCode}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
+                      navigator.clipboard.writeText(url).then(() => {
+                        setInviteCopied(true);
+                        setTimeout(() => setInviteCopied(false), 2000);
+                      });
+                    }}
+                    className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                    style={{ fontSize: '2.8cqw' }}
+                  >
+                    {inviteCopied
+                      ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                      : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
           <PokerTable
             state={gameState}

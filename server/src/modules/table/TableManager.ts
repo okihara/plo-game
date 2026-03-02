@@ -76,7 +76,6 @@ export class TableManager {
     this.tables.delete(tableId);
   }
 
-  // Get all tables info for lobby (excludes private tables)
   public getTablesInfo() {
     return Array.from(this.tables.values())
       .map(t => t.getTableInfo());
