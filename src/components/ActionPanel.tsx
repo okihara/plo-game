@@ -106,7 +106,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
   return (
     <div className="px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
       {/* Preset Buttons & Bet Slider */}
-      <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'opacity-40 pointer-events-none' : ''}`}>
+      <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
         <div className="w-1/2 flex gap-[0.9cqw]">
           {[
             { label: '1/3', value: 0.33 },
@@ -146,7 +146,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
         <div className="flex items-center gap-[1.2cqw]">
           {/* プリフォールドチェックボックス: FF時はファストフォールドボタンがあるので非表示 */}
           {!isFastFold && (
-            <label className={`flex items-center shrink-0 ${canCheck ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}>
+            <label className={`flex items-center shrink-0 ${canCheck ? 'brightness-[0.3] cursor-not-allowed' : 'cursor-pointer'}`}>
               <input
                 type="checkbox"
                 checked={prefoldChecked}
@@ -170,7 +170,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
           <button
             onClick={handleFoldClick}
             disabled={!(isMyTurn && !actionSent && !canCheck) && !(canFastFold && !actionSent)}
-            className={`flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
+            className={`flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
               canFastFold && !isMyTurn
                 ? 'bg-gradient-to-b from-red-500 to-red-600'
                 : 'bg-gradient-to-b from-gray-500 to-gray-600'
@@ -182,7 +182,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
           disabled={!isMyTurn || actionSent || isShortStack}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
               : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
@@ -193,7 +193,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
         <button
           onClick={() => handleAction(isShortStack ? 'allin' : sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
           disabled={isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent)}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             isShortStack || sliderValue >= myPlayer.chips
               ? 'bg-gradient-to-b from-red-500 to-red-600'
               : 'bg-gradient-to-b from-amber-500 to-amber-600'

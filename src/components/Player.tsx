@@ -250,7 +250,7 @@ export function Player({
         )}
         {/* Last Action Marker (CSS animation handles fade-out) */}
         {showActionMarker && (
-          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
+          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[4cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips)}
           </div>
         )}
