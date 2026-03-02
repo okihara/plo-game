@@ -785,6 +785,9 @@ export class TableInstance {
     }
     this.pendingStartHand = false;
 
+    // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）
+    this.broadcastGameState();
+
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
       const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[] = [];

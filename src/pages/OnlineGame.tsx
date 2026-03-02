@@ -365,7 +365,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
               </div>
               <button
                 onClick={onBack}
-                className="absolute bottom-[20%] px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
+                className="absolute bottom-[20%] px-6 py-3 rounded-lg bg-white text-cream-800 font-bold hover:bg-white/90 active:bg-white/80 transition-colors shadow-md"
                 style={{ fontSize: 'min(2vh, 3.5vw)' }}
               >
                 ロビーに戻る
