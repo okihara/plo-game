@@ -370,21 +370,38 @@ export function HandDetailDialog({
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col light-bg">
-        {/* ヘッダー */}
+        {/* ヘッダー: 戻る + 自分のポジション・ホールカード */}
         <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
           <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
             &larr; 戻る
           </button>
-          <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">
-            Hand #{hand.id.slice(-6)}
-          </h1>
-          <div className="flex items-center gap-[2cqw] ml-[2.5cqw]">
-            <span className="text-cream-700 text-[2.5cqw] font-medium">{hand.blinds}</span>
-            <span className="text-cream-500 text-[2.5cqw]">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
-          </div>
+          {(() => {
+            const me = hand.players.find(p => p.isCurrentUser);
+            const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, allSeats) : '';
+            return (
+              <div className="flex items-center gap-[1.5cqw]">
+                {pos && <PositionBadge position={pos} />}
+                {me && (
+                  <span className="text-cream-900 text-[3cqw] font-semibold truncate">{displayName(me)}</span>
+                )}
+                {me && me.holeCards.length > 0 && (
+                  <div className="flex items-center gap-[0.4cqw]">
+                    {me.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
         </div>
 
         <div className="p-[3cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
+          {/* ハンド情報 */}
+          <div className="flex items-center gap-[1.5cqw]">
+            <span className="text-cream-700 text-[3cqw]">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
+            <span className="text-cream-800 text-[3cqw] font-semibold">#{hand.id.slice(-6)}</span>
+            <span className="text-cream-900 text-[3.2cqw] font-bold">{hand.blinds}</span>
+          </div>
+
           {/* プレイヤー（1行表示） */}
           <div className="space-y-[1cqw]">
             {sortedPlayers.map((p, i) => (
