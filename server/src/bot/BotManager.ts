@@ -1,28 +1,29 @@
 import { BotClient, BotStatus } from './BotClient.js';
 
 const BOT_NAMES = [
-  // --- 既存20体 ---
-  'Taku83', 'mii_chan', 'ShotaK', 'risa.p', 'YuHayashi',
-  'ken2408', 'NanaM', 'daisk77', 'HaruSun', 'AyakaSaito',
-  'ryooo3', 'MizuhoT', 'shun_pkr', 'Sakuraba', 'kojimax',
-  'Mei0522', 'TatsuyaN', 'yuna0312', 'Kaito_R', 'momoka55',
-  // --- 追加80体 ---
-  'ReinaK42', 'takuya_s', 'Yamamoto7', 'hina2525', 'KenjiF',
-  'Sora_99', 'mayu_plo', 'DaichiM', 'aoi1208', 'RyosukeT',
-  'mikimiki3', 'HiroShi', 'natsuki_p', 'YutoK07', 'haruna88',
-  'KazukiH', 'rin_chan5', 'TomoyaS', 'asuka111', 'KoharuN',
-  'shunsuke', 'MaoT14', 'yuki_ace', 'IkuoW', 'chiho33',
-  'RenK', 'aya_poker', 'TakeshiM', 'mana0808', 'YusukeH',
-  'karin22', 'ShinyaT', 'miho_pkr', 'DaigoN', 'sakiY05',
-  'KotaroS', 'nene777', 'AtsushiK', 'yui_0210', 'MasatoH',
-  'hana_plo', 'SoichiroT', 'riho99', 'KengoM', 'akane_55',
-  'YumaS', 'shiori12', 'TakeruN', 'mai_chan', 'RyujiK',
-  'miku0603', 'HayatoS', 'kanako_p', 'JunpeiT', 'riko2424',
-  'NaokiM', 'sae_pkr', 'KosukeH', 'yurina10', 'MakotoS',
-  'chihiro7', 'TaigaN', 'ami_0930', 'ShogoK', 'nanami22',
-  'RyotaH', 'kyoko_p', 'YoshikiT', 'eri_chan', 'DaisukeN',
-  'momo_plo', 'KeisukeS', 'sayaka88', 'AkiraM', 'yuzuki13',
-  'ShinjiK', 'rika_ace', 'HikaruN', 'tomomi55', 'GoT08',
+  // --- 継続11体（5000ハンド未満） ---
+  'YumaS', 'chihiro7', 'RyujiK', 'shiori12', 'haruna88',
+  'hana_plo', 'aoi1208', 'KoharuN', 'JunpeiT', 'kyoko_p',
+  'DaisukeN',
+  // --- 新規89体 ---
+  'haruto_w3', 'sakura0321', 'yuuki_t8', 'mirei_plo', 'koji1985',
+  'AoiTanaka', 'ren_omaha', 'maiko_s11', 'teppei_n', 'hinata07',
+  'riku_k22', 'sayo_pkr', 'yutaro33', 'kana_s15', 'daito_h',
+  'moe_chan3', 'sora_h44', 'rumi_n99', 'tsubasa_k', 'yui_plo',
+  'kenta_w5', 'asami_t', 'ShugoMura', 'nao_pkr7', 'misaki_h',
+  'takuma_s6', 'rina_ace2', 'hideki_n', 'kaede0808', 'jun_omaha',
+  'wataru_t2', 'emiko_s', 'RyoH07', 'mashiro5', 'kouki_m3',
+  'ayumi_n', 'sota_k77', 'yuna_plo3', 'manatek', 'serina_h',
+  'tetsu_n12', 'kazuha_m', 'fumito_s', 'rio_pkr', 'YukiH33',
+  'MaoN08', 'issei_k9', 'haru_omaha', 'akane_t2', 'taichi_m',
+  'sumika_h', 'rento_s4', 'moeka_22', 'gaku_n', 'saeko_t7',
+  'kouhei_m', 'nagi_plo', 'aika_h11', 'shunto_k', 'mizuki_s3',
+  'tomoki_n2', 'yuuna_08', 'jiro_t88', 'kotoha_m', 'reiji_s5',
+  'sakiko_n', 'hajime_k', 'mio_pkr5', 'yuri_h14', 'tsumugi_s',
+  'kazuto_m', 'arisa_t3', 'shingo_n', 'mahiru_p', 'iori_k9',
+  'kenma_s2', 'ruka_h55', 'takuto_m', 'sara_plo', 'yuuka_n8',
+  'kyosuke_t', 'AmiH07', 'soma_k13', 'wakana_3', 'daiki_s4',
+  'erina_m6', 'hiroto_n', 'yume_pkr', 'mitsuki_t',
 ];
 const BOT_AVATARS = Array.from({ length: 70 }, (_, i) =>
   `/images/icons/icon_${String(i + 1).padStart(3, '0')}.png`
