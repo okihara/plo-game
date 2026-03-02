@@ -40,14 +40,14 @@ export function MiniCard({ cardStr }: { cardStr: string }) {
   const bg = SUIT_BG_COLORS[suit] || 'bg-gray-500';
 
   return (
-    <span className={`inline-flex items-center justify-center ${bg} text-white border border-white/30 rounded px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
+    <span className={`inline-flex items-center justify-center ${bg} text-white border border-white/30 rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
       {rank}{symbol}
     </span>
   );
 }
 
 export function ProfitDisplay({ profit, size = 'normal' }: { profit: number; size?: 'normal' | 'large' }) {
-  const textSize = size === 'large' ? 'text-base' : 'text-sm';
+  const textSize = size === 'large' ? 'text-[3.5cqw]' : 'text-[3cqw]';
   if (profit > 0) {
     return <span className={`text-forest font-bold ${textSize}`}>+{profit}</span>;
   }
@@ -91,7 +91,7 @@ export function getPositionName(seatPosition: number, dealerPosition: number, al
 export function PositionBadge({ position }: { position: string }) {
   if (!position) return null;
   return (
-    <span className="bg-cream-200 text-cream-800 text-xs font-bold w-8 text-center py-0.5 rounded border border-cream-400 shrink-0 inline-block">
+    <span className="bg-cream-200 text-cream-800 text-[2.5cqw] font-bold w-[7cqw] text-center py-[0.5cqw] rounded-[0.8cqw] border border-cream-400 shrink-0 inline-block">
       {position}
     </span>
   );
@@ -107,23 +107,23 @@ function HandSummaryCard({
   return (
     <button
       onClick={onClick}
-      className="w-full text-left bg-white border border-cream-300 rounded-xl p-3 shadow-[0_2px_8px_rgba(139,126,106,0.12)] transition-all duration-200 hover:bg-cream-50 hover:border-cream-400 active:scale-[0.98]"
+      className="w-full text-left bg-white border border-cream-300 rounded-[2.5cqw] p-[3cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] transition-all duration-200 hover:bg-cream-50 hover:border-cream-400 active:scale-[0.98]"
     >
       {/* Row 1: meta left, profit right (hero element) */}
-      <div className="flex items-center justify-between mb-2">
-        <div className="flex items-center gap-1.5">
-          <span className="text-cream-600 text-sm font-semibold">#{hand.id.slice(-6)}</span>
+      <div className="flex items-center justify-between mb-[2cqw]">
+        <div className="flex items-center gap-[1.5cqw]">
+          <span className="text-cream-600 text-[2.8cqw] font-semibold">#{hand.id.slice(-6)}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
             return pos ? <PositionBadge position={pos} /> : null;
           })()}
-          <span className="text-cream-900 text-base font-bold">{hand.blinds}</span>
-          <span className="text-cream-500 text-xs font-medium">Pot {hand.potSize}</span>
+          <span className="text-cream-900 text-[3.5cqw] font-bold">{hand.blinds}</span>
+          <span className="text-cream-500 text-[2.5cqw] font-medium">Pot {hand.potSize}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-[2cqw]">
           <ProfitDisplay profit={hand.profit} size="large" />
-          <span className="text-cream-400 text-xs">{formatDate(hand.createdAt)}</span>
+          <span className="text-cream-400 text-[2.5cqw]">{formatDate(hand.createdAt)}</span>
         </div>
       </div>
       {/* Row 2: cards */}
@@ -133,7 +133,7 @@ function HandSummaryCard({
         ))}
         {hand.communityCards.length > 0 && (
           <>
-            <span className="text-cream-300 mx-[0.5cqw] text-lg font-light">|</span>
+            <span className="text-cream-300 mx-[0.5cqw] text-[4cqw] font-light">|</span>
             {hand.communityCards.map((c, i) => (
               <MiniCard key={`cc-${i}`} cardStr={c} />
             ))}
@@ -201,8 +201,8 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
     return (
       <div className="h-full light-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-cream-600 mb-4">ログインするとハンド履歴を確認できます</p>
-          <button onClick={onClose} className="text-cream-500 hover:text-cream-700 transition-colors">
+          <p className="text-cream-600 mb-[4cqw] text-[3cqw]">ログインするとハンド履歴を確認できます</p>
+          <button onClick={onClose} className="text-cream-500 hover:text-cream-700 transition-colors text-[3cqw]">
             閉じる
           </button>
         </div>
@@ -214,25 +214,25 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
     <div className="h-full relative">
       <div className="h-full overflow-y-auto light-scrollbar">
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white border-b border-cream-300 px-4 py-3 flex items-center z-10 shadow-sm">
-          <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-3 text-sm font-medium transition-colors">
+        <div className="sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
+          <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
             &larr; 戻る
           </button>
-          <h1 className="text-cream-900 font-bold text-lg tracking-tight">ハンド履歴</h1>
-          <span className="ml-auto text-cream-600 text-sm font-medium">{total}件</span>
+          <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">ハンド履歴</h1>
+          <span className="ml-auto text-cream-600 text-[3cqw] font-medium">{total}件</span>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
+          <div className="flex items-center justify-center py-[20cqw]">
+            <div className="w-[7cqw] h-[7cqw] border-[0.4cqw] border-cream-300 border-t-forest rounded-full animate-spin" />
           </div>
         ) : hands.length === 0 ? (
-          <div className="text-center text-cream-500 py-20">
+          <div className="text-center text-cream-500 py-[20cqw] text-[3cqw]">
             まだハンド履歴がありません
           </div>
         ) : (
           <>
-            <div className="p-3 space-y-2">
+            <div className="p-[3cqw] space-y-[2cqw]">
               {hands.map(hand => (
                 <HandSummaryCard
                   key={hand.id}
@@ -243,11 +243,11 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
             </div>
 
             {hands.length < total && (
-              <div className="px-4 pb-6">
+              <div className="px-[4cqw] pb-[6cqw]">
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
-                  className="w-full py-3 text-cream-600 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-xl transition-all text-sm border border-cream-300 hover:border-cream-400"
+                  className="w-full py-[3cqw] text-cream-600 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-[2.5cqw] transition-all text-[3cqw] border border-cream-300 hover:border-cream-400"
                 >
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>
@@ -259,7 +259,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
       {loadingDetail && (
         <div className="absolute inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
-          <div className="w-8 h-8 border-2 border-cream-300 border-t-forest rounded-full animate-spin relative z-10" />
+          <div className="w-[7cqw] h-[7cqw] border-[0.4cqw] border-cream-300 border-t-forest rounded-full animate-spin relative z-10" />
         </div>
       )}
       {selectedHand && (

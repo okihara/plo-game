@@ -180,11 +180,11 @@ function StreetHeader({ street, cards, pot, isFirst }: {
   isFirst: boolean;
 }) {
   return (
-    <div className={isFirst ? 'mb-1' : 'mt-3 mb-1'}>
-      <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
-        <span className="text-cream-800 text-sm font-bold">{STREET_LABELS[street] || street}</span>
+    <div className={isFirst ? 'mb-[1cqw]' : 'mt-[3cqw] mb-[1cqw]'}>
+      <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
+        <span className="text-cream-800 text-[3cqw] font-bold">{STREET_LABELS[street] || street}</span>
         {pot != null && pot > 0 && (
-          <span className="text-cream-600 text-xs font-medium">Pot {pot}</span>
+          <span className="text-cream-600 text-[2.5cqw] font-medium">Pot {pot}</span>
         )}
         {cards && cards.length > 0 && (
           <div className="flex gap-[0.4cqw]">
@@ -204,13 +204,13 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
 }) {
   const pos = getPositionName(action.seatIndex, dealerPosition, allSeats);
   return (
-    <div className="flex items-center py-0.5 rounded-lg hover:bg-cream-200/50 px-1">
-      <span className="w-10 shrink-0">
+    <div className="flex items-center py-[0.5cqw] rounded-[1.5cqw] hover:bg-cream-200/50 px-[1cqw]">
+      <span className="w-[9cqw] shrink-0">
         {pos ? <PositionBadge position={pos} /> : null}
       </span>
-      <span className="w-24 shrink-0 text-cream-700 text-sm truncate">{playerName}</span>
-      <span className="w-16 shrink-0 text-cream-900 text-sm font-bold">{ACTION_LABELS[action.action] || action.action}</span>
-      <span className="text-forest text-sm font-bold font-mono">{action.amount > 0 ? action.amount : ''}</span>
+      <span className="w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate">{playerName}</span>
+      <span className="w-[14cqw] shrink-0 text-cream-900 text-[3cqw] font-bold">{ACTION_LABELS[action.action] || action.action}</span>
+      <span className="text-forest text-[3cqw] font-bold font-mono">{action.amount > 0 ? action.amount : ''}</span>
     </div>
   );
 }
@@ -221,18 +221,18 @@ function PlayerRow({ player, position }: {
 }) {
   return (
     <div
-      className={`rounded-lg px-2 py-1.5 border flex items-center gap-1.5 ${
+      className={`rounded-[1.5cqw] px-[2cqw] py-[1.5cqw] border flex items-center gap-[1.5cqw] ${
         player.isCurrentUser
           ? 'bg-forest/5 border-forest/20'
           : 'bg-cream-100 border-cream-300'
       }`}
     >
-      <div className="flex items-center gap-1.5 w-[30cqw] shrink-0">
-        {position ? <PositionBadge position={position} /> : <span className="w-8 shrink-0" />}
+      <div className="flex items-center gap-[1.5cqw] w-[30cqw] shrink-0">
+        {position ? <PositionBadge position={position} /> : <span className="w-[7cqw] shrink-0" />}
         {player.avatarUrl && (
-          <img src={player.avatarUrl} alt="" className="w-5 h-5 rounded-full object-cover border border-cream-300 shrink-0" />
+          <img src={player.avatarUrl} alt="" className="w-[4.5cqw] h-[4.5cqw] rounded-full object-cover border border-cream-300 shrink-0" />
         )}
-        <span className={`font-semibold text-sm truncate ${player.isCurrentUser ? 'text-forest' : 'text-cream-900'}`}>
+        <span className={`font-semibold text-[3cqw] truncate ${player.isCurrentUser ? 'text-forest' : 'text-cream-900'}`}>
           {displayName(player)}
         </span>
       </div>
@@ -308,24 +308,24 @@ function ResultSection({ hand, allSeats }: { hand: HandDetail; allSeats: number[
 
   return (
     <>
-      <div className="mt-3 mb-1">
-        <div className="flex items-center gap-2 border-b border-cream-400 pb-1">
-          <span className="text-cream-800 text-sm font-bold">Result</span>
-          <span className="text-forest text-sm font-bold">Pot {hand.potSize}</span>
+      <div className="mt-[3cqw] mb-[1cqw]">
+        <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
+          <span className="text-cream-800 text-[3cqw] font-bold">Result</span>
+          <span className="text-forest text-[3cqw] font-bold">Pot {hand.potSize}</span>
           {hand.rakeAmount != null && hand.rakeAmount > 0 && (
-            <span className="text-cream-500 text-xs font-medium">Rake {hand.rakeAmount}</span>
+            <span className="text-cream-500 text-[2.5cqw] font-medium">Rake {hand.rakeAmount}</span>
           )}
         </div>
       </div>
       {activePlayers.map((p, i) => {
         const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
         return (
-          <div key={`result-${i}`} className="flex items-center py-0.5 px-1">
-            <span className="w-10 shrink-0">
+          <div key={`result-${i}`} className="flex items-center py-[0.5cqw] px-[1cqw]">
+            <span className="w-[9cqw] shrink-0">
               {pos && <PositionBadge position={pos} />}
             </span>
-            <span className="w-24 shrink-0 text-cream-700 text-sm truncate">{displayName(p)}</span>
-            <span className="w-20 shrink-0 text-cream-700 text-xs truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
+            <span className="w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate">{displayName(p)}</span>
+            <span className="w-[18cqw] shrink-0 text-cream-700 text-[2.5cqw] truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
             <ProfitDisplay profit={p.profit} />
           </div>
         );
@@ -361,22 +361,22 @@ export function HandDetailDialog({
   return (
     <div className="absolute inset-0 z-50 flex flex-col h-full light-bg">
         {/* ヘッダー */}
-        <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-4 py-3 flex items-center z-10 shadow-sm">
-          <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-3 text-sm font-medium transition-colors">
+        <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
+          <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
             &larr; 戻る
           </button>
-          <h1 className="text-cream-900 font-bold text-lg tracking-tight">
+          <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">
             Hand #{hand.id.slice(-6)}
           </h1>
-          <div className="flex items-center gap-2 ml-3">
-            <span className="text-cream-700 text-xs font-medium">{hand.blinds}</span>
-            <span className="text-cream-500 text-xs">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
+          <div className="flex items-center gap-[2cqw] ml-[2.5cqw]">
+            <span className="text-cream-700 text-[2.5cqw] font-medium">{hand.blinds}</span>
+            <span className="text-cream-500 text-[2.5cqw]">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
           </div>
         </div>
 
-        <div className="p-3 space-y-3 overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
+        <div className="p-[3cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
           {/* プレイヤー（1行表示） */}
-          <div className="space-y-1">
+          <div className="space-y-[1cqw]">
             {sortedPlayers.map((p, i) => (
               <PlayerRow
                 key={i}
@@ -387,8 +387,8 @@ export function HandDetailDialog({
           </div>
 
           {/* アクション履歴 + Result */}
-          <div className="bg-cream-100 rounded-xl px-3 py-3 border border-cream-300">
-            <div className="space-y-0.5">
+          <div className="bg-cream-100 rounded-[2.5cqw] px-[3cqw] py-[3cqw] border border-cream-300">
+            <div className="space-y-[0.5cqw]">
               <ActionHistory hand={normalizedHand} allSeats={allSeats} />
             </div>
             <ResultSection hand={normalizedHand} allSeats={allSeats} />
