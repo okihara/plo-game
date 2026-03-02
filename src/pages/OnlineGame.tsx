@@ -4,7 +4,7 @@ import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType } from '../logic';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
+import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check, X } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
@@ -65,6 +65,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [inviteCopied, setInviteCopied] = useState(false);
+  const [invitePanelDismissed, setInvitePanelDismissed] = useState(false);
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -167,10 +168,16 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
           </div>
         </div>
       )}
-      {/* 招待コード共有パネル（プライベートテーブル作成時） */}
-      {privateTableInfo && (
+      {/* 招待コード共有パネル（プライベートテーブル） */}
+      {privateTableInfo && !invitePanelDismissed && (
         <div className="absolute top-[6%] left-0 right-0 z-[160] flex justify-center pointer-events-none">
-          <div className="bg-white/95 rounded-[3cqw] shadow-lg px-[5cqw] py-[3cqw] text-center mx-[4cqw] pointer-events-auto">
+          <div className="bg-white/95 rounded-[3cqw] shadow-lg px-[5cqw] py-[3cqw] text-center mx-[4cqw] pointer-events-auto relative">
+            <button
+              onClick={() => setInvitePanelDismissed(true)}
+              className="absolute top-[1.5cqw] right-[1.5cqw] text-cream-400 hover:text-cream-700 transition-colors"
+            >
+              <X style={{ width: 'min(2.5vh, 4vw)', height: 'min(2.5vh, 4vw)' }} />
+            </button>
             <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>招待コード</p>
             <p className="font-bold text-cream-900 tracking-[0.3em] font-mono" style={{ fontSize: 'min(4vh, 7vw)' }}>{privateTableInfo.inviteCode}</p>
             <button

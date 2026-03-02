@@ -110,6 +110,14 @@ export class TableManager {
     return code;
   }
 
+  public getPrivateTableCount(): number {
+    let count = 0;
+    for (const table of this.tables.values()) {
+      if (table.isPrivate) count++;
+    }
+    return count;
+  }
+
   public createPrivateTable(blinds: string): { table: TableInstance; inviteCode: string } {
     const inviteCode = this.generateInviteCode();
     const table = new TableInstance(this.io, blinds, false, { isPrivate: true, inviteCode });

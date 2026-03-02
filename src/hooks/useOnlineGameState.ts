@@ -324,6 +324,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setMyHoleCards([]);
         setClientState(null);
         setActionTimeoutAt(null);
+        setPrivateTableInfo(null);
       },
       onTableChanged: (tid, seat) => {
         // ファストフォールド: テーブル移動

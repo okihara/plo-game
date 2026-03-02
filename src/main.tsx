@@ -29,7 +29,7 @@ function App() {
     return <PlayerDebug />;
   }
 
-  const isGameScreen = (!!blinds || !!privateMode) && (currentPath === '/' || currentPath.startsWith('/private/'));
+  const isGameScreen = (!!blinds || !!privateMode || currentPath.startsWith('/private/'));
   const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
 
   const goBackToLobby = () => {

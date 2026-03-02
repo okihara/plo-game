@@ -243,6 +243,12 @@ export async function handlePrivateCreate(
     return;
   }
 
+  const MAX_PRIVATE_TABLES = 5;
+  if (tableManager.getPrivateTableCount() >= MAX_PRIVATE_TABLES) {
+    socket.emit('table:error', { message: `プライベートテーブルの上限（${MAX_PRIVATE_TABLES}）に達しています` });
+    return;
+  }
+
   const { blinds } = data;
 
   try {
@@ -386,6 +392,7 @@ export async function handlePrivateJoin(
 
     if (seatNumber !== null) {
       tableManager.setPlayerTable(socket.odId!, table.id);
+      socket.emit('private:created', { tableId: table.id, inviteCode });
       table.triggerMaybeStartHand();
     } else {
       await cashOutPlayer(socket.odId!, buyIn);

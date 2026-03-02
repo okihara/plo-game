@@ -236,9 +236,9 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                   onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
-                    table.enabled && !maintenance?.isActive
+                    table.enabled && !maintenance?.isActive && user
                       ? 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 shadow-[0_4px_12px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(245,158,11,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
+                      : 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -275,9 +275,9 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                   onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false)}
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
-                    table.enabled && !maintenance?.isActive
+                    table.enabled && !maintenance?.isActive && user
                       ? 'bg-gradient-to-b from-forest-light to-forest border-forest/40 shadow-[0_4px_12px_rgba(45,90,61,0.3),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
+                      : 'bg-gradient-to-b from-forest-light to-forest border-forest/40 opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-center gap-[2cqw]">
@@ -297,7 +297,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
               className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
                 user && !maintenance?.isActive
                   ? 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 shadow-[0_4px_12px_rgba(139,126,106,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(139,126,106,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(139,126,106,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                  : 'bg-cream-200/50 border-cream-300/50 opacity-40 cursor-not-allowed'
+                  : 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 opacity-50 cursor-not-allowed'
               }`}
             >
               <div className="flex items-center justify-center gap-[2cqw]">
