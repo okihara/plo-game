@@ -64,8 +64,8 @@ const STREETS = ['preflop', 'flop', 'turn', 'river'] as const;
 function getStreetCards(communityCards: string[]): Record<string, string[]> {
   return {
     flop: communityCards.slice(0, 3),
-    turn: communityCards.slice(3, 4),
-    river: communityCards.slice(4, 5),
+    turn: communityCards.slice(0, 4),
+    river: communityCards.slice(0, 5),
   };
 }
 

@@ -146,7 +146,7 @@ function HandSummaryCard({
         ))}
         {hand.communityCards.length > 0 && (
           <>
-            <span className="text-cream-300 mx-[0.5cqw] text-[4cqw] font-light">|</span>
+            <span className="text-cream-600 mx-[1.5cqw] text-[4cqw] font-light">|</span>
             {hand.communityCards.map((c, i) => (
               <MiniCard key={`cc-${i}`} cardStr={c} />
             ))}
