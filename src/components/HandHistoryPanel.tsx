@@ -118,9 +118,9 @@ function HandSummaryCard({
       {/* Row 1: meta left, profit right (hero element) */}
       <div className="flex items-center justify-between mb-[2cqw]">
         <div className="flex items-center gap-[1.5cqw]">
-          <span className="text-cream-700 text-[2.5cqw]">{formatDate(hand.createdAt)}</span>
-          <span className="text-cream-800 text-[2.8cqw] font-semibold">#{hand.id.slice(-6)}</span>
-          <span className="text-cream-900 text-[3.5cqw] font-bold">{hand.blinds}</span>
+          <span className="text-cream-700 text-[3cqw]">{formatDate(hand.createdAt)}</span>
+          <span className="text-cream-800 text-[3cqw] font-semibold">#{hand.id.slice(-6)}</span>
+          <span className="text-cream-900 text-[3.2cqw] font-bold">{hand.blinds}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
