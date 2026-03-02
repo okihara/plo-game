@@ -26,6 +26,7 @@ export interface OnlineGameHookResult {
   isConnecting: boolean;
   isConnected: boolean;
   connectionError: string | null;
+  isDisplaced: boolean;
 
   // ゲーム状態
   gameState: GameState | null;
@@ -167,6 +168,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [isDisplaced, setIsDisplaced] = useState(false);
 
   // ゲーム状態
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
@@ -452,6 +454,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setPrivateTableInfo({ inviteCode: data.inviteCode });
         setTableId(data.tableId);
       },
+      onDisplaced: () => {
+        setIsDisplaced(true);
+        setIsConnected(false);
+      },
     });
 
     return () => {
@@ -505,6 +511,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     isConnecting,
     isConnected,
     connectionError,
+    isDisplaced,
     gameState,
     tableId,
     mySeat,

@@ -31,6 +31,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
   const {
     isConnecting,
     connectionError,
+    isDisplaced,
     gameState,
     mySeat,
     myHoleCards,
@@ -103,6 +104,29 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
 
   if (isConnecting) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
+  }
+
+  // 別タブで接続された
+  if (isDisplaced) {
+    return (
+      <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/90">
+        <div className="text-center px-[8%]">
+          <p className="text-white font-bold mb-4" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
+            別のタブで接続されました
+          </p>
+          <p className="text-white/70 mb-6" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+            このタブでの接続は切断されました
+          </p>
+          <button
+            onClick={onBack}
+            className="px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
+            style={{ fontSize: 'min(2vh, 3.5vw)' }}
+          >
+            ロビーに戻る
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // 接続エラー

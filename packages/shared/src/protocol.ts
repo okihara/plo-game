@@ -27,6 +27,7 @@ export interface ClientToServerEvents {
 export interface ServerToClientEvents {
   // Connection
   'connection:established': (data: { playerId: string }) => void;
+  'connection:displaced': (data: { reason: string }) => void;
 
   // Table events
   'table:joined': (data: { tableId: string; seat: number }) => void;
