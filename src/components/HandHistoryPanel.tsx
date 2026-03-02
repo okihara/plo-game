@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { HandDetailDialog } from './HandDetailDialog';
 import type { HandDetail, HandDetailPlayer } from './HandDetailDialog';
+import { evaluateCurrentHand } from '../logic/handEvaluator';
+import type { Card } from '../logic/types';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
@@ -116,19 +118,26 @@ function HandSummaryCard({
       {/* Row 1: meta left, profit right (hero element) */}
       <div className="flex items-center justify-between mb-[2cqw]">
         <div className="flex items-center gap-[1.5cqw]">
-          <span className="text-cream-600 text-[2.8cqw] font-semibold">#{hand.id.slice(-6)}</span>
+          <span className="text-cream-700 text-[2.5cqw]">{formatDate(hand.createdAt)}</span>
+          <span className="text-cream-800 text-[2.8cqw] font-semibold">#{hand.id.slice(-6)}</span>
+          <span className="text-cream-900 text-[3.5cqw] font-bold">{hand.blinds}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
             return pos ? <PositionBadge position={pos} /> : null;
           })()}
-          <span className="text-cream-900 text-[3.5cqw] font-bold">{hand.blinds}</span>
-          <span className="text-cream-500 text-[2.5cqw] font-medium">Pot {hand.potSize}</span>
+          {(() => {
+            const name = hand.finalHand
+              || (hand.holeCards.length === 4 && hand.communityCards.length >= 3
+                ? evaluateCurrentHand(
+                    hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+                    hand.communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+                  )?.name
+                : null);
+            return name ? <span className="text-cream-800 text-[2.5cqw] font-medium">{name}</span> : null;
+          })()}
         </div>
-        <div className="flex items-center gap-[2cqw]">
-          <ProfitDisplay profit={hand.profit} size="large" />
-          <span className="text-cream-400 text-[2.5cqw]">{formatDate(hand.createdAt)}</span>
-        </div>
+        <ProfitDisplay profit={hand.profit} size="large" />
       </div>
       {/* Row 2: cards */}
       <div className="flex items-center gap-[0.6cqw]">
@@ -215,7 +224,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
   }
 
   return (
-    <div className="h-full relative">
+    <div className="h-full relative light-bg">
       <div className="h-full overflow-y-auto light-scrollbar">
         {/* ヘッダー */}
         <div className="sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { evaluatePLOHand } from '../logic/handEvaluator';
+import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
@@ -215,10 +215,19 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
   );
 }
 
-function PlayerRow({ player, position }: {
+function PlayerRow({ player, position, communityCards }: {
   player: HandDetailPlayer;
   position: string | null;
+  communityCards: string[];
 }) {
+  const handName = player.finalHand
+    || (player.holeCards.length === 4 && communityCards.length >= 3
+      ? evaluateCurrentHand(
+          player.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+          communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+        )?.name
+      : null);
+
   return (
     <div
       className={`rounded-[1.5cqw] px-[2cqw] py-[1.5cqw] border flex items-center gap-[1.5cqw] ${
@@ -239,6 +248,7 @@ function PlayerRow({ player, position }: {
       <div className="flex items-center gap-[0.4cqw] shrink-0">
         {player.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
       </div>
+      {handName && <span className="text-cream-700 text-[2.5cqw] truncate">{handName}</span>}
       <span className="ml-auto shrink-0">
         <ProfitDisplay profit={player.profit} />
       </span>
@@ -359,7 +369,7 @@ export function HandDetailDialog({
   }, [hand.players, hand.dealerPosition]);
 
   return (
-    <div className="absolute inset-0 z-50 flex flex-col h-full light-bg">
+    <div className="absolute inset-0 z-50 flex flex-col light-bg">
         {/* ヘッダー */}
         <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
           <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
@@ -382,6 +392,7 @@ export function HandDetailDialog({
                 key={i}
                 player={p}
                 position={getPositionName(p.seatPosition, hand.dealerPosition, allSeats)}
+                communityCards={hand.communityCards}
               />
             ))}
           </div>
