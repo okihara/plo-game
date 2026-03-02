@@ -352,7 +352,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
           {/* テーブル検索・待機中オーバーレイ */}
           {(isChangingTable || isWaitingForPlayers) && (
             <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70">
-              <div className="text-center pointer-events-none">
+              <div className="text-center">
                 <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
                 <p className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
                   {false ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
@@ -362,14 +362,14 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
                     {seatedPlayerCount}/6 人着席中
                   </p>
                 )}
+                <button
+                  onClick={onBack}
+                  className="mt-6 px-6 py-3 rounded-lg bg-white text-cream-800 font-bold hover:bg-white/90 active:bg-white/80 transition-colors shadow-md"
+                  style={{ fontSize: 'min(2vh, 3.5vw)' }}
+                >
+                  ロビーに戻る
+                </button>
               </div>
-              <button
-                onClick={onBack}
-                className="absolute bottom-[20%] px-6 py-3 rounded-lg bg-white text-cream-800 font-bold hover:bg-white/90 active:bg-white/80 transition-colors shadow-md"
-                style={{ fontSize: 'min(2vh, 3.5vw)' }}
-              >
-                ロビーに戻る
-              </button>
             </div>
           )}
 
