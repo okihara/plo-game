@@ -5,6 +5,7 @@ import { prisma } from '../../config/database.js';
 export interface AuthenticatedSocket extends Socket {
   odId?: string;
   odIsBot?: boolean;
+  odDisplacedByNewConnection?: boolean;
 }
 
 // Bot用ユーザーをDBにfind or create

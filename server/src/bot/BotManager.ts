@@ -35,6 +35,7 @@ interface BotManagerConfig {
   isFastFold?: boolean;
   midHandDisconnectChance?: number;
   maxHandsPerSession?: number; // セッション上限ハンド数
+  inviteCode?: string; // プライベートテーブル招待コード
 }
 
 export class BotManager {
@@ -135,8 +136,12 @@ export class BotManager {
         this.bots.set(playerId, bot);
         this.usedNames.add(name);
 
-        // Join matchmaking pool
-        await bot.joinMatchmaking(this.config.blinds);
+        // Join matchmaking pool or private table
+        if (this.config.inviteCode) {
+          await bot.joinPrivateTable(this.config.inviteCode);
+        } else {
+          await bot.joinMatchmaking(this.config.blinds);
+        }
 
         return bot;
       }

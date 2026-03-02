@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useOnlineGameState } from '../hooks/useOnlineGameState';
+import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType } from '../logic';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Volume2, VolumeOff } from 'lucide-react';
+import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
@@ -23,13 +23,15 @@ import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
 interface OnlineGameProps {
   blinds: string;
   isFastFold?: boolean;
+  privateMode?: PrivateMode;
   onBack: () => void;
 }
 
-export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGameProps) {
   const {
     isConnecting,
     connectionError,
+    isDisplaced,
     gameState,
     mySeat,
     myHoleCards,
@@ -45,12 +47,13 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
+    privateTableInfo,
     connect,
     disconnect,
     joinMatchmaking,
     handleAction,
     handleFastFold,
-  } = useOnlineGameState(blinds, isFastFold);
+  } = useOnlineGameState(blinds, isFastFold, privateMode);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
   const { user } = useAuth();
@@ -61,6 +64,8 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
+  const [inviteCopied, setInviteCopied] = useState(false);
+  const [showInvitePopover, setShowInvitePopover] = useState(false);
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -102,13 +107,40 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }
 
+  // 別タブで接続された
+  if (isDisplaced) {
+    return (
+      <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/90">
+        <div className="text-center px-[8%]">
+          <p className="text-white font-bold mb-4" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
+            別のタブで接続されました
+          </p>
+          <p className="text-white/70 mb-6" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+            このタブでの接続は切断されました
+          </p>
+          <button
+            onClick={onBack}
+            className="px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
+            style={{ fontSize: 'min(2vh, 3.5vw)' }}
+          >
+            ロビーに戻る
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // 接続エラー
   if (connectionError) {
+    const isConnectionError = ['timeout', 'websocket', 'connect', 'network', 'ECONNREFUSED'].some(
+      k => connectionError.toLowerCase().includes(k)
+    );
     return (
       <ConnectionErrorScreen
         error={connectionError}
         onRetry={() => connect().then(() => joinMatchmaking())}
         onBack={onBack}
+        showRetry={isConnectionError}
       />
     );
   }
@@ -143,8 +175,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
       {/* お知らせバナー */}
       {announcementStatus?.isActive && !maintenanceStatus?.isActive && (
         <div className="absolute top-[3%] left-0 right-0 z-50 flex justify-center pointer-events-none">
-          <div className="bg-blue-600/85 text-white text-center py-[0.5cqw] px-[3cqw] rounded-[1.5cqw] whitespace-pre-line"
-               style={{ fontSize: '2.3vw' }}>
+          <div className="bg-blue-600/85 text-white text-center py-[0.5cqw] px-[3cqw] rounded-[1.5cqw] whitespace-pre-line text-[2.3cqw]">
             {announcementStatus.message}
           </div>
         </div>
@@ -237,6 +268,46 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
             </div>
             </div>
           </div>
+      {/* 招待コードボタン（プライベートテーブル） */}
+      {privateTableInfo && (
+        <div className="absolute top-[9%] right-[4%] z-[160]">
+          <div className="relative">
+            <button
+              onClick={() => setShowInvitePopover(!showInvitePopover)}
+              className="flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] bg-white/90 rounded-full shadow-md text-cream-800 transition-all active:scale-[0.97]"
+              style={{ fontSize: '2.5cqw' }}
+            >
+              <span className="font-mono font-bold tracking-wider">招待コード</span>
+            </button>
+            {showInvitePopover && (
+              <>
+                <div className="fixed inset-0 z-[159]" onClick={() => setShowInvitePopover(false)} />
+                <div className="absolute top-full right-0 mt-1 z-[160] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw]">
+                  <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: '2.5cqw' }}>招待コード</p>
+                  <p className="font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw]" style={{ fontSize: '6cqw' }}>
+                    {privateTableInfo.inviteCode}
+                  </p>
+                  <button
+                    onClick={() => {
+                      const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
+                      navigator.clipboard.writeText(url).then(() => {
+                        setInviteCopied(true);
+                        setTimeout(() => setInviteCopied(false), 2000);
+                      });
+                    }}
+                    className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                    style={{ fontSize: '2.8cqw' }}
+                  >
+                    {inviteCopied
+                      ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                      : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
           <PokerTable
             state={gameState}
@@ -280,7 +351,7 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
           {/* テーブル検索・待機中オーバーレイ */}
           {(isChangingTable || isWaitingForPlayers) && (
             <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70">
-              <div className="text-center pointer-events-none">
+              <div className="text-center">
                 <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
                 <p className="text-white font-bold" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
                   {false ? 'テーブル移動中...' : '他のプレイヤーを待っています...'}
@@ -290,14 +361,14 @@ export function OnlineGame({ blinds, isFastFold, onBack }: OnlineGameProps) {
                     {seatedPlayerCount}/6 人着席中
                   </p>
                 )}
+                <button
+                  onClick={onBack}
+                  className="mt-6 px-6 py-3 rounded-lg bg-white text-cream-800 font-bold hover:bg-white/90 active:bg-white/80 transition-colors shadow-md"
+                  style={{ fontSize: 'min(2vh, 3.5vw)' }}
+                >
+                  ロビーに戻る
+                </button>
               </div>
-              <button
-                onClick={onBack}
-                className="absolute bottom-[20%] px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
-                style={{ fontSize: 'min(2vh, 3.5vw)' }}
-              >
-                ロビーに戻る
-              </button>
             </div>
           )}
 

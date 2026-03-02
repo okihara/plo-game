@@ -220,7 +220,7 @@ export function Player({
             border-[0.7cqw] flex items-center justify-center
             text-[8cqw] relative overflow-hidden cursor-pointer z-10
             ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
-            ${player.folded ? 'opacity-40 grayscale' : ''}
+            ${player.folded ? 'brightness-[0.3] grayscale' : ''}
             ${isWinner ? 'border-yellow-400 shadow-[0_0_10cqw_rgba(255,200,0,0.8),0_0_20cqw_rgba(255,150,0,0.4)] animate-pulse' : ''}
           `}
         >
@@ -244,20 +244,20 @@ export function Player({
         )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
-          <div className="absolute -bottom-[2cqw] left-1/2 -translate-x-1/2 w-[12cqw] h-[7.5cqw] bg-black/80 rounded flex items-center justify-center text-[6cqw] font-bold text-white z-[35] leading-none">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-full w-[14cqw] h-[14cqw] flex items-center justify-center text-[7cqw] text-white z-[35] leading-none">
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
         {/* Last Action Marker (CSS animation handles fade-out) */}
         {showActionMarker && (
-          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[6cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
+          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[4cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips)}
           </div>
         )}
       </div>
 
       {/* Player Info */}
-      <div className="bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20]">
+      <div className={`bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''}`}>
         <div className="text-[3.5cqw] text-white-400 whitespace-nowrap">{player.name}</div>
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>

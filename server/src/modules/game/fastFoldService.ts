@@ -5,6 +5,54 @@ import { prisma } from '../../config/database.js';
 import { cashOutPlayer } from '../auth/bankroll.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
 
+// プレイヤーを新しいFFテーブルへ移動する共通処理
+function movePlayerToNewTable(params: {
+  odId: string;
+  odName: string;
+  displayName?: string | null;
+  socket: Socket;
+  chips: number;
+  avatarUrl: string | null;
+  nameMasked: boolean;
+  sourceTable: TableInstance;
+  tableManager: TableManager;
+}): void {
+  const { odId, odName, displayName, socket, chips, avatarUrl, nameMasked, sourceTable, tableManager } = params;
+
+  tableManager.removePlayerFromTracking(odId);
+
+  if (chips <= 0) {
+    cashOutPlayer(odId, 0, sourceTable.id).catch(e => console.error('[FastFold] cashOut error:', e));
+    socket.emit('table:busted', { message: 'チップがなくなりました' });
+    return;
+  }
+
+  if (!socket.connected) {
+    console.warn(`[FastFold] Skipping reassign for disconnected player ${odId}`);
+    cashOutPlayer(odId, chips, sourceTable.id).catch(e => console.error('[FastFold] cashOut error:', e));
+    return;
+  }
+
+  const newTable = tableManager.getOrCreateTable(sourceTable.blinds, true, sourceTable.id);
+  setupFastFoldCallback(newTable, tableManager);
+
+  const seatNumber = newTable.seatPlayer(
+    odId, odName, socket, chips, avatarUrl, undefined,
+    { skipJoinedEmit: true },
+    nameMasked,
+    displayName
+  );
+
+  if (seatNumber !== null) {
+    tableManager.setPlayerTable(odId, newTable.id);
+    socket.emit('table:change', { tableId: newTable.id, seat: seatNumber });
+    newTable.triggerMaybeStartHand();
+  } else {
+    cashOutPlayer(odId, chips, sourceTable.id).catch(e => console.error('[FastFold] cashOut error:', e));
+    socket.emit('table:left');
+  }
+}
+
 // FFテーブルにハンド完了後の再割り当てコールバックを設定
 export function setupFastFoldCallback(table: TableInstance, tableManager: TableManager): void {
   if (!table.isFastFold || table.onFastFoldReassign) return;
@@ -17,39 +65,17 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
 
   table.onFastFoldReassign = (players) => {
     for (const p of players) {
-      tableManager.removePlayerFromTracking(p.odId);
-
-      if (p.chips <= 0) {
-        cashOutPlayer(p.odId, 0, table.id).catch(e => console.error('[FastFold] cashOut error:', e));
-        p.socket.emit('table:busted', { message: 'チップがなくなりました' });
-        continue;
-      }
-
-      // ソケットが切断済みならゴーストプレイヤーを防ぐ
-      if (!p.socket.connected) {
-        console.warn(`[FastFold] Skipping reassign for disconnected player ${p.odId}`);
-        cashOutPlayer(p.odId, p.chips, table.id).catch(e => console.error('[FastFold] cashOut error:', e));
-        continue;
-      }
-
-      const newTable = tableManager.getOrCreateTable(table.blinds, true, table.id);
-      setupFastFoldCallback(newTable, tableManager);
-
-      const seatNumber = newTable.seatPlayer(
-        p.odId, p.odName, p.socket, p.chips, p.avatarUrl, undefined,
-        { skipJoinedEmit: true },
-        p.nameMasked,
-        p.displayName
-      );
-
-      if (seatNumber !== null) {
-        tableManager.setPlayerTable(p.odId, newTable.id);
-        p.socket.emit('table:change', { tableId: newTable.id, seat: seatNumber });
-        newTable.triggerMaybeStartHand();
-      } else {
-        cashOutPlayer(p.odId, p.chips, table.id).catch(e => console.error('[FastFold] cashOut error:', e));
-        p.socket.emit('table:left');
-      }
+      movePlayerToNewTable({
+        odId: p.odId,
+        odName: p.odName,
+        displayName: p.displayName,
+        socket: p.socket,
+        chips: p.chips,
+        avatarUrl: p.avatarUrl,
+        nameMasked: p.nameMasked,
+        sourceTable: table,
+        tableManager,
+      });
     }
   };
 }
@@ -76,62 +102,29 @@ export async function handleFastFoldMove(
     return;
   }
 
-  // 2. トラッキングを一旦削除
-  tableManager.removePlayerFromTracking(odId);
-
-  // 3. 新しいファストフォールドテーブルを取得（現テーブルを除外優先）
-  const newTable = tableManager.getOrCreateTable(
-    currentTable.blinds,
-    true,
-    currentTable.id
-  );
-  setupFastFoldCallback(newTable, tableManager);
-
-  // 4. ユーザー情報を取得
+  // 2. ユーザー情報を取得
   const user = await prisma.user.findUnique({
     where: { id: odId },
   });
 
   if (!user) {
     console.error(`[FastFold] User not found: ${odId}`);
+    tableManager.removePlayerFromTracking(odId);
     await cashOutPlayer(odId, unseatResult.chips, currentTable.id);
     socket.emit('table:left');
     return;
   }
 
-  // await中にソケットが切断された場合はゴーストプレイヤーを防ぐ
-  if (!socket.connected) {
-    console.warn(`[FastFold] Socket disconnected during move for ${odId}, cashing out`);
-    await cashOutPlayer(odId, unseatResult.chips, currentTable.id);
-    return;
-  }
-
-  // 5. 新テーブルに着席（バイイン控除なし、チップをそのまま持ち越し）
-  const seatNumber = newTable.seatPlayer(
+  // 3. 新テーブルへ移動
+  movePlayerToNewTable({
     odId,
-    user.username,
-    socket as Socket,
-    unseatResult.chips,
-    user.avatarUrl,
-    undefined,
-    { skipJoinedEmit: true },
-    user.nameMasked,
-    user.displayName
-  );
-
-  if (seatNumber !== null) {
-    // 6. トラッキング更新
-    tableManager.setPlayerTable(odId, newTable.id);
-
-    // 7. table:change を送信（フロントエンドはこれでテーブル移動を認識）
-    socket.emit('table:change', { tableId: newTable.id, seat: seatNumber });
-
-    // 8. 新テーブルのハンド開始を試行
-    newTable.triggerMaybeStartHand();
-  } else {
-    // 席がない場合はチップを返金してテーブル離脱扱い
-    await cashOutPlayer(odId, unseatResult.chips, currentTable.id);
-    socket.emit('table:left');
-    console.error(`[FastFold] Failed to seat player ${odId} at new table ${newTable.id}`);
-  }
+    odName: user.username,
+    displayName: user.displayName,
+    socket: socket as Socket,
+    chips: unseatResult.chips,
+    avatarUrl: user.avatarUrl,
+    nameMasked: user.nameMasked,
+    sourceTable: currentTable,
+    tableManager,
+  });
 }

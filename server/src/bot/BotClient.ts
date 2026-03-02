@@ -551,6 +551,15 @@ export class BotClient {
     this.socket.emit('matchmaking:join', { blinds, isFastFold });
   }
 
+  async joinPrivateTable(inviteCode: string): Promise<void> {
+    if (!this.socket || !this.isConnected) {
+      throw new Error('Not connected to server');
+    }
+
+    console.log(`[${this.config.name}] Joining private table (code: ${inviteCode})`);
+    this.socket.emit('private:join', { inviteCode });
+  }
+
   private rejoinMatchmaking(): void {
     const blinds = this.currentBlinds ?? this.config.defaultBlinds ?? '1/3';
     // 少し遅延して再参加（サーバー側の状態更新を待つ）

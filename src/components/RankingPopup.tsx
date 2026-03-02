@@ -82,10 +82,6 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) onClose();
-  };
-
   const allSorted = [...rankings].sort((a, b) => {
     if (tab === 'profit') {
       return b.totalAllInEVProfit - a.totalAllInEVProfit;
@@ -101,24 +97,15 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
 
   return (
     <div
-      className="absolute inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[200]"
-      onClick={handleBackdropClick}
+      className="absolute inset-0 bg-white z-[200] flex flex-col"
     >
-      <div className="@container w-[88cqw]">
-        <div className="bg-white rounded-[5cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.2)] animate-scale-in flex flex-col max-h-[80dvh]">
+      <div className="@container w-full flex-1 overflow-y-auto min-h-0">
+        <div className="px-[4cqw] pt-[4cqw] pb-[2cqw]">
           {/* Header */}
-          <div className="flex items-center justify-between px-[5cqw] pt-[5cqw] pb-[3cqw]">
-            <h2 className="text-[5cqw] font-bold text-cream-900">ランキング</h2>
-            <button
-              onClick={onClose}
-              className="text-cream-400 hover:text-cream-900 text-[7cqw] leading-none"
-            >
-              ×
-            </button>
-          </div>
+          <h2 className="text-[5cqw] font-bold text-cream-900 mb-[3cqw]">ランキング</h2>
 
           {/* Period selector */}
-          <div className="flex mx-[5cqw] mb-[2cqw] gap-[1.5cqw]">
+          <div className="flex mb-[2cqw] gap-[1.5cqw]">
             {(['daily', 'weekly', 'all'] as Period[]).map(p => (
               <button
                 key={p}
@@ -142,7 +129,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           )}
 
           {/* Tabs */}
-          <div className="flex mx-[5cqw] mb-[3cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">
+          <div className="flex mb-[3cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">
             <button
               onClick={() => setTab('profit')}
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
@@ -166,93 +153,101 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           </div>
 
           {/* List */}
-          <div className="flex-1 overflow-y-auto px-[5cqw] min-h-0">
-            {loading ? (
-              <div className="flex flex-col items-center py-[8cqw]">
-                <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
-                <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
-              </div>
-            ) : sorted.length === 0 ? (
-              <div className="text-center py-[8cqw] text-cream-500 text-[3cqw]">
-                まだランキングデータがありません
-              </div>
-            ) : (
-              <div className="space-y-[1cqw]">
-                {sorted.map((entry, i) => {
-                  const rank = i + 1;
-                  const isMe = entry.userId === userId;
-                  const displayName = entry.username;
-                  const value =
-                    tab === 'profit'
-                      ? formatProfit(entry.totalAllInEVProfit)
-                      : formatWinrate(entry.totalAllInEVProfit, entry.handsPlayed);
-                  const valueColor =
-                    tab === 'profit'
-                      ? entry.totalAllInEVProfit >= 0
-                        ? 'text-forest'
-                        : 'text-[#C0392B]'
-                      : (entry.handsPlayed > 0 ? entry.totalAllInEVProfit / entry.handsPlayed : 0) >= 0
-                        ? 'text-forest'
-                        : 'text-[#C0392B]';
+          {loading ? (
+            <div className="flex flex-col items-center py-[8cqw]">
+              <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
+              <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
+            </div>
+          ) : sorted.length === 0 ? (
+            <div className="text-center py-[8cqw] text-cream-500 text-[3cqw]">
+              まだランキングデータがありません
+            </div>
+          ) : (
+            <div className="space-y-[1cqw]">
+              {sorted.map((entry, i) => {
+                const rank = i + 1;
+                const isMe = entry.userId === userId;
+                const displayName = entry.username;
+                const value =
+                  tab === 'profit'
+                    ? formatProfit(entry.totalAllInEVProfit)
+                    : formatWinrate(entry.totalAllInEVProfit, entry.handsPlayed);
+                const valueColor =
+                  tab === 'profit'
+                    ? entry.totalAllInEVProfit >= 0
+                      ? 'text-forest'
+                      : 'text-[#C0392B]'
+                    : (entry.handsPlayed > 0 ? entry.totalAllInEVProfit / entry.handsPlayed : 0) >= 0
+                      ? 'text-forest'
+                      : 'text-[#C0392B]';
 
-                  return (
-                    <div
-                      key={entry.userId}
-                      ref={isMe ? myRowRef : undefined}
-                      className={`flex items-center gap-[2cqw] py-[2cqw] px-[2.5cqw] rounded-[2cqw] ${
-                        isMe
-                          ? 'bg-forest/10 border border-forest/30'
-                          : 'hover:bg-cream-50'
-                      }`}
-                    >
-                      {/* Rank */}
-                      <div className="w-[7cqw] text-center shrink-0">
-                        {rank <= 3 ? (
-                          <span className="text-[4cqw]">
-                            {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
-                          </span>
-                        ) : (
-                          <span className="text-[3.2cqw] font-bold text-cream-500">{rank}</span>
-                        )}
-                      </div>
-
-                      {/* Avatar + Name */}
-                      <div className="flex items-center gap-[2cqw] flex-1 min-w-0">
-                        <div className="w-[7cqw] h-[7cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
-                          <img
-                            src={entry.avatarUrl || '/images/icons/anonymous.svg'}
-                            alt=""
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                        <span className={`text-[3cqw] truncate ${isMe ? 'font-bold text-forest' : 'text-cream-800'}`}>
-                          {displayName}
+                return (
+                  <div
+                    key={entry.userId}
+                    ref={isMe ? myRowRef : undefined}
+                    className={`flex items-center gap-[2cqw] py-[2cqw] px-[2.5cqw] rounded-[2cqw] ${
+                      isMe
+                        ? 'bg-forest/10 border border-forest/30'
+                        : 'hover:bg-cream-50'
+                    }`}
+                  >
+                    {/* Rank */}
+                    <div className="w-[7cqw] text-center shrink-0">
+                      {rank <= 3 ? (
+                        <span className="text-[4cqw]">
+                          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                         </span>
-                      </div>
-
-                      {/* Value */}
-                      <div className="text-right shrink-0">
-                        <span className={`text-[3.2cqw] font-bold ${valueColor}`}>{value}</span>
-                        {tab === 'winrate' && (
-                          <div className="text-[2cqw] text-cream-500">{entry.handsPlayed.toLocaleString()}h</div>
-                        )}
-                      </div>
+                      ) : (
+                        <span className="text-[3.2cqw] font-bold text-cream-500">{rank}</span>
+                      )}
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
-          {/* Footer - my rank */}
+                    {/* Avatar + Name */}
+                    <div className="flex items-center gap-[2cqw] flex-1 min-w-0">
+                      <div className="w-[7cqw] h-[7cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
+                        <img
+                          src={entry.avatarUrl || '/images/icons/anonymous.svg'}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                      <span className={`text-[3cqw] truncate ${isMe ? 'font-bold text-forest' : 'text-cream-800'}`}>
+                        {displayName}
+                      </span>
+                    </div>
+
+                    {/* Value */}
+                    <div className="text-right shrink-0">
+                      <span className={`text-[3.2cqw] font-bold ${valueColor}`}>{value}</span>
+                      {tab === 'winrate' && (
+                        <div className="text-[2cqw] text-cream-500">{entry.handsPlayed.toLocaleString()}h</div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* My rank */}
           {myRank > 0 && (
-            <div className="px-[5cqw] py-[3cqw] border-t border-cream-200 text-center">
+            <div className="py-[3cqw] border-t border-cream-200 text-center mt-[2cqw]">
               <span className="text-[3cqw] text-cream-600">
                 あなたの順位: <span className="font-bold text-cream-900">{myRank}位</span> / {allSorted.length}人
               </span>
             </div>
           )}
         </div>
+      </div>
+
+      {/* Footer Button */}
+      <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
+        <button
+          onClick={onClose}
+          className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"
+        >
+          閉じる
+        </button>
       </div>
     </div>
   );
