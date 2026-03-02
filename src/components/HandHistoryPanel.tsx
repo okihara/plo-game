@@ -9,8 +9,11 @@ const PAGE_SIZE = 20;
 const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
-const SUIT_BG_COLORS: Record<string, string> = {
-  h: 'bg-red-600', d: 'bg-blue-600', c: 'bg-green-700', s: 'bg-gray-800',
+const SUIT_BORDER_COLORS: Record<string, string> = {
+  h: 'border-red-500', d: 'border-blue-500', c: 'border-green-600', s: 'border-gray-700',
+};
+const SUIT_TEXT_COLORS: Record<string, string> = {
+  h: 'text-red-600', d: 'text-blue-600', c: 'text-green-700', s: 'text-gray-800',
 };
 
 interface HandSummary {
@@ -37,10 +40,11 @@ export function MiniCard({ cardStr }: { cardStr: string }) {
   const rank = cardStr.slice(0, -1);
   const suit = cardStr.slice(-1);
   const symbol = SUIT_SYMBOLS[suit] || suit;
-  const bg = SUIT_BG_COLORS[suit] || 'bg-gray-500';
+  const borderColor = SUIT_BORDER_COLORS[suit] || 'border-gray-400';
+  const textColor = SUIT_TEXT_COLORS[suit] || 'text-gray-800';
 
   return (
-    <span className={`inline-flex items-center justify-center ${bg} text-white border border-white/30 rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
+    <span className={`inline-flex items-center justify-center bg-white ${textColor} border ${borderColor} rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
       {rank}{symbol}
     </span>
   );
