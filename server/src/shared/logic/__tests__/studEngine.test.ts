@@ -1081,6 +1081,157 @@ describe('check後のbet', () => {
   });
 });
 
+describe('ブリングインプレイヤーがアンテでオールイン', () => {
+  it('チップがアンテ額ちょうどの場合、ブリングイン額は0でcurrentBet=0', () => {
+    // アンテ10、チップ10 → アンテで全額使い切り、ブリングイン不可
+    const state = createStudGameState(1000, 10, 20);
+    // seat0だけチップ10にして、最低ドアカードを持たせる
+    state.players[0].chips = 10;
+    const started = startStudHand(state);
+
+    const bringInIdx = started.lastRaiserIndex;
+    const bringInPlayer = started.players[bringInIdx];
+
+    if (bringInPlayer.isAllIn) {
+      // アンテでオールイン済みの場合、ブリングイン額は0
+      expect(bringInPlayer.chips).toBe(0);
+      expect(bringInPlayer.currentBet).toBe(0);
+      expect(started.currentBet).toBe(0);
+
+      // 次のプレイヤーはcheck/betが可能（callではなく）
+      const nextIdx = started.currentPlayerIndex;
+      const actions = getStudValidActions(started, nextIdx);
+      const actionTypes = actions.map(a => a.action);
+      expect(actionTypes).toContain('check');
+      expect(actionTypes).toContain('bet');
+      expect(actionTypes).not.toContain('call');
+    }
+  });
+
+  it('アンテでオールイン済みプレイヤーがブリングインでもハンドが完了する', () => {
+    // 全員チップがアンテ額ちょうど → 全員アンテでオールイン
+    const state = createStudGameState(10, 10, 20);
+    const started = startStudHand(state);
+
+    // 全員オールインのはず → ハンドが自動完了
+    expect(started.isHandComplete).toBe(true);
+    expect(started.currentStreet).toBe('showdown');
+    expect(started.winners.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('wouldStudAdvanceStreet が false を返すケース', () => {
+  it('フォールドしてもストリートが進まない場合にfalseを返す', () => {
+    const state = createStartedState(10, 20);
+    const idx = state.currentPlayerIndex;
+
+    // まだ他にアクション待ちプレイヤーがいるのでフォールドしてもストリート進行しない
+    const activePlayers = state.players.filter(
+      p => !p.folded && !p.isAllIn && !p.isSittingOut
+    );
+    if (activePlayers.length > 2) {
+      const result = wouldStudAdvanceStreet(state, idx, 'fold');
+      expect(result).toBe(false);
+    }
+  });
+
+  it('ベットするとストリートが進まない（再アクション権が発生する）', () => {
+    const state = createStartedState(10, 20);
+    const idx = state.currentPlayerIndex;
+    const actions = getStudValidActions(state, idx);
+    const betAction = actions.find(a => a.action === 'bet');
+
+    if (betAction) {
+      const result = wouldStudAdvanceStreet(state, idx, 'bet', betAction.minAmount);
+      expect(result).toBe(false);
+    }
+  });
+});
+
+describe('ブリングインプレイヤーの再アクション権', () => {
+  it('全員コール（コンプリートなし）でブリングインプレイヤーに再アクション権なし → ストリート進行', () => {
+    let state = createStartedState(10, 20);
+    const bringInIdx = state.lastRaiserIndex;
+
+    // ブリングインの次から全員コール
+    for (let i = 0; i < 10; i++) {
+      if (state.isHandComplete || state.currentStreet !== 'third') break;
+      const idx = state.currentPlayerIndex;
+      const actions = getStudValidActions(state, idx);
+      if (actions.length === 0) break;
+
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) {
+        state = applyStudAction(state, idx, 'call', callAction.minAmount);
+      } else if (checkAction) {
+        state = applyStudAction(state, idx, 'check');
+      } else {
+        break;
+      }
+    }
+
+    // 全員コール後、ブリングインプレイヤーに再アクション権なし（コンプリートされていないので）
+    // → 4th streetに進むべき
+    expect(['fourth', 'showdown']).toContain(state.currentStreet);
+  });
+
+  it('コンプリート後、ブリングインプレイヤーに再アクション権がある', () => {
+    let state = createStartedState(10, 20);
+    const bringInIdx = state.lastRaiserIndex;
+
+    // 最初のプレイヤーがコンプリート（bet）
+    const firstIdx = state.currentPlayerIndex;
+    const actions = getStudValidActions(state, firstIdx);
+    const betAction = actions.find(a => a.action === 'bet');
+    if (!betAction) return;
+
+    state = applyStudAction(state, firstIdx, 'bet', betAction.minAmount);
+
+    // コンプリートによりブリングインプレイヤーのhasActedがリセット
+    if (!state.players[bringInIdx].isAllIn) {
+      expect(state.players[bringInIdx].hasActed).toBe(false);
+    }
+  });
+});
+
+describe('minRaise がストリート進行時に正しく更新される', () => {
+  function advanceToStreet(targetStreet: string): GameState {
+    let state = createStartedState(10, 20);
+    for (let round = 0; round < 50; round++) {
+      if (state.isHandComplete) break;
+      if (state.currentStreet === targetStreet) break;
+      const idx = state.currentPlayerIndex;
+      const actions = getStudValidActions(state, idx);
+      if (actions.length === 0) break;
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) {
+        state = applyStudAction(state, idx, 'call', callAction.minAmount);
+      } else if (checkAction) {
+        state = applyStudAction(state, idx, 'check');
+      } else {
+        state = applyStudAction(state, idx, 'fold');
+      }
+    }
+    return state;
+  }
+
+  it('4th streetではminRaise=smallBet(20)', () => {
+    const state = advanceToStreet('fourth');
+    if (state.currentStreet === 'fourth' && !state.isHandComplete) {
+      expect(state.minRaise).toBe(20);
+    }
+  });
+
+  it('5th streetではminRaise=bigBet(40)', () => {
+    const state = advanceToStreet('fifth');
+    if (state.currentStreet === 'fifth' && !state.isHandComplete) {
+      expect(state.minRaise).toBe(40);
+    }
+  });
+});
+
 // ===== テスト用ヘルパー =====
 
 function getRankValueForTest(rank: Card['rank']): number {

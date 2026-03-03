@@ -1,4 +1,4 @@
-import { GameState, Player, Position, Action, Card, Suit } from './types.js';
+import { GameState, Player, Position, Action, Card, Suit, Street } from './types.js';
 import { createDeck, shuffleDeck, dealCards, getRankValue } from './deck.js';
 import { evaluateStudHand, evaluateShowingHand, compareHands } from './handEvaluator.js';
 import { getActivePlayers, getPlayersWhoCanAct, calculateSidePots, calculateRake } from './gameEngine.js';
@@ -193,8 +193,7 @@ export function getStudValidActions(state: GameState, playerIndex: number): { ac
   if (canRaise && player.chips > toCall) {
     if (state.currentBet === 0 || isBringInOnly) {
       // ベット（またはコンプリート）
-      const betTotal = isBringInOnly ? betSize : betSize; // コンプリート先 = small bet
-      const betAmount = betTotal - player.currentBet;
+      const betAmount = betSize - player.currentBet;
       if (player.chips >= betAmount) {
         actions.push({ action: 'bet', minAmount: betAmount, maxAmount: betAmount });
       } else if (player.chips > toCall) {
@@ -242,7 +241,6 @@ export function applyStudAction(
   player.hasActed = true;
 
   const betSize = getCurrentBetSize(newState);
-  const isBringInOnly = newState.currentStreet === 'third' && newState.betCount === 0 && newState.currentBet === newState.bringIn;
 
   switch (action) {
     case 'fold':
@@ -264,8 +262,7 @@ export function applyStudAction(
 
     case 'bet': {
       // ベットまたはコンプリート
-      const betTotal = isBringInOnly ? betSize : betSize;
-      const betAmount = betTotal - player.currentBet;
+      const betAmount = betSize - player.currentBet;
       const actualAmount = Math.min(betAmount, player.chips);
       player.chips -= actualAmount;
       player.currentBet += actualAmount;
@@ -396,7 +393,6 @@ function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCap
     p.hasActed = false;
   }
   newState.currentBet = 0;
-  newState.minRaise = getCurrentBetSize(newState);
   newState.lastFullRaiseBet = 0;
   newState.betCount = 0;
 
@@ -412,6 +408,7 @@ function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCap
   }
 
   newState.currentStreet = nextStreet;
+  newState.minRaise = getCurrentBetSize(newState);
 
   // === カード配布 ===
   for (let i = 0; i < MAX_PLAYERS; i++) {
@@ -446,8 +443,8 @@ function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCap
   return newState;
 }
 
-function getNextStudStreet(current: string): string {
-  const order: Record<string, string> = {
+function getNextStudStreet(current: Street): Street {
+  const order: Record<string, Street> = {
     third: 'fourth',
     fourth: 'fifth',
     fifth: 'sixth',
@@ -586,8 +583,8 @@ export function determineStudWinner(state: GameState, rakePercent: number = 0, r
 
 function studRunOut(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
-  studDealRemaining(newState);
   newState.currentStreet = 'showdown';
+  // studDealRemaining は determineStudWinner 内で呼ばれるため、ここでは不要
   return determineStudWinner(newState, rakePercent, rakeCapBB);
 }
 
