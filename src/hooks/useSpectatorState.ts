@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
 import type { ClientGameState } from '@plo/shared';
-import type { Card, Action, GameState, Player, Position } from '../logic/types';
+import type { Card, Action, GameState, Player, Position, Street, GameVariant } from '../logic/types';
 import type { LastAction, ActionTimeoutAt } from './useOnlineGameState';
 
 // ============================================
@@ -26,6 +26,7 @@ function convertOnlinePlayerToPlayer(
       name: `Seat ${index + 1}`,
       chips: 0,
       holeCards: [],
+      upCards: [],
       currentBet: 0,
       totalBetThisRound: 0,
       folded: true,
@@ -43,6 +44,7 @@ function convertOnlinePlayerToPlayer(
     name: online.odName,
     chips: online.chips,
     holeCards: [],
+    upCards: online.upCards ?? [],
     currentBet: online.currentBet,
     totalBetThisRound: online.currentBet,
     folded: online.folded,
@@ -80,7 +82,7 @@ function convertToSpectatorGameState(
       amount: sp.amount,
       eligiblePlayers: sp.eligiblePlayerSeats,
     })),
-    currentStreet: clientState.currentStreet as 'preflop' | 'flop' | 'turn' | 'river',
+    currentStreet: clientState.currentStreet as Street,
     currentBet: clientState.currentBet,
     minRaise: clientState.minRaise,
     dealerPosition: clientState.dealerSeat,
@@ -93,6 +95,11 @@ function convertToSpectatorGameState(
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
     rake: clientState.rake ?? 0,
+    variant: (clientState.variant as GameVariant) ?? 'plo',
+    ante: clientState.ante ?? 0,
+    bringIn: 0,
+    betCount: 0,
+    maxBetsPerRound: 4,
   };
 }
 

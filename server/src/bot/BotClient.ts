@@ -332,6 +332,7 @@ export class BotClient {
           position: POSITIONS[(i - dealerPosition + 6) % 6],
           chips: onlinePlayer.chips,
           holeCards: i === this.seatNumber ? this.holeCards : [],
+          upCards: [],
           currentBet: onlinePlayer.currentBet,
           totalBetThisRound: onlinePlayer.currentBet,
           folded: onlinePlayer.folded,
@@ -347,6 +348,7 @@ export class BotClient {
           position: POSITIONS[(i - dealerPosition + 6) % 6],
           chips: 0,
           holeCards: [],
+          upCards: [],
           currentBet: 0,
           totalBetThisRound: 0,
           folded: true,
@@ -376,6 +378,11 @@ export class BotClient {
       isHandComplete: false,
       winners: [],
       rake: 0,
+      variant: 'plo',
+      ante: 0,
+      bringIn: 0,
+      betCount: 0,
+      maxBetsPerRound: 4,
     };
   }
 

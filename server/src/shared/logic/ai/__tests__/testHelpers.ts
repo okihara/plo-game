@@ -89,6 +89,7 @@ export function makePlayer(overrides: Partial<Player> = {}): Player {
     position: 'BTN',
     chips: 1000,
     holeCards: [],
+    upCards: overrides.upCards ?? [],
     currentBet: 0,
     totalBetThisRound: 0,
     folded: false,
@@ -123,6 +124,11 @@ export function makeGameState(overrides: Partial<GameState> = {}): GameState {
     isHandComplete: false,
     winners: [],
     rake: 0,
+    variant: 'plo',
+    ante: 0,
+    bringIn: 0,
+    betCount: 0,
+    maxBetsPerRound: 4,
     ...overrides,
   };
 }

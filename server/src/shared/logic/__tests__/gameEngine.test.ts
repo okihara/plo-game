@@ -611,9 +611,9 @@ describe('wouldAdvanceStreet', () => {
 describe('calculateSidePots', () => {
   it('全員同額ならサイドポットは1つ', () => {
     const players: Player[] = [
-      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
-      { id: 1, name: 'B', position: 'SB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
-      { id: 2, name: 'C', position: 'BB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
+      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 1, name: 'B', position: 'SB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 2, name: 'C', position: 'BB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
     ];
 
     const sidePots = calculateSidePots(players);
@@ -624,9 +624,9 @@ describe('calculateSidePots', () => {
 
   it('1人がショートスタックでオールインした場合のサイドポット', () => {
     const players: Player[] = [
-      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 50, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
-      { id: 1, name: 'B', position: 'SB', chips: 50, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false },
-      { id: 2, name: 'C', position: 'BB', chips: 50, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false },
+      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 50, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 1, name: 'B', position: 'SB', chips: 50, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 2, name: 'C', position: 'BB', chips: 50, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false, upCards: [] },
     ];
 
     const sidePots = calculateSidePots(players);
@@ -643,9 +643,9 @@ describe('calculateSidePots', () => {
 
   it('複数レベルのサイドポット', () => {
     const players: Player[] = [
-      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 30, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
-      { id: 1, name: 'B', position: 'SB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 70, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
-      { id: 2, name: 'C', position: 'BB', chips: 100, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false },
+      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 30, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 1, name: 'B', position: 'SB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 70, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 2, name: 'C', position: 'BB', chips: 100, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false, upCards: [] },
     ];
 
     const sidePots = calculateSidePots(players);
@@ -666,9 +666,9 @@ describe('calculateSidePots', () => {
 
   it('フォールドプレイヤーの貢献額はポットに含まれるが対象外', () => {
     const players: Player[] = [
-      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 50, folded: true, isAllIn: false, hasActed: true, isSittingOut: false },
-      { id: 1, name: 'B', position: 'SB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false },
-      { id: 2, name: 'C', position: 'BB', chips: 50, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false },
+      { id: 0, name: 'A', position: 'BTN', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 50, folded: true, isAllIn: false, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 1, name: 'B', position: 'SB', chips: 0, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: true, hasActed: true, isSittingOut: false, upCards: [] },
+      { id: 2, name: 'C', position: 'BB', chips: 50, holeCards: [], currentBet: 0, totalBetThisRound: 100, folded: false, isAllIn: false, hasActed: true, isSittingOut: false, upCards: [] },
     ];
 
     const sidePots = calculateSidePots(players);

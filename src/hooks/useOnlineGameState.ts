@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
 import { playActionSound, playDealSound } from '../services/actionSound';
 import type { ClientGameState, OnlinePlayer } from '@plo/shared';
-import type { Card, Action, GameState, Player, Position } from '../logic/types';
+import type { Card, Action, GameState, Player, Position, Street, GameVariant } from '../logic/types';
 
 // ============================================
 // 型定義
@@ -82,6 +82,7 @@ function convertOnlinePlayerToPlayer(
       name: `Seat ${index + 1}`,
       chips: 0,
       holeCards: [],
+      upCards: [],
       currentBet: 0,
       totalBetThisRound: 0,
       folded: true,
@@ -99,6 +100,7 @@ function convertOnlinePlayerToPlayer(
     name: online.odName,
     chips: online.chips,
     holeCards: [],
+    upCards: online.upCards ?? [],
     currentBet: online.currentBet,
     totalBetThisRound: online.currentBet,
     folded: online.folded,
@@ -143,7 +145,7 @@ function convertClientStateToGameState(
       amount: sp.amount,
       eligiblePlayers: sp.eligiblePlayerSeats,
     })),
-    currentStreet: clientState.currentStreet as 'preflop' | 'flop' | 'turn' | 'river',
+    currentStreet: clientState.currentStreet as Street,
     currentBet: clientState.currentBet,
     minRaise: clientState.minRaise,
     dealerPosition: clientState.dealerSeat,
@@ -156,6 +158,11 @@ function convertClientStateToGameState(
     isHandComplete: !clientState.isHandInProgress,
     winners: [],
     rake: clientState.rake ?? 0,
+    variant: (clientState.variant as GameVariant) ?? 'plo',
+    ante: clientState.ante ?? 0,
+    bringIn: 0,
+    betCount: 0,
+    maxBetsPerRound: 4,
   };
 }
 
@@ -201,6 +208,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const winnersDisplayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
+
+  // Stud: 新ハンド判定用（onHoleCardsが複数ストリートで呼ばれるため）
+  const isNewHandRef = useRef(true);
 
   // ============================================
   // アクションマーカー管理（CSSアニメーションで自動フェードアウト）
@@ -316,7 +326,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setTableId(tid);
         setMySeat(seat);
         setMyHoleCards([]);
-        // カード配布アニメーションはonHoleCardsで開始される
+        isNewHandRef.current = true;
       },
       onTableLeft: () => {
         setTableId(null);
@@ -346,6 +356,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           actionTimeoutAt: null,
           actionTimeoutMs: null,
           rake: 0,
+          variant: prev?.variant ?? 'plo',
+          ante: prev?.ante ?? 0,
         }));
         setMyHoleCards([]);
         setShowdownCards(new Map());
@@ -357,6 +369,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         prevStreetRef.current = null;
         prevCardCountRef.current = 0;
         pendingShowdownHandNamesRef.current = null;
+        isNewHandRef.current = true;
         setTableId(tid);
         setMySeat(seat);
       },
@@ -380,18 +393,18 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
       onHoleCards: (cards) => {
-        // 新しいハンドが開始されたらカード配布アニメーションとwinnersクリア
-        if (cards.length > 0) {
-          console.log('onHoleCards', cards);
+        // Stud: onHoleCardsは各ストリートで呼ばれる。新ハンドのみアニメーション実行
+        if (cards.length > 0 && isNewHandRef.current) {
+          isNewHandRef.current = false;
           pendingShowdownHandNamesRef.current = null;
           startDealingAnimation();
           playDealSound();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
-          setWinners([]); // 新しいハンド開始時にwinnersをクリア
-          setLastActions(new Map()); // アクションマーカーもクリア
-          setShowdownCards(new Map()); // ショウダウンカードもクリア
-          setShowdownHandNames(new Map()); // ショウダウン役名もクリア
+          setWinners([]);
+          setLastActions(new Map());
+          setShowdownCards(new Map());
+          setShowdownHandNames(new Map());
         }
         setMyHoleCards(cards);
       },
@@ -412,6 +425,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // playMyTurnSound();
       },
       onHandComplete: (serverWinners) => {
+        isNewHandRef.current = true;
         const currentState = clientStateRef.current;
         if (currentState) {
           const convertedWinners = serverWinners.map(w => {

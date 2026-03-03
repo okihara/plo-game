@@ -3,12 +3,14 @@ import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType } from '../logic';
-import { evaluateCurrentHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateStudHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
+  StudMyCards,
   ActionPanel,
+  StudActionPanel,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -98,10 +100,17 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
   // ブラインド表示用
   const blindsLabel = blinds;
 
-  const myCurrentHandName = useMemo(
-    () => gameState ? evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name : undefined,
-    [myHoleCards, gameState?.communityCards]
-  );
+  const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
+  const myUpCards = myPlayer?.upCards ?? [];
+
+  const myCurrentHandName = useMemo(() => {
+    if (!gameState) return undefined;
+    if (gameState.variant === 'stud') {
+      const allCards = [...myHoleCards, ...myUpCards];
+      return allCards.length >= 5 ? evaluateStudHand(allCards).name : undefined;
+    }
+    return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
+  }, [myHoleCards, myUpCards, gameState?.communityCards, gameState?.variant]);
 
   if (isConnecting) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
@@ -155,10 +164,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
   }
 
   // ゲーム画面
-  const humanPlayer = mySeat !== null ? gameState.players[mySeat] : null;
-  const humanPlayerIdx = mySeat ?? 0;
+  const myPlayerIdx = mySeat ?? 0;
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
-  const humanDealOrder = (humanPlayerIdx - sbPlayerIdx + 6) % 6;
+  const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
 
   return (
     <>
@@ -314,25 +322,40 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
             lastActions={lastActions}
             isDealingCards={isDealingCards}
             newCommunityCardsCount={newCommunityCardsCount}
-            humanIndex={humanPlayerIdx}
+            humanIndex={myPlayerIdx}
             actionTimeoutAt={actionTimeoutAt}
             actionTimeoutMs={actionTimeoutMs}
             onPlayerClick={setSelectedPlayer}
             showdownHandNames={showdownHandNames}
           />
 
-          <MyCards
-            cards={myHoleCards}
-            communityCards={gameState.communityCards}
-            isDealing={isDealingCards}
-            dealOrder={humanDealOrder}
-            folded={humanPlayer?.folded}
-            handName={showHandName ? (showdownHandNames.get(humanPlayerIdx) || myCurrentHandName) : showdownHandNames.get(humanPlayerIdx)}
-          />
+          {gameState.variant === 'stud' ? (
+            <StudMyCards
+              holeCards={myHoleCards}
+              upCards={myUpCards}
+              isDealing={isDealingCards}
+              dealOrder={humanDealOrder}
+              folded={myPlayer?.folded}
+              handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
+            />
+          ) : (
+            <MyCards
+              cards={myHoleCards}
+              communityCards={gameState.communityCards}
+              isDealing={isDealingCards}
+              dealOrder={humanDealOrder}
+              folded={myPlayer?.folded}
+              handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
+            />
+          )}
 
-          <ActionPanel state={gameState} mySeat={humanPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
+          {gameState.variant === 'stud' ? (
+            <StudActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
+          ) : (
+            <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
+          )}
 
-          {humanPlayer && (
+          {myPlayer && (
             <HandAnalysisOverlay
               holeCards={myHoleCards}
               communityCards={gameState.communityCards}
@@ -379,10 +402,10 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
-              isSelf={selectedPlayer.id === humanPlayerIdx}
+              isSelf={selectedPlayer.id === myPlayerIdx}
               onClose={() => setSelectedPlayer(null)}
-              twitterAvatarUrl={selectedPlayer.id === humanPlayerIdx ? user?.twitterAvatarUrl : undefined}
-              useTwitterAvatar={selectedPlayer.id === humanPlayerIdx ? user?.useTwitterAvatar : undefined}
+              twitterAvatarUrl={selectedPlayer.id === myPlayerIdx ? user?.twitterAvatarUrl : undefined}
+              useTwitterAvatar={selectedPlayer.id === myPlayerIdx ? user?.useTwitterAvatar : undefined}
             />
           )}
 

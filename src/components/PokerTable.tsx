@@ -63,16 +63,19 @@ export function PokerTable({
           </div>
         </div>
 
-        {/* Community Cards */}
-        <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
+        {/* Community Cards (PLO only) */}
+        {state.variant !== 'stud' && (
+          <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
+        )}
 
-        {/* Carried Pot - below community cards, flop onwards */}
+        {/* Carried Pot - below community cards, after first street */}
         {(() => {
           const currentStreetBets = state.players.reduce((sum, p) => sum + p.currentBet, 0);
           const carriedPot = state.pot - currentStreetBets;
-          if (state.currentStreet === 'preflop' || carriedPot <= 0) return null;
+          const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
+          if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className="absolute top-[62%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10">
+            <div className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${state.variant === 'stud' ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );
@@ -99,6 +102,8 @@ export function PokerTable({
               actionTimeoutMs={isCurrentPlayer ? actionTimeoutMs : null}
               onAvatarClick={() => onPlayerClick?.(player)}
               isSpectator={isSpectator}
+              variant={state.variant}
+              currentStreet={state.currentStreet}
             />
           );
         })}
