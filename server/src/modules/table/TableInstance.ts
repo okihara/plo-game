@@ -1,8 +1,6 @@
 import { Server, Socket } from 'socket.io';
 import { GameState, Action, GameVariant } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, calculateSidePots } from '../../shared/logic/gameEngine.js';
-import { createStudGameState, startStudHand, getStudValidActions } from '../../shared/logic/studEngine.js';
-import { evaluatePLOHand, evaluateStudHand } from '../../shared/logic/handEvaluator.js';
+import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
@@ -18,6 +16,7 @@ import { FoldProcessor } from './helpers/FoldProcessor.js';
 import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { SpectatorManager } from './helpers/SpectatorManager.js';
+import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 // 型の再エクスポート（後方互換性のため）
@@ -62,6 +61,7 @@ export class TableInstance {
   private readonly historyRecorder: HandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private readonly spectatorManager: SpectatorManager;
+  private readonly variantAdapter: VariantAdapter;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant }) {
     this.id = nanoid(12);
@@ -84,6 +84,7 @@ export class TableInstance {
     this.historyRecorder = new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
     this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
+    this.variantAdapter = new VariantAdapter(this.variant);
   }
 
   // ============================================
@@ -264,17 +265,13 @@ export class TableInstance {
       // アクション演出を待ってからカードを表示
       this.actionController.scheduleActionAnimation(() => {
         // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
-        if (this.variant === 'stud' && this.gameState) {
-          const seats = this.playerManager.getSeats();
-          for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-            const seat = seats[i];
-            if (seat?.socket && this.gameState.players[i].holeCards.length > 0) {
-              this.broadcast.emitToSocket(seat.socket, seat.odId, 'game:hole_cards', {
-                cards: this.gameState.players[i].holeCards,
-              });
-            }
-          }
-          this.broadcastAllHoleCardsToSpectators();
+        if (this.gameState) {
+          this.variantAdapter.broadcastStreetChangeCards(
+            this.gameState,
+            this.playerManager.getSeats(),
+            this.broadcast,
+            () => this.broadcastAllHoleCardsToSpectators(),
+          );
         }
         this.broadcastGameState();
         // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
@@ -451,14 +448,7 @@ export class TableInstance {
 
     // Create initial game state
     const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
-    if (this.variant === 'stud') {
-      const ante = Math.ceil(this.smallBlind / 2);
-      this.gameState = createStudGameState(buyInChips, ante, this.smallBlind);
-    } else {
-      this.gameState = createInitialGameState(buyInChips);
-      this.gameState.smallBlind = this.smallBlind;
-      this.gameState.bigBlind = this.bigBlind;
-    }
+    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
 
     // Restore dealer position (startNewHand will increment it)
     if (previousDealerPosition >= 0) {
@@ -483,11 +473,7 @@ export class TableInstance {
     }
 
     // Start the hand (this will increment dealerPosition and update positions)
-    if (this.variant === 'stud') {
-      this.gameState = startStudHand(this.gameState);
-    } else {
-      this.gameState = startNewHand(this.gameState);
-    }
+    this.gameState = this.variantAdapter.startHand(this.gameState);
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -562,9 +548,7 @@ export class TableInstance {
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
       // チェック可能ならチェック、そうでなければフォールド
-      const validActions = this.variant === 'stud'
-        ? getStudValidActions(this.gameState, seatIndex)
-        : getValidActions(this.gameState, seatIndex);
+      const validActions = this.variantAdapter.getValidActions(this.gameState, seatIndex);
       const canCheck = validActions.some(a => a.action === 'check');
       const action: Action = canCheck ? 'check' : 'fold';
       const handled = this.handleAction(playerId, action, 0);
@@ -634,11 +618,8 @@ export class TableInstance {
       const showdownPlayers = activePlayers.map(p => {
         const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
         let handName = winnerEntry?.handName || '';
-        if (!handName && finalState.communityCards.length === 5) {
-          try {
-            const result = evaluatePLOHand(p.holeCards, finalState.communityCards);
-            handName = result.name;
-          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
+        if (!handName) {
+          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
         }
         return {
           seatIndex: p.id,
@@ -733,28 +714,16 @@ export class TableInstance {
     const seats = this.playerManager.getSeats();
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1 && !this.showdownSentDuringRunOut) {
       const activePlayers = getActivePlayers(this.gameState);
-      const isStud = this.variant === 'stud';
       const showdownPlayers = activePlayers.map(p => {
         const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
         let handName = winnerEntry?.handName || '';
         if (!handName) {
-          try {
-            if (isStud) {
-              const allCards = [...p.holeCards, ...p.upCards];
-              if (allCards.length >= 5) {
-                handName = evaluateStudHand(allCards).name;
-              }
-            } else if (this.gameState!.communityCards.length === 5) {
-              handName = evaluatePLOHand(p.holeCards, this.gameState!.communityCards).name;
-            }
-          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
+          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
         }
-        // Stud: 全カード（裏+表）を送信、PLO: ホールカードのみ
-        const cards = isStud ? [...p.holeCards, ...p.upCards] : p.holeCards;
         return {
           seatIndex: p.id,
           odId: seats[p.id]?.odId || '',
-          cards,
+          cards: this.variantAdapter.getShowdownCards(p),
           handName,
         };
       });
