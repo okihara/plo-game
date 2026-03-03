@@ -6,6 +6,8 @@ export interface Card {
   suit: Suit;
 }
 
+export type GameVariant = 'plo' | 'stud';
+
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
 
 export interface Player {
@@ -13,7 +15,8 @@ export interface Player {
   name: string;
   position: Position;
   chips: number;
-  holeCards: Card[];
+  holeCards: Card[];   // PLO: 4枚の私的カード, Stud: 裏向きカード(2-3枚)
+  upCards: Card[];     // Stud: 表向きカード(1-4枚), PLO: 常に[]
   currentBet: number;
   totalBetThisRound: number;
   folded: boolean;
@@ -25,7 +28,8 @@ export interface Player {
   odId?: string;  // Online user ID (for stats lookup)
 }
 
-export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
+export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'
+  | 'third' | 'fourth' | 'fifth' | 'sixth' | 'seventh';
 export type Action = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
 
 export interface GameAction {
@@ -60,4 +64,10 @@ export interface GameState {
   isHandComplete: boolean;
   winners: { playerId: number; amount: number; handName: string }[];
   rake: number;
+  // Variant support
+  variant: GameVariant;
+  ante: number;              // Stud: アンテ額（PLO: 0）
+  bringIn: number;           // Stud: ブリングイン額（PLO: 0）
+  betCount: number;          // Fixed Limit: 現ストリートのベット回数
+  maxBetsPerRound: number;   // Fixed Limit: 最大ベット回数/ストリート（通常4）
 }

@@ -2,6 +2,7 @@
 
 import { GameState, Action } from '../../../shared/logic/types.js';
 import { getValidActions, getActivePlayers, applyAction, determineWinner, wouldAdvanceStreet } from '../../../shared/logic/gameEngine.js';
+import { getStudValidActions, applyStudAction, wouldStudAdvanceStreet, determineStudWinner } from '../../../shared/logic/studEngine.js';
 import { SeatInfo, PendingAction } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
 import { BroadcastService } from './BroadcastService.js';
@@ -74,8 +75,11 @@ export class ActionController {
       return { success: false, gameState, streetChanged: false, handComplete: false };
     }
 
-    // バリデーション
-    const validActions = getValidActions(gameState, seatIndex);
+    // バリデーション（variant で分岐）
+    const isStud = gameState.variant === 'stud';
+    const validActions = isStud
+      ? getStudValidActions(gameState, seatIndex)
+      : getValidActions(gameState, seatIndex);
     const isValid = validActions.some(a =>
       a.action === action &&
       (action === 'fold' || action === 'check' || (amount >= a.minAmount && amount <= a.maxAmount))
@@ -89,10 +93,14 @@ export class ActionController {
     this.clearActionTimer();
 
     // ストリート変更を事前検出（applyAction前に判定）
-    const willAdvanceStreet = wouldAdvanceStreet(gameState, seatIndex, action, amount);
+    const willAdvanceStreet = isStud
+      ? wouldStudAdvanceStreet(gameState, seatIndex, action, amount)
+      : wouldAdvanceStreet(gameState, seatIndex, action, amount);
 
     // アクション適用
-    const newState = applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
+    const newState = isStud
+      ? applyStudAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB)
+      : applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
 
     // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {
@@ -121,7 +129,10 @@ export class ActionController {
 
     // 1人以下なら勝者決定
     if (activePlayers.length <= 1) {
-      const newState = determineWinner(gameState);
+      const isStud = gameState.variant === 'stud';
+      const newState = isStud
+        ? determineStudWinner(gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB)
+        : determineWinner(gameState);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 
@@ -142,7 +153,10 @@ export class ActionController {
 
     // 全員アクション不可なら勝者決定
     if (attempts >= TABLE_CONSTANTS.MAX_PLAYERS) {
-      const newState = determineWinner(gameState);
+      const isStud = gameState.variant === 'stud';
+      const newState = isStud
+        ? determineStudWinner(gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB)
+        : determineWinner(gameState);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 
@@ -176,7 +190,10 @@ export class ActionController {
       return;
     }
 
-    const validActions = getValidActions(gameState, currentPlayerIndex);
+    const isStud = gameState.variant === 'stud';
+    const validActions = isStud
+      ? getStudValidActions(gameState, currentPlayerIndex)
+      : getValidActions(gameState, currentPlayerIndex);
 
     // ダッシュボード用のpendingAction設定
     this.pendingAction = {

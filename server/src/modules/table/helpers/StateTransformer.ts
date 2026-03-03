@@ -36,6 +36,7 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: false,
+        upCards: player?.upCards ?? [],
       };
     }
 
@@ -53,6 +54,7 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: seat.socket?.connected ?? false,
+        upCards: [],
       };
     }
 
@@ -68,6 +70,7 @@ export class StateTransformer {
       isAllIn: player?.isAllIn ?? false,
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
+      upCards: player?.upCards ?? [],
     };
   }
 
@@ -109,6 +112,8 @@ export class StateTransformer {
         actionTimeoutAt: null,
         actionTimeoutMs: null,
         rake: 0,
+        variant: 'plo',
+        ante: 0,
       };
     }
 
@@ -134,6 +139,8 @@ export class StateTransformer {
       actionTimeoutAt,
       actionTimeoutMs,
       rake: gameState.rake ?? 0,
+      variant: gameState.variant ?? 'plo',
+      ante: gameState.ante ?? 0,
     };
   }
 }

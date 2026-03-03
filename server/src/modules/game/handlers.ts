@@ -97,7 +97,7 @@ export async function handleDisconnect(socket: AuthenticatedSocket, tableManager
 
 export async function handleMatchmakingJoin(
   socket: AuthenticatedSocket,
-  data: { blinds: string; isFastFold?: boolean },
+  data: { blinds: string; isFastFold?: boolean; variant?: string },
   tableManager: TableManager
 ): Promise<void> {
   if (maintenanceService.isMaintenanceActive()) {
@@ -106,6 +106,7 @@ export async function handleMatchmakingJoin(
   }
 
   const { blinds } = data;
+  const variant = (data.variant === 'stud' ? 'stud' : 'plo') as import('../../shared/logic/types.js').GameVariant;
 
   try {
     const parts = blinds.split('/');
@@ -136,7 +137,7 @@ export async function handleMatchmakingJoin(
 
     // Find available table or create one
     const isFastFold = data.isFastFold ?? false;
-    const table = tableManager.getOrCreateTable(blinds, isFastFold);
+    const table = tableManager.getOrCreateTable(blinds, isFastFold, undefined, variant);
     if (isFastFold) setupFastFoldCallback(table, tableManager);
 
     // Deduct buy-in

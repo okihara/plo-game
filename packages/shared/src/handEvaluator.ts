@@ -174,6 +174,74 @@ export function evaluateCurrentHand(holeCards: Card[], communityCards: Card[]): 
   return bestHand;
 }
 
+// 7-Card Stud: 7枚から最強の5枚を選ぶ（C(7,5)=21通り）
+export function evaluateStudHand(allCards: Card[]): HandRank {
+  if (allCards.length < 5 || allCards.length > 7) {
+    throw new Error(`Stud requires 5-7 cards, got ${allCards.length}`);
+  }
+
+  const combos = getCombinations(allCards, 5);
+  let bestHand: HandRank = { rank: 0, name: '', highCards: [] };
+
+  for (const combo of combos) {
+    const handRank = evaluateFiveCardHand(combo);
+    if (compareHands(handRank, bestHand) > 0) {
+      bestHand = handRank;
+    }
+  }
+
+  return bestHand;
+}
+
+// Stud: アップカードのみでショウイングハンドの強さを評価（アクション順序決定用）
+// 1〜4枚のカードからペア/トリップスなどを判定し、HandRank互換で返す
+export function evaluateShowingHand(upCards: Card[]): HandRank {
+  if (upCards.length === 0) {
+    return { rank: 0, name: '', highCards: [] };
+  }
+  if (upCards.length === 5) {
+    return evaluateFiveCardHand(upCards);
+  }
+
+  const values = upCards.map(c => getRankValue(c.rank)).sort((a, b) => b - a);
+  const groups = getShowingGroups(values);
+
+  // フォーカード
+  if (groups[0].count === 4) {
+    return { rank: 8, name: 'フォーカード', highCards: [groups[0].value, ...groups.slice(1).map(g => g.value)] };
+  }
+  // スリーカード
+  if (groups[0].count === 3) {
+    const kickers = groups.slice(1).map(g => g.value);
+    return { rank: 4, name: 'スリーカード', highCards: [groups[0].value, ...kickers] };
+  }
+  // ツーペア
+  if (groups.length >= 2 && groups[0].count === 2 && groups[1].count === 2) {
+    const kickers = groups.slice(2).map(g => g.value);
+    return { rank: 3, name: 'ツーペア', highCards: [groups[0].value, groups[1].value, ...kickers] };
+  }
+  // ワンペア
+  if (groups[0].count === 2) {
+    const kickers = groups.slice(1).map(g => g.value);
+    return { rank: 2, name: 'ワンペア', highCards: [groups[0].value, ...kickers] };
+  }
+  // ハイカード
+  return { rank: 1, name: 'ハイカード', highCards: values };
+}
+
+function getShowingGroups(values: number[]): { value: number; count: number }[] {
+  const counts = new Map<number, number>();
+  for (const v of values) {
+    counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  const groups = Array.from(counts.entries()).map(([value, count]) => ({ value, count }));
+  groups.sort((a, b) => {
+    if (b.count !== a.count) return b.count - a.count;
+    return b.value - a.value;
+  });
+  return groups;
+}
+
 export function compareHands(a: HandRank, b: HandRank): number {
   if (a.rank !== b.rank) return a.rank - b.rank;
 

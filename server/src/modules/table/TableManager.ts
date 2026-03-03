@@ -1,4 +1,5 @@
 import { Server } from 'socket.io';
+import { GameVariant } from '../../shared/logic/types.js';
 import { TableInstance } from './TableInstance.js';
 
 export class TableManager {
@@ -12,8 +13,8 @@ export class TableManager {
   }
 
   // Create a new table
-  public createTable(blinds: string = '1/3', isFastFold: boolean = false): TableInstance {
-    const table = new TableInstance(this.io, blinds, isFastFold);
+  public createTable(blinds: string = '1/3', isFastFold: boolean = false, variant: GameVariant = 'plo'): TableInstance {
+    const table = new TableInstance(this.io, blinds, isFastFold, { variant });
     this.tables.set(table.id, table);
     return table;
   }
@@ -26,7 +27,7 @@ export class TableManager {
   // Find a table with available seats
   // Fast-fold: prefer table with most players that hasn't started a hand yet
   // Normal: prefer table with fewest players for balance
-  public findAvailableTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string): TableInstance | null {
+  public findAvailableTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string, variant: GameVariant = 'plo'): TableInstance | null {
     let best: TableInstance | null = null;
     let bestScore = isFastFold ? -1 : Infinity;
 
@@ -34,6 +35,7 @@ export class TableManager {
       if (
         table.blinds === blinds &&
         table.isFastFold === isFastFold &&
+        table.variant === variant &&
         !table.isPrivate &&
         table.hasAvailableSeat() &&
         table.id !== excludeTableId
@@ -59,10 +61,10 @@ export class TableManager {
   }
 
   // Get or create a table for given parameters
-  public getOrCreateTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string): TableInstance {
-    const existing = this.findAvailableTable(blinds, isFastFold, excludeTableId);
+  public getOrCreateTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string, variant: GameVariant = 'plo'): TableInstance {
+    const existing = this.findAvailableTable(blinds, isFastFold, excludeTableId, variant);
     if (existing) return existing;
-    return this.createTable(blinds, isFastFold);
+    return this.createTable(blinds, isFastFold, variant);
   }
 
   // Remove a table
@@ -142,7 +144,7 @@ export class TableManager {
         continue;
       }
 
-      const key = `${table.blinds}-${table.isFastFold}`;
+      const key = `${table.blinds}-${table.isFastFold}-${table.variant}`;
       const tables = tablesByBlinds.get(key) || [];
       tables.push(table);
       tablesByBlinds.set(key, tables);

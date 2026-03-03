@@ -3,7 +3,7 @@
 import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
-import { evaluatePLOHand } from '../../../shared/logic/handEvaluator.js';
+import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';
 import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
 
 function serializeCard(card: Card): string {
@@ -100,10 +100,16 @@ export class HandHistoryRecorder {
           let finalHand: string | null = null;
           if (winnerEntry?.handName) {
             finalHand = winnerEntry.handName;
-          } else if (!player.folded && player.holeCards.length === 4 && gameState.communityCards.length === 5) {
+          } else if (!player.folded) {
             try {
-              const result = evaluatePLOHand(player.holeCards, gameState.communityCards);
-              finalHand = result.name || null;
+              if (gameState.variant === 'stud') {
+                const allCards = [...player.holeCards, ...player.upCards];
+                if (allCards.length >= 5) {
+                  finalHand = evaluateStudHand(allCards).name || null;
+                }
+              } else if (player.holeCards.length === 4 && gameState.communityCards.length === 5) {
+                finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;
+              }
             } catch (e) {
               console.warn('Hand evaluation failed for seat', seatIndex, e);
             }

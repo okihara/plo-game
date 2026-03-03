@@ -14,7 +14,7 @@ export interface ClientToServerEvents {
   'game:fast_fold': () => void;
 
   // Matchmaking pool
-  'matchmaking:join': (data: { blinds: string; isFastFold?: boolean }) => void;
+  'matchmaking:join': (data: { blinds: string; isFastFold?: boolean; variant?: string }) => void;
   'matchmaking:leave': () => void;
 
   // Private table
@@ -85,6 +85,7 @@ export interface OnlinePlayer {
   isAllIn: boolean;
   hasActed: boolean;
   isConnected: boolean;
+  upCards: Card[];  // Stud: 表向きカード（PLO: []）
 }
 
 // Client-safe game state (hides other players' hole cards)
@@ -106,6 +107,8 @@ export interface ClientGameState {
   actionTimeoutAt: number | null;  // タイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
   actionTimeoutMs: number | null;  // タイムアウト時間（ミリ秒）
   rake: number;  // このハンドのレーキ額
+  variant: string;  // 'plo' | 'stud'
+  ante: number;     // Stud: アンテ額
 }
 
 export interface TableInfo {
