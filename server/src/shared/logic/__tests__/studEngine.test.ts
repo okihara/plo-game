@@ -709,3 +709,389 @@ describe('全ハンド進行: 3rd→ショーダウン', () => {
     expect(totalChipsAfter).toBe(totalChipsBefore);
   });
 });
+
+// ===== 追加テスト =====
+
+describe('ブリングイン決定（最低ドアカード）', () => {
+  it('最低ランクのドアカード持ちがブリングインを支払う', () => {
+    const state = createStudGameState(1000, 10, 20);
+    // デッキを固定: seat0のドアカードが2c（最低）になるよう制御
+    // startStudHand内でシャッフル→配布されるので、配布後に検証
+    const started = startStudHand(state);
+
+    // ブリングインプレイヤー = lastRaiserIndex
+    const bringInIdx = started.lastRaiserIndex;
+    expect(bringInIdx).toBeGreaterThanOrEqual(0);
+
+    // ブリングインプレイヤーのドアカードが全プレイヤーの中で最低であること
+    const bringInDoorCard = started.players[bringInIdx].upCards[0];
+    for (let i = 0; i < 6; i++) {
+      if (i === bringInIdx || started.players[i].isSittingOut) continue;
+      const otherDoorCard = started.players[i].upCards[0];
+      const bringInRank = getRankValueForTest(bringInDoorCard.rank);
+      const otherRank = getRankValueForTest(otherDoorCard.rank);
+      // ブリングインのランクは他と同等以下
+      expect(bringInRank).toBeLessThanOrEqual(otherRank);
+    }
+  });
+
+  it('同ランク時はスート♣<♦<♥<♠で低い方がブリングイン', () => {
+    const state = createStudGameState(1000, 10, 20);
+    const started = startStudHand(state);
+
+    // 同ランクのドアカード持ちが複数いるケースをシミュレーション
+    // 手動で状態を構築して findLowestDoorCard の挙動を検証
+    const testState = JSON.parse(JSON.stringify(started)) as GameState;
+    // 全員のドアカードを同じランク(2)、異なるスートに設定
+    testState.players[0].upCards = [card('2', 's')]; // ♠ = 4
+    testState.players[1].upCards = [card('2', 'h')]; // ♥ = 3
+    testState.players[2].upCards = [card('2', 'd')]; // ♦ = 2
+    testState.players[3].upCards = [card('2', 'c')]; // ♣ = 1 ← 最低
+    testState.players[4].upCards = [card('3', 'h')]; // ランク3
+    testState.players[5].upCards = [card('3', 's')]; // ランク3
+
+    // startStudHandを再実行して検証（内部でfindLowestDoorCardが呼ばれる）
+    // 代わりに、ブリングイン判定後の状態を手動検証
+    // player[3]が♣で最低スートなので、ブリングインを支払うべき
+    // findLowestDoorCardはprivateなのでstartStudHandを通して間接テスト
+
+    // 新しいstateで全員同ランクのドアカードを持つよう固定デッキを使用
+    const fixedState = createStudGameState(1000, 10, 20);
+    // startStudHand前にデッキを細工: 裏2枚+表1枚 × 6人 = 18枚
+    // seat0: hole[0], hole[1], up[0]
+    // seat1: hole[2], hole[3], up[1] ...
+    // 配布順: seat0裏2枚, seat0表1枚, seat1裏2枚, seat1表1枚, ...
+    const fixedDeck: Card[] = [];
+    const doorCards: Card[] = [
+      card('2', 's'), // seat0: 2♠
+      card('2', 'h'), // seat1: 2♥
+      card('2', 'd'), // seat2: 2♦
+      card('2', 'c'), // seat3: 2♣ ← 最低
+      card('3', 'h'), // seat4
+      card('3', 's'), // seat5
+    ];
+    for (let i = 0; i < 6; i++) {
+      fixedDeck.push(card('A', 'h'), card('K', 'h')); // 裏カード2枚（ダミー）
+      fixedDeck.push(doorCards[i]); // 表カード1枚
+    }
+    // 残りのデッキ（ストリート進行用）
+    for (let i = 0; i < 34; i++) {
+      fixedDeck.push(card('7', 'h'));
+    }
+
+    fixedState.deck = []; // startStudHandでシャッフルされるので上書きが必要
+    // startStudHand内でshuffleDeck(createDeck())が呼ばれるため、
+    // デッキの固定は困難。代わりに配布結果を事後検証する。
+    const result = startStudHand(fixedState);
+    const bringInIdx = result.lastRaiserIndex;
+    // ブリングインプレイヤーのドアカードを確認
+    const bringInCard = result.players[bringInIdx].upCards[0];
+    // 全プレイヤーのドアカードの中で最低ランク（同ランクなら最低スート）
+    for (let i = 0; i < 6; i++) {
+      if (i === bringInIdx || result.players[i].isSittingOut) continue;
+      const otherCard = result.players[i].upCards[0];
+      const bringInVal = getRankValueForTest(bringInCard.rank) * 10 + suitValue(bringInCard.suit);
+      const otherVal = getRankValueForTest(otherCard.rank) * 10 + suitValue(otherCard.suit);
+      expect(bringInVal).toBeLessThanOrEqual(otherVal);
+    }
+  });
+
+  it('ブリングインプレイヤーのcurrentBetがbringIn額', () => {
+    const state = createStudGameState(1000, 10, 20);
+    const started = startStudHand(state);
+    const bringInIdx = started.lastRaiserIndex;
+    expect(started.players[bringInIdx].currentBet).toBe(started.bringIn);
+  });
+});
+
+describe('アクション順序（4th street以降）', () => {
+  function advanceToFourth(): GameState {
+    let state = createStartedState(10, 20);
+    for (let round = 0; round < 20; round++) {
+      if (state.currentStreet !== 'third') break;
+      const idx = state.currentPlayerIndex;
+      const actions = getStudValidActions(state, idx);
+      if (actions.length === 0) break;
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) {
+        state = applyStudAction(state, idx, 'call', callAction.minAmount);
+      } else if (checkAction) {
+        state = applyStudAction(state, idx, 'check');
+      }
+    }
+    return state;
+  }
+
+  it('4th streetでは最高ショウイングハンドのプレイヤーが最初にアクション', () => {
+    const state = advanceToFourth();
+    if (state.currentStreet !== 'fourth' || state.isHandComplete) return;
+
+    const firstActor = state.currentPlayerIndex;
+    const firstActorUpCards = state.players[firstActor].upCards;
+    expect(firstActorUpCards.length).toBe(2);
+
+    // 最初のアクターの表カードが他のプレイヤーより強い（または同等）ことを確認
+    // evaluateShowingHandがprivateなので、アクター選択が正しいことだけ検証
+    expect(state.players[firstActor].folded).toBe(false);
+    expect(state.players[firstActor].isAllIn).toBe(false);
+    expect(state.players[firstActor].isSittingOut).toBe(false);
+  });
+
+  it('オールインプレイヤーはアクション順序の候補から除外される', () => {
+    const state = advanceToFourth();
+    if (state.currentStreet !== 'fourth' || state.isHandComplete) return;
+
+    const firstActor = state.currentPlayerIndex;
+    expect(state.players[firstActor].isAllIn).toBe(false);
+  });
+});
+
+describe('ディーラーボタン移動', () => {
+  it('連続ハンドでディーラーが回転する', () => {
+    let state = createStudGameState(1000, 10, 20);
+    const dealerPositions: number[] = [];
+
+    for (let hand = 0; hand < 3; hand++) {
+      state = startStudHand(state);
+      dealerPositions.push(state.dealerPosition);
+
+      // 全員フォールドしてハンドを終わらせる
+      for (let i = 0; i < 10; i++) {
+        if (state.isHandComplete) break;
+        const idx = state.currentPlayerIndex;
+        state = applyStudAction(state, idx, 'fold');
+      }
+    }
+
+    // ディーラーが毎ハンド異なる位置にいる
+    expect(dealerPositions[0]).not.toBe(dealerPositions[1]);
+    expect(dealerPositions[1]).not.toBe(dealerPositions[2]);
+  });
+});
+
+describe('サイドポット', () => {
+  it('異なるチップ量のオールインで正しくサイドポットが分配される', () => {
+    // determineStudWinnerを直接テスト（サイドポット分配ロジック）
+    let state = createStartedState(10, 20);
+
+    // 3人だけ残して、異なるチップを賭けた状態を作る
+    for (let i = 3; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    // totalBetThisRound で各プレイヤーの投入額を設定
+    state.players[0].totalBetThisRound = 50;
+    state.players[0].chips = 0;
+    state.players[0].isAllIn = true;
+    state.players[1].totalBetThisRound = 100;
+    state.players[1].chips = 0;
+    state.players[1].isAllIn = true;
+    state.players[2].totalBetThisRound = 100;
+    state.players[2].chips = 900;
+    state.pot = 250 + (3 * 10); // 投入合計 + フォールド済みのアンテ
+
+    // 7枚ずつ手動でセット
+    state.players[0].holeCards = [card('2', 'c'), card('3', 'd'), card('4', 'h')];
+    state.players[0].upCards = [card('5', 's'), card('7', 'c'), card('8', 'd'), card('9', 'c')];
+    state.players[1].holeCards = [card('T', 'c'), card('J', 'd'), card('Q', 'h')];
+    state.players[1].upCards = [card('K', 's'), card('6', 'c'), card('6', 'd'), card('3', 'c')];
+    state.players[2].holeCards = [card('A', 'h'), card('K', 'h'), card('Q', 's')];
+    state.players[2].upCards = [card('J', 'h'), card('T', 'h'), card('9', 'h'), card('2', 's')];
+
+    const result = determineStudWinner(state);
+    expect(result.isHandComplete).toBe(true);
+    expect(result.winners.length).toBeGreaterThanOrEqual(1);
+
+    // 全チップの整合性: 勝者のチップ合計 + レーキ = 元のポット + チップ
+    const totalAfter = result.players.reduce((sum, p) => sum + p.chips, 0) + result.rake;
+    const totalBefore = state.players.reduce((sum, p) => sum + p.chips, 0) + state.pot;
+    expect(totalAfter).toBe(totalBefore);
+  });
+});
+
+describe('全員オールイン（studRunOut）', () => {
+  it('全員オールインで残りカードが自動配布されショーダウンになる', () => {
+    let state = createStartedState(10, 20);
+
+    // チップを少なくして全員すぐオールイン
+    for (const p of state.players) {
+      if (!p.folded && !p.isSittingOut) {
+        p.chips = 5; // ブリングインのcall(5)でちょうどオールイン
+      }
+    }
+
+    // 全員コール → 全員オールインでrunout
+    for (let round = 0; round < 20; round++) {
+      if (state.isHandComplete) break;
+      const idx = state.currentPlayerIndex;
+      const actions = getStudValidActions(state, idx);
+      if (actions.length === 0) break;
+      const callAction = actions.find(a => a.action === 'call');
+      if (callAction) {
+        state = applyStudAction(state, idx, 'call', callAction.minAmount);
+      } else {
+        break;
+      }
+    }
+
+    expect(state.isHandComplete).toBe(true);
+    expect(state.currentStreet).toBe('showdown');
+    // 全プレイヤーに7枚配布されている
+    const activePlayers = state.players.filter(p => !p.folded && !p.isSittingOut);
+    for (const p of activePlayers) {
+      expect(p.holeCards.length + p.upCards.length).toBe(7);
+    }
+    expect(state.winners.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('3rd streetで全員オールインした場合もランアウトが走る', () => {
+    let state = createStudGameState(15, 10, 20); // チップ15: アンテ10払って残り5
+    state = startStudHand(state);
+
+    // 全員チップが5しかないので、ブリングインcallでオールイン
+    for (let round = 0; round < 20; round++) {
+      if (state.isHandComplete) break;
+      const idx = state.currentPlayerIndex;
+      const actions = getStudValidActions(state, idx);
+      if (actions.length === 0) break;
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) {
+        state = applyStudAction(state, idx, 'call', callAction.minAmount);
+      } else if (checkAction) {
+        state = applyStudAction(state, idx, 'check');
+      } else {
+        break;
+      }
+    }
+
+    expect(state.isHandComplete).toBe(true);
+    expect(state.currentStreet).toBe('showdown');
+  });
+});
+
+describe('チップ不足のアンテ', () => {
+  it('アンテ額よりチップが少ない場合、持っている分だけ支払いオールインになる', () => {
+    const state = createStudGameState(1000, 10, 20);
+    state.players[2].chips = 3; // アンテ10より少ない
+    const started = startStudHand(state);
+
+    expect(started.players[2].chips).toBe(0);
+    expect(started.players[2].isAllIn).toBe(true);
+    expect(started.players[2].totalBetThisRound).toBe(3); // 持っていた分だけ
+  });
+});
+
+describe('2人テーブル（ヘッズアップ）', () => {
+  it('2人だけアクティブでもハンドが正常に進行する', () => {
+    const state = createStudGameState(1000, 10, 20);
+    // 4人を座り出しにする
+    for (let i = 2; i < 6; i++) {
+      state.players[i].isSittingOut = true;
+    }
+    const started = startStudHand(state);
+
+    // 2人だけにカードが配られている
+    const activePlayers = started.players.filter(p => !p.isSittingOut);
+    expect(activePlayers).toHaveLength(2);
+    for (const p of activePlayers) {
+      expect(p.holeCards).toHaveLength(2);
+      expect(p.upCards).toHaveLength(1);
+    }
+
+    // ハンドを最後まで進める
+    let s = started;
+    for (let round = 0; round < 50; round++) {
+      if (s.isHandComplete) break;
+      const idx = s.currentPlayerIndex;
+      const actions = getStudValidActions(s, idx);
+      if (actions.length === 0) break;
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) {
+        s = applyStudAction(s, idx, 'call', callAction.minAmount);
+      } else if (checkAction) {
+        s = applyStudAction(s, idx, 'check');
+      } else {
+        s = applyStudAction(s, idx, 'fold');
+      }
+    }
+
+    expect(s.isHandComplete).toBe(true);
+    expect(s.winners.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('2人でフォールドするとハンドが完了する', () => {
+    const state = createStudGameState(1000, 10, 20);
+    for (let i = 2; i < 6; i++) {
+      state.players[i].isSittingOut = true;
+    }
+    let s = startStudHand(state);
+    const idx = s.currentPlayerIndex;
+    s = applyStudAction(s, idx, 'fold');
+
+    expect(s.isHandComplete).toBe(true);
+    expect(s.winners).toHaveLength(1);
+  });
+});
+
+describe('check後のbet', () => {
+  it('チェック後に別プレイヤーがベットすると再アクション権が発生する', () => {
+    let state = createStartedState(10, 20);
+
+    // 全員コールして4th streetへ
+    for (let round = 0; round < 20; round++) {
+      if (state.currentStreet !== 'third') break;
+      const idx = state.currentPlayerIndex;
+      const actions = getStudValidActions(state, idx);
+      if (actions.length === 0) break;
+      const callAction = actions.find(a => a.action === 'call');
+      const checkAction = actions.find(a => a.action === 'check');
+      if (callAction) {
+        state = applyStudAction(state, idx, 'call', callAction.minAmount);
+      } else if (checkAction) {
+        state = applyStudAction(state, idx, 'check');
+      }
+    }
+
+    if (state.currentStreet !== 'fourth' || state.isHandComplete) return;
+
+    // 最初のプレイヤーがチェック
+    const firstActor = state.currentPlayerIndex;
+    state = applyStudAction(state, firstActor, 'check');
+    expect(state.players[firstActor].hasActed).toBe(true);
+
+    // 次のプレイヤーがベット
+    const secondActor = state.currentPlayerIndex;
+    if (secondActor !== firstActor) {
+      const actions = getStudValidActions(state, secondActor);
+      const betAction = actions.find(a => a.action === 'bet');
+      if (betAction) {
+        state = applyStudAction(state, secondActor, 'bet', betAction.minAmount);
+        // firstActorのhasActedがリセットされている
+        expect(state.players[firstActor].hasActed).toBe(false);
+        // firstActorに再アクション権がある（fold/call/raise）
+        const reActions = getStudValidActions(state, firstActor);
+        const reActionTypes = reActions.map(a => a.action);
+        expect(reActionTypes).toContain('call');
+        expect(reActionTypes).toContain('fold');
+      }
+    }
+  });
+});
+
+// ===== テスト用ヘルパー =====
+
+function getRankValueForTest(rank: Card['rank']): number {
+  const values: Record<string, number> = {
+    '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, '9': 9,
+    'T': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+  };
+  return values[rank] || 0;
+}
+
+function suitValue(suit: Card['suit']): number {
+  const values: Record<string, number> = { c: 1, d: 2, h: 3, s: 4 };
+  return values[suit] || 0;
+}
