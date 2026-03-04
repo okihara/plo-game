@@ -104,7 +104,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
   }, [isMyTurn, canFastFold, onFastFold, handleAction]);
 
   return (
-    <div className="px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
+    <div className="h-[25cqw] px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
       {/* Preset Buttons & Bet Slider */}
       <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
         <div className="w-1/2 flex gap-[0.9cqw]">
