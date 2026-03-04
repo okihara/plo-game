@@ -12,7 +12,7 @@ interface StudMyCardsProps {
 export function StudMyCards({ cards, isDealing, dealOrder, folded = false, handName }: StudMyCardsProps) {
   return (
     <div
-      className={`@container relative flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'opacity-40' : ''}`}
+      className={`@container relative flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
     >
       {cards.length > 0 && (
         <div className="flex gap-[2cqw] justify-center">
