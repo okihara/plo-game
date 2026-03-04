@@ -69,7 +69,9 @@ export function PlayerCards({
 
   // 自分の位置（positionIndex=0）かつ観戦者でない場合はMyCardsで表示するので非表示
   if (positionIndex === 0 && !isSpectator) return null;
-  const showCardsml = variant === 'stud' ? '-ml-[6cqw]' : '-ml-[2cqw]';
+  
+  // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
+  const cardOverlapMargin = variant === 'stud' ? '-ml-[6cqw]' : '-ml-[2cqw]';
 
   return (
     <>
@@ -77,7 +79,7 @@ export function PlayerCards({
     <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
         {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
-                <div key={i} className={i > 0 ? showCardsml : ''}>
+                <div key={i} className={i > 0 ? cardOverlapMargin : ''}>
                   {isRevealing ? (
                     <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
                       <div
