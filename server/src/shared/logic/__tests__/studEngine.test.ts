@@ -87,11 +87,11 @@ describe('startStudHand', () => {
 
     const activePlayers = newState.players.filter(p => !p.isSittingOut);
     for (const p of activePlayers) {
-      // アンテ10 + ブリングインプレイヤーはさらにbringIn分が引かれる
+      // アンテ10が引かれる（ブリングインはまだ自動投入されない）
       expect(p.totalBetThisRound).toBeGreaterThanOrEqual(10);
     }
-    // ポットにアンテ合計 + ブリングイン
-    expect(newState.pot).toBe(10 * 6 + newState.bringIn);
+    // ポットにアンテ合計のみ（ブリングインは未投入）
+    expect(newState.pot).toBe(10 * 6);
   });
 
   it('各プレイヤーに裏カード2枚と表カード1枚を配る', () => {
@@ -119,13 +119,13 @@ describe('startStudHand', () => {
     expect(newState.currentStreet).toBe('third');
   });
 
-  it('ブリングインプレイヤーの次のプレイヤーがアクション待ち', () => {
+  it('ブリングインプレイヤーがアクション待ち', () => {
     const state = createStudGameState(1000, 10, 20);
     const newState = startStudHand(state);
 
-    // currentBet がブリングイン額に設定されている
-    expect(newState.currentBet).toBe(newState.bringIn);
-    // currentPlayerIndex は有効なプレイヤーを指している
+    // ブリングインはまだ自動投入されない: currentBet = 0
+    expect(newState.currentBet).toBe(0);
+    // currentPlayerIndex はブリングインプレイヤー自身を指している
     const currentPlayer = newState.players[newState.currentPlayerIndex];
     expect(currentPlayer.folded).toBe(false);
     expect(currentPlayer.isAllIn).toBe(false);
@@ -170,23 +170,27 @@ describe('getStudValidActions', () => {
     expect(actions).toHaveLength(0);
   });
 
-  it('ブリングイン後: fold/call/bet(コンプリート)が選べる', () => {
+  it('ブリングインフェーズ: call(ブリングイン)/bet(コンプリート)が選べる（フォールド不可）', () => {
     const state = createStartedState(10, 20);
     const idx = state.currentPlayerIndex;
     const actions = getStudValidActions(state, idx);
     const actionTypes = actions.map(a => a.action);
 
-    expect(actionTypes).toContain('fold');
+    expect(actionTypes).not.toContain('fold');
     expect(actionTypes).toContain('call');
-    // ブリングイン後のコンプリート（bet）
+    // コンプリート（bet）
     expect(actionTypes).toContain('bet');
   });
 
   it('ベットがない場合: fold/check/betが選べる', () => {
     const state = createStartedState(10, 20);
-    // currentBetを0にしてcheckできる状態を作る
+    // ブリングインフェーズを抜けるため、4th streetに設定
+    state.currentStreet = 'fourth';
     state.currentBet = 0;
-    for (const p of state.players) p.currentBet = 0;
+    for (const p of state.players) {
+      p.currentBet = 0;
+      p.hasActed = false;
+    }
     state.betCount = 0;
     const idx = state.currentPlayerIndex;
     const actions = getStudValidActions(state, idx);
@@ -298,7 +302,12 @@ describe('applyStudAction', () => {
 
   describe('call', () => {
     it('正しい額をコールできる', () => {
-      const state = createStartedState(10, 20);
+      let state = createStartedState(10, 20);
+      // まずブリングインを投入（callでbringIn額を支払う）
+      const bringInIdx = state.currentPlayerIndex;
+      state = applyStudAction(state, bringInIdx, 'call', state.bringIn);
+
+      // 次のプレイヤーがブリングイン額をコール
       const idx = state.currentPlayerIndex;
       const toCall = state.currentBet - state.players[idx].currentBet;
       const chipsBefore = state.players[idx].chips;
@@ -730,8 +739,8 @@ describe('ブリングイン決定（最低ドアカード）', () => {
     // startStudHand内でシャッフル→配布されるので、配布後に検証
     const started = startStudHand(state);
 
-    // ブリングインプレイヤー = lastRaiserIndex
-    const bringInIdx = started.lastRaiserIndex;
+    // ブリングインプレイヤー = currentPlayerIndex（まだ行動していない）
+    const bringInIdx = started.currentPlayerIndex;
     expect(bringInIdx).toBeGreaterThanOrEqual(0);
 
     // ブリングインプレイヤーのドアカードが全プレイヤーの中で最低であること
@@ -794,7 +803,7 @@ describe('ブリングイン決定（最低ドアカード）', () => {
     // startStudHand内でshuffleDeck(createDeck())が呼ばれるため、
     // デッキの固定は困難。代わりに配布結果を事後検証する。
     const result = startStudHand(fixedState);
-    const bringInIdx = result.lastRaiserIndex;
+    const bringInIdx = result.currentPlayerIndex;
     // ブリングインプレイヤーのドアカードを確認
     const bringInCard = getUpCards(result.players[bringInIdx].holeCards)[0];
     // 全プレイヤーのドアカードの中で最低ランク（同ランクなら最低スート）
@@ -810,8 +819,12 @@ describe('ブリングイン決定（最低ドアカード）', () => {
   it('ブリングインプレイヤーのcurrentBetがbringIn額', () => {
     const state = createStudGameState(1000, 10, 20);
     const started = startStudHand(state);
-    const bringInIdx = started.lastRaiserIndex;
-    expect(started.players[bringInIdx].currentBet).toBe(started.bringIn);
+    const bringInIdx = started.currentPlayerIndex;
+    // ブリングインはまだ自動投入されない: currentBet = 0
+    expect(started.players[bringInIdx].currentBet).toBe(0);
+    // call（ブリングイン投入）後にcurrentBetがbringIn額になる
+    const afterBringIn = applyStudAction(started, bringInIdx, 'call', started.bringIn);
+    expect(afterBringIn.players[bringInIdx].currentBet).toBe(started.bringIn);
   });
 });
 
@@ -1109,7 +1122,8 @@ describe('ブリングインプレイヤーがアンテでオールイン', () =
     state.players[0].chips = 10;
     const started = startStudHand(state);
 
-    const bringInIdx = started.lastRaiserIndex;
+    // currentPlayerIndex がブリングインプレイヤー
+    const bringInIdx = started.currentPlayerIndex;
     const bringInPlayer = started.players[bringInIdx];
 
     if (bringInPlayer.isAllIn) {
@@ -1118,13 +1132,18 @@ describe('ブリングインプレイヤーがアンテでオールイン', () =
       expect(bringInPlayer.currentBet).toBe(0);
       expect(started.currentBet).toBe(0);
 
-      // 次のプレイヤーはcheck/betが可能（callではなく）
-      const nextIdx = started.currentPlayerIndex;
-      const actions = getStudValidActions(started, nextIdx);
+      // ブリングインプレイヤーがオールインの場合、アクションなし
+      const bringInActions = getStudValidActions(started, bringInIdx);
+      expect(bringInActions).toHaveLength(0);
+    } else {
+      // seat0がブリングインプレイヤーではなかった場合
+      // ブリングインフェーズ: currentBet = 0
+      expect(started.currentBet).toBe(0);
+      // ブリングインプレイヤーは call/bet が選べる（フォールド不可）
+      const actions = getStudValidActions(started, bringInIdx);
       const actionTypes = actions.map(a => a.action);
-      expect(actionTypes).toContain('check');
-      expect(actionTypes).toContain('bet');
-      expect(actionTypes).not.toContain('call');
+      expect(actionTypes).not.toContain('fold');
+      expect(actionTypes).toContain('call');
     }
   });
 
@@ -1133,10 +1152,23 @@ describe('ブリングインプレイヤーがアンテでオールイン', () =
     const state = createStudGameState(10, 10, 20);
     const started = startStudHand(state);
 
-    // 全員オールインのはず → ハンドが自動完了
-    expect(started.isHandComplete).toBe(true);
-    expect(started.currentStreet).toBe('showdown');
-    expect(started.winners.length).toBeGreaterThanOrEqual(1);
+    // 全員オールインのはず
+    const allPlayers = started.players.filter(p => !p.isSittingOut);
+    for (const p of allPlayers) {
+      expect(p.isAllIn).toBe(true);
+      expect(p.chips).toBe(0);
+    }
+
+    // ブリングインプレイヤーもオールイン → アクション不可
+    const bringInIdx = started.currentPlayerIndex;
+    const actions = getStudValidActions(started, bringInIdx);
+    expect(actions).toHaveLength(0);
+
+    // determineStudWinner を呼んでハンドを完了させる
+    const result = determineStudWinner(started);
+    expect(result.isHandComplete).toBe(true);
+    expect(result.currentStreet).toBe('showdown');
+    expect(result.winners.length).toBeGreaterThanOrEqual(1);
   });
 });
 
@@ -1198,15 +1230,18 @@ describe('ブリングインプレイヤーの再アクション権', () => {
 
   it('コンプリート後、ブリングインプレイヤーに再アクション権がある', () => {
     let state = createStartedState(10, 20);
-    const bringInIdx = state.lastRaiserIndex;
+    const bringInIdx = state.currentPlayerIndex;
 
-    // 最初のプレイヤーがコンプリート（bet）
-    const firstIdx = state.currentPlayerIndex;
-    const actions = getStudValidActions(state, firstIdx);
+    // まずブリングインプレイヤーがcall（ブリングイン投入）
+    state = applyStudAction(state, bringInIdx, 'call', state.bringIn);
+
+    // 次のプレイヤーがコンプリート（bet）
+    const nextIdx = state.currentPlayerIndex;
+    const actions = getStudValidActions(state, nextIdx);
     const betAction = actions.find(a => a.action === 'bet');
     if (!betAction) return;
 
-    state = applyStudAction(state, firstIdx, 'bet', betAction.minAmount);
+    state = applyStudAction(state, nextIdx, 'bet', betAction.minAmount);
 
     // コンプリートによりブリングインプレイヤーのhasActedがリセット
     if (!state.players[bringInIdx].isAllIn) {

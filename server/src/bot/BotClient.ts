@@ -248,9 +248,12 @@ export class BotClient {
     timeoutMs: number;
   }): void {
     if (!this.gameState || this.holeCards.length === 0) {
-      // Fallback: just check or fold
+      // Fallback: ブリングインフェーズではcall、それ以外はcheck or fold
+      const callAction = data.validActions.find(a => a.action === 'call');
       const checkAction = data.validActions.find(a => a.action === 'check');
-      if (checkAction) {
+      if (callAction) {
+        this.sendAction('call', callAction.minAmount);
+      } else if (checkAction) {
         this.sendAction('check', 0);
       } else {
         this.sendAction('fold', 0);
@@ -263,6 +266,21 @@ export class BotClient {
     if (!aiGameState) {
       const checkAction = data.validActions.find(a => a.action === 'check');
       if (checkAction) {
+        this.sendAction('check', 0);
+      } else {
+        this.sendAction('fold', 0);
+      }
+      return;
+    }
+
+    // holeCardsの整合性チェック（undefinedカードが含まれていないか）
+    const myCards = aiGameState.players[this.seatNumber]?.holeCards ?? [];
+    if (myCards.length === 0 || myCards.some(c => !c || !c.rank)) {
+      const callAction = data.validActions.find(a => a.action === 'call');
+      const checkAction = data.validActions.find(a => a.action === 'check');
+      if (callAction) {
+        this.sendAction('call', callAction.minAmount);
+      } else if (checkAction) {
         this.sendAction('check', 0);
       } else {
         this.sendAction('fold', 0);

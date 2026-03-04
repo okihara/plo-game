@@ -132,30 +132,13 @@ export function startStudHand(state: GameState): GameState {
     ];
   }
 
-  // === ブリングイン: 最低ドアカードのプレイヤー ===
+  // === ブリングイン: 最低ドアカードのプレイヤーが最初に行動 ===
+  // ブリングインプレイヤーが「ブリングイン（最低額）」か「コンプリート（スモールベット）」を選択
   const bringInPlayer = findLowestDoorCard(newState);
   if (bringInPlayer === -1) return newState;
 
-  const bringInAmount = Math.min(newState.bringIn, newState.players[bringInPlayer].chips);
-  newState.players[bringInPlayer].chips -= bringInAmount;
-  newState.players[bringInPlayer].currentBet = bringInAmount;
-  newState.players[bringInPlayer].totalBetThisRound += bringInAmount;
-  newState.pot += bringInAmount;
-  newState.currentBet = bringInAmount;
-  if (newState.players[bringInPlayer].chips === 0) {
-    newState.players[bringInPlayer].isAllIn = true;
-  }
-  // ブリングインプレイヤーはアクション済みだが、コンプリート/レイズへの再アクション権あり
-  newState.players[bringInPlayer].hasActed = true;
-
-  // ブリングインの次のプレイヤーからアクション開始
-  newState.currentPlayerIndex = getNextActivePlayer(newState, bringInPlayer);
-  newState.lastRaiserIndex = bringInPlayer;
-
-  if (newState.currentPlayerIndex === -1) {
-    // 全員オールイン → ランアウト
-    return studRunOut(newState);
-  }
+  newState.currentPlayerIndex = bringInPlayer;
+  newState.lastRaiserIndex = -1;
 
   return newState;
 }
@@ -170,8 +153,25 @@ export function getStudValidActions(state: GameState, playerIndex: number): { ac
 
   if (player.folded || player.isAllIn) return actions;
 
-  const toCall = state.currentBet - player.currentBet;
   const betSize = getCurrentBetSize(state);
+
+  // === ブリングインフェーズ: 3rd street、まだ誰もベットしていない ===
+  const isBringInPhase = state.currentStreet === 'third' && state.currentBet === 0 && state.betCount === 0;
+  if (isBringInPhase) {
+    // ブリングインプレイヤーは「ブリングイン」か「コンプリート」を選択（フォールド不可）
+    const bringInAmount = Math.min(state.bringIn, player.chips);
+    // call = ブリングイン（最低額を投入）
+    actions.push({ action: 'call', minAmount: bringInAmount, maxAmount: bringInAmount });
+    // bet = コンプリート（スモールベット額を投入）
+    if (player.chips >= betSize) {
+      actions.push({ action: 'bet', minAmount: betSize, maxAmount: betSize });
+    } else if (player.chips > bringInAmount) {
+      actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+    }
+    return actions;
+  }
+
+  const toCall = state.currentBet - player.currentBet;
 
   // フォールド
   actions.push({ action: 'fold', minAmount: 0, maxAmount: 0 });
@@ -188,7 +188,7 @@ export function getStudValidActions(state: GameState, playerIndex: number): { ac
   // ベット/レイズ（Fixed Limit: 固定額、最大4ベット/ストリート）
   const canRaise = state.betCount < state.maxBetsPerRound;
 
-  // 3rd streetのブリングイン後のコンプリート
+  // ブリングイン後のコンプリート
   const isBringInOnly = state.currentStreet === 'third' && state.betCount === 0 && state.currentBet === state.bringIn;
 
   if (canRaise && player.chips > toCall) {
@@ -198,7 +198,6 @@ export function getStudValidActions(state: GameState, playerIndex: number): { ac
       if (player.chips >= betAmount) {
         actions.push({ action: 'bet', minAmount: betAmount, maxAmount: betAmount });
       } else if (player.chips > toCall) {
-        // チップ不足 → オールイン
         actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
       }
     } else {
@@ -208,13 +207,9 @@ export function getStudValidActions(state: GameState, playerIndex: number): { ac
       if (player.chips >= raiseAmount) {
         actions.push({ action: 'raise', minAmount: raiseAmount, maxAmount: raiseAmount });
       } else if (player.chips > toCall) {
-        // チップ不足 → オールイン
         actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
       }
     }
-  } else if (player.chips > 0 && player.chips <= toCall) {
-    // コールすらできないがチップがある → オールイン
-    // (既に call で対応済みだが、chips < toCall の場合を補完)
   }
 
   return actions;
@@ -252,11 +247,19 @@ export function applyStudAction(
       break;
 
     case 'call': {
-      const toCall = Math.min(newState.currentBet - player.currentBet, player.chips);
+      // ブリングインフェーズ: currentBet=0 のとき call = ブリングイン投入
+      const isBringInPhase = newState.currentStreet === 'third' && newState.currentBet === 0 && newState.betCount === 0;
+      const toCall = isBringInPhase
+        ? Math.min(newState.bringIn, player.chips)
+        : Math.min(newState.currentBet - player.currentBet, player.chips);
       player.chips -= toCall;
       player.currentBet += toCall;
       player.totalBetThisRound += toCall;
       newState.pot += toCall;
+      if (isBringInPhase) {
+        newState.currentBet = toCall;
+        newState.lastRaiserIndex = playerIndex;
+      }
       if (player.chips === 0) player.isAllIn = true;
       break;
     }

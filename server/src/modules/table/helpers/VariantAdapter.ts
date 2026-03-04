@@ -19,7 +19,7 @@ export class VariantAdapter {
    */
   createGameState(buyInChips: number, smallBlind: number, bigBlind: number): GameState {
     if (this.variant === 'stud') {
-      const ante = Math.ceil(smallBlind / 2);
+      const ante = Math.ceil(smallBlind / 4);
       return createStudGameState(buyInChips, ante, smallBlind);
     }
     const state = createInitialGameState(buyInChips);
