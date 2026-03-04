@@ -12,6 +12,15 @@ import './index.css';
 
 
 
+// Debug outline toggle: Ctrl+Shift+D
+if (import.meta.env.DEV) {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'd') {
+      document.documentElement.classList.toggle('debug-outlines');
+    }
+  });
+}
+
 function App() {
   const [blinds, setBlinds] = useState<string | null>(null);
   const [isFastFold, setIsFastFold] = useState(false);
