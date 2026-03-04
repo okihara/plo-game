@@ -34,13 +34,6 @@ export interface PendingAction {
   timeoutMs: number;
 }
 
-// Fold処理のコンテキスト
-export interface FoldContext {
-  seatIndex: number;
-  playerId: string;
-  wasCurrentPlayer: boolean;
-}
-
 // ダッシュボード用：ゲーム状態デバッグ情報
 export interface DebugState {
   messageLog: MessageLog[];

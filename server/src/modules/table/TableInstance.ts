@@ -12,7 +12,6 @@ import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
-import { FoldProcessor } from './helpers/FoldProcessor.js';
 import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { SpectatorManager } from './helpers/SpectatorManager.js';
@@ -56,7 +55,6 @@ export class TableInstance {
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
-  private readonly foldProcessor: FoldProcessor;
   private readonly actionController: ActionController;
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
@@ -79,7 +77,6 @@ export class TableInstance {
     const roomName = `table:${this.id}`;
     this.playerManager = new PlayerManager();
     this.broadcast = new BroadcastService(io, roomName);
-    this.foldProcessor = new FoldProcessor(this.broadcast);
     this.actionController = new ActionController(this.broadcast);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
@@ -593,7 +590,8 @@ export class TableInstance {
       if (!this.gameState.isHandComplete &&
           this.gameState.currentPlayerIndex === seatIndex) {
         // Game is stuck waiting for this player, advance
-        this.gameState = this.foldProcessor.processSilentFold(this.gameState, seatIndex);
+        const p = this.gameState.players[seatIndex];
+        if (p && !p.folded) p.folded = true;
         this.actionController.clearTimers();
         this.advanceToNextPlayer();
       }
