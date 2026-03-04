@@ -33,6 +33,7 @@ interface BotManagerConfig {
   serverUrl: string;
   botCount: number;
   blinds: string;
+  variant?: string; // ゲームバリアント（'plo' | 'stud' 等）
   isFastFold?: boolean;
   midHandDisconnectChance?: number;
   maxHandsPerSession?: number; // セッション上限ハンド数
@@ -123,6 +124,7 @@ export class BotManager {
       name,
       avatarUrl: BOT_AVATARS[avatarIndex],
       defaultBlinds: this.config.blinds,
+      variant: this.config.variant,
       isFastFold: this.config.isFastFold,
       midHandDisconnectChance: this.config.midHandDisconnectChance,
       maxHandsPerSession: maxHands,
@@ -141,7 +143,7 @@ export class BotManager {
         if (this.config.inviteCode) {
           await bot.joinPrivateTable(this.config.inviteCode);
         } else {
-          await bot.joinMatchmaking(this.config.blinds);
+          await bot.joinMatchmaking(this.config.blinds, this.config.variant);
         }
 
         return bot;

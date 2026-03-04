@@ -9,14 +9,14 @@ import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 
 interface SimpleLobbyProps {
-  onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
+  onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
   onCreatePrivate: (blinds: string) => void;
   onJoinPrivate: (inviteCode: string) => void;
 }
 
 interface TableOption {
   id: string;
-  gameType: 'PLO' | 'NLH';
+  gameType: 'PLO' | 'NLH' | 'STUD';
   gameLabel: string;
   blinds: string;
   blindsLabel: string;
@@ -24,11 +24,13 @@ interface TableOption {
   rake: string;
   enabled: boolean;
   isFastFold: boolean;
+  variant?: string;
 }
 
 const TABLE_OPTIONS: TableOption[] = [
   { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false },
   { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: true },
+  { id: 'stud-1-3', gameType: 'STUD', gameLabel: '7-Card Stud', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'stud' },
 ];
 
 export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: SimpleLobbyProps) {
@@ -265,9 +267,9 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             })}
           </div>
 
-          {/* Tables - Normal + Private */}
+          {/* Tables - Normal + Stud + Private */}
           <div className="mt-[2.5cqw] flex gap-[2cqw]">
-            {TABLE_OPTIONS.filter(t => !t.isFastFold).map((table) => {
+            {TABLE_OPTIONS.filter(t => !t.isFastFold && !t.variant).map((table) => {
               const count = playerCounts[table.blinds] ?? 0;
               return (
                 <button
@@ -284,6 +286,30 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                     <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
                     <div className="flex flex-col items-start">
                       <span className="text-[2.8cqw] font-bold text-white/90">PLO</span>
+                      <span className="text-[2cqw] text-white/70">{table.buyIn} / {table.rake}</span>
+                      <span className="text-[2cqw] text-white/70">{count}人</span>
+                    </div>
+                  </div>
+                </button>
+              );
+            })}
+            {TABLE_OPTIONS.filter(t => t.variant === 'stud').map((table) => {
+              const count = playerCounts[`${table.blinds}-stud`] ?? 0;
+              return (
+                <button
+                  key={table.id}
+                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false, table.variant)}
+                  disabled={!table.enabled || !!maintenance?.isActive || !user}
+                  className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
+                    table.enabled && !maintenance?.isActive && user
+                      ? 'bg-gradient-to-b from-indigo-500 to-indigo-600 border-indigo-700/40 shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(79,70,229,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
+                      : 'bg-gradient-to-b from-indigo-500 to-indigo-600 border-indigo-700/40 opacity-50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center justify-center gap-[2cqw]">
+                    <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
+                    <div className="flex flex-col items-start">
+                      <span className="text-[2.8cqw] font-bold text-white/90">Stud</span>
                       <span className="text-[2cqw] text-white/70">{table.buyIn} / {table.rake}</span>
                       <span className="text-[2cqw] text-white/70">{count}人</span>
                     </div>

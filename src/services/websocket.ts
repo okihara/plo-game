@@ -257,8 +257,8 @@ class WebSocketService {
   }
 
   // Matchmaking pool
-  joinMatchmaking(blinds: string, isFastFold?: boolean): void {
-    this.socket?.emit('matchmaking:join', { blinds, isFastFold });
+  joinMatchmaking(blinds: string, isFastFold?: boolean, variant?: string): void {
+    this.socket?.emit('matchmaking:join', { blinds, isFastFold, variant });
   }
 
   leaveMatchmaking(): void {

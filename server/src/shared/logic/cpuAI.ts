@@ -4,12 +4,9 @@ import { getRankValue } from './deck.js';
 import { evaluatePLOHand } from './handEvaluator.js';
 
 // 新AIモジュール
-import { AIContext, StreetHistory, BotPersonality } from './ai/types.js';
-import { getPersonality, DEFAULT_PERSONALITY } from './ai/personalities.js';
-import { analyzeBoard } from './ai/boardAnalysis.js';
-import { evaluateHandExtended } from './ai/handStrength.js';
-import { getPostflopDecision } from './ai/postflopStrategy.js';
-import { getPreflopDecision } from './ai/preflopStrategy.js';
+import { AIContext, StreetHistory } from './ai/types.js';
+import { getPersonality } from './ai/personalities.js';
+import { getVariantStrategy } from './ai/strategyRegistry.js';
 
 // === エントリポイント ===
 // 3番目のパラメータはオプショナルで後方互換を維持
@@ -19,35 +16,13 @@ export function getCPUAction(
   context?: AIContext
 ): { action: Action; amount: number } {
   const player = state.players[playerIndex];
-  const validActions = getValidActions(state, playerIndex);
-
-  if (validActions.length === 0) {
-    return { action: 'fold', amount: 0 };
-  }
-
   const positionBonus = getPositionBonus(player.position);
 
-  // AIContext がある場合: 新しいAIモジュールを使用
+  // AIContext がある場合: バリアント別戦略を使用
   if (context) {
     const personality = getPersonality(context.botName);
-    const handActions = context.handActions ?? state.handHistory;
-    const streetHistory = deriveStreetHistory(state, handActions, playerIndex);
-
-    if (state.currentStreet === 'preflop') {
-      return getPreflopDecision(state, playerIndex, personality, positionBonus, context.opponentModel);
-    }
-
-    const activePlayers = state.players.filter(p => !p.isSittingOut && !p.folded).length;
-    const numOpponents = activePlayers - 1;
-    const boardTexture = analyzeBoard(state.communityCards);
-    const handEval = evaluateHandExtended(
-      player.holeCards, state.communityCards, state.currentStreet, numOpponents, boardTexture
-    );
-
-    return getPostflopDecision(
-      state, playerIndex, handEval, boardTexture, streetHistory,
-      personality, positionBonus, context.opponentModel
-    );
+    const strategy = getVariantStrategy(state.variant);
+    return strategy.getAction(state, playerIndex, personality, positionBonus, context);
   }
 
   // context がない場合: 既存のレガシーロジック（後方互換）
@@ -55,7 +30,7 @@ export function getCPUAction(
 }
 
 // === StreetHistory を handHistory から導出 ===
-function deriveStreetHistory(
+export function deriveStreetHistory(
   state: GameState,
   handActions: GameAction[],
   playerIndex: number
@@ -636,7 +611,7 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   return { score, hasPair: pairRanks.length > 0, pairRank, hasAceSuited, isDoubleSuited, isSingleSuited, isRundown, hasWrap, hasDangler };
 }
 
-function getPositionBonus(position: string): number {
+export function getPositionBonus(position: string): number {
   switch (position) {
     case 'BTN': return 0.1;
     case 'CO': return 0.08;

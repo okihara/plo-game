@@ -170,7 +170,7 @@ function convertClientStateToGameState(
 // メインフック
 // ============================================
 
-export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false, privateMode?: PrivateMode): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false, privateMode?: PrivateMode, variant?: string): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
@@ -276,9 +276,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     } else if (privateMode?.type === 'join') {
       wsService.joinPrivateTable(privateMode.inviteCode);
     } else {
-      wsService.joinMatchmaking(blinds, isFastFold);
+      wsService.joinMatchmaking(blinds, isFastFold, variant);
     }
-  }, [blinds, isFastFold, privateMode]);
+  }, [blinds, isFastFold, privateMode, variant]);
 
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();

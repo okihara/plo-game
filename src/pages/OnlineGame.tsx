@@ -26,10 +26,11 @@ interface OnlineGameProps {
   blinds: string;
   isFastFold?: boolean;
   privateMode?: PrivateMode;
+  variant?: string;
   onBack: () => void;
 }
 
-export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }: OnlineGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -55,7 +56,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
     joinMatchmaking,
     handleAction,
     handleFastFold,
-  } = useOnlineGameState(blinds, isFastFold, privateMode);
+  } = useOnlineGameState(blinds, isFastFold, privateMode, variant);
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
   const { user } = useAuth();

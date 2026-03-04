@@ -1,4 +1,4 @@
-import { Card, Street, Action, GameAction } from '../types.js';
+import { Card, Street, Action, GameAction, GameState, GameVariant } from '../types.js';
 
 // ボードテクスチャ（基本）
 export interface BoardTexture {
@@ -133,3 +133,15 @@ export interface OpponentModel {
 
 // ブラフの種類
 export type BluffType = 'pure_bluff' | 'semi_bluff' | 'check_raise_bluff' | 'probe_bet' | 'barrel';
+
+// バリアント別AI戦略インターフェース
+// 新しいゲーム種類を追加する際はこのインターフェースを実装する
+export interface AIVariantStrategy {
+  getAction(
+    state: GameState,
+    playerIndex: number,
+    personality: BotPersonality,
+    positionBonus: number,
+    context: AIContext,
+  ): { action: Action; amount: number };
+}

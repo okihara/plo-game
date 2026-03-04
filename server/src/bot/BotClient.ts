@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
-import { GameState, Card, Action, Player, Position, GameAction } from '../shared/logic/types.js';
+import { GameState, Card, Action, Player, Position, GameAction, GameVariant } from '../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 import { AIContext } from '../shared/logic/ai/types.js';
 import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
@@ -28,6 +28,7 @@ interface BotConfig {
   disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
   midHandDisconnectChance?: number; // ハンド中（他プレイヤーのターン時）に強制切断する確率 (0-1)
   defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
+  variant?: string; // ゲームバリアント（'plo' | 'stud' 等）
   isFastFold?: boolean; // ファストフォールドテーブルに参加するか
   maxHandsPerSession?: number; // セッション上限ハンド数（到達で自動離席）
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
@@ -332,7 +333,7 @@ export class BotClient {
           position: POSITIONS[(i - dealerPosition + 6) % 6],
           chips: onlinePlayer.chips,
           holeCards: i === this.seatNumber ? this.holeCards : [],
-          upCards: [],
+          upCards: onlinePlayer.upCards ?? [],
           currentBet: onlinePlayer.currentBet,
           totalBetThisRound: onlinePlayer.currentBet,
           folded: onlinePlayer.folded,
@@ -378,8 +379,8 @@ export class BotClient {
       isHandComplete: false,
       winners: [],
       rake: 0,
-      variant: 'plo',
-      ante: 0,
+      variant: (this.gameState.variant as GameVariant) ?? 'plo',
+      ante: this.gameState.ante ?? 0,
       bringIn: 0,
       betCount: 0,
       maxBetsPerRound: 4,
@@ -547,15 +548,16 @@ export class BotClient {
     }
   }
 
-  async joinMatchmaking(blinds: string): Promise<void> {
+  async joinMatchmaking(blinds: string, variant?: string): Promise<void> {
     if (!this.socket || !this.isConnected) {
       throw new Error('Not connected to server');
     }
 
     this.currentBlinds = blinds;
     const isFastFold = this.config.isFastFold;
-    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''})`);
-    this.socket.emit('matchmaking:join', { blinds, isFastFold });
+    const v = variant ?? this.config.variant;
+    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''}${v ? ', ' + v : ''})`);
+    this.socket.emit('matchmaking:join', { blinds, isFastFold, variant: v });
   }
 
   async joinPrivateTable(inviteCode: string): Promise<void> {
@@ -573,8 +575,9 @@ export class BotClient {
     setTimeout(() => {
       if (this.isConnected && this.socket && !this.tableId) {
         const isFastFold = this.config.isFastFold;
-        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''})`);
-        this.socket.emit('matchmaking:join', { blinds, isFastFold });
+        const variant = this.config.variant;
+        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''}${variant ? ', ' + variant : ''})`);
+        this.socket.emit('matchmaking:join', { blinds, isFastFold, variant });
       }
     }, 500);
   }
