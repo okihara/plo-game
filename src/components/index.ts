@@ -4,6 +4,5 @@ export { CommunityCards } from './CommunityCards';
 export { ActionPanel } from './ActionPanel';
 export { StudActionPanel } from './StudActionPanel';
 export { MyCards } from './MyCards';
-export { StudMyCards } from './StudMyCards';
 export { PokerTable } from './PokerTable';
 export { HandAnalysisOverlay } from './HandAnalysisOverlay';

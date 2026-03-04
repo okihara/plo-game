@@ -8,7 +8,6 @@ import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lu
 import {
   PokerTable,
   MyCards,
-  StudMyCards,
   ActionPanel,
   StudActionPanel,
   HandAnalysisOverlay,
@@ -328,24 +327,15 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             showdownHandNames={showdownHandNames}
           />
 
-          {gameState.variant === 'stud' ? (
-            <StudMyCards
-              cards={myHoleCards}
-              isDealing={isDealingCards}
-              dealOrder={humanDealOrder}
-              folded={myPlayer?.folded}
-              handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
-            />
-          ) : (
-            <MyCards
-              cards={myHoleCards}
-              communityCards={gameState.communityCards}
-              isDealing={isDealingCards}
-              dealOrder={humanDealOrder}
-              folded={myPlayer?.folded}
-              handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
-            />
-          )}
+          <MyCards
+            cards={myHoleCards}
+            communityCards={gameState.communityCards}
+            isDealing={isDealingCards}
+            dealOrder={humanDealOrder}
+            folded={myPlayer?.folded}
+            handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
+            variant={gameState.variant}
+          />
 
           {gameState.variant === 'stud' ? (
             <StudActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
