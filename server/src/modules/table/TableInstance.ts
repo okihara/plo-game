@@ -13,7 +13,7 @@ import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { FoldProcessor } from './helpers/FoldProcessor.js';
-import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { SpectatorManager } from './helpers/SpectatorManager.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
@@ -58,12 +58,12 @@ export class TableInstance {
   private readonly broadcast: BroadcastService;
   private readonly foldProcessor: FoldProcessor;
   private readonly actionController: ActionController;
-  private readonly historyRecorder: HandHistoryRecorder;
+  private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private readonly spectatorManager: SpectatorManager;
   private readonly variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
@@ -81,7 +81,7 @@ export class TableInstance {
     this.broadcast = new BroadcastService(io, roomName);
     this.foldProcessor = new FoldProcessor(this.broadcast);
     this.actionController = new ActionController(this.broadcast);
-    this.historyRecorder = new HandHistoryRecorder();
+    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
     this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
     this.variantAdapter = new VariantAdapter(this.variant);

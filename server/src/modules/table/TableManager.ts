@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { GameVariant } from '../../shared/logic/types.js';
 import { TableInstance } from './TableInstance.js';
+import { NullHandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 
 export class TableManager {
   private tables: Map<string, TableInstance> = new Map();
@@ -14,7 +15,8 @@ export class TableManager {
 
   // Create a new table
   public createTable(blinds: string = '1/3', isFastFold: boolean = false, variant: GameVariant = 'plo'): TableInstance {
-    const table = new TableInstance(this.io, blinds, isFastFold, { variant });
+    const historyRecorder = variant === 'stud' ? new NullHandHistoryRecorder() : undefined;
+    const table = new TableInstance(this.io, blinds, isFastFold, { variant, historyRecorder });
     this.tables.set(table.id, table);
     return table;
   }

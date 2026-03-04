@@ -6,6 +6,42 @@ import { prisma } from '../../../config/database.js';
 import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';
 import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
 
+/** ハンド履歴記録のインターフェイス */
+export interface IHandHistoryRecorder {
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void;
+  setAllInEVProfits(evProfits: Map<number, number>): void;
+  getStartChips(): Map<number, number>;
+  recordHandComplete(
+    tableId: string,
+    blinds: string,
+    gameState: GameState,
+    seats: (SeatInfo | null)[]
+  ): Promise<void>;
+}
+
+/** Stud用: DB保存しないno-op実装 */
+export class NullHandHistoryRecorder implements IHandHistoryRecorder {
+  private startChips = new Map<number, number>();
+
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
+    this.startChips.clear();
+    for (let i = 0; i < seats.length; i++) {
+      if (seats[i]) {
+        const chips = gameState.players[i].chips + gameState.players[i].totalBetThisRound;
+        this.startChips.set(i, chips);
+      }
+    }
+  }
+
+  setAllInEVProfits(_evProfits: Map<number, number>): void {}
+
+  getStartChips(): Map<number, number> {
+    return this.startChips;
+  }
+
+  async recordHandComplete(): Promise<void> {}
+}
+
 function serializeCard(card: Card): string {
   return `${card.rank}${card.suit}`;
 }
@@ -18,7 +54,7 @@ function isAuthenticatedUser(_odId: string): boolean {
   return true;
 }
 
-export class HandHistoryRecorder {
+export class HandHistoryRecorder implements IHandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
   private allInEVProfits: Map<number, number> | null = null;
