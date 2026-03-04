@@ -177,9 +177,11 @@ export class TableInstance {
       this.playerManager.markLeftForFastFold(seatIndex);
 
       if (wasCurrentPlayer) {
-        // 自分のターン → applyAction('fold') 経由で正規のフォールド処理
+        // 自分のターン → 正規のアクション処理経由で離脱
+        // Studブリングインフェーズ等では fold が無効なため、有効アクションを選択
         this.actionController.clearTimers();
-        this.handleAction(odId, 'fold', 0);
+        const defaultAction = this.getDefaultDisconnectAction(seatIndex);
+        this.handleAction(odId, defaultAction.action, defaultAction.amount);
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -395,6 +397,36 @@ export class TableInstance {
   // Private methods
   // ============================================
 
+  /**
+   * 切断・タイムアウト時のデフォルトアクションを決定
+   * Studのブリングインフェーズでは fold が無効なため、最低コストの有効アクションを選択
+   */
+  private getDefaultDisconnectAction(seatIndex: number): { action: Action; amount: number } {
+    if (!this.gameState) return { action: 'fold', amount: 0 };
+
+    const validActions = this.variantAdapter.getValidActions(this.gameState, seatIndex);
+
+    // チェック可能 → チェック
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+
+    // フォールド可能 → フォールド
+    const foldAction = validActions.find(a => a.action === 'fold');
+    if (foldAction) return { action: 'fold', amount: 0 };
+
+    // どちらも無効（Studブリングインフェーズ等）→ 最低コストのコール
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+
+    // フォールバック: 有効アクションの最小コスト
+    if (validActions.length > 0) {
+      const cheapest = validActions[0];
+      return { action: cheapest.action, amount: cheapest.minAmount };
+    }
+
+    return { action: 'fold', amount: 0 };
+  }
+
   private get roomName() {
     return `table:${this.id}`;
   }
@@ -523,12 +555,13 @@ export class TableInstance {
           .catch(err => console.error(`[Table ${this.id}] handleActionTimeout error:`, err));
       },
       () => {
-        // 切断済みプレイヤーのフォールド: handleAction 経由で正規処理
+        // 切断済みプレイヤー: 有効なデフォルトアクションで正規処理
         if (!this.gameState) return;
         const idx = this.gameState.currentPlayerIndex;
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
-          this.handleAction(seat.odId, 'fold', 0);
+          const defaultAction = this.getDefaultDisconnectAction(idx);
+          this.handleAction(seat.odId, defaultAction.action, defaultAction.amount);
         }
       }
     );
@@ -547,14 +580,12 @@ export class TableInstance {
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
-      // チェック可能ならチェック、そうでなければフォールド
-      const validActions = this.variantAdapter.getValidActions(this.gameState, seatIndex);
-      const canCheck = validActions.some(a => a.action === 'check');
-      const action: Action = canCheck ? 'check' : 'fold';
-      const handled = this.handleAction(playerId, action, 0);
+      // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
+      const defaultAction = this.getDefaultDisconnectAction(seatIndex);
+      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount);
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
-      if (action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
+      if (defaultAction.action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
         await this.onTimeoutFold(playerId, seat.socket);
       }
     } else {
