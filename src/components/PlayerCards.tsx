@@ -24,7 +24,7 @@ const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = 
   5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
 };
 
-const cardPositionStyle = 'top-[12cqw] left-1/2 -translate-x-1/2';
+const cardPositionStyle = 'top-[10cqw] left-1/2 -translate-x-1/2';
 
 interface PlayerCardsProps {
   player: PlayerType;
@@ -69,14 +69,15 @@ export function PlayerCards({
 
   // 自分の位置（positionIndex=0）かつ観戦者でない場合はMyCardsで表示するので非表示
   if (positionIndex === 0 && !isSpectator) return null;
+  const showCardsml = variant === 'stud' ? '-ml-[6cqw]' : '-ml-[2cqw]';
 
   return (
     <>
       {/* Hole Cards */}
-      <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
+    <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
         {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
-                <div key={i} className={i > 0 ? '-ml-[2cqw]' : ''}>
+                <div key={i} className={i > 0 ? showCardsml : ''}>
                   {isRevealing ? (
                     <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
                       <div
