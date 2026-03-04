@@ -38,11 +38,11 @@ function formatAction(action: Action, amount: number, formatChips: (n: number) =
 
 const positionStyles: Record<number, string> = {
   0: 'bottom-[-12%] left-1/2 -translate-x-1/2',
-  1: 'bottom-[5%] left-[-15%]',
-  2: 'top-[18%] left-[-15%]',
+  1: 'bottom-[5%] left-[-10%]',
+  2: 'top-[18%] left-[-10%]',
   3: 'top-[-4%] left-1/2 -translate-x-1/2',
-  4: 'top-[18%] right-[-15%]',
-  5: 'bottom-[5%] right-[-15%]',
+  4: 'top-[18%] right-[-10%]',
+  5: 'bottom-[5%] right-[-10%]',
 };
 
 const betPositionStyles: Record<number, string> = {
@@ -230,14 +230,6 @@ export function Player({
         <div className="text-[3.5cqw] text-white-400 whitespace-nowrap">{player.name}</div>
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
-
-      {/* Variant Toggle (dev) */}
-      <button
-        onClick={() => setVariantOverride(v => v === 'plo' ? 'stud' : 'plo')}
-        className="text-[3cqw] text-gray-400 bg-black/60 px-[2cqw] py-[0.5cqw] rounded mt-[0.5cqw] z-[20]"
-      >
-        {currentVariant === 'plo' ? 'PLO' : 'STUD'}
-      </button>
 
       {/* Hole Cards + Hand Name */}
       <PlayerCards
