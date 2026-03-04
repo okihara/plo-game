@@ -63,9 +63,26 @@ export function PokerTable({
           </div>
         </div>
 
-        {/* Community Cards (PLO only) */}
-        {state.variant !== 'stud' && (
+        {/* Community Cards (PLO only) / Stud Info */}
+        {state.variant !== 'stud' ? (
           <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
+        ) : (
+          <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
+            <div className="flex gap-[2cqw] text-[3.2cqw] text-white/60">
+              <span>Ante {formatChips(state.ante)}</span>
+              <span className="text-white/30">|</span>
+              <span>BI {formatChips(state.bringIn)}</span>
+              <span className="text-white/30">|</span>
+              <span>SB {formatChips(state.smallBlind)}</span>
+              <span className="text-white/30">|</span>
+              <span>BB {formatChips(state.bigBlind)}</span>
+            </div>
+            {!state.isHandComplete && (
+              <span className="text-[3.5cqw] text-white/40 uppercase tracking-wider">
+                {state.currentStreet}
+              </span>
+            )}
+          </div>
         )}
 
         {/* Carried Pot - below community cards, after first street */}
@@ -75,7 +92,7 @@ export function PokerTable({
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className={`absolute left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${state.variant === 'stud' ? 'top-[50%]' : 'top-[62%]'}`}>
+            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${state.variant === 'stud' ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );

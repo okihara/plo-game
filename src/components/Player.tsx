@@ -197,8 +197,8 @@ export function Player({
             <span className="text-[4.5cqw] text-gray-400 font-medium">Empty</span>
           )}
         </div>
-        {/* Dealer Button */}
-        {player.position === 'BTN' && (
+        {/* Dealer Button (PLO only - Stud has no positional dealer) */}
+        {player.position === 'BTN' && variant !== 'stud' && (
           <div className={`absolute w-[11cqw] h-[11cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[5.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
             D
           </div>

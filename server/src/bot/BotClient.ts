@@ -381,7 +381,7 @@ export class BotClient {
       rake: 0,
       variant: (this.gameState.variant as GameVariant) ?? 'plo',
       ante: this.gameState.ante ?? 0,
-      bringIn: 0,
+      bringIn: this.gameState.bringIn ?? 0,
       betCount: 0,
       maxBetsPerRound: 4,
     };

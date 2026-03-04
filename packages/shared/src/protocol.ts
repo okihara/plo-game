@@ -109,6 +109,7 @@ export interface ClientGameState {
   rake: number;  // このハンドのレーキ額
   variant: string;  // 'plo' | 'stud'
   ante: number;     // Stud: アンテ額
+  bringIn: number;  // Stud: ブリングイン額
 }
 
 export interface TableInfo {

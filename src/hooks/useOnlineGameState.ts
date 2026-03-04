@@ -158,7 +158,7 @@ function convertClientStateToGameState(
     rake: clientState.rake ?? 0,
     variant: (clientState.variant as GameVariant) ?? 'plo',
     ante: clientState.ante ?? 0,
-    bringIn: 0,
+    bringIn: clientState.bringIn ?? 0,
     betCount: 0,
     maxBetsPerRound: 4,
   };

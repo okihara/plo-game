@@ -125,6 +125,7 @@ export class StateTransformer {
         rake: 0,
         variant: 'plo',
         ante: 0,
+        bringIn: 0,
       };
     }
 
@@ -152,6 +153,7 @@ export class StateTransformer {
       rake: gameState.rake ?? 0,
       variant: gameState.variant ?? 'plo',
       ante: gameState.ante ?? 0,
+      bringIn: gameState.bringIn ?? 0,
     };
   }
 }

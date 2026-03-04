@@ -24,6 +24,9 @@ export function StudActionPanel({ state, mySeat, onAction }: StudActionPanelProp
     ? state.smallBlind
     : state.bigBlind;
 
+  // 3rd streetのブリングイン後コンプリート判定
+  const isBringInOnly = state.currentStreet === 'third' && state.betCount === 0 && state.currentBet === state.bringIn;
+
   const [actionSent, setActionSent] = useState(false);
   const [prefoldChecked, setPrefoldChecked] = useState(false);
   const prefoldTriggeredRef = useRef(false);
@@ -55,19 +58,24 @@ export function StudActionPanel({ state, mySeat, onAction }: StudActionPanelProp
     let amount = 0;
     if (action === 'call') {
       amount = Math.min(toCall, myPlayer.chips);
-    } else if (action === 'bet' || action === 'raise') {
-      amount = fixedBetSize;
+    } else if (action === 'bet') {
+      amount = fixedBetSize - myPlayer.currentBet;
+    } else if (action === 'raise') {
+      amount = (state.currentBet + fixedBetSize) - myPlayer.currentBet;
     } else if (action === 'allin') {
       amount = myPlayer.chips;
     }
     setActionSent(true);
     onAction(action, amount);
-  }, [toCall, myPlayer.chips, fixedBetSize, onAction]);
+  }, [toCall, myPlayer.chips, myPlayer.currentBet, state.currentBet, fixedBetSize, onAction]);
+
+  // bet or raise 判定（ブリングインのみの状態も bet 扱い）
+  const isBetAction = state.currentBet === 0 || isBringInOnly;
 
   // Raise/Bet ボタンラベル
   const raiseLabel = (() => {
     if (isShortStack || myPlayer.chips <= fixedBetSize) return `ALL IN ${formatChips(myPlayer.chips)}`;
-    if (state.currentBet === 0) return `BET ${formatChips(fixedBetSize)}`;
+    if (isBetAction) return `BET ${formatChips(fixedBetSize)}`;
     return `RAISE ${formatChips(fixedBetSize)}`;
   })();
 
@@ -118,7 +126,7 @@ export function StudActionPanel({ state, mySeat, onAction }: StudActionPanelProp
           {toCall === 0 ? 'CHECK' : `CALL ${formatChips(toCall)}`}
         </button>
         <button
-          onClick={() => handleAction(isAllIn ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
+          onClick={() => handleAction(isAllIn ? 'allin' : isBetAction ? 'bet' : 'raise')}
           disabled={isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent)}
           className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             isAllIn
