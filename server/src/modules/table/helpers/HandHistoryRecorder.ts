@@ -103,9 +103,8 @@ export class HandHistoryRecorder {
           } else if (!player.folded) {
             try {
               if (gameState.variant === 'stud') {
-                const allCards = [...player.holeCards, ...player.upCards];
-                if (allCards.length >= 5) {
-                  finalHand = evaluateStudHand(allCards).name || null;
+                if (player.holeCards.length >= 5) {
+                  finalHand = evaluateStudHand(player.holeCards).name || null;
                 }
               } else if (player.holeCards.length === 4 && gameState.communityCards.length === 5) {
                 finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;

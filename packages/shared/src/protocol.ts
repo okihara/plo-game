@@ -85,7 +85,7 @@ export interface OnlinePlayer {
   isAllIn: boolean;
   hasActed: boolean;
   isConnected: boolean;
-  upCards: Card[];  // Stud: 表向きカード（PLO: []）
+  cards: Card[];  // Stud: 全カード配布順（裏カードはダミー値+isUp:false）, PLO: []
 }
 
 // Client-safe game state (hides other players' hole cards)

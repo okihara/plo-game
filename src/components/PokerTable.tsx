@@ -103,7 +103,6 @@ export function PokerTable({
               onAvatarClick={() => onPlayerClick?.(player)}
               isSpectator={isSpectator}
               variant={state.variant}
-              currentStreet={state.currentStreet}
             />
           );
         })}

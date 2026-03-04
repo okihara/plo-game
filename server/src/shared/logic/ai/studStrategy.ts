@@ -26,11 +26,10 @@ export class StudStrategy implements AIVariantStrategy {
       return { action: 'fold', amount: 0 };
     }
 
-    // 全カードを結合してハンド評価
-    const allCards = [...player.holeCards, ...player.upCards];
-    const strength = allCards.length >= 5
-      ? this.evaluateStrength(allCards)
-      : this.evaluatePartialHand(allCards);
+    // 全カードでハンド評価（holeCardsに配布順で格納済み）
+    const strength = player.holeCards.length >= 5
+      ? this.evaluateStrength(player.holeCards)
+      : this.evaluatePartialHand(player.holeCards);
 
     const toCall = state.currentBet - player.currentBet;
     const potOdds = toCall > 0 ? toCall / (state.pot + toCall) : 0;

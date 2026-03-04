@@ -22,7 +22,6 @@ export function createInitialGameState(playerChips: number = 600): GameState {
       position: POSITIONS[i],
       chips: playerChips,
       holeCards: [],         // PLOでは4枚のホールカード
-      upCards: [],           // Stud用（PLOでは常に空）
       currentBet: 0,         // 現在のストリートでの累計ベット額
       totalBetThisRound: 0,  // このハンド全体での累計ベット額
       folded: false,
@@ -84,7 +83,6 @@ export function startNewHand(state: GameState): GameState {
   newState.players = newState.players.map(p => ({
     ...p,
     holeCards: [],
-    upCards: [],
     currentBet: 0,
     totalBetThisRound: 0,
     folded: p.isSittingOut,     // 空席は最初からfolded

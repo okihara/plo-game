@@ -7,12 +7,17 @@ import {
   wouldStudAdvanceStreet,
   determineStudWinner,
 } from '../studEngine.js';
+import { getUpCards } from '../types.js';
 import type { GameState, Player, Card } from '../types.js';
 
 // ===== ヘルパー =====
 
 function card(rank: Card['rank'], suit: Card['suit']): Card {
   return { rank, suit };
+}
+
+function studCard(rank: Card['rank'], suit: Card['suit'], isUp: boolean): Card {
+  return { rank, suit, isUp };
 }
 
 /** 指定プレイヤーの状態を上書き */
@@ -95,8 +100,8 @@ describe('startStudHand', () => {
 
     for (const p of newState.players) {
       if (!p.isSittingOut) {
-        expect(p.holeCards).toHaveLength(2);
-        expect(p.upCards).toHaveLength(1);
+        expect(p.holeCards).toHaveLength(3);
+        expect(getUpCards(p.holeCards)).toHaveLength(1);
       }
     }
   });
@@ -143,7 +148,7 @@ describe('startStudHand', () => {
     const newState = startStudHand(state);
 
     expect(newState.players[3].holeCards).toHaveLength(0);
-    expect(newState.players[3].upCards).toHaveLength(0);
+    expect(getUpCards(newState.players[3].holeCards)).toHaveLength(0);
     expect(newState.players[3].folded).toBe(true);
   });
 });
@@ -422,8 +427,8 @@ describe('applyStudAction', () => {
         const activePlayers = state.players.filter(p => !p.folded && !p.isSittingOut);
         for (const p of activePlayers) {
           // 4th streetで表カード2枚になる
-          expect(p.upCards).toHaveLength(2);
-          expect(p.holeCards).toHaveLength(2);
+          expect(p.holeCards).toHaveLength(4);  // 2 down + 2 up
+          expect(getUpCards(p.holeCards)).toHaveLength(2);
         }
       }
     });
@@ -550,8 +555,8 @@ describe('カード配布の進行', () => {
     if (state.currentStreet === 'fifth') {
       const activePlayers = state.players.filter(p => !p.folded && !p.isSittingOut);
       for (const p of activePlayers) {
-        expect(p.holeCards).toHaveLength(2);
-        expect(p.upCards).toHaveLength(3);
+        expect(p.holeCards).toHaveLength(5);  // 2 down + 3 up
+        expect(getUpCards(p.holeCards)).toHaveLength(3);
       }
     }
   });
@@ -561,8 +566,8 @@ describe('カード配布の進行', () => {
     if (state.currentStreet === 'sixth') {
       const activePlayers = state.players.filter(p => !p.folded && !p.isSittingOut);
       for (const p of activePlayers) {
-        expect(p.holeCards).toHaveLength(2);
-        expect(p.upCards).toHaveLength(4);
+        expect(p.holeCards).toHaveLength(6);  // 2 down + 4 up
+        expect(getUpCards(p.holeCards)).toHaveLength(4);
       }
     }
   });
@@ -572,8 +577,8 @@ describe('カード配布の進行', () => {
     if (state.currentStreet === 'seventh') {
       const activePlayers = state.players.filter(p => !p.folded && !p.isSittingOut);
       for (const p of activePlayers) {
-        expect(p.holeCards).toHaveLength(3); // 7thの1枚は裏カード
-        expect(p.upCards).toHaveLength(4);
+        expect(p.holeCards).toHaveLength(7);  // 3 down + 4 up
+        expect(getUpCards(p.holeCards)).toHaveLength(4);
       }
     }
   });
@@ -599,11 +604,17 @@ describe('determineStudWinner', () => {
       state.players[i].folded = true;
     }
 
-    // 7枚ずつ手動でセット
-    state.players[0].holeCards = [card('A', 'h'), card('K', 'h'), card('Q', 'h')];
-    state.players[0].upCards = [card('J', 'h'), card('T', 'h'), card('9', 'h'), card('2', 's')];
-    state.players[1].holeCards = [card('2', 'c'), card('3', 'd'), card('4', 'c')];
-    state.players[1].upCards = [card('5', 's'), card('7', 'd'), card('8', 'c'), card('9', 'd')];
+    // 7枚ずつ手動でセット（deal order: down, down, up, up, up, up, down）
+    state.players[0].holeCards = [
+      studCard('A', 'h', false), studCard('K', 'h', false),
+      studCard('J', 'h', true), studCard('T', 'h', true), studCard('9', 'h', true), studCard('2', 's', true),
+      studCard('Q', 'h', false),
+    ];
+    state.players[1].holeCards = [
+      studCard('2', 'c', false), studCard('3', 'd', false),
+      studCard('5', 's', true), studCard('7', 'd', true), studCard('8', 'c', true), studCard('9', 'd', true),
+      studCard('4', 'c', false),
+    ];
 
     const result = determineStudWinner(state);
     expect(result.isHandComplete).toBe(true);
@@ -724,10 +735,10 @@ describe('ブリングイン決定（最低ドアカード）', () => {
     expect(bringInIdx).toBeGreaterThanOrEqual(0);
 
     // ブリングインプレイヤーのドアカードが全プレイヤーの中で最低であること
-    const bringInDoorCard = started.players[bringInIdx].upCards[0];
+    const bringInDoorCard = getUpCards(started.players[bringInIdx].holeCards)[0];
     for (let i = 0; i < 6; i++) {
       if (i === bringInIdx || started.players[i].isSittingOut) continue;
-      const otherDoorCard = started.players[i].upCards[0];
+      const otherDoorCard = getUpCards(started.players[i].holeCards)[0];
       const bringInRank = getRankValueForTest(bringInDoorCard.rank);
       const otherRank = getRankValueForTest(otherDoorCard.rank);
       // ブリングインのランクは他と同等以下
@@ -742,13 +753,13 @@ describe('ブリングイン決定（最低ドアカード）', () => {
     // 同ランクのドアカード持ちが複数いるケースをシミュレーション
     // 手動で状態を構築して findLowestDoorCard の挙動を検証
     const testState = JSON.parse(JSON.stringify(started)) as GameState;
-    // 全員のドアカードを同じランク(2)、異なるスートに設定
-    testState.players[0].upCards = [card('2', 's')]; // ♠ = 4
-    testState.players[1].upCards = [card('2', 'h')]; // ♥ = 3
-    testState.players[2].upCards = [card('2', 'd')]; // ♦ = 2
-    testState.players[3].upCards = [card('2', 'c')]; // ♣ = 1 ← 最低
-    testState.players[4].upCards = [card('3', 'h')]; // ランク3
-    testState.players[5].upCards = [card('3', 's')]; // ランク3
+    // Replace door card (3rd card, isUp=true) for each player
+    testState.players[0].holeCards[2] = studCard('2', 's', true); // ♠ = 4
+    testState.players[1].holeCards[2] = studCard('2', 'h', true); // ♥ = 3
+    testState.players[2].holeCards[2] = studCard('2', 'd', true); // ♦ = 2
+    testState.players[3].holeCards[2] = studCard('2', 'c', true); // ♣ = 1 ← 最低
+    testState.players[4].holeCards[2] = studCard('3', 'h', true); // ランク3
+    testState.players[5].holeCards[2] = studCard('3', 's', true); // ランク3
 
     // startStudHandを再実行して検証（内部でfindLowestDoorCardが呼ばれる）
     // 代わりに、ブリングイン判定後の状態を手動検証
@@ -785,11 +796,11 @@ describe('ブリングイン決定（最低ドアカード）', () => {
     const result = startStudHand(fixedState);
     const bringInIdx = result.lastRaiserIndex;
     // ブリングインプレイヤーのドアカードを確認
-    const bringInCard = result.players[bringInIdx].upCards[0];
+    const bringInCard = getUpCards(result.players[bringInIdx].holeCards)[0];
     // 全プレイヤーのドアカードの中で最低ランク（同ランクなら最低スート）
     for (let i = 0; i < 6; i++) {
       if (i === bringInIdx || result.players[i].isSittingOut) continue;
-      const otherCard = result.players[i].upCards[0];
+      const otherCard = getUpCards(result.players[i].holeCards)[0];
       const bringInVal = getRankValueForTest(bringInCard.rank) * 10 + suitValue(bringInCard.suit);
       const otherVal = getRankValueForTest(otherCard.rank) * 10 + suitValue(otherCard.suit);
       expect(bringInVal).toBeLessThanOrEqual(otherVal);
@@ -828,7 +839,7 @@ describe('アクション順序（4th street以降）', () => {
     if (state.currentStreet !== 'fourth' || state.isHandComplete) return;
 
     const firstActor = state.currentPlayerIndex;
-    const firstActorUpCards = state.players[firstActor].upCards;
+    const firstActorUpCards = getUpCards(state.players[firstActor].holeCards);
     expect(firstActorUpCards.length).toBe(2);
 
     // 最初のアクターの表カードが他のプレイヤーより強い（または同等）ことを確認
@@ -891,13 +902,22 @@ describe('サイドポット', () => {
     state.players[2].chips = 900;
     state.pot = 250 + (3 * 10); // 投入合計 + フォールド済みのアンテ
 
-    // 7枚ずつ手動でセット
-    state.players[0].holeCards = [card('2', 'c'), card('3', 'd'), card('4', 'h')];
-    state.players[0].upCards = [card('5', 's'), card('7', 'c'), card('8', 'd'), card('9', 'c')];
-    state.players[1].holeCards = [card('T', 'c'), card('J', 'd'), card('Q', 'h')];
-    state.players[1].upCards = [card('K', 's'), card('6', 'c'), card('6', 'd'), card('3', 'c')];
-    state.players[2].holeCards = [card('A', 'h'), card('K', 'h'), card('Q', 's')];
-    state.players[2].upCards = [card('J', 'h'), card('T', 'h'), card('9', 'h'), card('2', 's')];
+    // 7枚ずつ手動でセット（deal order: down, down, up, up, up, up, down）
+    state.players[0].holeCards = [
+      studCard('2', 'c', false), studCard('3', 'd', false),
+      studCard('5', 's', true), studCard('7', 'c', true), studCard('8', 'd', true), studCard('9', 'c', true),
+      studCard('4', 'h', false),
+    ];
+    state.players[1].holeCards = [
+      studCard('T', 'c', false), studCard('J', 'd', false),
+      studCard('K', 's', true), studCard('6', 'c', true), studCard('6', 'd', true), studCard('3', 'c', true),
+      studCard('Q', 'h', false),
+    ];
+    state.players[2].holeCards = [
+      studCard('A', 'h', false), studCard('K', 'h', false),
+      studCard('J', 'h', true), studCard('T', 'h', true), studCard('9', 'h', true), studCard('2', 's', true),
+      studCard('Q', 's', false),
+    ];
 
     const result = determineStudWinner(state);
     expect(result.isHandComplete).toBe(true);
@@ -940,7 +960,7 @@ describe('全員オールイン（studRunOut）', () => {
     // 全プレイヤーに7枚配布されている
     const activePlayers = state.players.filter(p => !p.folded && !p.isSittingOut);
     for (const p of activePlayers) {
-      expect(p.holeCards.length + p.upCards.length).toBe(7);
+      expect(p.holeCards.length).toBe(7);
     }
     expect(state.winners.length).toBeGreaterThanOrEqual(1);
   });
@@ -996,8 +1016,8 @@ describe('2人テーブル（ヘッズアップ）', () => {
     const activePlayers = started.players.filter(p => !p.isSittingOut);
     expect(activePlayers).toHaveLength(2);
     for (const p of activePlayers) {
-      expect(p.holeCards).toHaveLength(2);
-      expect(p.upCards).toHaveLength(1);
+      expect(p.holeCards).toHaveLength(3);
+      expect(getUpCards(p.holeCards)).toHaveLength(1);
     }
 
     // ハンドを最後まで進める

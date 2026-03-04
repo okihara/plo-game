@@ -16,7 +16,6 @@ const createPlayer = (name: string, overrides: Partial<PlayerType> = {}): Player
   position: 'BTN',
   chips: 1000,
   holeCards: sampleCards,
-  upCards: [],
   currentBet: 0,
   totalBetThisRound: 0,
   folded: false,

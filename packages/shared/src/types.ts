@@ -4,6 +4,12 @@ export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'T' | 'J' | '
 export interface Card {
   rank: Rank;
   suit: Suit;
+  isUp?: boolean;  // Stud: true=表向き, false=裏向き（PLO: undefined）
+}
+
+/** Stud: holeCardsから表向きカードのみ抽出（配布順維持） */
+export function getUpCards(cards: Card[]): Card[] {
+  return cards.filter(c => c.isUp === true);
 }
 
 export type GameVariant = 'plo' | 'stud';
@@ -15,8 +21,7 @@ export interface Player {
   name: string;
   position: Position;
   chips: number;
-  holeCards: Card[];   // PLO: 4枚の私的カード, Stud: 裏向きカード(2-3枚)
-  upCards: Card[];     // Stud: 表向きカード(1-4枚), PLO: 常に[]
+  holeCards: Card[];   // PLO: 4枚の私的カード, Stud: 全カード配布順(isUpで表裏区別)
   currentBet: number;
   totalBetThisRound: number;
   folded: boolean;

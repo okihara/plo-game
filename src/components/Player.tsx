@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Player as PlayerType, Action, GameVariant, Street } from '../logic';
+import { Player as PlayerType, Action, GameVariant } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
@@ -21,7 +21,6 @@ interface PlayerProps {
   onAvatarClick?: () => void;
   isSpectator?: boolean;
   variant?: GameVariant;
-  currentStreet?: Street;
 }
 
 function formatAction(action: Action, amount: number, formatChips: (n: number) => string): string {
@@ -105,7 +104,6 @@ export function Player({
   onAvatarClick,
   isSpectator = false,
   variant = 'plo',
-  currentStreet,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
 
@@ -271,10 +269,8 @@ export function Player({
         <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
           {variant === 'stud'
             ? (() => {
-                // Stud: showdown時はholeCardsに全7枚が入る
-                const isShowdown = player.holeCards.length > (player.upCards?.length ?? 0);
-                if (isShowdown && !player.folded) {
-                  // ショウダウン: 全カード表面表示
+                // Stud: showdown時は showCards=true で全カード表面表示
+                if (showCards && !player.folded) {
                   return player.holeCards.map((card, i) => (
                     <div key={i} className={i > 0 ? '-ml-[2cqw]' : ''}>
                       {isRevealing ? (
@@ -290,18 +286,16 @@ export function Player({
                     </div>
                   ));
                 }
-                // 通常プレイ: 裏カード + 表カード
-                const downCount = currentStreet === 'seventh' ? 3 : 2;
-                const showHoleCards = isSpectator && player.holeCards.length > 0;
-                const upCards = player.upCards ?? [];
+                // 通常プレイ: card.isUp で表裏判定（配布順）
+                const allCards = player.holeCards;
                 const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
                 const foldOffset = foldToOffsets[positionIndex];
-                const totalCards = (showHoleCards ? player.holeCards.length : downCount) + upCards.length;
 
                 if (player.folded && !isFolding) return null;
+                if (allCards.length === 0) return null;
 
-                return Array.from({ length: totalCards }, (_, i) => {
-                  const isDown = i < (showHoleCards ? player.holeCards.length : downCount);
+                return allCards.map((card, i) => {
+                  const isDown = !card.isUp;
                   const dealDelay = (i * 6 + dealOrder) * 40;
                   return (
                     <div
@@ -320,8 +314,8 @@ export function Player({
                       } as React.CSSProperties : {}}
                     >
                       {isDown
-                        ? (showHoleCards ? <Card card={player.holeCards[i]} /> : <FaceDownCard />)
-                        : <Card card={upCards[i - (showHoleCards ? player.holeCards.length : downCount)]} />
+                        ? (isSpectator ? <Card card={card} /> : <FaceDownCard />)
+                        : <Card card={card} />
                       }
                     </div>
                   );

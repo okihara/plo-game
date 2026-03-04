@@ -89,7 +89,6 @@ export function makePlayer(overrides: Partial<Player> = {}): Player {
     position: 'BTN',
     chips: 1000,
     holeCards: [],
-    upCards: overrides.upCards ?? [],
     currentBet: 0,
     totalBetThisRound: 0,
     folded: false,

@@ -102,16 +102,14 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   const blindsLabel = blinds;
 
   const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
-  const myUpCards = myPlayer?.upCards ?? [];
 
   const myCurrentHandName = useMemo(() => {
     if (!gameState) return undefined;
     if (gameState.variant === 'stud') {
-      const allCards = [...myHoleCards, ...myUpCards];
-      return allCards.length >= 5 ? evaluateStudHand(allCards).name : undefined;
+      return myHoleCards.length >= 5 ? evaluateStudHand(myHoleCards).name : undefined;
     }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
-  }, [myHoleCards, myUpCards, gameState?.communityCards, gameState?.variant]);
+  }, [myHoleCards, gameState?.communityCards, gameState?.variant]);
 
   if (isConnecting) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
@@ -332,8 +330,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           {gameState.variant === 'stud' ? (
             <StudMyCards
-              holeCards={myHoleCards}
-              upCards={myUpCards}
+              cards={myHoleCards}
               isDealing={isDealingCards}
               dealOrder={humanDealOrder}
               folded={myPlayer?.folded}

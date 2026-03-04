@@ -54,9 +54,8 @@ export class VariantAdapter {
   evaluateHandName(player: Player, communityCards: Card[]): string {
     try {
       if (this.variant === 'stud') {
-        const allCards = [...player.holeCards, ...player.upCards];
-        if (allCards.length >= 5) {
-          return evaluateStudHand(allCards).name;
+        if (player.holeCards.length >= 5) {
+          return evaluateStudHand(player.holeCards).name;
         }
         return '';
       }
@@ -76,7 +75,7 @@ export class VariantAdapter {
    */
   getShowdownCards(player: Player): Card[] {
     if (this.variant === 'stud') {
-      return [...player.holeCards, ...player.upCards];
+      return player.holeCards;
     }
     return player.holeCards;
   }

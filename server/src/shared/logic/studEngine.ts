@@ -1,4 +1,4 @@
-import { GameState, Player, Position, Action, Card, Suit, Street } from './types.js';
+import { GameState, Player, Position, Action, Card, Suit, Street, getUpCards } from './types.js';
 import { createDeck, shuffleDeck, dealCards, getRankValue } from './deck.js';
 import { evaluateStudHand, evaluateShowingHand, compareHands } from './handEvaluator.js';
 import { getActivePlayers, getPlayersWhoCanAct, calculateSidePots, calculateRake } from './gameEngine.js';
@@ -24,7 +24,6 @@ export function createStudGameState(playerChips: number, ante: number, smallBet:
       position: POSITIONS[i],
       chips: playerChips,
       holeCards: [],
-      upCards: [],
       currentBet: 0,
       totalBetThisRound: 0,
       folded: false,
@@ -85,7 +84,6 @@ export function startStudHand(state: GameState): GameState {
   newState.players = newState.players.map(p => ({
     ...p,
     holeCards: [],
-    upCards: [],
     currentBet: 0,
     totalBetThisRound: 0,
     folded: p.isSittingOut,
@@ -118,17 +116,20 @@ export function startStudHand(state: GameState): GameState {
     if (p.chips === 0) p.isAllIn = true;
   }
 
-  // === カード配布: 裏2枚 + 表1枚（ドアカード） ===
+  // === カード配布: 裏2枚 + 表1枚（ドアカード）配布順で格納 ===
   for (let i = 0; i < MAX_PLAYERS; i++) {
     if (newState.players[i].isSittingOut) continue;
     // 裏カード2枚
     const down = dealCards(newState.deck, 2);
-    newState.players[i].holeCards = down.cards;
     newState.deck = down.remainingDeck;
     // 表カード1枚（ドアカード）
     const up = dealCards(newState.deck, 1);
-    newState.players[i].upCards = up.cards;
     newState.deck = up.remainingDeck;
+    // 配布順: [down, down, up]
+    newState.players[i].holeCards = [
+      ...down.cards.map(c => ({ ...c, isUp: false })),
+      ...up.cards.map(c => ({ ...c, isUp: true })),
+    ];
   }
 
   // === ブリングイン: 最低ドアカードのプレイヤー ===
@@ -418,13 +419,9 @@ function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCap
     const { cards, remainingDeck } = dealCards(newState.deck, 1);
     newState.deck = remainingDeck;
 
-    if (nextStreet === 'seventh') {
-      // 7th street: 裏カード
-      p.holeCards.push(...cards);
-    } else {
-      // 4th-6th street: 表カード
-      p.upCards.push(...cards);
-    }
+    // 4th-6th street: 表カード, 7th street: 裏カード
+    const isUp = nextStreet !== 'seventh';
+    p.holeCards.push(...cards.map(c => ({ ...c, isUp })));
   }
 
   // === アクション順序: 最高ショウイングハンドのプレイヤー ===
@@ -525,8 +522,7 @@ export function determineStudWinner(state: GameState, rakePercent: number = 0, r
   // === Studハンド評価: 全7枚から最強5枚 ===
   const playerHandMap = new Map<number, ReturnType<typeof evaluateStudHand>>();
   for (const player of activePlayers) {
-    const allCards = [...player.holeCards, ...player.upCards];
-    playerHandMap.set(player.id, evaluateStudHand(allCards));
+    playerHandMap.set(player.id, evaluateStudHand(player.holeCards));
   }
 
   // 各ポットの勝者決定
@@ -594,19 +590,18 @@ function studDealRemaining(state: GameState): void {
     const p = state.players[i];
     if (p.isSittingOut || p.folded) continue;
 
-    const totalCards = p.holeCards.length + p.upCards.length;
-    if (totalCards >= 7) continue;
+    if (p.holeCards.length >= 7) continue;
 
-    // 表カードは最大4枚まで
-    while (p.upCards.length < 4 && p.holeCards.length + p.upCards.length < 6 && state.deck.length > 0) {
+    // 表カードは最大4枚まで（6枚目まで）
+    while (getUpCards(p.holeCards).length < 4 && p.holeCards.length < 6 && state.deck.length > 0) {
       const { cards, remainingDeck } = dealCards(state.deck, 1);
-      p.upCards.push(...cards);
+      p.holeCards.push(...cards.map(c => ({ ...c, isUp: true })));
       state.deck = remainingDeck;
     }
     // 7枚目は裏カード
-    if (p.holeCards.length + p.upCards.length < 7 && state.deck.length > 0) {
+    if (p.holeCards.length < 7 && state.deck.length > 0) {
       const { cards, remainingDeck } = dealCards(state.deck, 1);
-      p.holeCards.push(...cards);
+      p.holeCards.push(...cards.map(c => ({ ...c, isUp: false })));
       state.deck = remainingDeck;
     }
   }
@@ -647,9 +642,10 @@ function findLowestDoorCard(state: GameState): number {
 
   for (let i = 0; i < MAX_PLAYERS; i++) {
     const p = state.players[i];
-    if (p.isSittingOut || p.folded || p.upCards.length === 0) continue;
+    const upCards = getUpCards(p.holeCards);
+    if (p.isSittingOut || p.folded || upCards.length === 0) continue;
 
-    const doorCard = p.upCards[0];
+    const doorCard = upCards[0];
     const rankVal = getRankValue(doorCard.rank);
     const suitVal = SUIT_VALUE[doorCard.suit];
 
@@ -673,7 +669,7 @@ function findBestShowingHand(state: GameState): number {
     const p = state.players[i];
     if (p.isSittingOut || p.folded || p.isAllIn) continue;
 
-    const hand = evaluateShowingHand(p.upCards);
+    const hand = evaluateShowingHand(getUpCards(p.holeCards));
     if (compareHands(hand, bestHand) > 0) {
       bestHand = hand;
       bestIndex = i;
