@@ -37,6 +37,7 @@ interface BotManagerConfig {
   isFastFold?: boolean;
   midHandDisconnectChance?: number;
   maxHandsPerSession?: number; // セッション上限ハンド数
+  noDelay?: boolean; // 思考時間を0にする
   inviteCode?: string; // プライベートテーブル招待コード
 }
 
@@ -128,6 +129,7 @@ export class BotManager {
       isFastFold: this.config.isFastFold,
       midHandDisconnectChance: this.config.midHandDisconnectChance,
       maxHandsPerSession: maxHands,
+      noDelay: this.config.noDelay,
       onJoinFailed: (failedBot, reason) => this.handleJoinFailed(failedBot, reason),
     });
 

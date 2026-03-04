@@ -31,6 +31,7 @@ interface BotConfig {
   variant?: string; // ゲームバリアント（'plo' | 'stud' 等）
   isFastFold?: boolean; // ファストフォールドテーブルに参加するか
   maxHandsPerSession?: number; // セッション上限ハンド数（到達で自動離席）
+  noDelay?: boolean; // true: 思考時間を0にする（テスト・デバッグ用）
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
 }
 
@@ -298,22 +299,23 @@ export class BotClient {
       // Fallback: check or fold
       const checkAction = data.validActions.find(a => a.action === 'check');
       const callAction = data.validActions.find(a => a.action === 'call');
+      const fallbackDelay = this.config.noDelay ? 0 : 800;
 
       if (checkAction) {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('check', 0);
-        }, 800);
+        }, fallbackDelay);
       } else if (callAction) {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('call', callAction.minAmount);
-        }, 800);
+        }, fallbackDelay);
       } else {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('fold', 0);
-        }, 800);
+        }, fallbackDelay);
       }
     }
   }
@@ -497,6 +499,9 @@ export class BotClient {
     if (Math.random() < 0.12) {
       base += 3000 + Math.random() * 4000;
     }
+
+    // noDelay モード: 思考時間ゼロ
+    if (this.config.noDelay) return 0;
 
     // 最大15秒、最小1200msにクランプ（持ち時間20秒）
     const delay = base + Math.random() * variance;
