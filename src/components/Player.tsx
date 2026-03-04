@@ -85,8 +85,7 @@ export function Player({
   variant = 'plo',
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
-  const [variantOverride, setVariantOverride] = useState<GameVariant>(variant);
-  const currentVariant = variantOverride;
+  const currentVariant = variant;
 
   // チップアニメーション用: currentBetが変化したときにアニメーションを再トリガー
   const prevBetRef = useRef(player.currentBet);
