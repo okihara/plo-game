@@ -9,16 +9,19 @@ const SUIT_SYMBOLS: Record<string, string> = {
 
 type CardSize = 'sm' | 'md' | 'lg';
 
-const sizeStyles: Record<CardSize, { card: string; suit: string }> = {
-  sm: { card: 'w-[11cqw] h-[15.4cqw] text-[6.4cqw]', suit: 'text-[6.4cqw]' },
-  md: { card: 'w-[14cqw] h-[20.5cqw] text-[7.9cqw]', suit: 'text-[7.9cqw]' },
-  lg: { card: 'w-[13cqw] h-[18cqw] text-[7cqw]', suit: 'text-[7cqw]' },
+const sizeStyles: Record<CardSize, { card: string; suit: string; corner: string }> = {
+  sm: { card: 'w-[11cqw] h-[15.4cqw] text-[6.4cqw]', suit: 'text-[6.4cqw]', corner: 'text-[4cqw]' },
+  md: { card: 'w-[14cqw] h-[20.5cqw] text-[7.9cqw]', suit: 'text-[7.9cqw]', corner: 'text-[5cqw]' },
+  lg: { card: 'w-[13cqw] h-[18cqw] text-[7cqw]', suit: 'text-[7cqw]', corner: 'text-[4.5cqw]' },
 };
+
+type CardVariant = 'plo' | 'stud';
 
 interface CardProps {
   card: CardType;
   size?: CardSize;
   isNew?: boolean;
+  variant?: CardVariant;
 }
 
 const SUIT_BG_COLORS: Record<string, string> = {
@@ -28,10 +31,11 @@ const SUIT_BG_COLORS: Record<string, string> = {
   s: 'bg-gray-800',
 };
 
-export function Card({ card, size = 'sm', isNew = false }: CardProps) {
+export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: CardProps) {
   const suitSymbol = SUIT_SYMBOLS[card.suit];
   const suitBg = SUIT_BG_COLORS[card.suit];
   const styles = sizeStyles[size];
+  const isStud = variant === 'stud';
 
   if (isNew) {
     // 3Dフリップアニメーション: 裏面→表面
@@ -54,8 +58,18 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
             `}
             style={{ backfaceVisibility: 'hidden' }}
           >
-            <span className="leading-none font-bold">{card.rank}</span>
-            <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
+            {isStud && (
+              <div className={`absolute top-[0.5cqw] left-[1cqw] flex flex-col items-center leading-none font-bold ${styles.corner}`}>
+                <span>{card.rank}</span>
+                <span>{suitSymbol}</span>
+              </div>
+            )}
+            {!isStud && (
+              <>
+                <span className="leading-none font-bold">{card.rank}</span>
+                <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
+              </>
+            )}
           </div>
           {/* 裏面 */}
           <div
@@ -89,8 +103,18 @@ export function Card({ card, size = 'sm', isNew = false }: CardProps) {
         ${styles.card}
       `}
     >
-      <span className="leading-none font-bold">{card.rank}</span>
-      <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
+      {isStud && (
+        <div className={`absolute top-[0.5cqw] left-[1cqw] flex flex-col items-center leading-none font-bold ${styles.corner}`}>
+          <span>{card.rank}</span>
+          <span>{suitSymbol}</span>
+        </div>
+      )}
+      {!isStud && (
+        <>
+          <span className="leading-none font-bold">{card.rank}</span>
+          <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
+        </>
+      )}
     </div>
   );
 }

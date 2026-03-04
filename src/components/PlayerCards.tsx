@@ -74,62 +74,7 @@ export function PlayerCards({
     <>
       {/* Hole Cards */}
       <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
-        {variant === 'stud'
-          ? (() => {
-              // Stud: showdown時は showCards=true で全カード表面表示
-              if (showCards && !player.folded) {
-                return player.holeCards.map((card, i) => (
-                  <div key={i} className={i > 0 ? '-ml-[2cqw]' : ''}>
-                    {isRevealing ? (
-                      <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
-                        <div className="w-full h-full animate-reveal-card" style={{ transformStyle: 'preserve-3d', animationDelay: `${i * 120}ms` }}>
-                          <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}><Card card={card} /></div>
-                          <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}><FaceDownCard /></div>
-                        </div>
-                      </div>
-                    ) : (
-                      <Card card={card} />
-                    )}
-                  </div>
-                ));
-              }
-              // 通常プレイ: card.isUp で表裏判定（配布順）
-              const allCards = player.holeCards;
-              const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
-              const foldOffset = foldToOffsets[positionIndex];
-
-              if (player.folded && !isFolding) return null;
-              if (allCards.length === 0) return null;
-
-              return allCards.map((card, i) => {
-                const isDown = !card.isUp;
-                const dealDelay = (i * 6 + dealOrder) * 40;
-                return (
-                  <div
-                    key={i}
-                    className={`${i > 0 ? '-ml-[2cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''}`}
-                    style={isDealing ? {
-                      opacity: 0,
-                      animationDelay: `${dealDelay}ms`,
-                      '--deal-from-x': dealFromOffsets[positionIndex].x,
-                      '--deal-from-y': dealFromOffsets[positionIndex].y,
-                    } as React.CSSProperties : isFolding ? {
-                      animationDelay: `${i * 50}ms`,
-                      '--fold-to-x': foldOffset.x,
-                      '--fold-to-y': foldOffset.y,
-                      '--fold-rotate': `${parseInt(foldOffset.rotate) + i * 10}deg`,
-                    } as React.CSSProperties : {}}
-                  >
-                    {isDown
-                      ? (isSpectator ? <Card card={card} /> : <FaceDownCard />)
-                      : <Card card={card} />
-                    }
-                  </div>
-                );
-              });
-            })()
-          : // PLO: 既存ロジック
-            showCards && !player.folded
+        {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
                 <div key={i} className={i > 0 ? '-ml-[2cqw]' : ''}>
                   {isRevealing ? (
@@ -142,7 +87,7 @@ export function PlayerCards({
                         }}
                       >
                         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
-                          <Card card={card} />
+                          <Card card={card} variant={variant} />
                         </div>
                         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
                           <FaceDownCard />
@@ -150,18 +95,18 @@ export function PlayerCards({
                       </div>
                     </div>
                   ) : (
-                    <Card card={card} />
+                    <Card card={card} variant={variant} />
                   )}
                 </div>
               ))
-            : Array(4).fill(null).map((_, cardIndex) => {
+            : (player.holeCards || Array(4).fill(null)).map((card, cardIndex) => {
                 const dealDelay = (cardIndex * 6 + dealOrder) * 40;
                 const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
                 const foldOffset = foldToOffsets[positionIndex];
                 return (
                   <div
                     key={cardIndex}
-                    className={`${cardIndex > 0 ? '-ml-[7cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''} ${player.folded && !isFolding ? 'invisible' : ''}`}
+                    className={`${cardIndex > 0 ? '-ml-[6cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''} ${player.folded && !isFolding ? 'invisible' : ''}`}
                     style={isDealing ? {
                       opacity: 0,
                       animationDelay: `${dealDelay}ms`,
@@ -174,7 +119,7 @@ export function PlayerCards({
                       '--fold-rotate': `${parseInt(foldOffset.rotate) + cardIndex * 10}deg`,
                     } as React.CSSProperties : {}}
                   >
-                    <FaceDownCard />
+                    {card?.isUp ? <Card card={card} variant={variant} /> : <FaceDownCard />}
                   </div>
                 );
               })

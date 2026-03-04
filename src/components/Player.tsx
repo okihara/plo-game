@@ -85,6 +85,8 @@ export function Player({
   variant = 'plo',
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
+  const [variantOverride, setVariantOverride] = useState<GameVariant>(variant);
+  const currentVariant = variantOverride;
 
   // チップアニメーション用: currentBetが変化したときにアニメーションを再トリガー
   const prevBetRef = useRef(player.currentBet);
@@ -198,7 +200,7 @@ export function Player({
           )}
         </div>
         {/* Dealer Button (PLO only - Stud has no positional dealer) */}
-        {player.position === 'BTN' && variant !== 'stud' && (
+        {player.position === 'BTN' && currentVariant !== 'stud' && (
           <div className={`absolute w-[11cqw] h-[11cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[5.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
             D
           </div>
@@ -229,6 +231,14 @@ export function Player({
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
+      {/* Variant Toggle (dev) */}
+      <button
+        onClick={() => setVariantOverride(v => v === 'plo' ? 'stud' : 'plo')}
+        className="text-[3cqw] text-gray-400 bg-black/60 px-[2cqw] py-[0.5cqw] rounded mt-[0.5cqw] z-[20]"
+      >
+        {currentVariant === 'plo' ? 'PLO' : 'STUD'}
+      </button>
+
       {/* Hole Cards + Hand Name */}
       <PlayerCards
         player={player}
@@ -238,7 +248,7 @@ export function Player({
         dealOrder={dealOrder}
         lastAction={lastAction}
         isSpectator={isSpectator}
-        variant={variant}
+        variant={currentVariant}
         showdownHandName={showdownHandName}
         winHandName={winHandName}
         isWinner={isWinner}
