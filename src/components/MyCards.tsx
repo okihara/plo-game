@@ -3,7 +3,6 @@ import { Card } from './Card';
 
 interface MyCardsProps {
   cards: CardType[];
-  communityCards?: CardType[];
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
   folded?: boolean;

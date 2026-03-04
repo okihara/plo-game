@@ -329,7 +329,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           <MyCards
             cards={myHoleCards}
-            communityCards={gameState.communityCards}
             isDealing={isDealingCards}
             dealOrder={humanDealOrder}
             folded={myPlayer?.folded}
