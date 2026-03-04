@@ -506,9 +506,18 @@ export function evaluatePreFlopStrength(holeCards: Card[]): number {
 }
 
 export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
-  const values = holeCards.map(c => getRankValue(c.rank));
-  const suits = holeCards.map(c => c.suit);
-  const ranks = holeCards.map(c => c.rank);
+  // PLO専用（4枚前提）。不正なカードや枚数不足時はデフォルト値を返す
+  const validCards = holeCards.filter(c => c && c.rank && c.suit);
+  if (validCards.length < 4) {
+    return {
+      score: 0.3, hasPair: false, pairRank: null, hasAceSuited: false,
+      isDoubleSuited: false, isSingleSuited: false, isRundown: false,
+      hasWrap: false, hasDangler: false,
+    };
+  }
+  const values = validCards.map(c => getRankValue(c.rank));
+  const suits = validCards.map(c => c.suit);
+  const ranks = validCards.map(c => c.rank);
 
   const rankCounts = new Map<Rank, number>();
   const suitCounts = new Map<string, number>();
