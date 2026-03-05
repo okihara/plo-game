@@ -390,6 +390,137 @@ export function compareLowHands(a: HandRank, b: HandRank): number {
   return 0;
 }
 
+// =========================================================================
+//  2-7 (Deuce-to-Seven) Lowball Hand Evaluation
+// =========================================================================
+
+/**
+ * 2-7 ローボール 5枚ハンド評価
+ * - Ace は常に 14（ハイ）
+ * - ストレート・フラッシュはカウントする（悪い手になる）
+ * - ペアなしノーストレートノーフラッシュが最強
+ *
+ * rank 体系（低い = 良い手）:
+ *   1 = ハイカード（ベスト）
+ *   2 = ワンペア, 3 = ツーペア, 4 = スリーカード,
+ *   5 = ストレート, 6 = フラッシュ, 7 = フルハウス,
+ *   8 = フォーカード, 9 = ストレートフラッシュ（ワースト）
+ *
+ * highCards: カード値を降順。低いほど良い。
+ * ベストハンド: 2-3-4-5-7 (Number One)
+ */
+export function evaluate27LowHand(cards: Card[]): HandRank {
+  if (cards.length !== 5) {
+    throw new Error(`2-7 requires exactly 5 cards, got ${cards.length}`);
+  }
+
+  const sortedCards = [...cards].sort((a, b) => getRankValue(b.rank) - getRankValue(a.rank));
+  const values = sortedCards.map(c => getRankValue(c.rank));
+  const suits = sortedCards.map(c => c.suit);
+
+  const isFlush = suits.every(s => s === suits[0]);
+  const isStraight = check27Straight(values);
+  const groups = getGroups(values);
+
+  // ストレートフラッシュ
+  if (isFlush && isStraight) {
+    const straightHigh = get27StraightHigh(values);
+    return { rank: 9, name: 'ストレートフラッシュ', highCards: [straightHigh] };
+  }
+
+  // フォーカード
+  if (groups[0].count === 4) {
+    return { rank: 8, name: 'フォーカード', highCards: [groups[0].value, groups[1].value] };
+  }
+
+  // フルハウス
+  if (groups[0].count === 3 && groups[1].count === 2) {
+    return { rank: 7, name: 'フルハウス', highCards: [groups[0].value, groups[1].value] };
+  }
+
+  // フラッシュ
+  if (isFlush) {
+    return { rank: 6, name: 'フラッシュ', highCards: values };
+  }
+
+  // ストレート
+  if (isStraight) {
+    const straightHigh = get27StraightHigh(values);
+    return { rank: 5, name: 'ストレート', highCards: [straightHigh] };
+  }
+
+  // スリーカード
+  if (groups[0].count === 3) {
+    return { rank: 4, name: 'スリーカード', highCards: [groups[0].value, groups[1].value, groups[2].value] };
+  }
+
+  // ツーペア
+  if (groups[0].count === 2 && groups[1].count === 2) {
+    return { rank: 3, name: 'ツーペア', highCards: [groups[0].value, groups[1].value, groups[2].value] };
+  }
+
+  // ワンペア
+  if (groups[0].count === 2) {
+    return { rank: 2, name: 'ワンペア', highCards: [groups[0].value, groups[1].value, groups[2].value, groups[3].value] };
+  }
+
+  // ハイカード（最強カテゴリ）
+  const name = format27LowName(values);
+  return { rank: 1, name, highCards: values };
+}
+
+/**
+ * 2-7 ロー比較: 低い方が勝ち（負の値 = a が良い）
+ * rank が小さい方が良い、同 rank なら highCards を左から比較し小さい方が良い
+ */
+export function compare27LowHands(a: HandRank, b: HandRank): number {
+  if (a.rank !== b.rank) return a.rank - b.rank;
+
+  for (let i = 0; i < Math.min(a.highCards.length, b.highCards.length); i++) {
+    if (a.highCards[i] !== b.highCards[i]) {
+      return a.highCards[i] - b.highCards[i];
+    }
+  }
+
+  return 0;
+}
+
+/**
+ * 2-7 ストレート判定: Ace は常に 14（ハイ）のみ。A-2-3-4-5 はストレートにならない。
+ */
+function check27Straight(values: number[]): boolean {
+  const sorted = [...values].sort((a, b) => b - a);
+  for (let i = 0; i < 4; i++) {
+    if (sorted[i] - sorted[i + 1] !== 1) {
+      return false;
+    }
+  }
+  return true;
+}
+
+/** 2-7 ストレートのハイカード */
+function get27StraightHigh(values: number[]): number {
+  return Math.max(...values);
+}
+
+/** 2-7 ハイカードのハンド名: "7-5 low", "Number One" 等 */
+function format27LowName(values: number[]): string {
+  const sorted = [...values].sort((a, b) => b - a);
+  // Number One: 7-5-4-3-2
+  if (sorted[0] === 7 && sorted[1] === 5 && sorted[2] === 4 && sorted[3] === 3 && sorted[4] === 2) {
+    return 'Number One';
+  }
+  const display = (v: number) => {
+    if (v === 14) return 'A';
+    if (v === 13) return 'K';
+    if (v === 12) return 'Q';
+    if (v === 11) return 'J';
+    if (v === 10) return 'T';
+    return String(v);
+  };
+  return `${display(sorted[0])}-${display(sorted[1])} low`;
+}
+
 /**
  * Razz: アップカードのみでショウイングハンドのロー強度を評価（アクション順序決定用）
  * 低いハンドほど良い

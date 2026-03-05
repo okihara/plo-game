@@ -12,10 +12,14 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud' | 'razz';
+export type GameVariant = 'plo' | 'stud' | 'razz' | 'tripdraw';
 
 export function isStudFamily(variant: GameVariant): boolean {
   return variant === 'stud' || variant === 'razz';
+}
+
+export function isDrawFamily(variant: GameVariant): boolean {
+  return variant === 'tripdraw';
 }
 
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
@@ -38,14 +42,16 @@ export interface Player {
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'
-  | 'third' | 'fourth' | 'fifth' | 'sixth' | 'seventh';
-export type Action = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
+  | 'third' | 'fourth' | 'fifth' | 'sixth' | 'seventh'
+  | 'predraw' | 'draw1' | 'postdraw1' | 'draw2' | 'postdraw2' | 'draw3' | 'final';
+export type Action = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin' | 'draw';
 
 export interface GameAction {
   playerId: number;
   action: Action;
   amount: number;
   street?: Street;
+  discardIndices?: number[];  // Triple Draw: ドロー時に捨てたカードのインデックス
 }
 
 export interface HandRank {
@@ -79,4 +85,5 @@ export interface GameState {
   bringIn: number;           // Stud: ブリングイン額（PLO: 0）
   betCount: number;          // Fixed Limit: 現ストリートのベット回数
   maxBetsPerRound: number;   // Fixed Limit: 最大ベット回数/ストリート（通常4）
+  discardPile?: Card[];      // Triple Draw: 捨て札の山（ドロー時のデッキ補充用）
 }
