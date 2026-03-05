@@ -66,20 +66,12 @@ export function SpectatorView({ tableId, onBack }: SpectatorViewProps) {
           <div className="text-[#C0392B] text-5xl mb-4">!</div>
           <h2 className="text-cream-900 text-xl font-bold mb-2">接続エラー</h2>
           <p className="text-cream-700 mb-6">{connectionError}</p>
-          <div className="space-y-3">
-            <button
-              onClick={() => connect()}
-              className="w-full py-3 px-6 bg-forest text-white rounded-xl font-bold hover:bg-forest-light transition-all"
-            >
-              再接続
-            </button>
-            <button
-              onClick={onBack}
-              className="w-full py-3 px-6 bg-white border border-cream-300 rounded-xl font-bold text-cream-700 hover:border-cream-400 transition-all"
-            >
-              戻る
-            </button>
-          </div>
+          <button
+            onClick={onBack}
+            className="w-full py-3 px-6 bg-white border border-cream-300 rounded-xl font-bold text-cream-700 hover:border-cream-400 transition-all"
+          >
+            戻る
+          </button>
         </div>
       </div>
     );
