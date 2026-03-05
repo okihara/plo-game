@@ -77,11 +77,11 @@ export class TableInstance {
     const roomName = `table:${this.id}`;
     this.playerManager = new PlayerManager();
     this.broadcast = new BroadcastService(io, roomName);
-    this.actionController = new ActionController(this.broadcast);
+    this.variantAdapter = new VariantAdapter(this.variant);
+    this.actionController = new ActionController(this.broadcast, this.variantAdapter);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
     this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
-    this.variantAdapter = new VariantAdapter(this.variant);
   }
 
   // ============================================

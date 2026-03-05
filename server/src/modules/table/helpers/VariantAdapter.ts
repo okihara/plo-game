@@ -2,8 +2,8 @@
 // PLO / Stud の分岐を一箇所に集約し、TableInstance から variant 判定を排除する
 
 import { GameState, GameVariant, Action, Player, Card } from '../../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getValidActions } from '../../../shared/logic/gameEngine.js';
-import { createStudGameState, startStudHand, getStudValidActions } from '../../../shared/logic/studEngine.js';
+import { createInitialGameState, startNewHand, getValidActions, applyAction, wouldAdvanceStreet, determineWinner } from '../../../shared/logic/gameEngine.js';
+import { createStudGameState, startStudHand, getStudValidActions, applyStudAction, wouldStudAdvanceStreet, determineStudWinner } from '../../../shared/logic/studEngine.js';
 import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';
 import { SeatInfo } from '../types.js';
 import { BroadcastService } from './BroadcastService.js';
@@ -78,6 +78,36 @@ export class VariantAdapter {
       return player.holeCards;
     }
     return player.holeCards;
+  }
+
+  /**
+   * アクションを適用して新しいGameStateを返す
+   */
+  applyAction(gameState: GameState, seatIndex: number, action: Action, amount: number, rakePercent: number, rakeCapBB: number): GameState {
+    if (this.variant === 'stud') {
+      return applyStudAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
+    }
+    return applyAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
+  }
+
+  /**
+   * アクション適用前にストリートが変わるかを判定
+   */
+  wouldAdvanceStreet(gameState: GameState, seatIndex: number, action: Action, amount: number): boolean {
+    if (this.variant === 'stud') {
+      return wouldStudAdvanceStreet(gameState, seatIndex, action, amount);
+    }
+    return wouldAdvanceStreet(gameState, seatIndex, action, amount);
+  }
+
+  /**
+   * 勝者を決定
+   */
+  determineWinner(gameState: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
+    if (this.variant === 'stud') {
+      return determineStudWinner(gameState, rakePercent, rakeCapBB);
+    }
+    return determineWinner(gameState, rakePercent, rakeCapBB);
   }
 
   /**
