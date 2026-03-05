@@ -293,30 +293,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                 </button>
               );
             })}
-            {TABLE_OPTIONS.filter(t => t.variant === 'stud').map((table) => {
-              const count = playerCounts[`${table.blinds}-stud`] ?? 0;
-              return (
-                <button
-                  key={table.id}
-                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false, table.variant)}
-                  disabled={!table.enabled || !!maintenance?.isActive || !user}
-                  className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
-                    table.enabled && !maintenance?.isActive && user
-                      ? 'bg-gradient-to-b from-indigo-500 to-indigo-600 border-indigo-700/40 shadow-[0_4px_12px_rgba(79,70,229,0.3),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(79,70,229,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-gradient-to-b from-indigo-500 to-indigo-600 border-indigo-700/40 opacity-50 cursor-not-allowed'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-[2cqw]">
-                    <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
-                    <div className="flex flex-col items-start">
-                      <span className="text-[2.8cqw] font-bold text-white/90">Stud</span>
-                      <span className="text-[2cqw] text-white/70">{table.buyIn} / {table.rake}</span>
-                      <span className="text-[2cqw] text-white/70">{count}人</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
             <button
               onClick={() => user && !maintenance?.isActive && setShowPrivateDialog(true)}
               disabled={!user || !!maintenance?.isActive}
@@ -339,6 +315,11 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
           {/* Mini Leaderboard */}
           <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} refreshKey={rankingRefreshKey} />
 
+          {/* Footer */}
+          <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">
+            <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
+          </div>
+
           {/* Stud / Razz links */}
           <div className="mt-[4cqw] flex justify-center gap-[6cqw] text-[3cqw]">
             <button
@@ -355,11 +336,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             >
               Razz 4/8
             </button>
-          </div>
-
-          {/* Footer */}
-          <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">
-            <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
           </div>
 
           {/* Debug link */}
