@@ -339,6 +339,24 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
           {/* Mini Leaderboard */}
           <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} refreshKey={rankingRefreshKey} />
 
+          {/* Stud / Razz links */}
+          <div className="mt-[4cqw] flex justify-center gap-[6cqw] text-[3cqw]">
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'stud')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Stud 4/8
+            </button>
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'razz')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Razz 4/8
+            </button>
+          </div>
+
           {/* Footer */}
           <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">
             <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>

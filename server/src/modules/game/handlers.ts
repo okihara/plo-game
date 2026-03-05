@@ -106,7 +106,9 @@ export async function handleMatchmakingJoin(
   }
 
   const { blinds } = data;
-  const variant = (data.variant === 'stud' ? 'stud' : 'plo') as import('../../shared/logic/types.js').GameVariant;
+  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz'];
+  const variant: import('../../shared/logic/types.js').GameVariant =
+    VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo';
 
   try {
     const parts = blinds.split('/');
