@@ -266,7 +266,8 @@
     }
 
     function renderTables(tables) {
-      var streetLabels = { preflop:'Pre', flop:'Flop', turn:'Turn', river:'River', showdown:'SD' };
+      var streetLabels = { preflop:'Pre', flop:'Flop', turn:'Turn', river:'River', showdown:'SD', third:'3rd', fourth:'4th', fifth:'5th', sixth:'6th', seventh:'7th' };
+      var variantLabels = { plo:'PLO', stud:'Stud', razz:'Razz' };
       var html = tables.map(function(t) {
         var street = t.currentStreet ? (streetLabels[t.currentStreet] || t.currentStreet) : '待機';
 
@@ -327,7 +328,8 @@
 
         return '<div class="table-card">' +
           '<div class="table-header">' +
-            '<div class="table-title"><span style="color:#64748b;font-weight:400;font-size:10px">' + t.id.slice(0,8) + '</span> ' + t.blinds +
+            '<div class="table-title"><span style="color:#64748b;font-weight:400;font-size:10px">' + t.id.slice(0,8) + '</span> ' +
+              '<span class="badge" style="background:#6366f1">' + (variantLabels[t.variant] || t.variant || 'PLO') + '</span> ' + t.blinds +
               (t.isFastFold ? ' <span class="badge badge-ff">FF</span>' : '') +
               (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
             '</div>' +
