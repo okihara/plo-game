@@ -313,9 +313,11 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     wsService.setListeners({
       onConnected: () => {
         setIsConnected(true);
+        setConnectionError(null);
       },
-      onDisconnected: () => {
+      onDisconnected: (message) => {
         setIsConnected(false);
+        setConnectionError(message);
       },
       onError: (message) => {
         setConnectionError(message);

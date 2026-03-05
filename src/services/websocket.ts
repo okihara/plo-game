@@ -25,7 +25,7 @@ class WebSocketService {
   // Event listeners
   private listeners: {
     onConnected?: (playerId: string) => void;
-    onDisconnected?: () => void;
+    onDisconnected?: (reason: string) => void;
     onError?: (message: string) => void;
     onTableJoined?: (tableId: string, seat: number) => void;
     onTableLeft?: () => void;
@@ -79,6 +79,7 @@ class WebSocketService {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
+        reconnection: false,
       });
 
       let settled = false;
@@ -107,9 +108,9 @@ class WebSocketService {
         }
       });
 
-      this.socket.on('disconnect', () => {
-        wsLog('disconnect');
-        this.listeners.onDisconnected?.();
+      this.socket.on('disconnect', (reason) => {
+        wsLog('disconnect', reason);
+        this.listeners.onDisconnected?.(reason);
       });
 
       this.socket.on('connection:displaced', ({ reason }) => {
