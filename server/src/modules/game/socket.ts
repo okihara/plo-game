@@ -40,17 +40,15 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     const odId = socket.odId!;
     console.log(`Player connected: ${odId} (socket: ${socket.id})`);
 
-    // 同一ユーザーの旧接続を切断（ゲストはsocketごとにユニークなのでスキップ）
-    if (!odId.startsWith('guest_')) {
-      const existingSocket = activeConnections.get(odId);
-      if (existingSocket && existingSocket.id !== socket.id) {
-        console.log(`[DuplicateConnection] Disconnecting old socket for ${odId}: ${existingSocket.id}`);
-        existingSocket.odDisplacedByNewConnection = true;
-        existingSocket.emit('connection:displaced', { reason: 'new_connection' });
-        existingSocket.disconnect(true);
-      }
-      activeConnections.set(odId, socket);
+    // 同一ユーザーの旧接続を切断
+    const existingSocket = activeConnections.get(odId);
+    if (existingSocket && existingSocket.id !== socket.id) {
+      console.log(`[DuplicateConnection] Disconnecting old socket for ${odId}: ${existingSocket.id}`);
+      existingSocket.odDisplacedByNewConnection = true;
+      existingSocket.emit('connection:displaced', { reason: 'new_connection' });
+      existingSocket.disconnect(true);
     }
+    activeConnections.set(odId, socket);
 
     socket.emit('connection:established', { playerId: odId });
 
@@ -79,7 +77,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
 
       // 自分がまだ最新の接続の場合のみレジストリから削除
-      if (!odId.startsWith('guest_') && activeConnections.get(odId)?.id === socket.id) {
+      if (activeConnections.get(odId)?.id === socket.id) {
         activeConnections.delete(odId);
       }
 

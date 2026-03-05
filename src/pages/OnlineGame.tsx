@@ -132,15 +132,10 @@ export function OnlineGame({ blinds, isFastFold, privateMode, onBack }: OnlineGa
 
   // 接続エラー
   if (connectionError) {
-    const isConnectionError = ['timeout', 'websocket', 'connect', 'network', 'ECONNREFUSED'].some(
-      k => connectionError.toLowerCase().includes(k)
-    );
     return (
       <ConnectionErrorScreen
         error={connectionError}
-        onRetry={() => connect().then(() => joinMatchmaking())}
         onBack={onBack}
-        showRetry={isConnectionError}
       />
     );
   }

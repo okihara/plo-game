@@ -238,7 +238,7 @@ export async function handlePrivateCreate(
     return;
   }
 
-  if (!socket.odId || socket.odId.startsWith('guest_')) {
+  if (!socket.odId) {
     socket.emit('table:error', { message: 'ログインが必要です' });
     return;
   }
