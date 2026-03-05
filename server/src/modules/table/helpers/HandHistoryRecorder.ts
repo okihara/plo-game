@@ -1,6 +1,6 @@
 // ハンドヒストリーのDB保存処理
 
-import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
+import { GameState, Card, GameAction, isStudFamily } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
 import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';
@@ -138,13 +138,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             finalHand = winnerEntry.handName;
           } else if (!player.folded) {
             try {
-              if (gameState.variant === 'stud') {
-                if (player.holeCards.length >= 5) {
-                  finalHand = evaluateStudHand(player.holeCards).name || null;
-                }
-              } else if (player.holeCards.length === 4 && gameState.communityCards.length === 5) {
-                finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;
-              }
+              finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;
             } catch (e) {
               console.warn('Hand evaluation failed for seat', seatIndex, e);
             }

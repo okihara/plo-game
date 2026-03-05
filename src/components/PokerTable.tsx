@@ -1,4 +1,4 @@
-import { GameState, Player as PlayerType } from '../logic';
+import { GameState, Player as PlayerType, isStudFamily } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -64,7 +64,7 @@ export function PokerTable({
         </div>
 
         {/* Community Cards (PLO only) / Stud Info */}
-        {state.variant !== 'stud' ? (
+        {state.variant === 'plo' ? (
           <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
         ) : (
           <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
@@ -92,7 +92,7 @@ export function PokerTable({
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${state.variant === 'stud' ? 'top-[50%]' : 'top-[62%]'}`}>
+            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${isStudFamily(state.variant) ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );
@@ -112,7 +112,7 @@ export function PokerTable({
               winHandName={state.winners.find(w => w.playerId === player.id)?.handName}
               showdownHandName={showdownHandNames?.get(playerIdx)}
               lastAction={lastActions.get(player.id) || null}
-              showCards={isSpectator || (state.variant === 'stud' ? (showdownHandNames?.size ?? 0) > 0 : player.holeCards.length > 0)}
+              showCards={isSpectator || (isStudFamily(state.variant) ? (showdownHandNames?.size ?? 0) > 0 : player.holeCards.length > 0)}
               isDealing={isDealingCards}
               dealOrder={getDealOrder(playerIdx)}
               actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}

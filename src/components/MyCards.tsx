@@ -1,4 +1,4 @@
-import { Card as CardType } from '../logic';
+import { Card as CardType, isStudFamily } from '../logic';
 import { Card } from './Card';
 
 interface MyCardsProps {
@@ -11,7 +11,7 @@ interface MyCardsProps {
 }
 
 export function MyCards({ cards, isDealing, dealOrder, folded = false, handName, variant }: MyCardsProps) {
-  const isStud = variant === 'stud';
+  const isStud = isStudFamily((variant ?? 'plo') as any);
 
   return (
     <div
@@ -24,7 +24,7 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false, handName,
           return (
             <div
               key={cardIndex}
-              className={`${isStud && card.isUp ? '-translate-y-[4cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''}`}
+              className={`${card.isUp ? '-translate-y-[4cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''}`}
               style={isDealing ? {
                 opacity: 0,
                 animationDelay: `${dealDelay}ms`,

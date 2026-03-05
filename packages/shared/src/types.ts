@@ -14,6 +14,10 @@ export function getUpCards(cards: Card[]): Card[] {
 
 export type GameVariant = 'plo' | 'stud' | 'razz';
 
+export function isStudFamily(variant: GameVariant): boolean {
+  return variant === 'stud' || variant === 'razz';
+}
+
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
 
 export interface Player {

@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType } from '../logic';
+import { Player as PlayerType, evaluateRazzHand, isStudFamily } from '../logic';
 import { evaluateCurrentHand, evaluateStudHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
@@ -104,8 +104,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   const myCurrentHandName = useMemo(() => {
     if (!gameState) return undefined;
-    if (gameState.variant === 'stud') {
-      return myHoleCards.length >= 5 ? evaluateStudHand(myHoleCards).name : undefined;
+    if (isStudFamily(gameState.variant)) {
+      if (myHoleCards.length < 5) {
+        return undefined;
+      }
+      switch(gameState.variant) {
+        case 'stud':
+          return evaluateStudHand(myHoleCards).name;
+        case 'razz':
+          return evaluateRazzHand(myHoleCards).name;
+        default:
+          return undefined;
+      }
     }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
   }, [myHoleCards, gameState?.communityCards, gameState?.variant]);
@@ -331,7 +341,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             variant={gameState.variant}
           />
 
-          {gameState.variant === 'stud' ? (
+          {isStudFamily(gameState.variant) ? (
             <StudActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : (
             <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />

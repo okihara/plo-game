@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Player as PlayerType, GameVariant } from '../logic';
+import { Player as PlayerType, GameVariant, isStudFamily } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction } from '../hooks/useOnlineGameState';
 
@@ -71,7 +71,7 @@ export function PlayerCards({
   if (positionIndex === 0 && !isSpectator) return null;
   
   // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
-  const cardOverlapMargin = variant === 'stud' ? '-ml-[6cqw]' : '-ml-[2cqw]';
+  const cardOverlapMargin = isStudFamily(variant) ? '-ml-[6cqw]' : '-ml-[2cqw]';
 
   return (
     <>

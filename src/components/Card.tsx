@@ -1,4 +1,4 @@
-import { Card as CardType } from '../logic';
+import { Card as CardType, isStudFamily, GameVariant } from '../logic';
 
 // === 定数・型 ===
 
@@ -45,7 +45,7 @@ export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', s
   const suitSymbol = SUIT_SYMBOLS[card.suit];
   const suitBg = SUIT_BG_COLORS[card.suit];
   const styles = sizeStyles[size];
-  const isStud = variant === 'stud';
+  const isTiny = isStudFamily(variant as GameVariant);
 
   return (
     <div
@@ -58,13 +58,13 @@ export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', s
       `}
       style={style}
     >
-      {isStud && (
+      {isTiny && (
         <div className={`absolute top-[0.5cqw] left-[0.5cqw] flex flex-col items-center leading-none font-bold ${styles.corner}`}>
           <span>{card.rank}</span>
           <span>{suitSymbol}</span>
         </div>
       )}
-      {!isStud && (
+      {!isTiny && (
         <>
           <span className="leading-none font-bold">{card.rank}</span>
           <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
