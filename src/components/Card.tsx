@@ -3,7 +3,7 @@ import { Card as CardType, isStudFamily, GameVariant } from '../logic';
 // === 定数・型 ===
 
 type CardSize = 'sm' | 'md' | 'lg';
-type CardVariant = 'plo' | 'stud' | 'razz';
+type CardVariant = GameVariant;
 
 const SUIT_SYMBOLS: Record<string, string> = {
   h: '♥',

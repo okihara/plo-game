@@ -63,6 +63,7 @@ const actionColorStyles: Record<Action, string> = {
   bet: 'text-orange-400 border-orange-400',
   raise: 'text-orange-400 border-orange-400',
   allin: 'text-red-400 border-red-400',
+  draw: 'text-purple-400 border-purple-400',
 };
 
 
