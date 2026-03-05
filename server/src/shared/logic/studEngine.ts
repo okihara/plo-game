@@ -1,19 +1,20 @@
-import { GameState, Player, Position, Action, Card, Suit, Street, getUpCards } from './types.js';
-import { createDeck, shuffleDeck, dealCards, getRankValue } from './deck.js';
-import { evaluateStudHand, evaluateShowingHand, compareHands } from './handEvaluator.js';
+import { GameState, Player, Position, Action, Card, Street, GameVariant, getUpCards } from './types.js';
+import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { getActivePlayers, getPlayersWhoCanAct, calculateSidePots, calculateRake } from './gameEngine.js';
+import { StudVariantRules } from './studVariantRules.js';
+import { StudHighRules } from './rules/studHighRules.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
 
-// スートの強さ（ブリングイン判定用: ♣ < ♦ < ♥ < ♠）
-const SUIT_VALUE: Record<Suit, number> = { c: 1, d: 2, h: 3, s: 4 };
+/** デフォルトルール（後方互換） */
+const DEFAULT_RULES = new StudHighRules();
 
 // =========================================================================
 //  State Creation
 // =========================================================================
 
-export function createStudGameState(playerChips: number, ante: number, smallBet: number): GameState {
+export function createStudGameState(playerChips: number, ante: number, smallBet: number, variant: GameVariant = 'stud'): GameState {
   const players: Player[] = [];
   const names = ['You', 'Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka'];
 
@@ -52,7 +53,7 @@ export function createStudGameState(playerChips: number, ante: number, smallBet:
     isHandComplete: false,
     winners: [],
     rake: 0,
-    variant: 'stud',
+    variant,
     ante,
     bringIn: Math.ceil(ante / 2) || 1, // ブリングイン = アンテの半額（切り上げ）
     betCount: 0,
@@ -64,7 +65,7 @@ export function createStudGameState(playerChips: number, ante: number, smallBet:
 //  Start New Hand
 // =========================================================================
 
-export function startStudHand(state: GameState): GameState {
+export function startStudHand(state: GameState, rules: StudVariantRules = DEFAULT_RULES): GameState {
   const newState = { ...state };
 
   // ハンド状態リセット
@@ -134,7 +135,7 @@ export function startStudHand(state: GameState): GameState {
 
   // === ブリングイン: 最低ドアカードのプレイヤーが最初に行動 ===
   // ブリングインプレイヤーが「ブリングイン（最低額）」か「コンプリート（スモールベット）」を選択
-  const bringInPlayer = findLowestDoorCard(newState);
+  const bringInPlayer = rules.findBringInPlayer(newState);
   if (bringInPlayer === -1) return newState;
 
   newState.currentPlayerIndex = bringInPlayer;
@@ -230,7 +231,7 @@ function getCurrentBetSize(state: GameState): number {
 
 export function applyStudAction(
   state: GameState, playerIndex: number, action: Action, amount: number = 0,
-  rakePercent: number = 0, rakeCapBB: number = 0
+  rakePercent: number = 0, rakeCapBB: number = 0, rules: StudVariantRules = DEFAULT_RULES
 ): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const player = newState.players[playerIndex];
@@ -336,18 +337,18 @@ export function applyStudAction(
   // 次のアクション決定
   const nextResult = determineStudNextAction(newState);
   if (nextResult.moveToNextStreet) {
-    return moveToNextStudStreet(newState, rakePercent, rakeCapBB);
+    return moveToNextStudStreet(newState, rakePercent, rakeCapBB, rules);
   } else if (nextResult.nextPlayerIndex !== -1) {
     newState.currentPlayerIndex = nextResult.nextPlayerIndex;
   } else {
-    return determineStudWinner(newState, rakePercent, rakeCapBB);
+    return determineStudWinner(newState, rakePercent, rakeCapBB, rules);
   }
 
   return newState;
 }
 
-export function wouldStudAdvanceStreet(state: GameState, playerIndex: number, action: Action, amount: number = 0): boolean {
-  const resultState = applyStudAction(state, playerIndex, action, amount);
+export function wouldStudAdvanceStreet(state: GameState, playerIndex: number, action: Action, amount: number = 0, rules: StudVariantRules = DEFAULT_RULES): boolean {
+  const resultState = applyStudAction(state, playerIndex, action, amount, 0, 0, rules);
   return resultState.currentStreet !== state.currentStreet;
 }
 
@@ -388,7 +389,7 @@ function determineStudNextAction(state: GameState): { nextPlayerIndex: number; m
   return { nextPlayerIndex: -1, moveToNextStreet: true };
 }
 
-function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
+function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0, rules: StudVariantRules = DEFAULT_RULES): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   // ストリート間のリセット
@@ -402,13 +403,13 @@ function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCap
 
   const activePlayers = getActivePlayers(newState);
   if (activePlayers.length === 1) {
-    return determineStudWinner(newState, rakePercent, rakeCapBB);
+    return determineStudWinner(newState, rakePercent, rakeCapBB, rules);
   }
 
   const nextStreet = getNextStudStreet(newState.currentStreet);
   if (nextStreet === 'showdown') {
     newState.currentStreet = 'showdown';
-    return determineStudWinner(newState, rakePercent, rakeCapBB);
+    return determineStudWinner(newState, rakePercent, rakeCapBB, rules);
   }
 
   newState.currentStreet = nextStreet;
@@ -427,16 +428,16 @@ function moveToNextStudStreet(state: GameState, rakePercent: number = 0, rakeCap
     p.holeCards.push(...cards.map(c => ({ ...c, isUp })));
   }
 
-  // === アクション順序: 最高ショウイングハンドのプレイヤー ===
-  const firstActor = findBestShowingHand(newState);
+  // === アクション順序: rules に委譲 ===
+  const firstActor = rules.findFirstToAct(newState);
   if (firstActor === -1) {
     // 全員オールイン → ランアウト
-    return studRunOut(newState, rakePercent, rakeCapBB);
+    return studRunOut(newState, rakePercent, rakeCapBB, rules);
   }
 
   const canActPlayers = activePlayers.filter(p => !p.isAllIn);
   if (canActPlayers.length <= 1) {
-    return studRunOut(newState, rakePercent, rakeCapBB);
+    return studRunOut(newState, rakePercent, rakeCapBB, rules);
   }
 
   newState.currentPlayerIndex = firstActor;
@@ -458,7 +459,7 @@ function getNextStudStreet(current: Street): Street {
 //  Winner Determination
 // =========================================================================
 
-export function determineStudWinner(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
+export function determineStudWinner(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0, rules: StudVariantRules = DEFAULT_RULES): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   const originalStreet = state.currentStreet;
   newState.isHandComplete = true;
@@ -522,52 +523,12 @@ export function determineStudWinner(state: GameState, rakePercent: number = 0, r
 
   newState.sidePots = contestedPots;
 
-  // === Studハンド評価: 全7枚から最強5枚 ===
-  const playerHandMap = new Map<number, ReturnType<typeof evaluateStudHand>>();
-  for (const player of activePlayers) {
-    playerHandMap.set(player.id, evaluateStudHand(player.holeCards));
-  }
-
-  // 各ポットの勝者決定
-  const winnerAmounts = new Map<number, { amount: number; handName: string }>();
-
-  for (const pot of contestedPots) {
-    const eligibleHands = pot.eligiblePlayers
-      .filter(id => playerHandMap.has(id))
-      .map(id => ({ playerId: id, hand: playerHandMap.get(id)! }));
-
-    if (eligibleHands.length === 0) continue;
-
-    eligibleHands.sort((a, b) => compareHands(b.hand, a.hand));
-
-    const potWinners = [eligibleHands[0]];
-    for (let i = 1; i < eligibleHands.length; i++) {
-      if (compareHands(eligibleHands[i].hand, eligibleHands[0].hand) === 0) {
-        potWinners.push(eligibleHands[i]);
-      } else {
-        break;
-      }
-    }
-
-    const winAmount = Math.floor(pot.amount / potWinners.length);
-    const remainder = pot.amount % potWinners.length;
-
-    for (let i = 0; i < potWinners.length; i++) {
-      const amount = winAmount + (i === 0 ? remainder : 0);
-      const existing = winnerAmounts.get(potWinners[i].playerId);
-      if (existing) {
-        existing.amount += amount;
-      } else {
-        winnerAmounts.set(potWinners[i].playerId, {
-          amount,
-          handName: potWinners[i].hand.name,
-        });
-      }
-    }
-  }
+  // === rules に委譲: ハンド評価 + ポット勝者決定 ===
+  const showdownPlayers = activePlayers.map(p => ({ id: p.id, holeCards: p.holeCards }));
+  const potWinners = rules.resolveShowdown(showdownPlayers, contestedPots);
 
   newState.winners = [];
-  for (const [playerId, { amount, handName }] of winnerAmounts) {
+  for (const { playerId, amount, handName } of potWinners) {
     const player = newState.players.find(p => p.id === playerId)!;
     player.chips += amount;
     newState.winners.push({ playerId, amount, handName });
@@ -580,11 +541,11 @@ export function determineStudWinner(state: GameState, rakePercent: number = 0, r
 //  Stud Run-out (全員オールイン時、残りカードを配る)
 // =========================================================================
 
-function studRunOut(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
+function studRunOut(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0, rules: StudVariantRules = DEFAULT_RULES): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   newState.currentStreet = 'showdown';
   // studDealRemaining は determineStudWinner 内で呼ばれるため、ここでは不要
-  return determineStudWinner(newState, rakePercent, rakeCapBB);
+  return determineStudWinner(newState, rakePercent, rakeCapBB, rules);
 }
 
 /** アクティブプレイヤーに7枚になるまでカードを配る */
@@ -637,47 +598,3 @@ function getNextSeatWithChips(state: GameState, fromIndex: number): number {
   return -1;
 }
 
-/** 最低ドアカード（表カード1枚目）のプレイヤーを見つける */
-function findLowestDoorCard(state: GameState): number {
-  let lowestIndex = -1;
-  let lowestRank = Infinity;
-  let lowestSuit = Infinity;
-
-  for (let i = 0; i < MAX_PLAYERS; i++) {
-    const p = state.players[i];
-    const upCards = getUpCards(p.holeCards);
-    if (p.isSittingOut || p.folded || upCards.length === 0) continue;
-
-    const doorCard = upCards[0];
-    const rankVal = getRankValue(doorCard.rank);
-    const suitVal = SUIT_VALUE[doorCard.suit];
-
-    // 低いランクが優先、同ランクなら低いスート（♣が最低）
-    if (rankVal < lowestRank || (rankVal === lowestRank && suitVal < lowestSuit)) {
-      lowestRank = rankVal;
-      lowestSuit = suitVal;
-      lowestIndex = i;
-    }
-  }
-
-  return lowestIndex;
-}
-
-/** 最高ショウイングハンド（表カード全体）のプレイヤーを見つける */
-function findBestShowingHand(state: GameState): number {
-  let bestIndex = -1;
-  let bestHand = { rank: 0, name: '', highCards: [] as number[] };
-
-  for (let i = 0; i < MAX_PLAYERS; i++) {
-    const p = state.players[i];
-    if (p.isSittingOut || p.folded || p.isAllIn) continue;
-
-    const hand = evaluateShowingHand(getUpCards(p.holeCards));
-    if (compareHands(hand, bestHand) > 0) {
-      bestHand = hand;
-      bestIndex = i;
-    }
-  }
-
-  return bestIndex;
-}

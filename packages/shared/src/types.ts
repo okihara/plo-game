@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud';
+export type GameVariant = 'plo' | 'stud' | 'razz';
 
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
 

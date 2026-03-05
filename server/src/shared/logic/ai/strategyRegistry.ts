@@ -2,6 +2,7 @@ import { GameVariant } from '../types.js';
 import { AIVariantStrategy } from './types.js';
 import { PLOStrategy } from './ploStrategy.js';
 import { StudStrategy } from './studStrategy.js';
+import { RazzStrategy } from './razzStrategy.js';
 
 // 新しいゲーム種類を追加する場合:
 // 1. xxxStrategy.ts を作成 (AIVariantStrategy を実装)
@@ -10,6 +11,7 @@ import { StudStrategy } from './studStrategy.js';
 const strategies: Record<GameVariant, AIVariantStrategy> = {
   plo: new PLOStrategy(),
   stud: new StudStrategy(),
+  razz: new RazzStrategy(),
 };
 
 export function getVariantStrategy(variant: GameVariant): AIVariantStrategy {
