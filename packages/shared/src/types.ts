@@ -61,6 +61,7 @@ export interface HandRank {
 }
 
 export interface GameState {
+  tableId?: string;       // オンライン: テーブルID（FF移動検知用）
   players: Player[];
   deck: Card[];
   communityCards: Card[];

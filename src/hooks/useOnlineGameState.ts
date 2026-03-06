@@ -135,6 +135,7 @@ function convertClientStateToGameState(
   }
 
   return {
+    tableId: clientState.tableId,
     players,
     deck: [],
     communityCards: clientState.communityCards,

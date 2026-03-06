@@ -48,10 +48,10 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold }:
     setSliderValue(minRaise);
   }, [minRaise]);
 
-  // サーバーからのstate更新でターンが変わったらリセット
+  // サーバーからのstate更新でターンが変わったらリセット（FFテーブル移動時も）
   useEffect(() => {
     setActionSent(false);
-  }, [isMyTurn]);
+  }, [isMyTurn, state.tableId]);
 
   // フォールド予約: 自分のターンが来たら自動フォールド
   useEffect(() => {
