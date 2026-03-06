@@ -46,12 +46,12 @@ const positionStyles: Record<number, string> = {
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-11cqw]',
-  1: 'top-0 right-[-19cqw]',
-  2: 'top-[8cqw] right-[-22cqw]',
-  3: 'bottom-[-9.5cqw]',
-  4: 'top-[8cqw] left-[-22cqw]',
-  5: 'top-0 left-[-19cqw]',
+  0: 'top-[-12cqw]',
+  1: 'top-0 right-[-15cqw]',
+  2: 'top-[8cqw] right-[-15cqw]',
+  3: 'bottom-[-12cqw]',
+  4: 'top-[8cqw] left-[-15cqw]',
+  5: 'top-0 left-[-15cqw]',
 };
 
 const dealerButtonStyle = 'top-[-3cqw] right-[-3cqw]';
