@@ -9,7 +9,6 @@ import { maskName } from '../../../shared/utils.js';
 function toProtocolCards(player: Player | null): OnlinePlayer['cards'] {
   if (!player) return [];
   return player.holeCards
-    .filter(c => c.isUp !== undefined)  // PLOカード(isUp未設定)は除外
     .map(c => c.isUp
       ? c
       : { rank: '2' as Rank, suit: 'h' as Suit, isUp: false as const }
