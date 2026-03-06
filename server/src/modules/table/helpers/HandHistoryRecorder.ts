@@ -1,10 +1,46 @@
 // ハンドヒストリーのDB保存処理
 
-import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
+import { GameState, Card, GameAction, isStudFamily } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
-import { evaluatePLOHand } from '../../../shared/logic/handEvaluator.js';
+import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';
 import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
+
+/** ハンド履歴記録のインターフェイス */
+export interface IHandHistoryRecorder {
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void;
+  setAllInEVProfits(evProfits: Map<number, number>): void;
+  getStartChips(): Map<number, number>;
+  recordHandComplete(
+    tableId: string,
+    blinds: string,
+    gameState: GameState,
+    seats: (SeatInfo | null)[]
+  ): Promise<void>;
+}
+
+/** Stud用: DB保存しないno-op実装 */
+export class NullHandHistoryRecorder implements IHandHistoryRecorder {
+  private startChips = new Map<number, number>();
+
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
+    this.startChips.clear();
+    for (let i = 0; i < seats.length; i++) {
+      if (seats[i]) {
+        const chips = gameState.players[i].chips + gameState.players[i].totalBetThisRound;
+        this.startChips.set(i, chips);
+      }
+    }
+  }
+
+  setAllInEVProfits(_evProfits: Map<number, number>): void {}
+
+  getStartChips(): Map<number, number> {
+    return this.startChips;
+  }
+
+  async recordHandComplete(): Promise<void> {}
+}
 
 function serializeCard(card: Card): string {
   return `${card.rank}${card.suit}`;
@@ -18,7 +54,7 @@ function isAuthenticatedUser(_odId: string): boolean {
   return true;
 }
 
-export class HandHistoryRecorder {
+export class HandHistoryRecorder implements IHandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
   private allInEVProfits: Map<number, number> | null = null;
@@ -100,10 +136,9 @@ export class HandHistoryRecorder {
           let finalHand: string | null = null;
           if (winnerEntry?.handName) {
             finalHand = winnerEntry.handName;
-          } else if (!player.folded && player.holeCards.length === 4 && gameState.communityCards.length === 5) {
+          } else if (!player.folded) {
             try {
-              const result = evaluatePLOHand(player.holeCards, gameState.communityCards);
-              finalHand = result.name || null;
+              finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;
             } catch (e) {
               console.warn('Hand evaluation failed for seat', seatIndex, e);
             }

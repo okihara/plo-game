@@ -12,9 +12,19 @@ import './index.css';
 
 
 
+// Debug outline toggle: Ctrl+Shift+D
+if (import.meta.env.DEV) {
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'd') {
+      document.documentElement.classList.toggle('debug-outlines');
+    }
+  });
+}
+
 function App() {
   const [blinds, setBlinds] = useState<string | null>(null);
   const [isFastFold, setIsFastFold] = useState(false);
+  const [variant, setVariant] = useState<string | undefined>(undefined);
   const [privateMode, setPrivateMode] = useState<PrivateMode | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
@@ -35,6 +45,7 @@ function App() {
   const goBackToLobby = () => {
     setBlinds(null);
     setIsFastFold(false);
+    setVariant(undefined);
     setPrivateMode(null);
     window.history.pushState({}, '', '/');
     setCurrentPath('/');
@@ -59,11 +70,11 @@ function App() {
   } else if (privateMode) {
     page = <OnlineGame blinds={blinds || '1/3'} isFastFold={false} privateMode={privateMode} onBack={goBackToLobby} />;
   } else if (blinds) {
-    page = <OnlineGame blinds={blinds} isFastFold={isFastFold} onBack={goBackToLobby} />;
+    page = <OnlineGame blinds={blinds} isFastFold={isFastFold} variant={variant} onBack={goBackToLobby} />;
   } else {
     page = (
       <SimpleLobby
-        onPlayOnline={(selectedBlinds, fastFold) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); }}
+        onPlayOnline={(selectedBlinds, fastFold, selectedVariant) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); setVariant(selectedVariant); }}
         onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
         onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
       />

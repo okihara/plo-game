@@ -1,4 +1,4 @@
-import { GameState, Player as PlayerType } from '../logic';
+import { GameState, Player as PlayerType, isStudFamily } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -47,7 +47,7 @@ export function PokerTable({
   };
 
   return (
-    <div className="flex-1 relative flex items-center justify-center p-2.5 min-h-0">
+    <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
       <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
         {/* Pot Display - above community cards */}
         <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg font-bold text-yellow-400 z-10">
@@ -63,16 +63,36 @@ export function PokerTable({
           </div>
         </div>
 
-        {/* Community Cards */}
-        <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
+        {/* Community Cards (PLO only) / Stud Info */}
+        {state.variant === 'plo' ? (
+          <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
+        ) : (
+          <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
+            <div className="flex gap-[2cqw] text-[3.2cqw] text-white/60">
+              <span>Ante {formatChips(state.ante)}</span>
+              <span className="text-white/30">|</span>
+              <span>BI {formatChips(state.bringIn)}</span>
+              <span className="text-white/30">|</span>
+              <span>SB {formatChips(state.smallBlind)}</span>
+              <span className="text-white/30">|</span>
+              <span>BB {formatChips(state.bigBlind)}</span>
+            </div>
+            {!state.isHandComplete && (
+              <span className="text-[3.5cqw] text-white/40 uppercase tracking-wider">
+                {state.currentStreet}
+              </span>
+            )}
+          </div>
+        )}
 
-        {/* Carried Pot - below community cards, flop onwards */}
+        {/* Carried Pot - below community cards, after first street */}
         {(() => {
           const currentStreetBets = state.players.reduce((sum, p) => sum + p.currentBet, 0);
           const carriedPot = state.pot - currentStreetBets;
-          if (state.currentStreet === 'preflop' || carriedPot <= 0) return null;
+          const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
+          if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className="absolute top-[62%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10">
+            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${isStudFamily(state.variant) ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );
@@ -92,13 +112,14 @@ export function PokerTable({
               winHandName={state.winners.find(w => w.playerId === player.id)?.handName}
               showdownHandName={showdownHandNames?.get(playerIdx)}
               lastAction={lastActions.get(player.id) || null}
-              showCards={isSpectator || player.holeCards.length > 0}
+              showCards={isSpectator || (isStudFamily(state.variant) ? (showdownHandNames?.size ?? 0) > 0 : player.holeCards.length > 0)}
               isDealing={isDealingCards}
               dealOrder={getDealOrder(playerIdx)}
               actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}
               actionTimeoutMs={isCurrentPlayer ? actionTimeoutMs : null}
               onAvatarClick={() => onPlayerClick?.(player)}
               isSpectator={isSpectator}
+              variant={state.variant}
             />
           );
         })}

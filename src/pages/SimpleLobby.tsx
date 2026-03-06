@@ -9,14 +9,14 @@ import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 
 interface SimpleLobbyProps {
-  onPlayOnline: (blinds: string, isFastFold?: boolean) => void;
+  onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
   onCreatePrivate: (blinds: string) => void;
   onJoinPrivate: (inviteCode: string) => void;
 }
 
 interface TableOption {
   id: string;
-  gameType: 'PLO' | 'NLH';
+  gameType: 'PLO' | 'NLH' | 'STUD';
   gameLabel: string;
   blinds: string;
   blindsLabel: string;
@@ -24,11 +24,13 @@ interface TableOption {
   rake: string;
   enabled: boolean;
   isFastFold: boolean;
+  variant?: string;
 }
 
 const TABLE_OPTIONS: TableOption[] = [
   { id: 'plo-1-3', gameType: 'PLO', gameLabel: 'PLO', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false },
   { id: 'plo-1-3-ff', gameType: 'PLO', gameLabel: 'Fast Fold', blinds: '1/3', blindsLabel: '1/3', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: true },
+  { id: 'stud-4-8', gameType: 'STUD', gameLabel: '7-Card Stud', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'stud' },
 ];
 
 export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: SimpleLobbyProps) {
@@ -265,9 +267,9 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             })}
           </div>
 
-          {/* Tables - Normal + Private */}
+          {/* Tables - Normal + Stud + Private */}
           <div className="mt-[2.5cqw] flex gap-[2cqw]">
-            {TABLE_OPTIONS.filter(t => !t.isFastFold).map((table) => {
+            {TABLE_OPTIONS.filter(t => !t.isFastFold && !t.variant).map((table) => {
               const count = playerCounts[table.blinds] ?? 0;
               return (
                 <button
@@ -316,6 +318,24 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
           {/* Footer */}
           <div className="mt-[6cqw] text-center text-cream-500 text-[2.5cqw]">
             <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
+          </div>
+
+          {/* Stud / Razz links */}
+          <div className="mt-[4cqw] flex justify-center gap-[6cqw] text-[3cqw]">
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'stud')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Stud 4/8
+            </button>
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'razz')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Razz 4/8
+            </button>
           </div>
 
           {/* Debug link */}

@@ -1,9 +1,20 @@
 // ClientGameState変換（静的メソッド）
 
-import { GameState, Player } from '../../../shared/logic/types.js';
+import { GameState, Player, Rank, Suit } from '../../../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
 import { SeatInfo, PendingAction } from '../types.js';
 import { maskName } from '../../../shared/utils.js';
+
+/** 裏カードの値を隠してダミー値に置換（セキュリティ: 他プレイヤーに見せない） */
+function toProtocolCards(player: Player | null): OnlinePlayer['cards'] {
+  if (!player) return [];
+  return player.holeCards
+    .filter(c => c.isUp !== undefined)  // PLOカード(isUp未設定)は除外
+    .map(c => c.isUp
+      ? c
+      : { rank: '2' as Rank, suit: 'h' as Suit, isUp: false as const }
+    );
+}
 
 export class StateTransformer {
   /**
@@ -36,6 +47,7 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: false,
+        cards: toProtocolCards(player),
       };
     }
 
@@ -53,6 +65,7 @@ export class StateTransformer {
         isAllIn: false,
         hasActed: true,
         isConnected: seat.socket?.connected ?? false,
+        cards: [],
       };
     }
 
@@ -68,6 +81,7 @@ export class StateTransformer {
       isAllIn: player?.isAllIn ?? false,
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
+      cards: toProtocolCards(player),
     };
   }
 
@@ -109,6 +123,9 @@ export class StateTransformer {
         actionTimeoutAt: null,
         actionTimeoutMs: null,
         rake: 0,
+        variant: 'plo',
+        ante: 0,
+        bringIn: 0,
       };
     }
 
@@ -134,6 +151,9 @@ export class StateTransformer {
       actionTimeoutAt,
       actionTimeoutMs,
       rake: gameState.rake ?? 0,
+      variant: gameState.variant ?? 'plo',
+      ante: gameState.ante ?? 0,
+      bringIn: gameState.bringIn ?? 0,
     };
   }
 }

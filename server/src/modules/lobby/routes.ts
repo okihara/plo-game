@@ -12,16 +12,19 @@ export function lobbyRoutes(deps: LobbyDependencies) {
     // Player counts per blind level
     fastify.get('/api/lobby/tables', async () => {
       const tablesInfo = tableManager.getTablesInfo().filter(t => !t.isPrivate);
-      const blindLevels = ['1/3', '2/5', '5/10'];
-      const results: { blinds: string; playerCount: number; isFastFold: boolean }[] = [];
-      for (const blinds of blindLevels) {
-        for (const isFastFold of [false, true]) {
-          const tables = tablesInfo.filter(t => t.blinds === blinds && t.isFastFold === isFastFold);
-          const playerCount = tables.reduce((sum, t) => sum + t.players, 0);
-          results.push({ blinds, playerCount, isFastFold });
+      // 実テーブルから blinds × isFastFold ごとにプレイヤー数を集計
+      const key = (blinds: string, isFastFold: boolean) => `${blinds}:${isFastFold}`;
+      const map = new Map<string, { blinds: string; playerCount: number; isFastFold: boolean }>();
+      for (const t of tablesInfo) {
+        const k = key(t.blinds, t.isFastFold);
+        const entry = map.get(k);
+        if (entry) {
+          entry.playerCount += t.players;
+        } else {
+          map.set(k, { blinds: t.blinds, playerCount: t.players, isFastFold: t.isFastFold });
         }
       }
-      return results;
+      return Array.from(map.values());
     });
   };
 }

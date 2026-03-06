@@ -1,1 +1,1 @@
-export { evaluatePLOHand, evaluateCurrentHand, compareHands } from '@plo/shared';
+export { evaluatePLOHand, evaluateCurrentHand, evaluateStudHand, evaluateShowingHand, compareHands, evaluateRazzHand, evaluateRazzShowingHand, compareLowHands, evaluate27LowHand, compare27LowHands } from '@plo/shared';

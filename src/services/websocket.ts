@@ -151,7 +151,7 @@ class WebSocketService {
 
       // Game events
       this.socket.on('game:state', ({ state }) => {
-        wsLog('game:state', { street: state.currentStreet, pot: state.pot });
+        wsLog('game:state', state);
         this.listeners.onGameState?.(state);
       });
 
@@ -258,8 +258,8 @@ class WebSocketService {
   }
 
   // Matchmaking pool
-  joinMatchmaking(blinds: string, isFastFold?: boolean): void {
-    this.socket?.emit('matchmaking:join', { blinds, isFastFold });
+  joinMatchmaking(blinds: string, isFastFold?: boolean, variant?: string): void {
+    this.socket?.emit('matchmaking:join', { blinds, isFastFold, variant });
   }
 
   leaveMatchmaking(): void {

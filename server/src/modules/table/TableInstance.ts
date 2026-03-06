@@ -1,7 +1,6 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action } from '../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getActivePlayers, getValidActions, calculateSidePots } from '../../shared/logic/gameEngine.js';
-import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
+import { GameState, Action, GameVariant } from '../../shared/logic/types.js';
+import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
@@ -13,10 +12,10 @@ import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
-import { FoldProcessor } from './helpers/FoldProcessor.js';
-import { HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { SpectatorManager } from './helpers/SpectatorManager.js';
+import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
 // 型の再エクスポート（後方互換性のため）
@@ -29,6 +28,7 @@ export class TableInstance {
   public readonly bigBlind: number;
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
+  public readonly variant: GameVariant = 'plo';
   public readonly isPrivate: boolean = false;
   public readonly inviteCode: string | null = null;
 
@@ -55,16 +55,17 @@ export class TableInstance {
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
-  private readonly foldProcessor: FoldProcessor;
   private readonly actionController: ActionController;
-  private readonly historyRecorder: HandHistoryRecorder;
+  private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private readonly spectatorManager: SpectatorManager;
+  private readonly variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
+    this.variant = options?.variant ?? 'plo';
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
 
@@ -76,9 +77,9 @@ export class TableInstance {
     const roomName = `table:${this.id}`;
     this.playerManager = new PlayerManager();
     this.broadcast = new BroadcastService(io, roomName);
-    this.foldProcessor = new FoldProcessor(this.broadcast);
-    this.actionController = new ActionController(this.broadcast);
-    this.historyRecorder = new HandHistoryRecorder();
+    this.variantAdapter = new VariantAdapter(this.variant);
+    this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
     this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
   }
@@ -173,9 +174,11 @@ export class TableInstance {
       this.playerManager.markLeftForFastFold(seatIndex);
 
       if (wasCurrentPlayer) {
-        // 自分のターン → applyAction('fold') 経由で正規のフォールド処理
+        // 自分のターン → 正規のアクション処理経由で離脱
+        // Studブリングインフェーズ等では fold が無効なため、有効アクションを選択
         this.actionController.clearTimers();
-        this.handleAction(odId, 'fold', 0);
+        const defaultAction = this.getDefaultDisconnectAction(seatIndex);
+        this.handleAction(odId, defaultAction.action, defaultAction.amount);
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -258,8 +261,17 @@ export class TableInstance {
         this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
       }
     } else if (result.streetChanged) {
-      // アクション演出を待ってからコミュニティカードを表示
+      // アクション演出を待ってからカードを表示
       this.actionController.scheduleActionAnimation(() => {
+        // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
+        if (this.gameState) {
+          this.variantAdapter.broadcastStreetChangeCards(
+            this.gameState,
+            this.playerManager.getSeats(),
+            this.broadcast,
+            () => this.broadcastAllHoleCardsToSpectators(),
+          );
+        }
         this.broadcastGameState();
         // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
         this.actionController.scheduleStreetTransition(() => {
@@ -278,7 +290,7 @@ export class TableInstance {
 
   /**
    * ファストフォールド用: ターン前にフォールドして即座にテーブル移動可能にする
-   * BBはプリフロップでファストフォールドできない
+   * BBはプリフロップでチェックできる場合はファストフォールドできない（レイズされていればOK）
    */
   public handleEarlyFold(odId: string): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
@@ -294,8 +306,9 @@ export class TableInstance {
     // 既に保留中のフォールドがある場合は無視
     if (this.pendingEarlyFolds.has(seatIndex)) return false;
 
-    // BBはプリフロップでファストフォールドできない
-    if (player.position === 'BB' && this.gameState.currentStreet === 'preflop') {
+    // BBはプリフロップでチェックできる場合はファストフォールドできない（レイズされていればOK）
+    const toCall = this.gameState.currentBet - player.currentBet;
+    if (player.position === 'BB' && this.gameState.currentStreet === 'preflop' && toCall === 0) {
       return false;
     }
 
@@ -339,6 +352,7 @@ export class TableInstance {
       maxPlayers: this.maxPlayers,
       isFastFold: this.isFastFold,
       isPrivate: this.isPrivate,
+      variant: this.variant,
     };
   }
 
@@ -379,6 +393,36 @@ export class TableInstance {
   // ============================================
   // Private methods
   // ============================================
+
+  /**
+   * 切断・タイムアウト時のデフォルトアクションを決定
+   * Studのブリングインフェーズでは fold が無効なため、最低コストの有効アクションを選択
+   */
+  private getDefaultDisconnectAction(seatIndex: number): { action: Action; amount: number } {
+    if (!this.gameState) return { action: 'fold', amount: 0 };
+
+    const validActions = this.variantAdapter.getValidActions(this.gameState, seatIndex);
+
+    // チェック可能 → チェック
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+
+    // フォールド可能 → フォールド
+    const foldAction = validActions.find(a => a.action === 'fold');
+    if (foldAction) return { action: 'fold', amount: 0 };
+
+    // どちらも無効（Studブリングインフェーズ等）→ 最低コストのコール
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+
+    // フォールバック: 有効アクションの最小コスト
+    if (validActions.length > 0) {
+      const cheapest = validActions[0];
+      return { action: cheapest.action, amount: cheapest.minAmount };
+    }
+
+    return { action: 'fold', amount: 0 };
+  }
 
   private get roomName() {
     return `table:${this.id}`;
@@ -433,9 +477,7 @@ export class TableInstance {
 
     // Create initial game state
     const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
-    this.gameState = createInitialGameState(buyInChips);
-    this.gameState.smallBlind = this.smallBlind;
-    this.gameState.bigBlind = this.bigBlind;
+    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
 
     // Restore dealer position (startNewHand will increment it)
     if (previousDealerPosition >= 0) {
@@ -460,7 +502,7 @@ export class TableInstance {
     }
 
     // Start the hand (this will increment dealerPosition and update positions)
-    this.gameState = startNewHand(this.gameState);
+    this.gameState = this.variantAdapter.startHand(this.gameState);
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -510,12 +552,13 @@ export class TableInstance {
           .catch(err => console.error(`[Table ${this.id}] handleActionTimeout error:`, err));
       },
       () => {
-        // 切断済みプレイヤーのフォールド: handleAction 経由で正規処理
+        // 切断済みプレイヤー: 有効なデフォルトアクションで正規処理
         if (!this.gameState) return;
         const idx = this.gameState.currentPlayerIndex;
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
-          this.handleAction(seat.odId, 'fold', 0);
+          const defaultAction = this.getDefaultDisconnectAction(idx);
+          this.handleAction(seat.odId, defaultAction.action, defaultAction.amount);
         }
       }
     );
@@ -534,14 +577,12 @@ export class TableInstance {
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
-      // チェック可能ならチェック、そうでなければフォールド
-      const validActions = getValidActions(this.gameState, seatIndex);
-      const canCheck = validActions.some(a => a.action === 'check');
-      const action: Action = canCheck ? 'check' : 'fold';
-      const handled = this.handleAction(playerId, action, 0);
+      // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
+      const defaultAction = this.getDefaultDisconnectAction(seatIndex);
+      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount);
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
-      if (action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
+      if (defaultAction.action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
         await this.onTimeoutFold(playerId, seat.socket);
       }
     } else {
@@ -549,7 +590,8 @@ export class TableInstance {
       if (!this.gameState.isHandComplete &&
           this.gameState.currentPlayerIndex === seatIndex) {
         // Game is stuck waiting for this player, advance
-        this.gameState = this.foldProcessor.processSilentFold(this.gameState, seatIndex);
+        const p = this.gameState.players[seatIndex];
+        if (p && !p.folded) p.folded = true;
         this.actionController.clearTimers();
         this.advanceToNextPlayer();
       }
@@ -605,11 +647,8 @@ export class TableInstance {
       const showdownPlayers = activePlayers.map(p => {
         const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
         let handName = winnerEntry?.handName || '';
-        if (!handName && finalState.communityCards.length === 5) {
-          try {
-            const result = evaluatePLOHand(p.holeCards, finalState.communityCards);
-            handName = result.name;
-          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
+        if (!handName) {
+          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
         }
         return {
           seatIndex: p.id,
@@ -707,16 +746,13 @@ export class TableInstance {
       const showdownPlayers = activePlayers.map(p => {
         const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
         let handName = winnerEntry?.handName || '';
-        if (!handName && this.gameState!.communityCards.length === 5) {
-          try {
-            const result = evaluatePLOHand(p.holeCards, this.gameState!.communityCards);
-            handName = result.name;
-          } catch (e) { console.warn('Showdown hand evaluation failed for seat', p.id, e); }
+        if (!handName) {
+          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
         }
         return {
           seatIndex: p.id,
           odId: seats[p.id]?.odId || '',
-          cards: p.holeCards,
+          cards: this.variantAdapter.getShowdownCards(p),
           handName,
         };
       });
@@ -788,6 +824,9 @@ export class TableInstance {
     // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）
     this.broadcastGameState();
 
+    // ハンド終了後のGameStateをクリア（前ハンドのcommunityCards等が残らないように）
+    this.gameState = null;
+
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
       const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[] = [];
@@ -822,13 +861,11 @@ export class TableInstance {
       }
       return;
     }
-
+    
     this.maybeStartHand();
   }
 
   private broadcastGameState(): void {
-    if (!this.gameState) return;
-
     const clientState = this.getClientGameState();
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }

@@ -27,6 +27,7 @@ const SOUND_FILES: Record<SoundKey, string> = {
   lose: '/sounds/lose.mp3',
   deal: '/sounds/deal.mp3',
   myturn: '/sounds/myturn.mp3',
+  draw: '/sounds/deal.mp3',
 };
 
 // --- Web Audio API ベース実装 ---

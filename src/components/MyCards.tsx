@@ -1,29 +1,30 @@
-import { Card as CardType } from '../logic';
+import { Card as CardType, isStudFamily } from '../logic';
 import { Card } from './Card';
 
 interface MyCardsProps {
   cards: CardType[];
-  communityCards: CardType[];
   isDealing: boolean;
   dealOrder: number; // SBからの配布順序（0-5）
   folded?: boolean;
   handName?: string;
+  variant?: string;
 }
 
-export function MyCards({ cards, isDealing, dealOrder, folded = false, handName }: MyCardsProps) {
+export function MyCards({ cards, isDealing, dealOrder, folded = false, handName, variant }: MyCardsProps) {
+  const isStud = isStudFamily((variant ?? 'plo') as any);
+
   return (
     <div
-      className={`@container relative flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'opacity-40' : ''}`}
+      className={`@container relative flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
     >
       {cards.length > 0 && (
-      <div className="flex gap-[2cqw] justify-center">
+      <div className={`flex ${isStud ? 'gap-[1cqw]' : 'gap-[2cqw]'} justify-center`}>
         {cards.map((card, cardIndex) => {
-          // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
           const dealDelay = (cardIndex * 6 + dealOrder) * 40;
           return (
             <div
               key={cardIndex}
-              className={isDealing ? 'animate-deal-card' : ''}
+              className={`${card.isUp ? '-translate-y-[4cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''}`}
               style={isDealing ? {
                 opacity: 0,
                 animationDelay: `${dealDelay}ms`,
@@ -31,7 +32,7 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false, handName 
                 '--deal-from-y': '-14vh',
               } as React.CSSProperties : {}}
             >
-              <Card card={card} size="lg" />
+              <Card card={card} size={isStud ? 'sm' : 'lg'} />
             </div>
           );
         })}
