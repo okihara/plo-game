@@ -112,7 +112,7 @@ export function PokerTable({
               winHandName={state.winners.find(w => w.playerId === player.id)?.handName}
               showdownHandName={showdownHandNames?.get(playerIdx)}
               lastAction={lastActions.get(player.id) || null}
-              showCards={isSpectator || (isStudFamily(state.variant) ? (showdownHandNames?.size ?? 0) > 0 : player.holeCards.length > 0)}
+              showCards={isSpectator || (player.isShowdown ?? false)}
               isDealing={isDealingCards}
               dealOrder={getDealOrder(playerIdx)}
               actionTimeoutAt={isCurrentPlayer ? actionTimeoutAt : null}

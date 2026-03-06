@@ -131,6 +131,7 @@ function convertClientStateToGameState(
   for (const [seatIndex, cards] of showdownCards) {
     if (players[seatIndex] && seatIndex !== mySeat) {
       players[seatIndex].holeCards = cards;
+      players[seatIndex].isShowdown = true;
     }
   }
 
