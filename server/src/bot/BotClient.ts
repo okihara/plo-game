@@ -57,9 +57,14 @@ export class BotClient {
   private lastActionAt: number | null = null;
   private actionGeneration = 0; // stale なアクションコールバックを防ぐ世代カウンター
   private pendingFastFoldCheck = false; // ホールカード受信後のファストフォールド判定待ち
+  private _isMaintenanceActive = false; // サーバーがメンテナンス中か
 
   constructor(config: BotConfig) {
     this.config = config;
+  }
+
+  get isMaintenanceActive(): boolean {
+    return this._isMaintenanceActive;
   }
 
   async connect(): Promise<void> {
@@ -152,6 +157,15 @@ export class BotClient {
         // テーブル未参加時のエラー（バランス不足等）→ 参加失敗として通知
         if (!this.tableId && this.config.onJoinFailed) {
           this.config.onJoinFailed(this, data.message);
+        }
+      });
+
+      this.socket.on('maintenance:status', (data: { isActive: boolean; message: string }) => {
+        this._isMaintenanceActive = data.isActive;
+        if (data.isActive) {
+          console.log(`[${this.config.name}] Maintenance mode active: ${data.message}`);
+        } else {
+          console.log(`[${this.config.name}] Maintenance mode ended`);
         }
       });
 
@@ -654,6 +668,11 @@ export class BotClient {
     this.lastInGameTime = Date.now();
     this.stuckCheckInterval = setInterval(() => {
       if (!this.isConnected) return;
+      // メンテナンス中はスタック判定をスキップ
+      if (this._isMaintenanceActive) {
+        this.lastInGameTime = Date.now();
+        return;
+      }
       if (this.tableId) {
         // ゲームに参加中 → 時刻を更新
         this.lastInGameTime = Date.now();
