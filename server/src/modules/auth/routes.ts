@@ -130,7 +130,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           expires: Date.now() + 10 * 60 * 1000,
         });
 
-        reply.redirect(`https://api.twitter.com/oauth/authorize?oauth_token=${oauthToken}`);
+        reply.redirect(`https://api.twitter.com/oauth/authenticate?oauth_token=${oauthToken}`);
       } catch (err) {
         fastify.log.error(err, 'Twitter OAuth start error');
         reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);

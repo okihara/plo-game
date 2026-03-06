@@ -1,10 +1,11 @@
 // アクションフロー制御・タイマー管理
 
 import { GameState, Action } from '../../../shared/logic/types.js';
-import { getValidActions, getActivePlayers, applyAction, determineWinner, wouldAdvanceStreet } from '../../../shared/logic/gameEngine.js';
+import { getActivePlayers } from '../../../shared/logic/gameEngine.js';
 import { SeatInfo, PendingAction } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
 import { BroadcastService } from './BroadcastService.js';
+import { VariantAdapter } from './VariantAdapter.js';
 
 export interface ActionResult {
   success: boolean;
@@ -25,7 +26,7 @@ export class ActionController {
   private pendingAction: PendingAction | null = null;
   private actionGeneration = 0;
 
-  constructor(private broadcast: BroadcastService) {}
+  constructor(private broadcast: BroadcastService, private variantAdapter: VariantAdapter) {}
 
   getPendingAction(): PendingAction | null {
     return this.pendingAction;
@@ -74,8 +75,7 @@ export class ActionController {
       return { success: false, gameState, streetChanged: false, handComplete: false };
     }
 
-    // バリデーション
-    const validActions = getValidActions(gameState, seatIndex);
+    const validActions = this.variantAdapter.getValidActions(gameState, seatIndex);
     const isValid = validActions.some(a =>
       a.action === action &&
       (action === 'fold' || action === 'check' || (amount >= a.minAmount && amount <= a.maxAmount))
@@ -89,10 +89,10 @@ export class ActionController {
     this.clearActionTimer();
 
     // ストリート変更を事前検出（applyAction前に判定）
-    const willAdvanceStreet = wouldAdvanceStreet(gameState, seatIndex, action, amount);
+    const willAdvanceStreet = this.variantAdapter.wouldAdvanceStreet(gameState, seatIndex, action, amount);
 
     // アクション適用
-    const newState = applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
+    const newState = this.variantAdapter.applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
 
     // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {
@@ -121,7 +121,7 @@ export class ActionController {
 
     // 1人以下なら勝者決定
     if (activePlayers.length <= 1) {
-      const newState = determineWinner(gameState);
+      const newState = this.variantAdapter.determineWinner(gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 
@@ -142,7 +142,7 @@ export class ActionController {
 
     // 全員アクション不可なら勝者決定
     if (attempts >= TABLE_CONSTANTS.MAX_PLAYERS) {
-      const newState = determineWinner(gameState);
+      const newState = this.variantAdapter.determineWinner(gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 
@@ -176,7 +176,7 @@ export class ActionController {
       return;
     }
 
-    const validActions = getValidActions(gameState, currentPlayerIndex);
+    const validActions = this.variantAdapter.getValidActions(gameState, currentPlayerIndex);
 
     // ダッシュボード用のpendingAction設定
     this.pendingAction = {

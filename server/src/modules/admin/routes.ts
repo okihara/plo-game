@@ -15,6 +15,7 @@ interface AdminDependencies {
 interface TableStats {
   id: string;
   blinds: string;
+  variant: string;
   isFastFold: boolean;
   playerCount: number;
   maxPlayers: number;
@@ -111,6 +112,7 @@ export function adminRoutes(deps: AdminDependencies) {
           tableDetails.push({
             id: info.id,
             blinds: info.blinds,
+            variant: info.variant,
             isFastFold: info.isFastFold,
             playerCount: info.players,
             maxPlayers: info.maxPlayers,

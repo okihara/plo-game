@@ -4,6 +4,22 @@ export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'T' | 'J' | '
 export interface Card {
   rank: Rank;
   suit: Suit;
+  isUp?: boolean;  // Stud: true=表向き, false=裏向き（PLO: undefined）
+}
+
+/** Stud: holeCardsから表向きカードのみ抽出（配布順維持） */
+export function getUpCards(cards: Card[]): Card[] {
+  return cards.filter(c => c.isUp === true);
+}
+
+export type GameVariant = 'plo' | 'stud' | 'razz' | 'tripdraw';
+
+export function isStudFamily(variant: GameVariant): boolean {
+  return variant === 'stud' || variant === 'razz';
+}
+
+export function isDrawFamily(variant: GameVariant): boolean {
+  return variant === 'tripdraw';
 }
 
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
@@ -13,7 +29,7 @@ export interface Player {
   name: string;
   position: Position;
   chips: number;
-  holeCards: Card[];
+  holeCards: Card[];   // PLO: 4枚の私的カード, Stud: 全カード配布順(isUpで表裏区別)
   currentBet: number;
   totalBetThisRound: number;
   folded: boolean;
@@ -25,14 +41,17 @@ export interface Player {
   odId?: string;  // Online user ID (for stats lookup)
 }
 
-export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown';
-export type Action = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
+export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'
+  | 'third' | 'fourth' | 'fifth' | 'sixth' | 'seventh'
+  | 'predraw' | 'draw1' | 'postdraw1' | 'draw2' | 'postdraw2' | 'draw3' | 'final';
+export type Action = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin' | 'draw';
 
 export interface GameAction {
   playerId: number;
   action: Action;
   amount: number;
   street?: Street;
+  discardIndices?: number[];  // Triple Draw: ドロー時に捨てたカードのインデックス
 }
 
 export interface HandRank {
@@ -42,6 +61,7 @@ export interface HandRank {
 }
 
 export interface GameState {
+  tableId?: string;       // オンライン: テーブルID（FF移動検知用）
   players: Player[];
   deck: Card[];
   communityCards: Card[];
@@ -60,4 +80,11 @@ export interface GameState {
   isHandComplete: boolean;
   winners: { playerId: number; amount: number; handName: string }[];
   rake: number;
+  // Variant support
+  variant: GameVariant;
+  ante: number;              // Stud: アンテ額（PLO: 0）
+  bringIn: number;           // Stud: ブリングイン額（PLO: 0）
+  betCount: number;          // Fixed Limit: 現ストリートのベット回数
+  maxBetsPerRound: number;   // Fixed Limit: 最大ベット回数/ストリート（通常4）
+  discardPile?: Card[];      // Triple Draw: 捨て札の山（ドロー時のデッキ補充用）
 }

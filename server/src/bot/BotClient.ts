@@ -1,6 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
-import { GameState, Card, Action, Player, Position, GameAction } from '../shared/logic/types.js';
+import { GameState, Card, Action, Player, Position, GameAction, GameVariant } from '../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 import { AIContext } from '../shared/logic/ai/types.js';
 import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
@@ -28,8 +28,10 @@ interface BotConfig {
   disconnectChance?: number; // 各ハンド終了後に切断する確率 (0-1)
   midHandDisconnectChance?: number; // ハンド中（他プレイヤーのターン時）に強制切断する確率 (0-1)
   defaultBlinds?: string; // デフォルトのブラインド設定（再キューイング用）
+  variant?: string; // ゲームバリアント（'plo' | 'stud' 等）
   isFastFold?: boolean; // ファストフォールドテーブルに参加するか
   maxHandsPerSession?: number; // セッション上限ハンド数（到達で自動離席）
+  noDelay?: boolean; // true: 思考時間を0にする（テスト・デバッグ用）
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
 }
 
@@ -246,9 +248,12 @@ export class BotClient {
     timeoutMs: number;
   }): void {
     if (!this.gameState || this.holeCards.length === 0) {
-      // Fallback: just check or fold
+      // Fallback: ブリングインフェーズではcall、それ以外はcheck or fold
+      const callAction = data.validActions.find(a => a.action === 'call');
       const checkAction = data.validActions.find(a => a.action === 'check');
-      if (checkAction) {
+      if (callAction) {
+        this.sendAction('call', callAction.minAmount);
+      } else if (checkAction) {
         this.sendAction('check', 0);
       } else {
         this.sendAction('fold', 0);
@@ -261,6 +266,21 @@ export class BotClient {
     if (!aiGameState) {
       const checkAction = data.validActions.find(a => a.action === 'check');
       if (checkAction) {
+        this.sendAction('check', 0);
+      } else {
+        this.sendAction('fold', 0);
+      }
+      return;
+    }
+
+    // holeCardsの整合性チェック（undefinedカードが含まれていないか）
+    const myCards = aiGameState.players[this.seatNumber]?.holeCards ?? [];
+    if (myCards.length === 0 || myCards.some(c => !c || !c.rank)) {
+      const callAction = data.validActions.find(a => a.action === 'call');
+      const checkAction = data.validActions.find(a => a.action === 'check');
+      if (callAction) {
+        this.sendAction('call', callAction.minAmount);
+      } else if (checkAction) {
         this.sendAction('check', 0);
       } else {
         this.sendAction('fold', 0);
@@ -297,22 +317,23 @@ export class BotClient {
       // Fallback: check or fold
       const checkAction = data.validActions.find(a => a.action === 'check');
       const callAction = data.validActions.find(a => a.action === 'call');
+      const fallbackDelay = this.config.noDelay ? 0 : 800;
 
       if (checkAction) {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('check', 0);
-        }, 800);
+        }, fallbackDelay);
       } else if (callAction) {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('call', callAction.minAmount);
-        }, 800);
+        }, fallbackDelay);
       } else {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('fold', 0);
-        }, 800);
+        }, fallbackDelay);
       }
     }
   }
@@ -331,7 +352,7 @@ export class BotClient {
           name: onlinePlayer.odName,
           position: POSITIONS[(i - dealerPosition + 6) % 6],
           chips: onlinePlayer.chips,
-          holeCards: i === this.seatNumber ? this.holeCards : [],
+          holeCards: i === this.seatNumber ? this.holeCards : (onlinePlayer.cards ?? []),
           currentBet: onlinePlayer.currentBet,
           totalBetThisRound: onlinePlayer.currentBet,
           folded: onlinePlayer.folded,
@@ -376,6 +397,11 @@ export class BotClient {
       isHandComplete: false,
       winners: [],
       rake: 0,
+      variant: (this.gameState.variant as GameVariant) ?? 'plo',
+      ante: this.gameState.ante ?? 0,
+      bringIn: this.gameState.bringIn ?? 0,
+      betCount: 0,
+      maxBetsPerRound: 4,
     };
   }
 
@@ -490,6 +516,9 @@ export class BotClient {
       base += 3000 + Math.random() * 4000;
     }
 
+    // noDelay モード: 思考時間ゼロ
+    if (this.config.noDelay) return 0;
+
     // 最大15秒、最小1200msにクランプ（持ち時間20秒）
     const delay = base + Math.random() * variance;
     return Math.max(1200, Math.min(15000, delay));
@@ -540,15 +569,16 @@ export class BotClient {
     }
   }
 
-  async joinMatchmaking(blinds: string): Promise<void> {
+  async joinMatchmaking(blinds: string, variant?: string): Promise<void> {
     if (!this.socket || !this.isConnected) {
       throw new Error('Not connected to server');
     }
 
     this.currentBlinds = blinds;
     const isFastFold = this.config.isFastFold;
-    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''})`);
-    this.socket.emit('matchmaking:join', { blinds, isFastFold });
+    const v = variant ?? this.config.variant;
+    console.log(`[${this.config.name}] Joining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''}${v ? ', ' + v : ''})`);
+    this.socket.emit('matchmaking:join', { blinds, isFastFold, variant: v });
   }
 
   async joinPrivateTable(inviteCode: string): Promise<void> {
@@ -566,8 +596,9 @@ export class BotClient {
     setTimeout(() => {
       if (this.isConnected && this.socket && !this.tableId) {
         const isFastFold = this.config.isFastFold;
-        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''})`);
-        this.socket.emit('matchmaking:join', { blinds, isFastFold });
+        const variant = this.config.variant;
+        console.log(`[${this.config.name}] Rejoining matchmaking pool (${blinds}${isFastFold ? ', FF' : ''}${variant ? ', ' + variant : ''})`);
+        this.socket.emit('matchmaking:join', { blinds, isFastFold, variant });
       }
     }, 500);
   }

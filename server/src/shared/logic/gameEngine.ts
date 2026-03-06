@@ -50,6 +50,11 @@ export function createInitialGameState(playerChips: number = 600): GameState {
     isHandComplete: false,
     winners: [],
     rake: 0,
+    variant: 'plo',
+    ante: 0,
+    bringIn: 0,
+    betCount: 0,
+    maxBetsPerRound: 0,
   };
 }
 

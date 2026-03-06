@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
-import { Player as PlayerType, Action } from '../logic';
-import { Card, FaceDownCard } from './Card';
+import { Player as PlayerType, Action, GameVariant } from '../logic';
+
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { PlayerCards } from './PlayerCards';
 
 interface PlayerProps {
   player: PlayerType;
@@ -20,6 +21,7 @@ interface PlayerProps {
   actionTimeoutMs?: number | null;
   onAvatarClick?: () => void;
   isSpectator?: boolean;
+  variant?: GameVariant;
 }
 
 function formatAction(action: Action, amount: number, formatChips: (n: number) => string): string {
@@ -36,23 +38,21 @@ function formatAction(action: Action, amount: number, formatChips: (n: number) =
 
 const positionStyles: Record<number, string> = {
   0: 'bottom-[-12%] left-1/2 -translate-x-1/2',
-  1: 'bottom-[5%] left-[-15%]',
-  2: 'top-[18%] left-[-15%]',
+  1: 'bottom-[5%] left-[-10%]',
+  2: 'top-[18%] left-[-10%]',
   3: 'top-[-4%] left-1/2 -translate-x-1/2',
-  4: 'top-[18%] right-[-15%]',
-  5: 'bottom-[5%] right-[-15%]',
+  4: 'top-[18%] right-[-10%]',
+  5: 'bottom-[5%] right-[-10%]',
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-11cqw]',
-  1: 'top-0 right-[-19cqw]',
-  2: 'top-[8cqw] right-[-22cqw]',
-  3: 'bottom-[-9.5cqw]',
-  4: 'top-[8cqw] left-[-22cqw]',
-  5: 'top-0 left-[-19cqw]',
+  0: 'top-[-12cqw]',
+  1: 'top-0 right-[-15cqw]',
+  2: 'top-[8cqw] right-[-15cqw]',
+  3: 'bottom-[-12cqw]',
+  4: 'top-[8cqw] left-[-15cqw]',
+  5: 'top-0 left-[-15cqw]',
 };
-
-const cardPositionStyle = 'top-[12cqw] left-1/2 -translate-x-1/2';
 
 const dealerButtonStyle = 'top-[-3cqw] right-[-3cqw]';
 
@@ -63,28 +63,9 @@ const actionColorStyles: Record<Action, string> = {
   bet: 'text-orange-400 border-orange-400',
   raise: 'text-orange-400 border-orange-400',
   allin: 'text-red-400 border-red-400',
+  draw: 'text-purple-400 border-purple-400',
 };
 
-// カードがテーブル中央から各プレイヤー位置へ飛んでくる方向
-// positionIndex: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
-const dealFromOffsets: Record<number, { x: string; y: string }> = {
-  0: { x: '0', y: '-44cqw' },    // 下 ← 中央から下へ
-  1: { x: '31cqw', y: '-22cqw' },    // 左下 ← 中央から左下へ
-  2: { x: '31cqw', y: '22cqw' },     // 左上 ← 中央から左上へ
-  3: { x: '0', y: '44cqw' },     // 上 ← 中央から上へ
-  4: { x: '-31cqw', y: '22cqw' },    // 右上 ← 中央から右上へ
-  5: { x: '-31cqw', y: '-22cqw' },   // 右下 ← 中央から右下へ
-};
-
-// フォールド時にカードがテーブル中央へ飛んでいく方向（dealFromOffsetsの逆）
-const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = {
-  0: { x: '0', y: '-30cqw', rotate: '-20deg' },
-  1: { x: '20cqw', y: '-15cqw', rotate: '15deg' },
-  2: { x: '20cqw', y: '15cqw', rotate: '-15deg' },
-  3: { x: '0', y: '30cqw', rotate: '20deg' },
-  4: { x: '-20cqw', y: '15cqw', rotate: '15deg' },
-  5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
-};
 
 export function Player({
   player,
@@ -102,22 +83,10 @@ export function Player({
   actionTimeoutMs,
   onAvatarClick,
   isSpectator = false,
+  variant = 'plo',
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
-
-  // ショウダウン時のカード公開アニメーション
-  const [isRevealing, setIsRevealing] = useState(false);
-
-  useEffect(() => {
-    const shouldShowCards = !player.folded && player.holeCards.length > 0;
-    if (shouldShowCards) {
-      setIsRevealing(true);
-      const timer = setTimeout(() => setIsRevealing(false), 1200);
-      return () => clearTimeout(timer);
-    } else {
-      setIsRevealing(false);
-    }
-  }, [showCards, player.folded, player.holeCards.length]);
+  const currentVariant = variant;
 
   // チップアニメーション用: currentBetが変化したときにアニメーションを再トリガー
   const prevBetRef = useRef(player.currentBet);
@@ -230,8 +199,8 @@ export function Player({
             <span className="text-[4.5cqw] text-gray-400 font-medium">Empty</span>
           )}
         </div>
-        {/* Dealer Button */}
-        {player.position === 'BTN' && (
+        {/* Dealer Button (PLO only - Stud has no positional dealer) */}
+        {player.position === 'BTN' && currentVariant !== 'stud' && (
           <div className={`absolute w-[11cqw] h-[11cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[5.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
             D
           </div>
@@ -262,72 +231,20 @@ export function Player({
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
-      {/* Hole Cards (for other players, or all players in spectator mode) */}
-      {(positionIndex !== 0 || isSpectator) && (
-        <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
-          {showCards && !player.folded
-            ? player.holeCards.map((card, i) => (
-                <div key={i} className={i > 0 ? '-ml-[2cqw]' : ''}>
-                  {isRevealing ? (
-                    <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
-                      <div
-                        className="w-full h-full animate-reveal-card"
-                        style={{
-                          transformStyle: 'preserve-3d',
-                          animationDelay: `${i * 120}ms`,
-                        }}
-                      >
-                        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
-                          <Card card={card} />
-                        </div>
-                        <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
-                          <FaceDownCard />
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <Card card={card} />
-                  )}
-                </div>
-              ))
-            : Array(4).fill(null).map((_, cardIndex) => {
-                // 1枚ずつ全員に配る: 1周目(cardIndex=0)はSBから順に、2周目(cardIndex=1)も同様...
-                // dealOrder: SBからの順番(0-5)
-                // 各カードの配布タイミング = (周回 * 6人 + 配布順) * 間隔
-                const dealDelay = (cardIndex * 6 + dealOrder) * 40;
-                const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
-                const foldOffset = foldToOffsets[positionIndex];
-                return (
-                  <div
-                    key={cardIndex}
-                    className={`${cardIndex > 0 ? '-ml-[7cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''} ${player.folded && !isFolding ? 'invisible' : ''}`}
-                    style={isDealing ? {
-                      opacity: 0,
-                      animationDelay: `${dealDelay}ms`,
-                      '--deal-from-x': dealFromOffsets[positionIndex].x,
-                      '--deal-from-y': dealFromOffsets[positionIndex].y,
-                    } as React.CSSProperties : isFolding ? {
-                      animationDelay: `${cardIndex * 50}ms`,
-                      '--fold-to-x': foldOffset.x,
-                      '--fold-to-y': foldOffset.y,
-                      '--fold-rotate': `${parseInt(foldOffset.rotate) + cardIndex * 10}deg`,
-                    } as React.CSSProperties : {}}
-                  >
-                    <FaceDownCard />
-                  </div>
-                );
-              })}
-        </div>
-      )}
-
-      {/* Hand Name (showdown) */}
-      {(positionIndex !== 0 || isSpectator) && (showdownHandName || winHandName) && !player.folded && (
-        <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap`} style={{ top: '28cqw' }}>
-          <span className={`text-[4.5cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
-            {showdownHandName || winHandName}
-          </span>
-        </div>
-      )}
+      {/* Hole Cards + Hand Name */}
+      <PlayerCards
+        player={player}
+        positionIndex={positionIndex}
+        showCards={showCards}
+        isDealing={isDealing}
+        dealOrder={dealOrder}
+        lastAction={lastAction}
+        isSpectator={isSpectator}
+        variant={currentVariant}
+        showdownHandName={showdownHandName}
+        winHandName={winHandName}
+        isWinner={isWinner}
+      />
 
       {/* Current Bet */}
       {player.currentBet > 0 && (

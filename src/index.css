@@ -253,7 +253,12 @@ body {
 
 /* Dark gold gradient for game screen */
 .game-bg {
-  background: linear-gradient(180deg, #2a2318 0%, #3d3020 50%, #2a2318 100%);
+  background: url('/images/bg.png') center / cover no-repeat;
+}
+
+/* Debug outline toggle (Ctrl+Shift+D) */
+.debug-outlines * {
+  outline: 1px solid red !important;
 }
 
 /* Light cream background */
