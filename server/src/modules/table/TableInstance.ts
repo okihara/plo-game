@@ -824,6 +824,9 @@ export class TableInstance {
     // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）
     this.broadcastGameState();
 
+    // ハンド終了後のGameStateをクリア（前ハンドのcommunityCards等が残らないように）
+    this.gameState = null;
+
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
       const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[] = [];
@@ -858,13 +861,11 @@ export class TableInstance {
       }
       return;
     }
-
+    
     this.maybeStartHand();
   }
 
   private broadcastGameState(): void {
-    if (!this.gameState) return;
-
     const clientState = this.getClientGameState();
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }
