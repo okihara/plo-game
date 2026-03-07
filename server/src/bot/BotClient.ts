@@ -58,6 +58,7 @@ export class BotClient {
   private actionGeneration = 0; // stale なアクションコールバックを防ぐ世代カウンター
   private pendingFastFoldCheck = false; // ホールカード受信後のファストフォールド判定待ち
   private _isMaintenanceActive = false; // サーバーがメンテナンス中か
+  private pendingDisconnectTimer: ReturnType<typeof setTimeout> | null = null; // 切断予約タイマー
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -210,6 +211,8 @@ export class BotClient {
         // 自分の番が来たらファストフォールド判定をキャンセル（通常フローで処理）
         if (data.playerId === this.playerId) {
           this.pendingFastFoldCheck = false;
+          // 切断予約があればキャンセル（hand_complete後のdisconnectタイマーとのレース防止）
+          this.cancelPendingDisconnect();
           this.handleActionRequired(data);
         }
       });
@@ -235,11 +238,7 @@ export class BotClient {
         if (this.config.maxHandsPerSession && this.handsPlayed >= this.config.maxHandsPerSession) {
           const delay = 1000 + Math.random() * 2000;
           console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting in ${Math.round(delay)}ms`);
-          setTimeout(() => {
-            if (this.isConnected) {
-              this.disconnect();
-            }
-          }, delay);
+          this.schedulePendingDisconnect(delay);
           return;
         }
 
@@ -653,12 +652,27 @@ export class BotClient {
       // 少し遅延してから切断（自然な感じに）
       const delay = 1000 + Math.random() * 3000; // 1-4秒後
       console.log(`[${this.config.name}] Will disconnect in ${Math.round(delay)}ms (simulating player leave)`);
-      setTimeout(() => {
-        if (this.isConnected) {
-          console.log(`[${this.config.name}] Intentionally disconnecting`);
-          this.disconnect();
-        }
-      }, delay);
+      this.schedulePendingDisconnect(delay);
+    }
+  }
+
+  /** 切断予約をスケジュールする（次の action_required でキャンセル可能） */
+  private schedulePendingDisconnect(delay: number): void {
+    this.cancelPendingDisconnect();
+    this.pendingDisconnectTimer = setTimeout(() => {
+      this.pendingDisconnectTimer = null;
+      if (this.isConnected) {
+        console.log(`[${this.config.name}] Intentionally disconnecting`);
+        this.disconnect();
+      }
+    }, delay);
+  }
+
+  /** 保留中の切断予約をキャンセルする */
+  private cancelPendingDisconnect(): void {
+    if (this.pendingDisconnectTimer) {
+      clearTimeout(this.pendingDisconnectTimer);
+      this.pendingDisconnectTimer = null;
     }
   }
 
@@ -700,6 +714,7 @@ export class BotClient {
    */
   async disconnect(): Promise<void> {
     this.stopStuckCheck();
+    this.cancelPendingDisconnect();
     if (this.socket && this.isConnected) {
       // テーブルに着席中なら明示的に離席
       if (this.tableId) {
