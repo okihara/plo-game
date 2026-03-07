@@ -233,13 +233,8 @@ export class BotClient {
 
         // セッション上限チェック（上限到達で離席）
         if (this.config.maxHandsPerSession && this.handsPlayed >= this.config.maxHandsPerSession) {
-          const delay = 1000 + Math.random() * 2000;
-          console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting in ${Math.round(delay)}ms`);
-          setTimeout(() => {
-            if (this.isConnected) {
-              this.disconnect();
-            }
-          }, delay);
+          console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting`);
+          this.disconnect();
           return;
         }
 
@@ -650,15 +645,8 @@ export class BotClient {
   private maybeDisconnectRandomly(): void {
     const chance = this.config.disconnectChance ?? DEFAULT_DISCONNECT_CHANCE;
     if (Math.random() < chance) {
-      // 少し遅延してから切断（自然な感じに）
-      const delay = 1000 + Math.random() * 3000; // 1-4秒後
-      console.log(`[${this.config.name}] Will disconnect in ${Math.round(delay)}ms (simulating player leave)`);
-      setTimeout(() => {
-        if (this.isConnected) {
-          console.log(`[${this.config.name}] Intentionally disconnecting`);
-          this.disconnect();
-        }
-      }, delay);
+      console.log(`[${this.config.name}] Intentionally disconnecting`);
+      this.disconnect();
     }
   }
 
