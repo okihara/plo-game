@@ -1,5 +1,7 @@
 import { BotClient, BotStatus } from './BotClient.js';
 
+const MAINTENANCE_PAUSE_MS = 60_000; // メンテナンス検知時の待機時間
+
 const BOT_NAMES = [
   // --- 継続11体（5000ハンド未満） ---
   'YumaS', 'chihiro7', 'RyujiK', 'shiori12', 'haruna88',
@@ -47,6 +49,7 @@ export class BotManager {
   private usedNames: Set<string> = new Set();
   private isRunning = false;
   private healthCheckInterval: NodeJS.Timeout | null = null;
+  private maintenancePauseUntil: number = 0; // メンテナンス待機の終了時刻
 
   constructor(config: BotManagerConfig) {
     this.config = {
@@ -141,6 +144,12 @@ export class BotManager {
         this.bots.set(playerId, bot);
         this.usedNames.add(name);
 
+        // メンテナンス中ならマッチメイキングに参加しない（接続だけ維持）
+        if (bot.isMaintenanceActive) {
+          console.log(`[BotManager] ${name} connected but maintenance active, skipping matchmaking`);
+          return bot;
+        }
+
         // Join matchmaking pool or private table
         if (this.config.inviteCode) {
           await bot.joinPrivateTable(this.config.inviteCode);
@@ -206,6 +215,36 @@ export class BotManager {
     // Check bot health every 10 seconds
     this.healthCheckInterval = setInterval(async () => {
       if (!this.isRunning) return;
+
+      // メンテナンス中なら待機（いずれかのボットがメンテ検知 → 1分間ヘルスチェックをスキップ）
+      const anyMaintenance = [...this.bots.values()].some(b => b.isMaintenanceActive);
+      if (anyMaintenance) {
+        if (this.maintenancePauseUntil === 0) {
+          this.maintenancePauseUntil = Date.now() + MAINTENANCE_PAUSE_MS;
+          console.log('[HealthCheck] Maintenance detected, pausing for ~60s');
+        }
+      }
+      if (this.maintenancePauseUntil > 0) {
+        if (Date.now() < this.maintenancePauseUntil) return; // まだ待機中
+        // 待機終了 — いずれかのボットがまだメンテ中なら延長
+        if (anyMaintenance) {
+          this.maintenancePauseUntil = Date.now() + MAINTENANCE_PAUSE_MS;
+          console.log('[HealthCheck] Maintenance still active, extending pause');
+          return;
+        }
+        this.maintenancePauseUntil = 0;
+        console.log('[HealthCheck] Maintenance ended, resuming');
+        // メンテ中にマッチメイキング未参加だったボットを参加させる
+        for (const bot of this.bots.values()) {
+          if (bot.isActive() && !bot.isInGame()) {
+            if (this.config.inviteCode) {
+              bot.joinPrivateTable(this.config.inviteCode).catch(() => {});
+            } else {
+              bot.joinMatchmaking(this.config.blinds, this.config.variant).catch(() => {});
+            }
+          }
+        }
+      }
 
       const deadBots: string[] = [];
 
