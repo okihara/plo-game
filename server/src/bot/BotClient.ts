@@ -533,9 +533,9 @@ export class BotClient {
     // noDelay モード: 思考時間ゼロ
     if (this.config.noDelay) return 0;
 
-    // 最大15秒、最小1200msにクランプ（持ち時間20秒）
-    const delay = base + Math.random() * variance;
-    return Math.max(1200, Math.min(15000, delay));
+    // 最大12秒、最小1000msにクランプ（持ち時間20秒）
+    const delay = (base + Math.random() * variance) * 0.8;
+    return Math.max(1000, Math.min(12000, delay));
   }
 
   private sendAction(action: Action, amount: number): void {
