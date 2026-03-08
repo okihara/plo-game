@@ -315,7 +315,7 @@ describe('ナッツ級ハンドのベットアクション', () => {
   // =========================================================
   describe('nutRank 3 (サードナッツ) — ベットなし（チェック可能）', () => {
     it.each([
-      { char: 'TatsuyaN'  as const, madeHandRank: 5, minBet: 0.65, maxBet: 0.95 },
+      { char: 'TatsuyaN'  as const, madeHandRank: 5, minBet: 0.63, maxBet: 0.95 },
       { char: 'yuna0312'  as const, madeHandRank: 5, minBet: 0.55, maxBet: 0.90 },
     ])('$char / rank=$madeHandRank → ベット率 $minBet-$maxBet', ({ char, madeHandRank, minBet, maxBet }) => {
       mathRandomSpy.mockRestore();

@@ -424,9 +424,6 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           recordAction(seat, action, amount);
         }
       },
-      onActionRequired: () => {
-        // playMyTurnSound();
-      },
       onHandComplete: (serverWinners) => {
         isNewHandRef.current = true;
         const currentState = clientStateRef.current;

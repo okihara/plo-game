@@ -39,11 +39,6 @@ export interface ServerToClientEvents {
   // Game state updates
   'game:state': (data: { state: ClientGameState }) => void;
   'game:hole_cards': (data: { cards: Card[] }) => void;
-  'game:action_required': (data: {
-    playerId: string;
-    validActions: { action: Action; minAmount: number; maxAmount: number }[];
-    timeoutMs: number;
-  }) => void;
   'game:action_taken': (data: {
     playerId: string;
     action: Action;

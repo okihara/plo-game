@@ -384,7 +384,7 @@ describe('getPostflopDecision', () => {
     describe('nutRank 3', () => {
       it.each([
         { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 50,  min: 0.40, max: 1.00 },
-        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 100, min: 0.20, max: 0.90 },
+        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 100, min: 0.20, max: 0.95 },
         { char: 'yuna0312'  as const, board: 'dry' as const, betSize: 100, min: 0.15, max: 0.92 },
       ])('$char / $board ボード / betSize=$betSize → コール率 $min-$max', ({ char, board, betSize, min, max }) => {
         mathRandomSpy.mockRestore();

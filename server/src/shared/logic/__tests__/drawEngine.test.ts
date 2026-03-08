@@ -1,13 +1,14 @@
 import { describe, it, expect } from 'vitest';
 import {
-  createTripleDrawGameState,
-  startTripleDrawHand,
-  getTripleDrawValidActions,
-  applyTripleDrawAction,
-  determineTripleDrawWinner,
+  createDrawGameState,
+  startDrawHand,
+  getDrawValidActions,
+  applyDrawAction,
+  determineDrawWinner,
   isDrawStreet,
   isBettingStreet,
-} from '../tripleDrawEngine.js';
+  getDrawStreetOrder,
+} from '../drawEngine.js';
 import type { GameState, Card } from '../types.js';
 
 // =========================================================================
@@ -20,22 +21,22 @@ function card(rank: Card['rank'], suit: Card['suit']): Card {
 
 /** 3人プレイ用のテスト状態を作成し、ハンドを開始する */
 function startThreePlayerHand(): GameState {
-  let state = createTripleDrawGameState(600, 2);
+  let state = createDrawGameState(600, 2);
   // seat 3,4,5 を空席に
   state.players[3].isSittingOut = true;
   state.players[4].isSittingOut = true;
   state.players[5].isSittingOut = true;
-  state = startTripleDrawHand(state);
+  state = startDrawHand(state);
   return state;
 }
 
 /** 2人プレイ用のテスト状態を作成し、ハンドを開始する */
 function startHeadsUpHand(): GameState {
-  let state = createTripleDrawGameState(600, 2);
+  let state = createDrawGameState(600, 2);
   for (let i = 2; i < 6; i++) {
     state.players[i].isSittingOut = true;
   }
-  state = startTripleDrawHand(state);
+  state = startDrawHand(state);
   return state;
 }
 
@@ -52,13 +53,13 @@ function completeCheckAround(state: GameState): GameState {
   const maxIterations = 20;
   for (let i = 0; i < maxIterations; i++) {
     if (isDrawStreet(s.currentStreet) || s.isHandComplete) break;
-    const actions = getTripleDrawValidActions(s, s.currentPlayerIndex);
+    const actions = getDrawValidActions(s, s.currentPlayerIndex);
     const check = actions.find(a => a.action === 'check');
     const call = actions.find(a => a.action === 'call');
     if (check) {
-      s = applyTripleDrawAction(s, s.currentPlayerIndex, 'check');
+      s = applyDrawAction(s, s.currentPlayerIndex, 'check');
     } else if (call) {
-      s = applyTripleDrawAction(s, s.currentPlayerIndex, 'call', call.minAmount);
+      s = applyDrawAction(s, s.currentPlayerIndex, 'call', call.minAmount);
     } else {
       break;
     }
@@ -72,18 +73,18 @@ function completeDrawStandPat(state: GameState): GameState {
   const maxIterations = 20;
   for (let i = 0; i < maxIterations; i++) {
     if (!isDrawStreet(s.currentStreet) || s.isHandComplete) break;
-    s = applyTripleDrawAction(s, s.currentPlayerIndex, 'draw', 0, 0, 0, []);
+    s = applyDrawAction(s, s.currentPlayerIndex, 'draw', 0, 0, 0, []);
   }
   return s;
 }
 
 // =========================================================================
-//  Tests: createTripleDrawGameState
+//  Tests: createDrawGameState
 // =========================================================================
 
-describe('createTripleDrawGameState', () => {
+describe('createDrawGameState', () => {
   it('6人のプレイヤーを作成する', () => {
-    const state = createTripleDrawGameState(600, 2);
+    const state = createDrawGameState(600, 2);
     expect(state.players).toHaveLength(6);
     for (const p of state.players) {
       expect(p.chips).toBe(600);
@@ -91,8 +92,8 @@ describe('createTripleDrawGameState', () => {
   });
 
   it('Triple Draw 固有の初期値が正しい', () => {
-    const state = createTripleDrawGameState(600, 2);
-    expect(state.variant).toBe('tripdraw');
+    const state = createDrawGameState(600, 2);
+    expect(state.variant).toBe('limit_2-7_triple_draw');
     expect(state.smallBlind).toBe(2);   // small bet
     expect(state.bigBlind).toBe(4);     // big bet
     expect(state.maxBetsPerRound).toBe(4);
@@ -104,10 +105,10 @@ describe('createTripleDrawGameState', () => {
 });
 
 // =========================================================================
-//  Tests: startTripleDrawHand
+//  Tests: startDrawHand
 // =========================================================================
 
-describe('startTripleDrawHand', () => {
+describe('startDrawHand', () => {
   it('各プレイヤーに5枚のカードを配る', () => {
     const state = startThreePlayerHand();
     for (let i = 0; i < 3; i++) {
@@ -154,13 +155,13 @@ describe('startTripleDrawHand', () => {
 });
 
 // =========================================================================
-//  Tests: getTripleDrawValidActions (ベッティングフェーズ)
+//  Tests: getDrawValidActions (ベッティングフェーズ)
 // =========================================================================
 
-describe('getTripleDrawValidActions - ベッティング', () => {
+describe('getDrawValidActions - ベッティング', () => {
   it('predraw: fold/call/raise が可能（BB投稿後）', () => {
     const state = startThreePlayerHand();
-    const actions = getTripleDrawValidActions(state, state.currentPlayerIndex);
+    const actions = getDrawValidActions(state, state.currentPlayerIndex);
     const actionNames = actions.map(a => a.action);
     expect(actionNames).toContain('fold');
     expect(actionNames).toContain('call');
@@ -173,7 +174,7 @@ describe('getTripleDrawValidActions - ベッティング', () => {
     state = completeDrawStandPat(state);
     // postdraw1: ベットなし状態
     expect(isBettingStreet(state.currentStreet)).toBe(true);
-    const actions = getTripleDrawValidActions(state, state.currentPlayerIndex);
+    const actions = getDrawValidActions(state, state.currentPlayerIndex);
     const actionNames = actions.map(a => a.action);
     expect(actionNames).toContain('check');
     expect(actionNames).toContain('bet');
@@ -183,7 +184,7 @@ describe('getTripleDrawValidActions - ベッティング', () => {
     let state = startThreePlayerHand();
     state = completeCheckAround(state);
     state = completeDrawStandPat(state);
-    const actions = getTripleDrawValidActions(state, state.currentPlayerIndex);
+    const actions = getDrawValidActions(state, state.currentPlayerIndex);
     const betAction = actions.find(a => a.action === 'bet');
     expect(betAction).toBeDefined();
     expect(betAction!.minAmount).toBe(2); // small bet
@@ -197,21 +198,20 @@ describe('getTripleDrawValidActions - ベッティング', () => {
     expect(isBettingStreet(state.currentStreet)).toBe(true);
 
     // ベット4回実行
-    const p = state.currentPlayerIndex;
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'bet', 2); // bet 1
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'raise', 4); // raise 2
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'raise', 4); // raise 3
+    state = applyDrawAction(state, state.currentPlayerIndex, 'bet', 2); // bet 1
+    state = applyDrawAction(state, state.currentPlayerIndex, 'raise', 4); // raise 2
+    state = applyDrawAction(state, state.currentPlayerIndex, 'raise', 4); // raise 3
 
     // 4ベット目
-    const actionsAfter3Raise = getTripleDrawValidActions(state, state.currentPlayerIndex);
+    const actionsAfter3Raise = getDrawValidActions(state, state.currentPlayerIndex);
     const raiseAfter3 = actionsAfter3Raise.find(a => a.action === 'raise');
     expect(raiseAfter3).toBeDefined(); // 4回目のレイズは可能（bet count = 3 < 4）
 
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'raise', 4); // raise 4
+    state = applyDrawAction(state, state.currentPlayerIndex, 'raise', 4); // raise 4
 
     // 4ベット後: レイズ不可
     if (!isDrawStreet(state.currentStreet) && !state.isHandComplete) {
-      const actionsAfter4 = getTripleDrawValidActions(state, state.currentPlayerIndex);
+      const actionsAfter4 = getDrawValidActions(state, state.currentPlayerIndex);
       const raiseAfter4 = actionsAfter4.find(a => a.action === 'raise');
       expect(raiseAfter4).toBeUndefined();
     }
@@ -219,24 +219,24 @@ describe('getTripleDrawValidActions - ベッティング', () => {
 
   it('フォールド済みプレイヤーは空配列', () => {
     const state = startThreePlayerHand();
-    const foldedState = applyTripleDrawAction(state, state.currentPlayerIndex, 'fold');
+    const foldedState = applyDrawAction(state, state.currentPlayerIndex, 'fold');
     const foldedPlayer = state.currentPlayerIndex;
-    const actions = getTripleDrawValidActions(foldedState, foldedPlayer);
+    const actions = getDrawValidActions(foldedState, foldedPlayer);
     expect(actions).toEqual([]);
   });
 });
 
 // =========================================================================
-//  Tests: getTripleDrawValidActions (ドローフェーズ)
+//  Tests: getDrawValidActions (ドローフェーズ)
 // =========================================================================
 
-describe('getTripleDrawValidActions - ドロー', () => {
+describe('getDrawValidActions - ドロー', () => {
   it('ドローフェーズでは draw アクションのみ', () => {
     let state = startThreePlayerHand();
     state = completeCheckAround(state);
     expect(isDrawStreet(state.currentStreet)).toBe(true);
 
-    const actions = getTripleDrawValidActions(state, state.currentPlayerIndex);
+    const actions = getDrawValidActions(state, state.currentPlayerIndex);
     expect(actions).toHaveLength(1);
     expect(actions[0].action).toBe('draw');
     expect(actions[0].minAmount).toBe(0);
@@ -245,14 +245,14 @@ describe('getTripleDrawValidActions - ドロー', () => {
 });
 
 // =========================================================================
-//  Tests: applyTripleDrawAction - ベッティング
+//  Tests: applyDrawAction - ベッティング
 // =========================================================================
 
-describe('applyTripleDrawAction - ベッティング', () => {
+describe('applyDrawAction - ベッティング', () => {
   it('fold でプレイヤーがフォールドする', () => {
     const state = startThreePlayerHand();
     const pi = state.currentPlayerIndex;
-    const newState = applyTripleDrawAction(state, pi, 'fold');
+    const newState = applyDrawAction(state, pi, 'fold');
     expect(newState.players[pi].folded).toBe(true);
   });
 
@@ -261,7 +261,7 @@ describe('applyTripleDrawAction - ベッティング', () => {
     const pi = state.currentPlayerIndex;
     const chipsBefore = state.players[pi].chips;
     const toCall = state.currentBet - state.players[pi].currentBet;
-    const newState = applyTripleDrawAction(state, pi, 'call', toCall);
+    const newState = applyDrawAction(state, pi, 'call', toCall);
     expect(newState.players[pi].chips).toBe(chipsBefore - toCall);
     expect(newState.players[pi].currentBet).toBe(state.currentBet);
   });
@@ -275,9 +275,9 @@ describe('applyTripleDrawAction - ベッティング', () => {
   it('全員フォールドで最後の1人が勝利', () => {
     let state = startThreePlayerHand();
     // player 0 (UTG) fold
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'fold');
+    state = applyDrawAction(state, state.currentPlayerIndex, 'fold');
     // player 1 (SB) fold
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'fold');
+    state = applyDrawAction(state, state.currentPlayerIndex, 'fold');
     // player 2 (BB) wins
     expect(state.isHandComplete).toBe(true);
     expect(state.winners).toHaveLength(1);
@@ -285,12 +285,12 @@ describe('applyTripleDrawAction - ベッティング', () => {
 });
 
 // =========================================================================
-//  Tests: applyTripleDrawAction - ドロー
+//  Tests: applyDrawAction - ドロー
 // =========================================================================
 
-describe('applyTripleDrawAction - ドロー', () => {
+describe('applyDrawAction - ドロー', () => {
   function getToDrawPhase(): GameState {
-    let state = startThreePlayerHand();
+    const state = startThreePlayerHand();
     return completeCheckAround(state);
   }
 
@@ -298,7 +298,7 @@ describe('applyTripleDrawAction - ドロー', () => {
     let state = getToDrawPhase();
     const pi = state.currentPlayerIndex;
     const cardsBefore = [...state.players[pi].holeCards];
-    state = applyTripleDrawAction(state, pi, 'draw', 0, 0, 0, []);
+    state = applyDrawAction(state, pi, 'draw', 0, 0, 0, []);
     expect(state.players[pi].holeCards).toHaveLength(5);
     expect(state.players[pi].holeCards).toEqual(cardsBefore);
   });
@@ -307,7 +307,7 @@ describe('applyTripleDrawAction - ドロー', () => {
     let state = getToDrawPhase();
     const pi = state.currentPlayerIndex;
     const originalCards = [...state.players[pi].holeCards];
-    state = applyTripleDrawAction(state, pi, 'draw', 0, 0, 0, [0]);
+    state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0]);
     expect(state.players[pi].holeCards).toHaveLength(5);
     // index 0 のカードは交換された（残りの4枚は同じ）
     for (let i = 1; i < 5; i++) {
@@ -318,7 +318,7 @@ describe('applyTripleDrawAction - ドロー', () => {
   it('5枚交換: 全カード入れ替え', () => {
     let state = getToDrawPhase();
     const pi = state.currentPlayerIndex;
-    state = applyTripleDrawAction(state, pi, 'draw', 0, 0, 0, [0, 1, 2, 3, 4]);
+    state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0, 1, 2, 3, 4]);
     expect(state.players[pi].holeCards).toHaveLength(5);
   });
 
@@ -326,7 +326,7 @@ describe('applyTripleDrawAction - ドロー', () => {
     let state = getToDrawPhase();
     const pi = state.currentPlayerIndex;
     const discardedCard = state.players[pi].holeCards[0];
-    state = applyTripleDrawAction(state, pi, 'draw', 0, 0, 0, [0]);
+    state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0]);
     expect(state.discardPile).toContainEqual(discardedCard);
   });
 
@@ -340,7 +340,7 @@ describe('applyTripleDrawAction - ドロー', () => {
   it('ドロー枚数がアクション履歴に記録される', () => {
     let state = getToDrawPhase();
     const pi = state.currentPlayerIndex;
-    state = applyTripleDrawAction(state, pi, 'draw', 0, 0, 0, [0, 2]);
+    state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0, 2]);
     const drawAction = state.handHistory.find(a => a.action === 'draw' && a.playerId === pi);
     expect(drawAction).toBeDefined();
     expect(drawAction!.amount).toBe(2); // 2枚交換
@@ -400,7 +400,7 @@ describe('ストリート遷移', () => {
     expect(state.currentStreet).toBe('postdraw2');
 
     // postdraw2 のベットサイズを確認
-    const actions = getTripleDrawValidActions(state, state.currentPlayerIndex);
+    const actions = getDrawValidActions(state, state.currentPlayerIndex);
     const betAction = actions.find(a => a.action === 'bet');
     expect(betAction).toBeDefined();
     expect(betAction!.minAmount).toBe(4); // big bet
@@ -432,10 +432,10 @@ describe('isDrawStreet / isBettingStreet', () => {
 });
 
 // =========================================================================
-//  Tests: determineTripleDrawWinner
+//  Tests: determineDrawWinner
 // =========================================================================
 
-describe('determineTripleDrawWinner', () => {
+describe('determineDrawWinner', () => {
   it('2-7ローボールで最低ハンドが勝つ', () => {
     let state = startThreePlayerHand();
 
@@ -444,7 +444,7 @@ describe('determineTripleDrawWinner', () => {
     state = setHoleCards(state, 1, [card('2','d'), card('3','c'), card('4','s'), card('5','h'), card('8','d')]); // 8-5 low
     state = setHoleCards(state, 2, [card('2','c'), card('3','s'), card('6','h'), card('7','d'), card('9','c')]); // 9-7 low
 
-    const result = determineTripleDrawWinner(state);
+    const result = determineDrawWinner(state);
     expect(result.isHandComplete).toBe(true);
     expect(result.winners).toHaveLength(1);
     expect(result.winners[0].playerId).toBe(0); // Number One が勝つ
@@ -457,7 +457,7 @@ describe('determineTripleDrawWinner', () => {
     state.players[1].folded = true;
     // player 2 だけ残り
 
-    const result = determineTripleDrawWinner(state);
+    const result = determineDrawWinner(state);
     expect(result.winners).toHaveLength(1);
     expect(result.winners[0].playerId).toBe(2);
     expect(result.winners[0].handName).toBe(''); // フォールド勝ちはハンド名なし
@@ -475,7 +475,7 @@ describe('determineTripleDrawWinner', () => {
     state = completeDrawStandPat(state); // → final
 
     // final で1人フォールド、残り2人は同じハンド
-    state = applyTripleDrawAction(state, state.currentPlayerIndex, 'fold');
+    state = applyDrawAction(state, state.currentPlayerIndex, 'fold');
 
     // 残り2人に同じ強さのハンドをセット
     const activePlayers = state.players.filter(p => !p.folded);
@@ -484,7 +484,7 @@ describe('determineTripleDrawWinner', () => {
     state = setHoleCards(state, activePlayers[1].id, [card('2','d'), card('3','c'), card('4','s'), card('5','h'), card('7','d')]);
 
     const potBefore = state.pot;
-    const result = determineTripleDrawWinner(state);
+    const result = determineDrawWinner(state);
     expect(result.winners).toHaveLength(2);
     const total = result.winners.reduce((sum, w) => sum + w.amount, 0);
     expect(total).toBe(potBefore);
@@ -496,7 +496,7 @@ describe('determineTripleDrawWinner', () => {
     state.players[1].folded = true;
     // currentStreet = predraw のまま
 
-    const result = determineTripleDrawWinner(state, 5, 3); // 5%レーキ
+    const result = determineDrawWinner(state, 5, 3); // 5%レーキ
     expect(result.rake).toBe(0);
   });
 });
@@ -508,7 +508,6 @@ describe('determineTripleDrawWinner', () => {
 describe('完全なハンド進行', () => {
   it('predrawからshowdownまでの完全なハンド', () => {
     let state = startThreePlayerHand();
-    const initialPot = state.pot;
 
     // predraw: 全員コール
     state = completeCheckAround(state);
@@ -556,7 +555,7 @@ describe('完全なハンド進行', () => {
     for (let i = 0; i < 3; i++) {
       if (state.isHandComplete) break;
       const pi = state.currentPlayerIndex;
-      state = applyTripleDrawAction(state, pi, 'draw', 0, 0, 0, [0, 1]);
+      state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0, 1]);
       expect(state.players[pi].holeCards).toHaveLength(5);
     }
 
@@ -594,7 +593,241 @@ describe('デッキ枯渇時のリシャッフル', () => {
 
     // 3枚交換を試みる（デッキ1枚 + discardPileからリシャッフル）
     const pi = newState.currentPlayerIndex;
-    const result = applyTripleDrawAction(newState, pi, 'draw', 0, 0, 0, [0, 1, 2]);
+    const result = applyDrawAction(newState, pi, 'draw', 0, 0, 0, [0, 1, 2]);
     expect(result.players[pi].holeCards).toHaveLength(5);
+  });
+});
+
+// =========================================================================
+//  Tests: getDrawStreetOrder
+// =========================================================================
+
+describe('getDrawStreetOrder', () => {
+  it('maxDraws=1: predraw → draw1 → final → showdown', () => {
+    expect(getDrawStreetOrder(1)).toEqual(['predraw', 'draw1', 'final', 'showdown']);
+  });
+
+  it('maxDraws=2: predraw → draw1 → postdraw1 → draw2 → final → showdown', () => {
+    expect(getDrawStreetOrder(2)).toEqual(['predraw', 'draw1', 'postdraw1', 'draw2', 'final', 'showdown']);
+  });
+
+  it('maxDraws=3: 完全なTriple Drawストリート順', () => {
+    expect(getDrawStreetOrder(3)).toEqual([
+      'predraw', 'draw1', 'postdraw1', 'draw2', 'postdraw2', 'draw3', 'final', 'showdown',
+    ]);
+  });
+});
+
+// =========================================================================
+//  Tests: Single Draw (maxDraws=1)
+// =========================================================================
+
+/** Single Draw 3人プレイ用 */
+function startSingleDrawThreePlayerHand(): GameState {
+  let state = createDrawGameState(600, 2, 1);
+  state.players[3].isSittingOut = true;
+  state.players[4].isSittingOut = true;
+  state.players[5].isSittingOut = true;
+  state = startDrawHand(state);
+  return state;
+}
+
+describe('Single Draw (maxDraws=1)', () => {
+  describe('createDrawGameState (maxDraws=1)', () => {
+    it('variant が singledraw になる', () => {
+      const state = createDrawGameState(600, 2, 1);
+      expect(state.variant).toBe('no_limit_2-7_single_draw');
+      expect(state.maxDraws).toBe(1);
+    });
+
+    it('maxDraws=3 の場合は tripdraw', () => {
+      const state = createDrawGameState(600, 2, 3);
+      expect(state.variant).toBe('limit_2-7_triple_draw');
+      expect(state.maxDraws).toBe(3);
+    });
+  });
+
+  describe('ストリート遷移', () => {
+    it('predraw → draw1 → final → showdown（draw2/draw3をスキップ）', () => {
+      let state = startSingleDrawThreePlayerHand();
+      expect(state.currentStreet).toBe('predraw');
+
+      // predraw → draw1
+      state = completeCheckAround(state);
+      expect(state.currentStreet).toBe('draw1');
+
+      // draw1 → final
+      state = completeDrawStandPat(state);
+      expect(state.currentStreet).toBe('final');
+
+      // final → showdown
+      state = completeCheckAround(state);
+      expect(state.currentStreet).toBe('showdown');
+      expect(state.isHandComplete).toBe(true);
+    });
+
+    it('postdraw1/postdraw2/draw2/draw3 を経由しない', () => {
+      let state = startSingleDrawThreePlayerHand();
+      const visitedStreets: string[] = [state.currentStreet];
+
+      while (!state.isHandComplete) {
+        if (isDrawStreet(state.currentStreet)) {
+          state = completeDrawStandPat(state);
+        } else {
+          state = completeCheckAround(state);
+        }
+        if (!visitedStreets.includes(state.currentStreet)) {
+          visitedStreets.push(state.currentStreet);
+        }
+      }
+
+      expect(visitedStreets).toEqual(['predraw', 'draw1', 'final', 'showdown']);
+      expect(visitedStreets).not.toContain('postdraw1');
+      expect(visitedStreets).not.toContain('draw2');
+      expect(visitedStreets).not.toContain('postdraw2');
+      expect(visitedStreets).not.toContain('draw3');
+    });
+  });
+
+  describe('NLベッティング', () => {
+    it('ベットは min=BB, max=全チップ', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state); // → draw1
+      state = completeDrawStandPat(state); // → final
+
+      const actions = getDrawValidActions(state, state.currentPlayerIndex);
+      const betAction = actions.find(a => a.action === 'bet');
+      expect(betAction).toBeDefined();
+      expect(betAction!.minAmount).toBe(4); // BB=4
+      expect(betAction!.maxAmount).toBe(state.players[state.currentPlayerIndex].chips);
+    });
+
+    it('レイズは可変額（min=前のレイズサイズ, max=全チップ）', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state); // → draw1
+      state = completeDrawStandPat(state); // → final
+
+      // ベット: 10チップ
+      state = applyDrawAction(state, state.currentPlayerIndex, 'bet', 10);
+      expect(state.currentBet).toBe(10);
+
+      // 次のプレイヤーはレイズ可能
+      const actions = getDrawValidActions(state, state.currentPlayerIndex);
+      const raiseAction = actions.find(a => a.action === 'raise');
+      expect(raiseAction).toBeDefined();
+      // minRaise = 10（前のベットサイズ）→ minRaiseTotal = 20 → minRaiseAmount = 20 - 0 = 20
+      expect(raiseAction!.minAmount).toBe(20);
+      expect(raiseAction!.maxAmount).toBe(state.players[state.currentPlayerIndex].chips);
+    });
+
+    it('NLではベット回数上限なし（4回以上レイズ可能）', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state); // → draw1
+      state = completeDrawStandPat(state); // → final
+
+      // ベット→レイズを繰り返す
+      state = applyDrawAction(state, state.currentPlayerIndex, 'bet', 4);    // bet 4
+      state = applyDrawAction(state, state.currentPlayerIndex, 'raise', 8);  // raise to 8
+      state = applyDrawAction(state, state.currentPlayerIndex, 'raise', 12); // raise to 12
+
+      // 4回目以降もレイズ可能（FLなら不可）
+      const actions = getDrawValidActions(state, state.currentPlayerIndex);
+      const raiseAction = actions.find(a => a.action === 'raise');
+      expect(raiseAction).toBeDefined();
+    });
+
+    it('predrawでもNLベッティング', () => {
+      const state = startSingleDrawThreePlayerHand();
+      // predraw: 最初のアクターはcall/fold/raise可能
+      const actions = getDrawValidActions(state, state.currentPlayerIndex);
+      const raiseAction = actions.find(a => a.action === 'raise');
+      expect(raiseAction).toBeDefined();
+      // BBは4、minRaise=BB=4、currentBet=4 → minRaiseTotal=8
+      expect(raiseAction!.minAmount).toBeGreaterThanOrEqual(8);
+      expect(raiseAction!.maxAmount).toBe(state.players[state.currentPlayerIndex].chips);
+    });
+
+    it('NLオールインでminRaiseが更新される', () => {
+      let state = startSingleDrawThreePlayerHand();
+      // チップを調整: player 0 に100チップ
+      state.players[0].chips = 100;
+      state = completeCheckAround(state); // → draw1
+      state = completeDrawStandPat(state); // → final
+
+      // ベット 4
+      state = applyDrawAction(state, state.currentPlayerIndex, 'bet', 4);
+      // 次のプレイヤーがオールイン（大額）
+      const pi = state.currentPlayerIndex;
+      const allInAmount = state.players[pi].chips;
+      state = applyDrawAction(state, pi, 'allin', allInAmount);
+
+      // currentBet が更新されている
+      expect(state.currentBet).toBe(allInAmount);
+    });
+  });
+
+  describe('ドロー', () => {
+    it('ドローフェーズでカード交換ができる', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state);
+      expect(state.currentStreet).toBe('draw1');
+
+      const pi = state.currentPlayerIndex;
+      const originalCards = [...state.players[pi].holeCards];
+      state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0, 1, 2]);
+      expect(state.players[pi].holeCards).toHaveLength(5);
+      // 交換しなかった2枚は残っている
+      expect(state.players[pi].holeCards).toContainEqual(originalCards[3]);
+      expect(state.players[pi].holeCards).toContainEqual(originalCards[4]);
+    });
+  });
+
+  describe('完全なハンド進行', () => {
+    it('ドロー付きでshowdownまで進行しチップ保存される', () => {
+      let state = startSingleDrawThreePlayerHand();
+
+      // predraw: 全員コール
+      state = completeCheckAround(state);
+
+      // draw1: 各プレイヤーが1枚ずつ交換
+      for (let i = 0; i < 3; i++) {
+        if (state.isHandComplete || !isDrawStreet(state.currentStreet)) break;
+        const pi = state.currentPlayerIndex;
+        state = applyDrawAction(state, pi, 'draw', 0, 0, 0, [0]);
+      }
+
+      // final: 全員チェック → showdown
+      expect(state.currentStreet).toBe('final');
+      state = completeCheckAround(state);
+
+      expect(state.isHandComplete).toBe(true);
+      expect(state.winners.length).toBeGreaterThan(0);
+
+      // チップの合計が変わっていないことを確認
+      const totalChips = state.players.reduce((sum, p) => sum + p.chips, 0);
+      expect(totalChips).toBe(600 * 6);
+    });
+
+    it('全員フォールドで最後の1人が勝利', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = applyDrawAction(state, state.currentPlayerIndex, 'fold');
+      state = applyDrawAction(state, state.currentPlayerIndex, 'fold');
+      expect(state.isHandComplete).toBe(true);
+      expect(state.winners).toHaveLength(1);
+    });
+  });
+
+  describe('ショーダウン', () => {
+    it('2-7ローボールで最低ハンドが勝つ', () => {
+      let state = startSingleDrawThreePlayerHand();
+
+      state = setHoleCards(state, 0, [card('2','h'), card('3','d'), card('4','c'), card('5','s'), card('7','h')]);
+      state = setHoleCards(state, 1, [card('2','d'), card('3','c'), card('4','s'), card('5','h'), card('8','d')]);
+      state = setHoleCards(state, 2, [card('T','c'), card('J','s'), card('Q','h'), card('K','d'), card('A','c')]);
+
+      const result = determineDrawWinner(state);
+      expect(result.winners).toHaveLength(1);
+      expect(result.winners[0].playerId).toBe(0);
+    });
   });
 });

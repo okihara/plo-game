@@ -12,14 +12,14 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud' | 'razz' | 'tripdraw';
+export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw';
 
 export function isStudFamily(variant: GameVariant): boolean {
   return variant === 'stud' || variant === 'razz';
 }
 
 export function isDrawFamily(variant: GameVariant): boolean {
-  return variant === 'tripdraw';
+  return variant === 'limit_2-7_triple_draw' || variant === 'no_limit_2-7_single_draw';
 }
 
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
@@ -87,5 +87,6 @@ export interface GameState {
   bringIn: number;           // Stud: ブリングイン額（PLO: 0）
   betCount: number;          // Fixed Limit: 現ストリートのベット回数
   maxBetsPerRound: number;   // Fixed Limit: 最大ベット回数/ストリート（通常4）
-  discardPile?: Card[];      // Triple Draw: 捨て札の山（ドロー時のデッキ補充用）
+  discardPile?: Card[];      // Draw: 捨て札の山（ドロー時のデッキ補充用）
+  maxDraws?: number;         // Draw: ドロー回数（1=Single Draw, 3=Triple Draw, デフォルト3）
 }

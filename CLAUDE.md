@@ -370,7 +370,7 @@ npm run start       # 本番サーバー起動 (cd server && node --import tsx s
 | `DATABASE_URL` | (自動) | PostgreSQLアドオンから |
 | `PORT` | (自動) | Railwayが`$PORT`で提供 |
 
-5. デプロイ実行（GitHub pushで自動デプロイ）
+5. デプロイ実行（`main` ブランチへのpushで自動デプロイ。`develop` ブランチはデプロイされない）
 6. `https://<app>.up.railway.app/health` でヘルスチェック確認
 
 ### 環境変数の仕組み

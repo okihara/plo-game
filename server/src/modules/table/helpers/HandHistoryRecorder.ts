@@ -136,7 +136,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           let finalHand: string | null = null;
           if (winnerEntry?.handName) {
             finalHand = winnerEntry.handName;
-          } else if (!player.folded) {
+          } else if (!player.folded && player.holeCards.length === 4 && gameState.communityCards.length === 5) {
             try {
               finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;
             } catch (e) {

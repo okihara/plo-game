@@ -58,11 +58,41 @@ export function getPostflopDecision(
 
   // === 1. モンスターハンド: ナッツまたはセミナッツ ===
   if (handEval.isNuts || (handEval.isNearNuts && handEval.madeHandRank >= 5)) {
+    // ドンクベット抑制: 非アグレッサーは40%のみドンク、残りはチェック（チェックレイズ狙い）
+    if (!isAggressor && toCall === 0 && Math.random() > 0.40) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
     return playMonster(state, validActions, handEval, boardTexture, spr, personality, streetHistory, playerIndex);
   }
 
-  // === 2. 強いメイドハンド (ツーペア+) ===
-  if (handEval.madeHandRank >= 3) {
+  // === 2. 強いメイドハンド (セット以上、またはドライボードのツーペア) ===
+  // ツーペアは危険ボードではポットコントロール（playOnePairに近い扱い）
+  if (handEval.madeHandRank >= 4) {
+    // ドンクベット抑制: 非アグレッサーは20%のみドンク
+    if (!isAggressor && toCall === 0 && Math.random() > 0.20) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
+    return playStrongMade(
+      state, validActions, handEval, boardTexture, potOdds,
+      spr, personality, streetHistory, playerIndex, numOpponents
+    );
+  }
+  if (handEval.madeHandRank === 3) {
+    // ツーペアは危険ボードではポットコントロール寄りに
+    const isDangerous = boardTexture.flushPossible || boardTexture.straightPossible || boardTexture.isPaired;
+    if (isDangerous) {
+      return playTwoPairCautious(
+        state, validActions, handEval, boardTexture, potOdds,
+        spr, personality, streetHistory, playerIndex, numOpponents
+      );
+    }
+    // ドンクベット抑制: 非アグレッサーのツーペア(安全ボード)は15%のみドンク
+    if (!isAggressor && toCall === 0 && Math.random() > 0.15) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
     return playStrongMade(
       state, validActions, handEval, boardTexture, potOdds,
       spr, personality, streetHistory, playerIndex, numOpponents
@@ -80,6 +110,12 @@ export function getPostflopDecision(
 
   // === 4. ドローハンド ===
   if (handEval.hasFlushDraw || handEval.hasStraightDraw || handEval.hasWrapDraw) {
+    // ドンクセミブラフ抑制: 非アグレッサーはチェック寄りに（セミブラフ頻度を下げる）
+    if (!isAggressor && toCall === 0 && Math.random() > 0.35) {
+      // チェックに制限（playDrawのセミブラフを回避）、ただしコール判断は維持
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
     return playDraw(state, validActions, handEval, boardTexture, potOdds, street, personality, positionBonus, streetHistory, playerIndex);
   }
 
@@ -89,6 +125,12 @@ export function getPostflopDecision(
   }
 
   // === 6. 弱いハンド: ブラフ検討 ===
+  // ドンクブラフ抑制: 非アグレッサーのピュアブラフは大幅に抑制（プローブベットは別途bluffStrategyで管理）
+  if (!isAggressor && toCall === 0 && Math.random() > 0.30) {
+    // ブラフ評価をスキップしてチェック
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+  }
   const bluffDecision = evaluateBluff(
     state, playerIndex, handEval, boardTexture, streetHistory,
     personality, positionBonus, opponentModel
@@ -226,33 +268,33 @@ function playRiver(
   // === 3. 強いメイドハンド (rank >= 3, nutRank 4+ or 未計算) ===
   if (handEval.madeHandRank >= 3) {
     if (toCall > 0) {
-      // 一箇所でフォールド率を計算（多段直列による不整合を防止）
-      // ツーペア(3)はフォールド寄り、セット(4)は中間、ストレート以上(5+)はコール寄り
       const rank = handEval.madeHandRank;
-      let foldRate = rank === 3 ? 0.50 : rank === 4 ? 0.30 : 0.15;
+      // ツーペアのベースフォールド率を大幅引き上げ（PLOでは弱い手）
+      let foldRate = rank === 3 ? 0.65 : rank === 4 ? 0.30 : 0.15;
 
-      // ベットサイズ
-      if (betToPotRatio < 0.3) foldRate -= 0.15;
+      // ベットサイズ: 大ベットにはもっとフォールド
+      if (betToPotRatio < 0.3) foldRate -= 0.10;
       else if (betToPotRatio < 0.6) foldRate += 0.00;
-      else if (betToPotRatio < 1.0) foldRate += 0.10;
-      else foldRate += 0.20;
+      else if (betToPotRatio < 1.0) foldRate += 0.12;
+      else foldRate += 0.25;
 
       // ボードテクスチャ: フラッシュ未保持やストレート未保持で加算
-      if (boardTexture.flushPossible && rank < 6) foldRate += 0.12;
-      if (boardTexture.straightPossible && rank < 5) foldRate += 0.08;
-      if (boardTexture.isPaired && rank < 7) foldRate += 0.08;
-      if (!boardTexture.isWet) foldRate -= 0.10;
+      if (boardTexture.flushPossible && rank < 6) foldRate += 0.15;
+      if (boardTexture.straightPossible && rank < 5) foldRate += 0.10;
+      if (boardTexture.isPaired && rank < 7) foldRate += 0.10;
+      if (!boardTexture.isWet) foldRate -= 0.08;
 
-      // nutRank: 高いほどフォールド寄り
-      if (nr >= 5) foldRate += 0.10;
-      else if (nr >= 4) foldRate += 0.05;
+      // nutRank: 高いほどフォールド寄り（補正幅を拡大）
+      if (nr >= 6) foldRate += 0.15;
+      else if (nr >= 5) foldRate += 0.12;
+      else if (nr >= 4) foldRate += 0.08;
 
       // パーソナリティ
       foldRate += (personality.foldToRiverBet - 0.6) * 0.3;
 
-      // クランプ: ランク別に上下限を設定
+      // クランプ: ツーペアの下限を大幅引き上げ
       if (rank === 3) {
-        foldRate = Math.max(0.25, Math.min(0.85, foldRate));
+        foldRate = Math.max(0.40, Math.min(0.93, foldRate));
       } else if (rank === 4) {
         foldRate = Math.max(0.10, Math.min(0.65, foldRate));
       } else {
@@ -262,16 +304,20 @@ function playRiver(
       if (Math.random() < foldRate) {
         return { action: 'fold', amount: 0 };
       }
-      // フォールド判定を通過 → レイズ or コール
-      if (Math.random() < personality.aggression * 0.4) {
+      // フォールド判定を通過 → レイズ or コール（ツーペアはほぼコールのみ）
+      if (rank >= 4 && Math.random() < personality.aggression * 0.4) {
         const bet = makeValueBet();
         if (bet) return bet;
       }
       const callAction = canCall();
       if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
-    // ベットに直面していない → アグレッションベースでベット
-    if (Math.random() > (1 - personality.aggression * 0.6)) {
+    // ベットに直面していない → ツーペアはベット頻度を下げる
+    const rank = handEval.madeHandRank;
+    const betFreq = rank === 3
+      ? personality.aggression * 0.3  // ツーペア: 控えめ
+      : personality.aggression * 0.6; // セット以上: 通常通り
+    if (Math.random() < betFreq) {
       const bet = makeValueBet();
       if (bet) return bet;
     }
@@ -283,30 +329,35 @@ function playRiver(
   // === 4. ワンペア (rank 2) ===
   if (handEval.madeHandRank === 2) {
     if (toCall > 0) {
-      // 一箇所でフォールド率を計算（多段直列による降りすぎを防止）
-      let foldRate = 0.70;
+      // PLOリバーのワンペアは非常に弱い。ベースフォールド率を高めに設定
+      let foldRate = 0.80;
 
-      // ベットサイズ: 小さいほどコール寄り、大きいほどフォールド寄り
-      if (betToPotRatio < 0.3) foldRate -= 0.20;
+      // ベットサイズ: 小さいベットのみ少しコール寄り
+      if (betToPotRatio < 0.3) foldRate -= 0.12;
       else if (betToPotRatio < 0.6) foldRate += 0.00;
-      else if (betToPotRatio < 1.0) foldRate += 0.10;
-      else foldRate += 0.15;
+      else if (betToPotRatio < 1.0) foldRate += 0.08;
+      else foldRate += 0.10;
 
       // ボードテクスチャ: 危険なボードほどフォールド寄り
-      if (boardTexture.flushPossible) foldRate += 0.10;
+      if (boardTexture.flushPossible) foldRate += 0.08;
       if (boardTexture.straightPossible) foldRate += 0.05;
-      if (!boardTexture.isWet) foldRate -= 0.10;
+      if (boardTexture.isPaired) foldRate += 0.05;
+      if (!boardTexture.isWet) foldRate -= 0.05;
 
-      // ハンド強度: 強いペアほどブラフキャッチ
-      if (handEval.strength > 0.6) foldRate -= 0.15;
-      else if (handEval.strength > 0.5) foldRate -= 0.08;
-      else if (handEval.strength < 0.4) foldRate += 0.10;
+      // nutRank: PLOワンペアは大抵nutRankが高い → さらにフォールド
+      if (nr >= 6) foldRate += 0.08;
+      else if (nr >= 4) foldRate += 0.05;
+      else if (nr <= 2) foldRate -= 0.10; // 非常にレアだがnutRank低ならブラフキャッチ
 
-      // パーソナリティ: foldToRiverBet 0.6 を基準に±調整
-      foldRate += (personality.foldToRiverBet - 0.6) * 0.3;
+      // ハンド強度: オーバーペア級のみ少しコール寄り
+      if (handEval.strength > 0.6) foldRate -= 0.10;
+      else if (handEval.strength < 0.4) foldRate += 0.05;
 
-      // クランプ: PLOリバーのワンペアは弱いが、最低限のブラフキャッチは必要
-      foldRate = Math.max(0.45, Math.min(0.92, foldRate));
+      // パーソナリティ
+      foldRate += (personality.foldToRiverBet - 0.6) * 0.2;
+
+      // クランプ: 下限を引き上げ（PLOリバーのワンペアコールはほぼ損）
+      foldRate = Math.max(0.65, Math.min(0.95, foldRate));
 
       if (Math.random() < foldRate) {
         return { action: 'fold', amount: 0 };
@@ -314,11 +365,7 @@ function playRiver(
       const callAction = canCall();
       if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
-    // ベット非直面: たまにシンバリューベット（降りすぎ読みへの対策）
-    if (handEval.strength > 0.6 && Math.random() < 0.15 + personality.aggression * 0.10) {
-      const bet = makeValueBet();
-      if (bet) return bet;
-    }
+    // ベット非直面: ワンペアでバリューベットしない（チェック一択）
     const checkAction = canCheck();
     if (checkAction) return { action: 'check', amount: 0 };
     return { action: 'fold', amount: 0 };
@@ -499,6 +546,76 @@ function playStrongMade(
     const callAction = validActions.find(a => a.action === 'call');
     if (callAction) return { action: 'call', amount: callAction.minAmount };
   }
+
+  return { action: 'fold', amount: 0 };
+}
+
+/**
+ * 危険ボードでのツーペアのプレイ。（フロップ/ターン用）
+ * ポットコントロール重視: 自らベットしてポットを膨らませない。
+ * コールは許容するが、レイズは避ける。
+ */
+function playTwoPairCautious(
+  state: GameState,
+  validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  handEval: ExtendedHandEval,
+  boardTexture: ExtendedBoardTexture,
+  potOdds: number,
+  spr: number,
+  personality: BotPersonality,
+  streetHistory: StreetHistory,
+  playerIndex: number,
+  numOpponents: number
+): { action: Action; amount: number } {
+  const toCall = state.currentBet - state.players[playerIndex].currentBet;
+
+  if (toCall > 0) {
+    // 大ベットに直面 → フォールド寄り
+    if (toCall > state.pot * 0.6) {
+      // エクイティがポットオッズを上回る場合のみコール
+      if (handEval.estimatedEquity > potOdds) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      // マルチウェイなら更に厳しく
+      if (numOpponents >= 2) {
+        return { action: 'fold', amount: 0 };
+      }
+      // ヘッズアップでも30%フォールド
+      if (Math.random() < 0.30) {
+        return { action: 'fold', amount: 0 };
+      }
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+      return { action: 'fold', amount: 0 };
+    }
+    // 中〜小ベット → コール（ポットコントロール、レイズしない）
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
+  }
+
+  // ベットに直面していない → 基本チェック（ポットを膨らませない）
+  // ドライボード寄り or 強ドローも持っている場合のみたまにベット
+  if (!boardTexture.isWet && handEval.drawStrength > 0.3 && Math.random() < 0.25) {
+    const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
+    if (raiseAction) {
+      const sizePct = decideBetSize({
+        pot: state.pot,
+        street: state.currentStreet,
+        spr,
+        boardTexture,
+        handEval,
+        isAggressor: streetHistory.preflopAggressor === playerIndex,
+        numOpponents,
+        personality,
+      });
+      const amount = calculateBetAmount(sizePct, state.pot, raiseAction.minAmount, raiseAction.maxAmount);
+      return { action: raiseAction.action, amount };
+    }
+  }
+
+  const checkAction = validActions.find(a => a.action === 'check');
+  if (checkAction) return { action: 'check', amount: 0 };
 
   return { action: 'fold', amount: 0 };
 }
