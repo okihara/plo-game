@@ -58,12 +58,22 @@ export function getPostflopDecision(
 
   // === 1. モンスターハンド: ナッツまたはセミナッツ ===
   if (handEval.isNuts || (handEval.isNearNuts && handEval.madeHandRank >= 5)) {
+    // ドンクベット抑制: 非アグレッサーは40%のみドンク、残りはチェック（チェックレイズ狙い）
+    if (!isAggressor && toCall === 0 && Math.random() > 0.40) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
     return playMonster(state, validActions, handEval, boardTexture, spr, personality, streetHistory, playerIndex);
   }
 
   // === 2. 強いメイドハンド (セット以上、またはドライボードのツーペア) ===
   // ツーペアは危険ボードではポットコントロール（playOnePairに近い扱い）
   if (handEval.madeHandRank >= 4) {
+    // ドンクベット抑制: 非アグレッサーは20%のみドンク
+    if (!isAggressor && toCall === 0 && Math.random() > 0.20) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
     return playStrongMade(
       state, validActions, handEval, boardTexture, potOdds,
       spr, personality, streetHistory, playerIndex, numOpponents
@@ -77,6 +87,11 @@ export function getPostflopDecision(
         state, validActions, handEval, boardTexture, potOdds,
         spr, personality, streetHistory, playerIndex, numOpponents
       );
+    }
+    // ドンクベット抑制: 非アグレッサーのツーペア(安全ボード)は15%のみドンク
+    if (!isAggressor && toCall === 0 && Math.random() > 0.15) {
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
     }
     return playStrongMade(
       state, validActions, handEval, boardTexture, potOdds,
@@ -95,6 +110,12 @@ export function getPostflopDecision(
 
   // === 4. ドローハンド ===
   if (handEval.hasFlushDraw || handEval.hasStraightDraw || handEval.hasWrapDraw) {
+    // ドンクセミブラフ抑制: 非アグレッサーはチェック寄りに（セミブラフ頻度を下げる）
+    if (!isAggressor && toCall === 0 && Math.random() > 0.35) {
+      // チェックに制限（playDrawのセミブラフを回避）、ただしコール判断は維持
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+    }
     return playDraw(state, validActions, handEval, boardTexture, potOdds, street, personality, positionBonus, streetHistory, playerIndex);
   }
 
@@ -104,6 +125,12 @@ export function getPostflopDecision(
   }
 
   // === 6. 弱いハンド: ブラフ検討 ===
+  // ドンクブラフ抑制: 非アグレッサーのピュアブラフは大幅に抑制（プローブベットは別途bluffStrategyで管理）
+  if (!isAggressor && toCall === 0 && Math.random() > 0.30) {
+    // ブラフ評価をスキップしてチェック
+    const checkAction = validActions.find(a => a.action === 'check');
+    if (checkAction) return { action: 'check', amount: 0 };
+  }
   const bluffDecision = evaluateBluff(
     state, playerIndex, handEval, boardTexture, streetHistory,
     personality, positionBonus, opponentModel
