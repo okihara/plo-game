@@ -69,9 +69,13 @@ function getStreetCards(communityCards: string[]): Record<string, string[]> {
   };
 }
 
-function computeStreetStartPots(actions: HandDetailAction[]): Record<string, number> {
+function computeStreetStartPots(actions: HandDetailAction[], blinds: string): Record<string, number> {
+  // ブラインド額をパース（例: "1/2" → SB=1, BB=2）
+  const parts = blinds.split('/').map(Number);
+  const blindTotal = parts.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0);
+
   const pots: Record<string, number> = {};
-  let cumPot = 0;
+  let cumPot = blindTotal;
   let prevStreet = '';
   for (const a of actions) {
     const s = a.street || 'preflop';
@@ -258,7 +262,7 @@ function PlayerRow({ player, position, communityCards }: {
 
 function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[] }) {
   const streetCards = getStreetCards(hand.communityCards);
-  const streetStartPot = computeStreetStartPots(hand.actions);
+  const streetStartPot = computeStreetStartPots(hand.actions, hand.blinds);
   const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
 
   let lastStreet = '';
