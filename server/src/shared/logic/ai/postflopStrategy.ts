@@ -49,7 +49,8 @@ export function getPostflopDecision(
 
   // === 0b. リバーベットに対するフォールド判断 ===
   // PLOではリバーベットは非常に強いレンジ。ワンペア以下はほぼフォールドすべき
-  if (toCall > 0 && street === 'river') {
+  // ただし nutRank が低い（ナッツに近い）場合はスキップしてモンスター処理に委ねる
+  if (toCall > 0 && street === 'river' && !(handEval.nutRank !== undefined && handEval.nutRank <= 2)) {
     // ハイカード以下（rank 0-1）: リバーベットに対して100%フォールド
     if (handEval.madeHandRank <= 1) {
       return { action: 'fold', amount: 0 };
