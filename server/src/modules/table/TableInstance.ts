@@ -1,5 +1,6 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action, GameVariant } from '../../shared/logic/types.js';
+import { GameState, Action, GameVariant, isDrawFamily } from '../../shared/logic/types.js';
+import { isDrawStreet } from '../../shared/logic/drawEngine.js';
 import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
@@ -178,7 +179,7 @@ export class TableInstance {
         // Studブリングインフェーズ等では fold が無効なため、有効アクションを選択
         this.actionController.clearTimers();
         const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-        this.handleAction(odId, defaultAction.action, defaultAction.amount);
+        this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -219,7 +220,7 @@ export class TableInstance {
   }
 
   // Handle player action
-  public handleAction(odId: string, action: Action, amount: number): boolean {
+  public handleAction(odId: string, action: Action, amount: number, discardIndices?: number[]): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
       console.warn(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
       return false;
@@ -239,7 +240,8 @@ export class TableInstance {
       seatIndex,
       action,
       amount,
-      odId
+      odId,
+      discardIndices
     );
 
     if (!result.success) {
@@ -406,8 +408,13 @@ export class TableInstance {
    * 切断・タイムアウト時のデフォルトアクションを決定
    * Studのブリングインフェーズでは fold が無効なため、最低コストの有効アクションを選択
    */
-  private getDefaultDisconnectAction(seatIndex: number): { action: Action; amount: number } {
+  private getDefaultDisconnectAction(seatIndex: number): { action: Action; amount: number; discardIndices?: number[] } {
     if (!this.gameState) return { action: 'fold', amount: 0 };
+
+    // Draw: ドローフェーズ → stand pat（0枚交換）
+    if (isDrawFamily(this.variant) && isDrawStreet(this.gameState.currentStreet)) {
+      return { action: 'draw', amount: 0, discardIndices: [] };
+    }
 
     const validActions = this.variantAdapter.getValidActions(this.gameState, seatIndex);
 
@@ -566,7 +573,7 @@ export class TableInstance {
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
           const defaultAction = this.getDefaultDisconnectAction(idx);
-          this.handleAction(seat.odId, defaultAction.action, defaultAction.amount);
+          this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
         }
       }
     );
@@ -587,7 +594,7 @@ export class TableInstance {
     if (seat && seat.odId === playerId) {
       // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount);
+      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
       if (defaultAction.action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {

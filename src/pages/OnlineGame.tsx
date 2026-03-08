@@ -1,15 +1,16 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, isStudFamily } from '../logic';
+import { Player as PlayerType, evaluateRazzHand, isStudFamily, isDrawFamily, isDrawStreet } from '../logic';
 import { evaluateCurrentHand, evaluateStudHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
   ActionPanel,
-  StudActionPanel,
+  FixedLimitActionPanel,
+  DrawPhasePanel,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -68,6 +69,29 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
+  const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
+
+  // Draw: ストリート変更時にカード選択リセット
+  const currentStreet = gameState?.currentStreet;
+  useEffect(() => {
+    setSelectedCardIndices(new Set());
+  }, [currentStreet]);
+
+  const handleCardToggle = useCallback((index: number) => {
+    setSelectedCardIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  // Draw判定
+  const isDraw = gameState ? isDrawFamily(gameState.variant) : false;
+  const isCurrentDrawStreet = gameState ? isDrawStreet(gameState.currentStreet) : false;
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -339,10 +363,15 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             folded={myPlayer?.folded}
             handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
             variant={gameState.variant}
+            isDrawPhase={isDraw && isCurrentDrawStreet}
+            selectedCardIndices={selectedCardIndices}
+            onCardToggle={handleCardToggle}
           />
 
-          {isStudFamily(gameState.variant) ? (
-            <StudActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
+          {isDraw && isCurrentDrawStreet ? (
+            <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
+          ) : isStudFamily(gameState.variant) || isDrawFamily(gameState.variant) ? (
+            <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : (
             <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
           )}

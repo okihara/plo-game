@@ -33,7 +33,7 @@ export async function handleTableLeave(socket: AuthenticatedSocket, tableManager
 
 export async function handleGameAction(
   socket: AuthenticatedSocket,
-  data: { action: Action; amount?: number },
+  data: { action: Action; amount?: number; discardIndices?: number[] },
   tableManager: TableManager
 ): Promise<void> {
   const table = tableManager.getPlayerTable(socket.odId!);
@@ -42,7 +42,7 @@ export async function handleGameAction(
     return;
   }
 
-  const success = table.handleAction(socket.odId!, data.action, data.amount || 0);
+  const success = table.handleAction(socket.odId!, data.action, data.amount || 0, data.discardIndices);
   if (!success) {
     socket.emit('table:error', { message: 'Invalid action' });
     return;
@@ -106,7 +106,7 @@ export async function handleMatchmakingJoin(
   }
 
   const { blinds } = data;
-  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz'];
+  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz', 'limit_2-7_triple_draw', 'no_limit_2-7_single_draw'];
   const variant: import('../../shared/logic/types.js').GameVariant =
     VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo';
 

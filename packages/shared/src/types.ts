@@ -22,6 +22,16 @@ export function isDrawFamily(variant: GameVariant): boolean {
   return variant === 'limit_2-7_triple_draw' || variant === 'no_limit_2-7_single_draw';
 }
 
+/** ドローフェーズのストリートかどうか（カードを捨てて引き直す） */
+export function isDrawStreet(street: Street): boolean {
+  return street === 'draw1' || street === 'draw2' || street === 'draw3';
+}
+
+/** ベッティングフェーズのストリートかどうか（Draw系） */
+export function isDrawBettingStreet(street: Street): boolean {
+  return street === 'predraw' || street === 'postdraw1' || street === 'postdraw2' || street === 'final';
+}
+
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
 
 export interface Player {
