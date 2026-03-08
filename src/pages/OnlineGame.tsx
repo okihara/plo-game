@@ -10,6 +10,7 @@ import {
   MyCards,
   ActionPanel,
   FixedLimitActionPanel,
+  NoLimitActionPanel,
   DrawPhasePanel,
   HandAnalysisOverlay,
 } from '../components';
@@ -370,6 +371,8 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           {isDraw && isCurrentDrawStreet ? (
             <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
+          ) : gameState.variant === 'no_limit_2-7_single_draw' ? (
+            <NoLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : isStudFamily(gameState.variant) || isDrawFamily(gameState.variant) ? (
             <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : (

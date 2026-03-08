@@ -4,6 +4,7 @@ export { CommunityCards } from './CommunityCards';
 export { ActionPanel } from './ActionPanel';
 export { StudActionPanel } from './StudActionPanel';
 export { FixedLimitActionPanel } from './FixedLimitActionPanel';
+export { NoLimitActionPanel } from './NoLimitActionPanel';
 export { DrawPhasePanel } from './DrawPhasePanel';
 export { MyCards } from './MyCards';
 export { PokerTable } from './PokerTable';
