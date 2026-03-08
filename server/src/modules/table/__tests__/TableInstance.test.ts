@@ -322,12 +322,9 @@ describe('TableInstance - アクション処理', () => {
     const current = findCurrentPlayer(table, odIds, sockets, seatMap);
     expect(current).not.toBeNull();
 
-    // action_required から有効アクションを取得
-    const actionEmits = getSocketEmits(current!.socket, 'game:action_required');
-    const lastAction = actionEmits[actionEmits.length - 1] as {
-      validActions: { action: string; minAmount: number; maxAmount: number }[];
-    };
-    const raiseInfo = lastAction.validActions.find(a => a.action === 'raise');
+    // 有効アクションを取得
+    const validActions = table.getValidActionsForSeat(current!.seatIndex);
+    const raiseInfo = validActions.find(a => a.action === 'raise');
     if (raiseInfo) {
       const result = table.handleAction(current!.odId, 'raise', raiseInfo.minAmount);
       expect(result).toBe(true);
@@ -891,13 +888,10 @@ describe('TableInstance - タイムアウトフォールド時のonTimeoutFold�
     while (safety-- > 0) {
       const current = findCurrentPlayer(table, odIds, sockets, seatMap);
       if (!current) break;
-      // action_requiredから正しいcall amountを取得
-      const actionEmits = getSocketEmits(current.socket, 'game:action_required');
-      const lastAction = actionEmits[actionEmits.length - 1] as {
-        validActions: { action: string; minAmount: number }[];
-      };
-      const callInfo = lastAction?.validActions.find(a => a.action === 'call');
-      const checkInfo = lastAction?.validActions.find(a => a.action === 'check');
+      // 有効アクションを取得
+      const validActions = table.getValidActionsForSeat(current.seatIndex);
+      const callInfo = validActions.find(a => a.action === 'call');
+      const checkInfo = validActions.find(a => a.action === 'check');
       if (checkInfo) break; // チェック可能 = BBオプション到達
       if (!callInfo) break;
       table.handleAction(current.odId, 'call', callInfo.minAmount);

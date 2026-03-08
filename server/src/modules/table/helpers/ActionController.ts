@@ -12,6 +12,7 @@ export interface ActionResult {
   gameState: GameState;
   streetChanged: boolean;
   handComplete: boolean;
+  rejectReason?: string;
 }
 
 export interface AdvanceResult {
@@ -72,7 +73,7 @@ export class ActionController {
   ): ActionResult {
     // プレイヤーのターンかチェック
     if (gameState.currentPlayerIndex !== seatIndex) {
-      return { success: false, gameState, streetChanged: false, handComplete: false };
+      return { success: false, gameState, streetChanged: false, handComplete: false, rejectReason: `not player's turn (expected seat ${gameState.currentPlayerIndex})` };
     }
 
     const validActions = this.variantAdapter.getValidActions(gameState, seatIndex);
@@ -82,7 +83,11 @@ export class ActionController {
     );
 
     if (!isValid) {
-      return { success: false, gameState, streetChanged: false, handComplete: false };
+      const matching = validActions.find(a => a.action === action);
+      const reason = matching
+        ? `amount ${amount} out of range [${matching.minAmount}, ${matching.maxAmount}]`
+        : `action '${action}' not in valid actions [${validActions.map(a => a.action).join(', ')}]`;
+      return { success: false, gameState, streetChanged: false, handComplete: false, rejectReason: reason };
     }
 
     // タイマークリア
@@ -191,18 +196,6 @@ export class ActionController {
       requestedAt: Date.now(),
       timeoutMs: TABLE_CONSTANTS.ACTION_TIMEOUT_MS,
     };
-
-    // アクション要求を送信
-    this.broadcast.emitToSocket(
-      currentSeat.socket,
-      currentSeat.odId,
-      'game:action_required',
-      {
-        playerId: currentSeat.odId,
-        validActions,
-        timeoutMs: TABLE_CONSTANTS.ACTION_TIMEOUT_MS,
-      }
-    );
 
     // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）
     const playerIdForTimeout = currentSeat.odId;

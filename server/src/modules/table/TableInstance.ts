@@ -243,7 +243,7 @@ export class TableInstance {
     );
 
     if (!result.success) {
-      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}`);
+      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}, reason=${result.rejectReason}`);
       return false;
     }
 
@@ -354,6 +354,14 @@ export class TableInstance {
       isPrivate: this.isPrivate,
       variant: this.variant,
     };
+  }
+
+  /**
+   * 指定席の有効アクションを返す（テスト・デバッグ用）
+   */
+  public getValidActionsForSeat(seatIndex: number): { action: string; minAmount: number; maxAmount: number }[] {
+    if (!this.gameState) return [];
+    return this.variantAdapter.getValidActions(this.gameState, seatIndex);
   }
 
   public getClientGameState(): ClientGameState {
