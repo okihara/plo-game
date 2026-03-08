@@ -4,7 +4,8 @@ import { prisma } from '../../config/database.js';
 import { GameState } from '../../shared/logic/types.js';
 import { SeatInfo } from '../table/types.js';
 import { computeIncrementForPlayer } from './statsComputation.js';
-import { checkHandCountBadges } from '../badges/badgeService.js';
+import { checkHandCountBadges, /* checkWinCountBadges, */ checkBadBeatBadges } from '../badges/badgeService.js';
+import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 
 export { computeIncrementForPlayer } from './statsComputation.js';
 
@@ -100,9 +101,55 @@ export async function updatePlayerStats(
 
   // バッジチェック (fire-and-forget)
   for (const result of results) {
-    const cache = result as { userId: string; handsPlayed: number };
+    const cache = result as { userId: string; handsPlayed: number; winCount: number };
     checkHandCountBadges(cache.userId, cache.handsPlayed).catch(err =>
       console.error('Badge check failed:', err)
     );
+    // checkWinCountBadges(cache.userId, cache.winCount).catch(err =>
+    //   console.error('Win badge check failed:', err)
+    // );
+  }
+
+  // バッドビートチェック (fire-and-forget)
+  // ショーダウンに進んだハンドのみ（コミュニティカード5枚 & 勝者にhandNameあり）
+  const isShowdown = gameState.communityCards.length === 5 &&
+    gameState.winners.some(w => w.handName);
+  if (isShowdown) {
+    try {
+      // 勝者のハンドランクを取得
+      const winnerSeatIndices = new Set(gameState.winners.map(w => w.playerId));
+      const winnerHandRanks: number[] = [];
+      for (const w of gameState.winners) {
+        const player = gameState.players[w.playerId];
+        if (player.holeCards.length >= 4) {
+          const hand = evaluatePLOHand(player.holeCards, gameState.communityCards);
+          winnerHandRanks.push(hand.rank);
+        }
+      }
+
+      // 負けたプレイヤー（ショーダウン参加 = フォールドしていない & 勝者でない）
+      const losers: { odId: string; handRank: number }[] = [];
+      for (let i = 0; i < seats.length; i++) {
+        const seat = seats[i];
+        const player = gameState.players[i];
+        if (!seat || !startChips.has(i) || winnerSeatIndices.has(i)) continue;
+        if (player.folded || player.holeCards.length < 4) continue;
+
+        try {
+          const hand = evaluatePLOHand(player.holeCards, gameState.communityCards);
+          losers.push({ odId: seat.odId, handRank: hand.rank });
+        } catch {
+          // ハンド評価失敗はスキップ
+        }
+      }
+
+      if (losers.length > 0 && winnerHandRanks.length > 0) {
+        checkBadBeatBadges(losers, winnerHandRanks).catch(err =>
+          console.error('Bad beat badge check failed:', err)
+        );
+      }
+    } catch (err) {
+      console.error('Bad beat detection failed:', err);
+    }
   }
 }

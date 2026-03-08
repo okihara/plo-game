@@ -78,6 +78,33 @@ export function analyzeRiverNuts(
     }
   }
 
+  // === 6. セットの脅威 ===
+  if (myHandRank < 4) {
+    const setCount = countPossibleSets(communityCards, usedCards);
+    for (let i = 0; i < Math.min(setCount, 3); i++) {
+      possibleBetterHands.push('set');
+    }
+  } else if (myHandRank === 4) {
+    const betterSetCount = countBetterSets(communityCards, usedCards, myHighCards[0]);
+    for (let i = 0; i < betterSetCount; i++) {
+      possibleBetterHands.push('better_set');
+    }
+  }
+
+  // === 7. ツーペアの脅威 ===
+  if (myHandRank < 3) {
+    const twoPairCount = countPossibleTwoPairs(communityCards, usedCards);
+    for (let i = 0; i < Math.min(twoPairCount, 3); i++) {
+      possibleBetterHands.push('two_pair');
+    }
+  }
+
+  // === 8. ワンペアの脅威（ハイカードのみ）===
+  if (myHandRank <= 1) {
+    // ハイカードに対してはほぼ常にペアが可能
+    possibleBetterHands.push('pair');
+  }
+
   // nutRank 算出
   const nutRank = possibleBetterHands.length + 1;
 
@@ -380,6 +407,59 @@ function countBetterStraights(
     }
   }
   return betterCount;
+}
+
+/**
+ * ボード上でセットが可能な数（PLO: ポケットペアでボードカードとマッチ）
+ */
+function countPossibleSets(communityCards: Card[], usedCards: Set<string>): number {
+  const boardUniqueValues = [...new Set(communityCards.map(c => getRankValue(c.rank)))];
+  const ranks = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'] as const;
+  const suits: Suit[] = ['h', 'd', 'c', 's'];
+  let count = 0;
+  for (const bv of boardUniqueValues.sort((a, b) => b - a)) {
+    const rank = bv === 14 ? 'A' : ranks[bv - 2];
+    if (!rank) continue;
+    const available = suits.filter(s => !usedCards.has(`${rank}${s}`)).length;
+    if (available >= 2) count++;
+  }
+  return count;
+}
+
+/**
+ * 自分のセットより高いセットが可能な数
+ */
+function countBetterSets(communityCards: Card[], usedCards: Set<string>, mySetValue: number): number {
+  const boardUniqueValues = [...new Set(communityCards.map(c => getRankValue(c.rank)))];
+  const ranks = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'] as const;
+  const suits: Suit[] = ['h', 'd', 'c', 's'];
+  let count = 0;
+  for (const bv of boardUniqueValues) {
+    if (bv <= mySetValue) continue;
+    const rank = bv === 14 ? 'A' : ranks[bv - 2];
+    if (!rank) continue;
+    const available = suits.filter(s => !usedCards.has(`${rank}${s}`)).length;
+    if (available >= 2) count++;
+  }
+  return count;
+}
+
+/**
+ * ツーペアが可能な組み合わせ数（PLO: 2枚のホールカードで各1枚ずつボードカードとペア）
+ */
+function countPossibleTwoPairs(communityCards: Card[], usedCards: Set<string>): number {
+  const boardUniqueValues = [...new Set(communityCards.map(c => getRankValue(c.rank)))];
+  const ranks = ['2','3','4','5','6','7','8','9','T','J','Q','K','A'] as const;
+  const suits: Suit[] = ['h', 'd', 'c', 's'];
+  // ペア可能なボード値（未使用の同ランクカードが存在する値）
+  const pairableValues = boardUniqueValues.filter(bv => {
+    const rank = bv === 14 ? 'A' : ranks[bv - 2];
+    if (!rank) return false;
+    return suits.some(s => !usedCards.has(`${rank}${s}`));
+  });
+  // 2つの異なるボード値でペアが作れる組み合わせ数
+  const n = pairableValues.length;
+  return Math.floor(n * (n - 1) / 2);
 }
 
 /** 配列からn個を選ぶ組み合わせ */

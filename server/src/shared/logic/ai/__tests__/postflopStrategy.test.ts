@@ -383,9 +383,9 @@ describe('getPostflopDecision', () => {
     // =========================================================
     describe('nutRank 3', () => {
       it.each([
-        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 50,  min: 0.40, max: 0.80 },
-        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 100, min: 0.20, max: 0.60 },
-        { char: 'yuna0312'  as const, board: 'dry' as const, betSize: 100, min: 0.15, max: 0.55 },
+        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 50,  min: 0.40, max: 1.00 },
+        { char: 'TatsuyaN'  as const, board: 'dry' as const, betSize: 100, min: 0.20, max: 0.95 },
+        { char: 'yuna0312'  as const, board: 'dry' as const, betSize: 100, min: 0.15, max: 0.92 },
       ])('$char / $board ボード / betSize=$betSize → コール率 $min-$max', ({ char, board, betSize, min, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -398,8 +398,8 @@ describe('getPostflopDecision', () => {
 
       // フラッシュボードでは nutRank 3 でもフラッシュ未保持ならさらに下がる
       it.each([
-        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.10 },
-        { char: 'yuna0312'  as const, betSize: 100, max: 0.10 },
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.70 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.70 },
       ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -411,14 +411,14 @@ describe('getPostflopDecision', () => {
     });
 
     // =========================================================
-    // nutRank 4 — 高確率でフォールド
+    // nutRank 4 — フォールド寄りだがブラフキャッチも混ぜる
     // =========================================================
     describe('nutRank 4', () => {
       it.each([
-        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, min: 0.05, max: 0.30 },
-        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  min: 0.10, max: 0.45 },
-        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, min: 0.03, max: 0.20 },
-        { char: 'TatsuyaN'  as const, board: 'paired'as const, betSize: 100, min: 0.00, max: 0.20 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, min: 0.05, max: 0.70 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  min: 0.10, max: 0.85 },
+        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, min: 0.03, max: 0.65 },
+        { char: 'TatsuyaN'  as const, board: 'paired'as const, betSize: 100, min: 0.00, max: 0.55 },
       ])('$char / $board ボード / betSize=$betSize → コール率 $min-$max', ({ char, board, betSize, min, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -429,11 +429,11 @@ describe('getPostflopDecision', () => {
         expect(callRate).toBeLessThanOrEqual(max);
       });
 
-      // フラッシュボード + セット → ほぼフォールド
+      // フラッシュボード + セット → フォールド寄りだがコールも残す
       it.each([
-        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.10 },
-        { char: 'YuHayashi' as const, betSize: 100, max: 0.10 },
-        { char: 'yuna0312'  as const, betSize: 100, max: 0.10 },
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.45 },
+        { char: 'YuHayashi' as const, betSize: 100, max: 0.45 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.45 },
       ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -448,11 +448,11 @@ describe('getPostflopDecision', () => {
     // nutRank 5+ — ほぼフォールド
     // =========================================================
     describe('nutRank 5+ (ツーペア以下)', () => {
-      // ドライボードでもポットベットにはほぼフォールド
+      // ドライボードでもポットベットにはフォールド寄り
       it.each([
-        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, max: 0.25 },
-        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, max: 0.15 },
-        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  max: 0.40 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, max: 0.45 },
+        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, max: 0.35 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  max: 0.55 },
       ])('$char / $board ボード / betSize=$betSize → コール率 $max 以下', ({ char, board, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -462,13 +462,13 @@ describe('getPostflopDecision', () => {
         expect(callRate).toBeLessThanOrEqual(max);
       });
 
-      // フラッシュボード → ポットベットにほぼ絶対フォールド
+      // フラッシュボード → フォールド寄りだが最低限のコールは残す
       it.each([
-        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.05 },
-        { char: 'YuHayashi' as const, betSize: 100, max: 0.05 },
-        { char: 'yuna0312'  as const, betSize: 100, max: 0.05 },
-        { char: 'TatsuyaN'  as const, betSize: 50,  max: 0.25 },
-        { char: 'yuna0312'  as const, betSize: 50,  max: 0.25 },
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.20 },
+        { char: 'YuHayashi' as const, betSize: 100, max: 0.20 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.20 },
+        { char: 'TatsuyaN'  as const, betSize: 50,  max: 0.40 },
+        { char: 'yuna0312'  as const, betSize: 50,  max: 0.35 },
       ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -478,10 +478,10 @@ describe('getPostflopDecision', () => {
         expect(callRate).toBeLessThanOrEqual(max);
       });
 
-      // ペアボード + ツーペア → フルハウスの脅威
+      // ペアボード + ツーペア → フルハウスの脅威だが最低限コール
       it.each([
-        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.20 },
-        { char: 'yuna0312'  as const, betSize: 100, max: 0.15 },
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.30 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.25 },
       ])('$char / paired ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({

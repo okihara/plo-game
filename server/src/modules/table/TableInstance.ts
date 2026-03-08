@@ -243,7 +243,7 @@ export class TableInstance {
     );
 
     if (!result.success) {
-      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}`);
+      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}, reason=${result.rejectReason}`);
       return false;
     }
 
@@ -354,6 +354,14 @@ export class TableInstance {
       isPrivate: this.isPrivate,
       variant: this.variant,
     };
+  }
+
+  /**
+   * 指定席の有効アクションを返す（テスト・デバッグ用）
+   */
+  public getValidActionsForSeat(seatIndex: number): { action: string; minAmount: number; maxAmount: number }[] {
+    if (!this.gameState) return [];
+    return this.variantAdapter.getValidActions(this.gameState, seatIndex);
   }
 
   public getClientGameState(): ClientGameState {
@@ -729,12 +737,19 @@ export class TableInstance {
     this.pendingEarlyFolds.clear();
 
     // ハンドヒストリー保存 (fire-and-forget)
-    // getSeats()は参照を返すため、非同期処理中にunseatPlayerで変更されないようコピーを取る
+    // fire-and-forgetのため、非同期処理中に次のハンドで状態が上書きされないようスナップショットを取る
     const seatsSnapshot = this.playerManager.getSeats().map(s => s ? { ...s } : null);
+    const gameStateSnapshot: GameState = {
+      ...this.gameState,
+      players: this.gameState.players.map(p => ({ ...p, holeCards: [...p.holeCards] })),
+      communityCards: [...this.gameState.communityCards],
+      winners: [...this.gameState.winners],
+      handHistory: [...this.gameState.handHistory],
+    };
     this.historyRecorder.recordHandComplete(
       this.id,
       this.blinds,
-      this.gameState,
+      gameStateSnapshot,
       seatsSnapshot
     ).catch(err => console.error('Hand history save failed:', err));
 

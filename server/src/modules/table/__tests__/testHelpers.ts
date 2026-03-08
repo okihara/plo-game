@@ -148,7 +148,7 @@ export function getRoomEmits(io: Server, eventName: string): unknown[] {
 /**
  * 全員allinまで進める。
  * buyIn を小さく設定して呼ぶこと（例: buyIn=6, blinds='1/2'）
- * 各プレイヤーのaction_requiredから'allin'アクションを探して実行する。
+ * 各プレイヤーのgetValidActionsForSeatから'allin'アクションを探して実行する。
  */
 export function allPlayersAllIn(
   table: TableInstance,
@@ -165,31 +165,24 @@ export function allPlayersAllIn(
     if (idx === -1) break;
 
     const odId = odIds[idx];
-    const socket = sockets[idx];
 
-    // action_requiredから有効アクションを取得
-    const actionEmits = getSocketEmits(socket, 'game:action_required');
-
-    if (actionEmits.length === 0) break;
-
-    const lastAction = actionEmits[actionEmits.length - 1] as {
-      validActions: { action: string; minAmount: number; maxAmount: number }[];
-    };
+    const validActions = table.getValidActionsForSeat(state.currentPlayerSeat);
+    if (validActions.length === 0) break;
 
     // allin > call > check の優先度で実行
-    const allinInfo = lastAction.validActions.find(a => a.action === 'allin');
+    const allinInfo = validActions.find(a => a.action === 'allin');
     if (allinInfo) {
       table.handleAction(odId, 'allin', allinInfo.minAmount);
       continue;
     }
 
-    const callInfo = lastAction.validActions.find(a => a.action === 'call');
+    const callInfo = validActions.find(a => a.action === 'call');
     if (callInfo) {
       table.handleAction(odId, 'call', callInfo.minAmount);
       continue;
     }
 
-    const checkInfo = lastAction.validActions.find(a => a.action === 'check');
+    const checkInfo = validActions.find(a => a.action === 'check');
     if (checkInfo) {
       table.handleAction(odId, 'check', 0);
       continue;

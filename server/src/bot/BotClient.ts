@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
+import { getValidActions } from '../shared/logic/gameEngine.js';
 import { GameState, Card, Action, Player, Position, GameAction, GameVariant } from '../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 import { AIContext } from '../shared/logic/ai/types.js';
@@ -56,6 +57,7 @@ export class BotClient {
   private connectedAt: number | null = null;
   private lastActionAt: number | null = null;
   private actionGeneration = 0; // stale なアクションコールバックを防ぐ世代カウンター
+  private isThinking = false; // handleMyTurn の重複呼び出しを防ぐ
   private pendingFastFoldCheck = false; // ホールカード受信後のファストフォールド判定待ち
   private _isMaintenanceActive = false; // サーバーがメンテナンス中か
 
@@ -111,7 +113,7 @@ export class BotClient {
         this.tableId = data.tableId;
         this.seatNumber = data.seat;
         this.lastInGameTime = Date.now();
-        this.actionGeneration++; // 新テーブル参加時に旧アクションを無効化
+        this.actionGeneration++; this.isThinking = false; // 新テーブル参加時に旧アクションを無効化
         console.log(`[${this.config.name}] Joined table ${data.tableId} at seat ${data.seat}`);
       });
 
@@ -119,7 +121,7 @@ export class BotClient {
         console.log(`[${this.config.name}] Left table`);
         this.tableId = null;
         this.seatNumber = -1;
-        this.actionGeneration++; // テーブル離脱時に旧アクションを無効化
+        this.actionGeneration++; this.isThinking = false; // テーブル離脱時に旧アクションを無効化
         // 自動的に再度マッチメイキングに参加（一時無効化）
         // this.rejoinMatchmaking();
       });
@@ -128,7 +130,7 @@ export class BotClient {
         console.log(`[${this.config.name}] Table closed`);
         this.tableId = null;
         this.seatNumber = -1;
-        this.actionGeneration++; // テーブル閉鎖時に旧アクションを無効化
+        this.actionGeneration++; this.isThinking = false; // テーブル閉鎖時に旧アクションを無効化
         // 自動的に再度マッチメイキングに参加（一時無効化）
         // this.rejoinMatchmaking();
       });
@@ -139,7 +141,7 @@ export class BotClient {
         this.seatNumber = data.seat;
         this.holeCards = [];
         this.handActions = [];
-        this.actionGeneration++;
+        this.actionGeneration++; this.isThinking = false;
         this.pendingFastFoldCheck = false;
         this.lastInGameTime = Date.now();
         console.log(`[${this.config.name}] Table changed to ${data.tableId} seat ${data.seat}`);
@@ -149,7 +151,7 @@ export class BotClient {
         console.log(`[${this.config.name}] Busted: ${data.message}`);
         this.tableId = null;
         this.seatNumber = -1;
-        this.actionGeneration++;
+        this.actionGeneration++; this.isThinking = false;
       });
 
       this.socket.on('table:error', (data: { message: string }) => {
@@ -186,6 +188,10 @@ export class BotClient {
           this.pendingFastFoldCheck = false;
           this.maybeEarlyFold();
         }
+        // フロントと同じ: game:state で自分のターンを検知してアクション
+        if (data.state.currentPlayerSeat === this.seatNumber && data.state.isHandInProgress) {
+          this.handleMyTurn();
+        }
       });
 
       this.socket.on('game:action_taken', (data: { playerId: string; action: Action; amount: number; seat: number }) => {
@@ -202,21 +208,9 @@ export class BotClient {
         }
       });
 
-      this.socket.on('game:action_required', (data: {
-        playerId: string;
-        validActions: { action: Action; minAmount: number; maxAmount: number }[];
-        timeoutMs: number;
-      }) => {
-        // 自分の番が来たらファストフォールド判定をキャンセル（通常フローで処理）
-        if (data.playerId === this.playerId) {
-          this.pendingFastFoldCheck = false;
-          this.handleActionRequired(data);
-        }
-      });
-
       this.socket.on('game:hand_complete', () => {
         // ハンド完了時に保留中のアクションコールバックを無効化
-        this.actionGeneration++;
+        this.actionGeneration++; this.isThinking = false;
 
         // 相手モデルを更新（ハンド間の統計蓄積）
         if (this.handActions.length > 0 && this.gameState) {
@@ -233,13 +227,8 @@ export class BotClient {
 
         // セッション上限チェック（上限到達で離席）
         if (this.config.maxHandsPerSession && this.handsPlayed >= this.config.maxHandsPerSession) {
-          const delay = 1000 + Math.random() * 2000;
-          console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting in ${Math.round(delay)}ms`);
-          setTimeout(() => {
-            if (this.isConnected) {
-              this.disconnect();
-            }
-          }, delay);
+          console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting`);
+          this.disconnect();
           return;
         }
 
@@ -256,42 +245,34 @@ export class BotClient {
     });
   }
 
-  private handleActionRequired(data: {
-    playerId: string;
-    validActions: { action: Action; minAmount: number; maxAmount: number }[];
-    timeoutMs: number;
-  }): void {
-    if (!this.gameState || this.holeCards.length === 0) {
-      // Fallback: ブリングインフェーズではcall、それ以外はcheck or fold
-      const callAction = data.validActions.find(a => a.action === 'call');
-      const checkAction = data.validActions.find(a => a.action === 'check');
-      if (callAction) {
-        this.sendAction('call', callAction.minAmount);
-      } else if (checkAction) {
-        this.sendAction('check', 0);
-      } else {
-        this.sendAction('fold', 0);
-      }
-      return;
-    }
+  /**
+   * game:state で自分のターンを検知したときの処理（フロントと同じアプローチ）
+   * validActions はサーバーから受け取らず、自前の gameState から計算する
+   */
+  private handleMyTurn(): void {
+    // 同じターンで複数の game:state が来ても重複実行しない
+    if (this.isThinking) return;
+    this.isThinking = true;
 
     // Build GameState for AI
     const aiGameState = this.buildGameStateForAI();
     if (!aiGameState) {
-      const checkAction = data.validActions.find(a => a.action === 'check');
-      if (checkAction) {
-        this.sendAction('check', 0);
-      } else {
-        this.sendAction('fold', 0);
-      }
+      this.sendAction('check', 0);
+      return;
+    }
+
+    // フロントと同じ: 自前の gameState から validActions を計算
+    const validActions = getValidActions(aiGameState, this.seatNumber);
+
+    if (validActions.length === 0) {
       return;
     }
 
     // holeCardsの整合性チェック（undefinedカードが含まれていないか）
     const myCards = aiGameState.players[this.seatNumber]?.holeCards ?? [];
     if (myCards.length === 0 || myCards.some(c => !c || !c.rank)) {
-      const callAction = data.validActions.find(a => a.action === 'call');
-      const checkAction = data.validActions.find(a => a.action === 'check');
+      const callAction = validActions.find(a => a.action === 'call');
+      const checkAction = validActions.find(a => a.action === 'check');
       if (callAction) {
         this.sendAction('call', callAction.minAmount);
       } else if (checkAction) {
@@ -310,27 +291,29 @@ export class BotClient {
     });
 
     // Validate action against valid actions
-    const validAction = data.validActions.find(a => a.action === aiDecision.action);
+    const validAction = validActions.find(a => a.action === aiDecision.action);
     // 世代を記録して、コールバック時にstaleでないか検証する
     const gen = this.actionGeneration;
 
     if (validAction) {
       // Clamp amount to valid range
       let amount = aiDecision.amount;
-      if (aiDecision.action === 'bet' || aiDecision.action === 'raise') {
+      if (aiDecision.action === 'call') {
+        amount = validAction.minAmount;
+      } else if (aiDecision.action === 'bet' || aiDecision.action === 'raise') {
         amount = Math.max(validAction.minAmount, Math.min(validAction.maxAmount, amount));
       }
 
       // シチュエーションに応じた思考時間
-      const delay = this.computeThinkingDelay(aiDecision.action, amount, data.validActions);
+      const delay = this.computeThinkingDelay(aiDecision.action, amount, validActions);
       setTimeout(() => {
-        if (this.actionGeneration !== gen) return; // stale: ハンド完了やテーブル移動で無効化済み
+        if (this.actionGeneration !== gen) return;
         this.sendAction(aiDecision.action, amount);
       }, delay);
     } else {
       // Fallback: check or fold
-      const checkAction = data.validActions.find(a => a.action === 'check');
-      const callAction = data.validActions.find(a => a.action === 'call');
+      const checkAction = validActions.find(a => a.action === 'check');
+      const callAction = validActions.find(a => a.action === 'call');
       const fallbackDelay = this.config.noDelay ? 0 : 800;
 
       if (checkAction) {
@@ -533,14 +516,15 @@ export class BotClient {
     // noDelay モード: 思考時間ゼロ
     if (this.config.noDelay) return 0;
 
-    // 最大15秒、最小1200msにクランプ（持ち時間20秒）
-    const delay = base + Math.random() * variance;
-    return Math.max(1200, Math.min(15000, delay));
+    // 最大12秒、最小1000msにクランプ（持ち時間20秒）
+    const delay = (base + Math.random() * variance) * 0.8;
+    return Math.max(1000, Math.min(12000, delay));
   }
 
   private sendAction(action: Action, amount: number): void {
     if (!this.socket || !this.isConnected) return;
 
+    this.isThinking = false;
     console.log(`[${this.config.name}] Action: ${action}${amount > 0 ? ` $${amount}` : ''}`);
     this.lastActionAt = Date.now();
     this.socket.emit('game:action', { action, amount });
@@ -650,15 +634,8 @@ export class BotClient {
   private maybeDisconnectRandomly(): void {
     const chance = this.config.disconnectChance ?? DEFAULT_DISCONNECT_CHANCE;
     if (Math.random() < chance) {
-      // 少し遅延してから切断（自然な感じに）
-      const delay = 1000 + Math.random() * 3000; // 1-4秒後
-      console.log(`[${this.config.name}] Will disconnect in ${Math.round(delay)}ms (simulating player leave)`);
-      setTimeout(() => {
-        if (this.isConnected) {
-          console.log(`[${this.config.name}] Intentionally disconnecting`);
-          this.disconnect();
-        }
-      }, delay);
+      console.log(`[${this.config.name}] Intentionally disconnecting`);
+      this.disconnect();
     }
   }
 

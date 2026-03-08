@@ -31,11 +31,6 @@ class WebSocketService {
     onTableLeft?: () => void;
     onGameState?: (state: ClientGameState) => void;
     onHoleCards?: (cards: Card[]) => void;
-    onActionRequired?: (data: {
-      playerId: string;
-      validActions: { action: Action; minAmount: number; maxAmount: number }[];
-      timeoutMs: number;
-    }) => void;
     onActionTaken?: (data: { playerId: string; action: Action; amount: number }) => void;
     onShowdown?: (data: {
       winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
@@ -158,11 +153,6 @@ class WebSocketService {
       this.socket.on('game:hole_cards', ({ cards }) => {
         wsLog('game:hole_cards', { cards });
         this.listeners.onHoleCards?.(cards);
-      });
-
-      this.socket.on('game:action_required', (data) => {
-        wsLog('game:action_required', { playerId: data.playerId, validActions: data.validActions });
-        this.listeners.onActionRequired?.(data);
       });
 
       this.socket.on('game:action_taken', (data) => {
