@@ -569,6 +569,30 @@ function playDraw(
     }
   }
 
+  // ペアボード → ストレート/フラッシュを引いてもフルハウスに負けるリスク
+  if (boardTexture.isPaired && handEval.madeHandRank < 7) {
+    if (handEval.madeHandRank <= 2) {
+      // 強いドロー（drawStrength > 0.5）ならフルハウスドローの可能性 → インプライドオッズで緩めにコール
+      if (handEval.drawStrength > 0.5 && toCall > 0 && handEval.estimatedEquity > potOdds * 0.6) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      const checkAction = validActions.find(a => a.action === 'check');
+      if (checkAction) return { action: 'check', amount: 0 };
+      return { action: 'fold', amount: 0 };
+    }
+    // ツーペア+でもベットに直面 + 大きめサイズなら慎重に
+    if (toCall > 0 && potOdds > 0.3) {
+      // インプライドオッズ: 強ドローならエクイティ要件を緩和
+      const equityThreshold = handEval.drawStrength > 0.4 ? potOdds * 0.8 : potOdds;
+      if (handEval.estimatedEquity > equityThreshold) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      return { action: 'fold', amount: 0 };
+    }
+  }
+
   // フラッシュ可能ボードでフラッシュドロー無し → ストレートドローのインプライドオッズが激減
   // ストレートを引いてもフラッシュに負けるため、弱いドローはフォールド寄りに
   if (boardTexture.flushPossible && !handEval.hasFlushDraw) {
