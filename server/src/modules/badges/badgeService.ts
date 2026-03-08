@@ -30,7 +30,6 @@ const BADGE_META: Record<string, BadgeMeta> = {
   wins_500:      { category: 'wins', label: '500 Wins',   description: '500勝達成',                 flavor: '歴戦の覇者',                         imageUrl: '/images/badges/wins_500.png' },
   bad_beat_fullhouse:      { category: 'bad_beat', label: 'Bad Beat',          description: 'フルハウス以上で負けた',                  flavor: 'それでも負ける',                      imageUrl: '/images/badges/bad_beat_fullhouse.png' },
   bad_beat_quads:          { category: 'bad_beat', label: 'Quad Cracked',      description: 'フォーカードで負けた',                    flavor: '四つ揃えてもダメだった',               imageUrl: '/images/badges/bad_beat_quads.png' },
-  bad_beat_set_over_set:   { category: 'bad_beat', label: 'Set Over Set',      description: 'セットオーバーセットで負けた',            flavor: '同じ景色、違う結末',                   imageUrl: '/images/badges/bad_beat_set_over_set.png' },
   bad_beat_straight_flush: { category: 'bad_beat', label: 'SF Cracked',        description: 'ストレートフラッシュで負けた',            flavor: '神に見放された',                       imageUrl: '/images/badges/bad_beat_straight_flush.png' },
   daily_rank_1:  { category: 'daily_rank',  label: 'Daily Crown',  description: 'デイリーランキング1位',  flavor: 'あの日のチップは全てあなたの手に',                           imageUrl: '/images/badges/daily_rank.png' },
   weekly_rank_1: { category: 'weekly_rank', label: 'Weekly Crown', description: 'ウィークリーランキング1位', flavor: '不眠不休の王',                          imageUrl: '/images/badges/weekly_rank.png' },
@@ -74,26 +73,26 @@ export async function checkHandCountBadges(userId: string, handsPlayed: number):
   }
 }
 
-/** 勝利数マイルストーンバッジのチェック＆付与 */
-export async function checkWinCountBadges(userId: string, winCount: number): Promise<void> {
-  for (const { threshold, type } of WIN_MILESTONES) {
-    if (winCount >= threshold) {
-      const existing = await prisma.badge.findFirst({
-        where: { userId, type },
-      });
-      if (!existing) {
-        await prisma.badge.create({
-          data: { userId, type },
-        });
-      }
-    }
-  }
-}
+// /** 勝利数マイルストーンバッジのチェック＆付与 */
+// export async function checkWinCountBadges(userId: string, winCount: number): Promise<void> {
+//   for (const { threshold, type } of WIN_MILESTONES) {
+//     if (winCount >= threshold) {
+//       const existing = await prisma.badge.findFirst({
+//         where: { userId, type },
+//       });
+//       if (!existing) {
+//         await prisma.badge.create({
+//           data: { userId, type },
+//         });
+//       }
+//     }
+//   }
+// }
 
 /** バッドビートバッジの付与（回数蓄積） */
 export async function awardBadBeatBadge(
   userId: string,
-  type: 'bad_beat_fullhouse' | 'bad_beat_quads' | 'bad_beat_set_over_set' | 'bad_beat_straight_flush'
+  type: 'bad_beat_fullhouse' | 'bad_beat_quads' | 'bad_beat_straight_flush'
 ): Promise<void> {
   await prisma.badge.create({
     data: { userId, type },
@@ -123,12 +122,6 @@ export async function checkBadBeatBadges(
     // フルハウス以上 (rank >= 7) で負けた
     if (loser.handRank >= 7) {
       await awardBadBeatBadge(loser.odId, 'bad_beat_fullhouse');
-    }
-    // セットオーバーセット: 両者がスリーカード以上（フルハウス含む。rank >= 4 でトリップス以上）
-    // 負けた側がスリーカード/フルハウス、勝った側もスリーカード/フルハウス以上
-    if ((loser.handRank === 4 || loser.handRank === 7) &&
-        winnerHandRanks.some(r => r === 4 || r === 7 || r === 8)) {
-      await awardBadBeatBadge(loser.odId, 'bad_beat_set_over_set');
     }
   }
 }
@@ -209,7 +202,7 @@ export function groupBadgesForDisplay(badges: { type: string; awardedAt: Date }[
   }
 
   // バッドビートカテゴリ: 種類ごとに回数をカウント
-  for (const bbType of ['bad_beat_fullhouse', 'bad_beat_quads', 'bad_beat_set_over_set', 'bad_beat_straight_flush'] as const) {
+  for (const bbType of ['bad_beat_fullhouse', 'bad_beat_quads', 'bad_beat_straight_flush'] as const) {
     const bbBadges = badges.filter(b => b.type === bbType);
     if (bbBadges.length > 0) {
       const meta = BADGE_META[bbType];

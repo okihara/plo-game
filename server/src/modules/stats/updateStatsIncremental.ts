@@ -4,7 +4,7 @@ import { prisma } from '../../config/database.js';
 import { GameState } from '../../shared/logic/types.js';
 import { SeatInfo } from '../table/types.js';
 import { computeIncrementForPlayer } from './statsComputation.js';
-import { checkHandCountBadges, checkWinCountBadges, checkBadBeatBadges } from '../badges/badgeService.js';
+import { checkHandCountBadges, /* checkWinCountBadges, */ checkBadBeatBadges } from '../badges/badgeService.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 
 export { computeIncrementForPlayer } from './statsComputation.js';
@@ -105,9 +105,9 @@ export async function updatePlayerStats(
     checkHandCountBadges(cache.userId, cache.handsPlayed).catch(err =>
       console.error('Badge check failed:', err)
     );
-    checkWinCountBadges(cache.userId, cache.winCount).catch(err =>
-      console.error('Win badge check failed:', err)
-    );
+    // checkWinCountBadges(cache.userId, cache.winCount).catch(err =>
+    //   console.error('Win badge check failed:', err)
+    // );
   }
 
   // バッドビートチェック (fire-and-forget)
