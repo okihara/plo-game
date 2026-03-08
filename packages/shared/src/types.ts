@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw';
+export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem';
 
 export function isStudFamily(variant: GameVariant): boolean {
   return variant === 'stud' || variant === 'razz';
@@ -20,6 +20,10 @@ export function isStudFamily(variant: GameVariant): boolean {
 
 export function isDrawFamily(variant: GameVariant): boolean {
   return variant === 'limit_2-7_triple_draw' || variant === 'no_limit_2-7_single_draw';
+}
+
+export function isHoldemFamily(variant: GameVariant): boolean {
+  return variant === 'limit_holdem';
 }
 
 /** ドローフェーズのストリートかどうか（カードを捨てて引き直す） */
