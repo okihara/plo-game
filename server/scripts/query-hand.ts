@@ -45,15 +45,7 @@ async function main() {
     if (candidates.length > 0) hand = candidates[0];
   }
 
-  // handNumberで検索
-  if (!hand) {
-    const byNumber = await prisma.handHistory.findMany({
-      where: { handNumber: parseInt(handId!, 10) || -1 },
-      include: { players: true },
-      take: 1,
-    });
-    if (byNumber.length > 0) hand = byNumber[0];
-  }
+
 
   // LIKE検索
   if (!hand) {
