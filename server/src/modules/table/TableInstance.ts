@@ -729,12 +729,19 @@ export class TableInstance {
     this.pendingEarlyFolds.clear();
 
     // ハンドヒストリー保存 (fire-and-forget)
-    // getSeats()は参照を返すため、非同期処理中にunseatPlayerで変更されないようコピーを取る
+    // fire-and-forgetのため、非同期処理中に次のハンドで状態が上書きされないようスナップショットを取る
     const seatsSnapshot = this.playerManager.getSeats().map(s => s ? { ...s } : null);
+    const gameStateSnapshot: GameState = {
+      ...this.gameState,
+      players: this.gameState.players.map(p => ({ ...p, holeCards: [...p.holeCards] })),
+      communityCards: [...this.gameState.communityCards],
+      winners: [...this.gameState.winners],
+      handHistory: [...this.gameState.handHistory],
+    };
     this.historyRecorder.recordHandComplete(
       this.id,
       this.blinds,
-      this.gameState,
+      gameStateSnapshot,
       seatsSnapshot
     ).catch(err => console.error('Hand history save failed:', err));
 
