@@ -177,6 +177,12 @@ function playRiver(
                                      : Math.min(0.35, 0.15 + (betToPotRatio - 0.6) * 0.3);
         if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
       }
+      // ストレートボード + ストレート未保持: フラッシュより緩めだがケア
+      if (boardTexture.straightPossible && handEval.madeHandRank < 5 && betToPotRatio >= 0.7) {
+        const foldChance = nr === 2 ? Math.min(0.12, (betToPotRatio - 0.7) * 0.2)
+                                     : Math.min(0.25, 0.10 + (betToPotRatio - 0.7) * 0.25);
+        if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+      }
       if (nr === 3 && betToPotRatio >= 0.7) {
         const foldChance = Math.min(0.25, personality.foldToRiverBet * 0.25);
         if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
@@ -227,6 +233,13 @@ function playRiver(
         const foldChance = Math.min(cap, baseFold + (betToPotRatio - 0.5) * 0.3);
         if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
       }
+      // ストレート可能ボード + ストレート未保持: フラッシュの70%程度の強度
+      if (boardTexture.straightPossible && handEval.madeHandRank < 5 && betToPotRatio >= 0.5) {
+        const baseFold = handEval.madeHandRank >= 4 ? 0.15 : 0.30;
+        const cap = handEval.madeHandRank >= 4 ? 0.30 : 0.45;
+        const foldChance = Math.min(cap, baseFold + (betToPotRatio - 0.5) * 0.25);
+        if (Math.random() < foldChance) return { action: 'fold', amount: 0 };
+      }
       // nutRank 4+: ベット(>50%pot)に対してフォールド（ただし降りすぎ防止キャップ）
       if (nr >= 4 && betToPotRatio >= 0.5) {
         const sizingBonus = (betToPotRatio - 0.5) * 0.3;
@@ -260,6 +273,18 @@ function playRiver(
         }
         // セット以上は簡単に降りない
         if (handEval.madeHandRank >= 4 && Math.random() < 0.35) {
+          const callAction = canCall();
+          if (callAction) return { action: 'call', amount: callAction.minAmount };
+        }
+        return { action: 'fold', amount: 0 };
+      }
+      // ストレートボードでストレート未完成 + ベット(>50%pot) → 慎重
+      if (boardTexture.straightPossible && handEval.madeHandRank < 5 && toCall > state.pot * 0.5) {
+        if (handEval.estimatedEquity > potOdds) {
+          const callAction = canCall();
+          if (callAction) return { action: 'call', amount: callAction.minAmount };
+        }
+        if (handEval.madeHandRank >= 4 && Math.random() < 0.40) {
           const callAction = canCall();
           if (callAction) return { action: 'call', amount: callAction.minAmount };
         }
@@ -307,13 +332,21 @@ function playRiver(
       if (Math.random() < adjustedFoldRate) {
         return { action: 'fold', amount: 0 };
       }
-      // フラッシュボード: 100%フォールドではなく強いペアならコール混ぜ
+      // フラッシュボード: 強いペアならコール混ぜ
       if (boardTexture.flushPossible) {
         if (handEval.strength > 0.6 && betToPotRatio < 0.5 && Math.random() < 0.20) {
           const callAction = canCall();
           if (callAction) return { action: 'call', amount: callAction.minAmount };
         }
         return { action: 'fold', amount: 0 };
+      }
+      // ストレートボード: フラッシュより緩めだがフォールド寄り
+      if (boardTexture.straightPossible) {
+        if (handEval.strength > 0.55 && betToPotRatio < 0.5 && Math.random() < 0.25) {
+          const callAction = canCall();
+          if (callAction) return { action: 'call', amount: callAction.minAmount };
+        }
+        if (betToPotRatio >= 0.4) return { action: 'fold', amount: 0 };
       }
       if (betToPotRatio >= 0.3) {
         // 中〜大ベット: 強いペアなら一定頻度コール
@@ -451,6 +484,21 @@ function playStrongMade(
       }
       // ツーペア+ならフロップ/ターンで安易にフォールドしない
       if (handEval.madeHandRank >= 3 && Math.random() < 0.30) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      return { action: 'fold', amount: 0 };
+    }
+  }
+
+  // ストレートボードでストレート未完成 → フラッシュより緩めだが慎重に
+  if (boardTexture.straightPossible && handEval.madeHandRank < 5) {
+    if (toCall > state.pot * 0.5) {
+      if (handEval.estimatedEquity > potOdds) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      if (handEval.madeHandRank >= 3 && Math.random() < 0.35) {
         const callAction = validActions.find(a => a.action === 'call');
         if (callAction) return { action: 'call', amount: callAction.minAmount };
       }
