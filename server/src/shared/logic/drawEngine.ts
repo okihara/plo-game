@@ -18,32 +18,55 @@ export function isBettingStreet(street: Street): boolean {
   return street === 'predraw' || street === 'postdraw1' || street === 'postdraw2' || street === 'final';
 }
 
+/** No-Limit判定 (Single Draw = NL) */
+function isNoLimit(state: GameState): boolean {
+  return (state.maxDraws ?? 3) === 1;
+}
+
 /** 現在のストリートのベットサイズ (small bet or big bet) */
 function getCurrentBetSize(state: GameState): number {
+  const draws = state.maxDraws ?? 3;
+  if (draws === 1) {
+    // Single Draw: 全ラウンド big bet
+    return state.bigBlind;
+  }
+  // Triple Draw: predraw & postdraw1 = small bet, それ以降 = big bet
   if (state.currentStreet === 'predraw' || state.currentStreet === 'postdraw1') {
     return state.smallBlind; // small bet
   }
   return state.bigBlind; // big bet
 }
 
-function getNextTripleDrawStreet(current: Street): Street {
-  const order: Record<string, Street> = {
-    predraw: 'draw1',
-    draw1: 'postdraw1',
-    postdraw1: 'draw2',
-    postdraw2: 'draw3',
-    draw2: 'postdraw2',
-    draw3: 'final',
-    final: 'showdown',
-  };
-  return order[current] || 'showdown';
+export function getDrawStreetOrder(maxDraws: number): Street[] {
+  // maxDraws=1: predraw → draw1 → final → showdown
+  // maxDraws=2: predraw → draw1 → postdraw1 → draw2 → final → showdown
+  // maxDraws=3: predraw → draw1 → postdraw1 → draw2 → postdraw2 → draw3 → final → showdown
+  const streets: Street[] = ['predraw'];
+  const drawNames: Street[] = ['draw1', 'draw2', 'draw3'];
+  const postDrawNames: Street[] = ['postdraw1', 'postdraw2'];
+  for (let i = 0; i < maxDraws; i++) {
+    streets.push(drawNames[i]);
+    // ドロー後のベッティングラウンド（最後のドロー以外）
+    if (i < maxDraws - 1 && i < postDrawNames.length) {
+      streets.push(postDrawNames[i]);
+    }
+  }
+  streets.push('final', 'showdown');
+  return streets;
+}
+
+function getNextDrawStreet(current: Street, maxDraws: number = 3): Street {
+  const order = getDrawStreetOrder(maxDraws);
+  const currentIdx = order.indexOf(current);
+  if (currentIdx === -1 || currentIdx >= order.length - 1) return 'showdown';
+  return order[currentIdx + 1];
 }
 
 // =========================================================================
 //  State Creation
 // =========================================================================
 
-export function createTripleDrawGameState(playerChips: number, smallBet: number): GameState {
+export function createDrawGameState(playerChips: number, smallBet: number, maxDraws: number = 3): GameState {
   const players: Player[] = [];
   const names = ['You', 'Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka'];
 
@@ -82,12 +105,13 @@ export function createTripleDrawGameState(playerChips: number, smallBet: number)
     isHandComplete: false,
     winners: [],
     rake: 0,
-    variant: 'tripdraw' as GameVariant,
+    variant: (maxDraws === 1 ? 'no_limit_2-7_single_draw' : 'limit_2-7_triple_draw') as GameVariant,
     ante: 0,
     bringIn: 0,
     betCount: 0,
     maxBetsPerRound: 4,
     discardPile: [],
+    maxDraws,
   };
 }
 
@@ -95,7 +119,7 @@ export function createTripleDrawGameState(playerChips: number, smallBet: number)
 //  Start New Hand
 // =========================================================================
 
-export function startTripleDrawHand(state: GameState): GameState {
+export function startDrawHand(state: GameState): GameState {
   const newState = { ...state };
 
   // ハンド状態リセット
@@ -169,7 +193,7 @@ export function startTripleDrawHand(state: GameState): GameState {
 
   newState.pot = sbAmount + bbAmount;
   newState.currentBet = newState.bigBlind;
-  newState.minRaise = newState.smallBlind;
+  newState.minRaise = isNoLimit(newState) ? newState.bigBlind : newState.smallBlind;
   newState.lastFullRaiseBet = newState.currentBet;
 
   // === カード配布: 各プレイヤーに5枚 ===
@@ -189,7 +213,7 @@ export function startTripleDrawHand(state: GameState): GameState {
   newState.lastRaiserIndex = bbIndex;
 
   if (newState.currentPlayerIndex === -1) {
-    return tripleDrawRunOut(newState);
+    return drawRunOut(newState);
   }
 
   return newState;
@@ -199,7 +223,7 @@ export function startTripleDrawHand(state: GameState): GameState {
 //  Valid Actions
 // =========================================================================
 
-export function getTripleDrawValidActions(
+export function getDrawValidActions(
   state: GameState, playerIndex: number
 ): { action: Action; minAmount: number; maxAmount: number }[] {
   const player = state.players[playerIndex];
@@ -212,7 +236,7 @@ export function getTripleDrawValidActions(
 
   // === ベッティングフェーズ ===
   const actions: { action: Action; minAmount: number; maxAmount: number }[] = [];
-  const betSize = getCurrentBetSize(state);
+  const isNL = isNoLimit(state);
   const toCall = state.currentBet - player.currentBet;
 
   // フォールド
@@ -225,25 +249,52 @@ export function getTripleDrawValidActions(
     actions.push({ action: 'call', minAmount: callAmount, maxAmount: callAmount });
   }
 
-  // ベット/レイズ (Fixed Limit)
-  const canRaise = state.betCount < state.maxBetsPerRound;
+  if (isNL) {
+    // === No-Limit ===
+    const canRaise = !player.hasActed || player.currentBet < state.lastFullRaiseBet;
 
-  if (canRaise && player.chips > toCall) {
-    if (state.currentBet === 0) {
-      // ベット
-      if (player.chips >= betSize) {
-        actions.push({ action: 'bet', minAmount: betSize, maxAmount: betSize });
-      } else if (player.chips > 0) {
-        actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+    if (canRaise && player.chips > toCall) {
+      if (state.currentBet === 0) {
+        // ベット: min=BB, max=全チップ
+        const minBet = Math.min(state.bigBlind, player.chips);
+        actions.push({ action: 'bet', minAmount: minBet, maxAmount: player.chips });
+      } else {
+        // レイズ: min=minRaise, max=全チップ
+        const minRaiseTotal = state.currentBet + state.minRaise;
+        const minRaiseAmount = minRaiseTotal - player.currentBet;
+        if (player.chips >= minRaiseAmount) {
+          actions.push({ action: 'raise', minAmount: minRaiseAmount, maxAmount: player.chips });
+        } else if (player.chips > toCall) {
+          // チップがminRaise未満だがコール以上 → オールイン
+          actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+        }
       }
-    } else {
-      // レイズ
-      const raiseTotal = state.currentBet + betSize;
-      const raiseAmount = raiseTotal - player.currentBet;
-      if (player.chips >= raiseAmount) {
-        actions.push({ action: 'raise', minAmount: raiseAmount, maxAmount: raiseAmount });
-      } else if (player.chips > toCall) {
-        actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+    }
+
+    // オールイン（チップが足りない場合）
+    if (canRaise && player.chips > 0 && player.chips <= toCall) {
+      actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+    }
+  } else {
+    // === Fixed Limit ===
+    const betSize = getCurrentBetSize(state);
+    const canRaise = state.betCount < state.maxBetsPerRound;
+
+    if (canRaise && player.chips > toCall) {
+      if (state.currentBet === 0) {
+        if (player.chips >= betSize) {
+          actions.push({ action: 'bet', minAmount: betSize, maxAmount: betSize });
+        } else if (player.chips > 0) {
+          actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+        }
+      } else {
+        const raiseTotal = state.currentBet + betSize;
+        const raiseAmount = raiseTotal - player.currentBet;
+        if (player.chips >= raiseAmount) {
+          actions.push({ action: 'raise', minAmount: raiseAmount, maxAmount: raiseAmount });
+        } else if (player.chips > toCall) {
+          actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
+        }
       }
     }
   }
@@ -255,7 +306,7 @@ export function getTripleDrawValidActions(
 //  Apply Action
 // =========================================================================
 
-export function applyTripleDrawAction(
+export function applyDrawAction(
   state: GameState, playerIndex: number, action: Action, amount: number = 0,
   rakePercent: number = 0, rakeCapBB: number = 0, discardIndices?: number[]
 ): GameState {
@@ -264,11 +315,11 @@ export function applyTripleDrawAction(
   player.hasActed = true;
 
   if (action === 'draw') {
-    return applyDrawAction(newState, playerIndex, discardIndices ?? []);
+    return applyDrawPhase(newState, playerIndex, discardIndices ?? []);
   }
 
   // === ベッティングフェーズ ===
-  const betSize = getCurrentBetSize(newState);
+  const nlMode = isNoLimit(newState);
 
   switch (action) {
     case 'fold':
@@ -288,37 +339,37 @@ export function applyTripleDrawAction(
       break;
     }
 
-    case 'bet': {
-      const betAmount = betSize - player.currentBet;
-      const actualAmount = Math.min(betAmount, player.chips);
-      player.chips -= actualAmount;
-      player.currentBet += actualAmount;
-      player.totalBetThisRound += actualAmount;
-      newState.pot += actualAmount;
-      newState.currentBet = player.currentBet;
-      newState.lastRaiserIndex = playerIndex;
-      newState.betCount++;
-      if (player.chips === 0) player.isAllIn = true;
-      for (const p of newState.players) {
-        if (p.id !== player.id && !p.folded && !p.isAllIn) {
-          p.hasActed = false;
-        }
-      }
-      break;
-    }
-
+    case 'bet':
     case 'raise': {
-      const raiseTotal = newState.currentBet + betSize;
-      const raiseAmount = raiseTotal - player.currentBet;
-      const actualAmount = Math.min(raiseAmount, player.chips);
-      player.chips -= actualAmount;
-      player.currentBet += actualAmount;
-      player.totalBetThisRound += actualAmount;
-      newState.pot += actualAmount;
-      newState.currentBet = player.currentBet;
-      newState.lastRaiserIndex = playerIndex;
-      newState.betCount++;
-      if (player.chips === 0) player.isAllIn = true;
+      if (nlMode) {
+        // NL: amount はプレイヤーが追加で出す額
+        const raiseBy = amount - (newState.currentBet - player.currentBet);
+        if (raiseBy > newState.minRaise) {
+          newState.minRaise = raiseBy;
+        }
+        player.chips -= amount;
+        player.currentBet += amount;
+        player.totalBetThisRound += amount;
+        newState.pot += amount;
+        newState.currentBet = player.currentBet;
+        newState.lastRaiserIndex = playerIndex;
+        newState.lastFullRaiseBet = newState.currentBet;
+        if (player.chips === 0) player.isAllIn = true;
+      } else {
+        // Fixed Limit
+        const betSize = getCurrentBetSize(newState);
+        const targetBet = action === 'bet' ? betSize : newState.currentBet + betSize;
+        const betAmount = targetBet - player.currentBet;
+        const actualAmount = Math.min(betAmount, player.chips);
+        player.chips -= actualAmount;
+        player.currentBet += actualAmount;
+        player.totalBetThisRound += actualAmount;
+        newState.pot += actualAmount;
+        newState.currentBet = player.currentBet;
+        newState.lastRaiserIndex = playerIndex;
+        newState.betCount++;
+        if (player.chips === 0) player.isAllIn = true;
+      }
       for (const p of newState.players) {
         if (p.id !== player.id && !p.folded && !p.isAllIn) {
           p.hasActed = false;
@@ -331,10 +382,15 @@ export function applyTripleDrawAction(
       const allInAmount = player.chips;
       if (player.currentBet + allInAmount > newState.currentBet) {
         const raiseBy = (player.currentBet + allInAmount) - newState.currentBet;
-        const isFullRaise = raiseBy >= betSize;
+        const minFullRaise = nlMode ? newState.minRaise : getCurrentBetSize(newState);
+        const isFullRaise = raiseBy >= minFullRaise;
         if (isFullRaise) {
-          newState.betCount++;
+          if (!nlMode) newState.betCount++;
           newState.lastRaiserIndex = playerIndex;
+          newState.lastFullRaiseBet = player.currentBet + allInAmount;
+          if (nlMode && raiseBy > newState.minRaise) {
+            newState.minRaise = raiseBy;
+          }
           for (const p of newState.players) {
             if (p.id !== player.id && !p.folded && !p.isAllIn) {
               p.hasActed = false;
@@ -358,28 +414,28 @@ export function applyTripleDrawAction(
   // 次のアクション決定
   const nextResult = determineBettingNextAction(newState);
   if (nextResult.moveToNextStreet) {
-    return moveToNextTripleDrawStreet(newState, rakePercent, rakeCapBB);
+    return moveToNextDrawStreet(newState, rakePercent, rakeCapBB);
   } else if (nextResult.nextPlayerIndex !== -1) {
     newState.currentPlayerIndex = nextResult.nextPlayerIndex;
   } else {
-    return determineTripleDrawWinner(newState, rakePercent, rakeCapBB);
+    return determineDrawWinner(newState, rakePercent, rakeCapBB);
   }
 
   return newState;
 }
 
-export function wouldTripleDrawAdvanceStreet(
+export function wouldDrawAdvanceStreet(
   state: GameState, playerIndex: number, action: Action, amount: number = 0, discardIndices?: number[]
 ): boolean {
-  const resultState = applyTripleDrawAction(state, playerIndex, action, amount, 0, 0, discardIndices);
+  const resultState = applyDrawAction(state, playerIndex, action, amount, 0, 0, discardIndices);
   return resultState.currentStreet !== state.currentStreet;
 }
 
 // =========================================================================
-//  Draw Action
+//  Draw Phase
 // =========================================================================
 
-function applyDrawAction(state: GameState, playerIndex: number, discardIndices: number[]): GameState {
+function applyDrawPhase(state: GameState, playerIndex: number, discardIndices: number[]): GameState {
   const player = state.players[playerIndex];
 
   // バリデーション: 重複除去、範囲チェック、降順ソート（後ろから削除）
@@ -420,11 +476,11 @@ function applyDrawAction(state: GameState, playerIndex: number, discardIndices: 
   // 次のプレイヤー or 次のストリート
   const nextResult = determineDrawNextAction(state);
   if (nextResult.moveToNextStreet) {
-    return moveToNextTripleDrawStreet(state, 0, 0);
+    return moveToNextDrawStreet(state, 0, 0);
   } else if (nextResult.nextPlayerIndex !== -1) {
     state.currentPlayerIndex = nextResult.nextPlayerIndex;
   } else {
-    return determineTripleDrawWinner(state, 0, 0);
+    return determineDrawWinner(state, 0, 0);
   }
 
   return state;
@@ -499,7 +555,7 @@ function determineDrawNextAction(state: GameState): { nextPlayerIndex: number; m
 //  Street Progression
 // =========================================================================
 
-function moveToNextTripleDrawStreet(state: GameState, rakePercent: number, rakeCapBB: number): GameState {
+function moveToNextDrawStreet(state: GameState, rakePercent: number, rakeCapBB: number): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
 
   // ストリート間リセット
@@ -513,34 +569,34 @@ function moveToNextTripleDrawStreet(state: GameState, rakePercent: number, rakeC
 
   const activePlayers = getActivePlayers(newState);
   if (activePlayers.length === 1) {
-    return determineTripleDrawWinner(newState, rakePercent, rakeCapBB);
+    return determineDrawWinner(newState, rakePercent, rakeCapBB);
   }
 
-  const nextStreet = getNextTripleDrawStreet(newState.currentStreet);
+  const nextStreet = getNextDrawStreet(newState.currentStreet, newState.maxDraws ?? 3);
   if (nextStreet === 'showdown') {
     newState.currentStreet = 'showdown';
-    return determineTripleDrawWinner(newState, rakePercent, rakeCapBB);
+    return determineDrawWinner(newState, rakePercent, rakeCapBB);
   }
 
   newState.currentStreet = nextStreet;
-  newState.minRaise = getCurrentBetSize(newState);
+  newState.minRaise = isNoLimit(newState) ? newState.bigBlind : getCurrentBetSize(newState);
 
   const canActPlayers = activePlayers.filter(p => !p.isAllIn);
 
   // ドローフェーズでアクション可能なプレイヤーがいない場合スキップ
   if (isDrawStreet(nextStreet) && canActPlayers.length === 0) {
-    return moveToNextTripleDrawStreet(newState, rakePercent, rakeCapBB);
+    return moveToNextDrawStreet(newState, rakePercent, rakeCapBB);
   }
 
   // ベッティングフェーズでアクション可能なプレイヤーが1人以下ならスキップ
   if (isBettingStreet(nextStreet) && canActPlayers.length <= 1) {
-    return moveToNextTripleDrawStreet(newState, rakePercent, rakeCapBB);
+    return moveToNextDrawStreet(newState, rakePercent, rakeCapBB);
   }
 
   // アクション順序: ディーラーの左(SB)から
   const firstActor = findFirstActor(newState);
   if (firstActor === -1) {
-    return moveToNextTripleDrawStreet(newState, rakePercent, rakeCapBB);
+    return moveToNextDrawStreet(newState, rakePercent, rakeCapBB);
   }
 
   newState.currentPlayerIndex = firstActor;
@@ -564,7 +620,7 @@ function findFirstActor(state: GameState): number {
 //  Winner Determination
 // =========================================================================
 
-export function determineTripleDrawWinner(
+export function determineDrawWinner(
   state: GameState, rakePercent: number = 0, rakeCapBB: number = 0
 ): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
@@ -689,10 +745,10 @@ export function determineTripleDrawWinner(
 //  Run-out (全員オールイン時)
 // =========================================================================
 
-function tripleDrawRunOut(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
+function drawRunOut(state: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
   newState.currentStreet = 'showdown';
-  return determineTripleDrawWinner(newState, rakePercent, rakeCapBB);
+  return determineDrawWinner(newState, rakePercent, rakeCapBB);
 }
 
 // =========================================================================

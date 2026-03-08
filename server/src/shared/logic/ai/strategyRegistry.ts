@@ -12,7 +12,8 @@ const strategies: Record<GameVariant, AIVariantStrategy> = {
   plo: new PLOStrategy(),
   stud: new StudStrategy(),
   razz: new RazzStrategy(),
-  tripdraw: new PLOStrategy(), // TODO: Triple Draw専用AI戦略を実装
+  'limit_2-7_triple_draw': new PLOStrategy(), // TODO: Triple Draw専用AI戦略を実装
+  'no_limit_2-7_single_draw': new PLOStrategy(), // TODO: Single Draw専用AI戦略を実装
 };
 
 export function getVariantStrategy(variant: GameVariant): AIVariantStrategy {
