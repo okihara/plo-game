@@ -324,34 +324,42 @@ export function PlayerDebug() {
               </div>
             </div>
 
-            {/* Player Display */}
+            {/* Player Display - 実機サイズ再現 (9:16) */}
             <div className="lg:col-span-2">
-              <div className="bg-white border border-cream-300 rounded-lg p-8 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
-                <h3 className="text-2xl font-semibold mb-6 text-center">プレビュー</h3>
-                <div className="relative w-full max-w-md mx-auto aspect-[4/5] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[3px] border-[#2a2520] overflow-visible">
-                  <div className="@container w-full h-full relative">
-                    {[0, 1, 2, 3, 4, 5].map((posIndex) => (
-                      <Player
-                        key={posIndex}
-                        player={player}
-                        positionIndex={posIndex}
-                        isCurrentPlayer={isCurrentPlayer}
-                        isWinner={isWinner}
-                        winAmount={isWinner ? 500 : undefined}
-                        winHandName={isWinner ? 'フルハウス' : undefined}
-                        showdownHandName={showHandName ? 'フルハウス' : undefined}
-                        lastAction={lastAction}
-                        showCards={showCards}
-                        isDealing={isDealing}
-                        dealOrder={posIndex}
-                        actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
-                        actionTimeoutMs={isTimerActive ? 15000 : null}
-                        isSpectator={posIndex === 0}
-                        variant={variant}
-                      />
-                    ))}
+              <div className="bg-black rounded-lg shadow-[0_2px_8px_rgba(139,126,106,0.12)] flex items-center justify-center p-4">
+                {/* 実機と同じ9:16コンテナ */}
+                <div className="@container flex flex-col w-full max-w-[360px] aspect-[9/16] bg-[#1a1510] overflow-hidden relative">
+                  {/* PokerTableと同じ構造: h-[129cqw] */}
+                  <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
+                    <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
+                      {[0, 1, 2, 3, 4, 5].map((posIndex) => (
+                        <Player
+                          key={posIndex}
+                          player={player}
+                          positionIndex={posIndex}
+                          isCurrentPlayer={isCurrentPlayer}
+                          isWinner={isWinner}
+                          winAmount={isWinner ? 500 : undefined}
+                          winHandName={isWinner ? 'フルハウス' : undefined}
+                          showdownHandName={showHandName ? 'フルハウス' : undefined}
+                          lastAction={lastAction}
+                          showCards={showCards}
+                          isDealing={isDealing}
+                          dealOrder={posIndex}
+                          actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
+                          actionTimeoutMs={isTimerActive ? 15000 : null}
+                          isSpectator={posIndex === 0}
+                          variant={variant}
+                        />
+                      ))}
+                    </div>
                   </div>
+                  {/* MyCards相当のスペース: h-[24cqw] */}
+                  <div className="h-[24cqw] bg-transparent" />
+                  {/* ActionPanel相当のスペース */}
+                  <div className="flex-1 bg-gradient-to-b from-gray-800/95 to-gray-900/95 border-t-2 border-gray-600" />
                 </div>
+              </div>
 
                 {/* Current State Info */}
                 <div className="mt-6 p-4 bg-cream-200 rounded text-sm space-y-2">
@@ -379,7 +387,6 @@ export function PlayerDebug() {
                     <div className="text-cream-900 font-mono">{isWinner ? 'YES' : 'NO'}</div>
                   </div>
                 </div>
-              </div>
             </div>
           </div>
         </div>
