@@ -1,4 +1,4 @@
-import { GameState, Player as PlayerType, isStudFamily } from '../logic';
+import { GameState, Player as PlayerType, isStudFamily, isDrawFamily } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -63,8 +63,8 @@ export function PokerTable({
           </div>
         </div>
 
-        {/* Community Cards (PLO only) / Stud Info */}
-        {state.variant === 'plo' ? (
+        {/* Community Cards (PLO/Holdem) / Stud Info */}
+        {!isStudFamily(state.variant) && !isDrawFamily(state.variant) ? (
           <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
         ) : (
           <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
