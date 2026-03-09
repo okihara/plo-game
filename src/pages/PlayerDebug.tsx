@@ -1,21 +1,63 @@
 import { useState } from 'react';
 import { Player } from '../components/Player';
-import { Player as PlayerType, Card as CardType, Action } from '../logic/types';
+import { Player as PlayerType, Card as CardType, Action, GameVariant, getVariantConfig } from '../logic/types';
 import { GameSettingsProvider } from '../contexts/GameSettingsContext';
 
-const sampleCards: CardType[] = [
+const sampleCardsOmaha: CardType[] = [
   { suit: 'h', rank: 'A' },
   { suit: 's', rank: 'K' },
   { suit: 'd', rank: 'Q' },
   { suit: 'c', rank: 'J' },
 ];
 
+const sampleCardsHoldem: CardType[] = [
+  { suit: 'h', rank: 'A' },
+  { suit: 's', rank: 'K' },
+];
+
+const sampleCardsStud: CardType[] = [
+  { suit: 'h', rank: 'A', isUp: false },
+  { suit: 's', rank: 'K', isUp: false },
+  { suit: 'd', rank: 'Q', isUp: true },
+  { suit: 'c', rank: 'J', isUp: true },
+  { suit: 'h', rank: 'T', isUp: true },
+  { suit: 's', rank: '9', isUp: true },
+  { suit: 'd', rank: '8', isUp: false },
+];
+
+const sampleCardsDraw: CardType[] = [
+  { suit: 'h', rank: 'A' },
+  { suit: 's', rank: 'K' },
+  { suit: 'd', rank: 'Q' },
+  { suit: 'c', rank: 'J' },
+  { suit: 'h', rank: 'T' },
+];
+
+const variantOptions: { value: GameVariant; label: string }[] = [
+  { value: 'plo', label: 'PLO (Omaha)' },
+  { value: 'limit_holdem', label: "Limit Hold'em" },
+  { value: 'stud', label: '7 Card Stud' },
+  { value: 'razz', label: 'Razz (Stud)' },
+  { value: 'limit_2-7_triple_draw', label: '2-7 Triple Draw' },
+  { value: 'no_limit_2-7_single_draw', label: '2-7 Single Draw' },
+];
+
+function getSampleCards(variant: GameVariant): CardType[] {
+  const family = getVariantConfig(variant).family;
+  switch (family) {
+    case 'stud': return sampleCardsStud;
+    case 'draw': return sampleCardsDraw;
+    case 'holdem': return sampleCardsHoldem;
+    default: return sampleCardsOmaha;
+  }
+}
+
 const createPlayer = (name: string, overrides: Partial<PlayerType> = {}): PlayerType => ({
   id: 0,
   name,
   position: 'BTN',
   chips: 1000,
-  holeCards: sampleCards,
+  holeCards: sampleCardsOmaha,
   currentBet: 0,
   totalBetThisRound: 0,
   folded: false,
@@ -30,6 +72,7 @@ type PlayerState = 'normal' | 'current' | 'winner' | 'folded' | 'allin';
 type ActionType = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
 
 export function PlayerDebug() {
+  const [variant, setVariant] = useState<GameVariant>('plo');
   const [playerState, setPlayerState] = useState<PlayerState>('normal');
   const [showCards, setShowCards] = useState(true);
   const [showBet, setShowBet] = useState(false);
@@ -45,6 +88,7 @@ export function PlayerDebug() {
 
   // Create player based on state
   const player = createPlayer('Player', {
+    holeCards: getSampleCards(variant),
     folded: playerState === 'folded',
     isAllIn: playerState === 'allin',
     currentBet: showBet ? betAmount : 0,
@@ -98,7 +142,24 @@ export function PlayerDebug() {
     <GameSettingsProvider>
       <div className="fixed inset-0 bg-cream-100 text-cream-900 overflow-y-auto">
         <div className="max-w-7xl mx-auto p-8">
-          <h1 className="text-4xl font-bold mb-8">Player Component Debug</h1>
+          <h1 className="text-4xl font-bold mb-4">Player Component Debug</h1>
+
+          {/* Variant Selector */}
+          <div className="flex flex-wrap gap-2 mb-8">
+            {variantOptions.map(({ value, label }) => (
+              <button
+                key={value}
+                onClick={() => setVariant(value)}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                  variant === value
+                    ? 'bg-cream-900 text-white'
+                    : 'bg-white border border-cream-300 text-cream-700 hover:bg-cream-100'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Control Panel */}
@@ -286,6 +347,7 @@ export function PlayerDebug() {
                         actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
                         actionTimeoutMs={isTimerActive ? 15000 : null}
                         isSpectator={posIndex === 0}
+                        variant={variant}
                       />
                     ))}
                   </div>
@@ -295,6 +357,9 @@ export function PlayerDebug() {
                 <div className="mt-6 p-4 bg-cream-200 rounded text-sm space-y-2">
                   <div className="font-semibold text-cream-700 mb-3">現在の状態:</div>
                   <div className="grid grid-cols-2 gap-2 text-cream-600">
+                    <div>バリアント:</div>
+                    <div className="text-cream-900 font-mono">{variant} ({getVariantConfig(variant).family})</div>
+
                     <div>プレイヤー状態:</div>
                     <div className="text-cream-900 font-mono">{playerState}</div>
 
