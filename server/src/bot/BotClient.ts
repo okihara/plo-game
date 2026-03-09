@@ -2,7 +2,7 @@ import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
 import { getValidActions } from '../shared/logic/gameEngine.js';
 import { getDrawValidActions } from '../shared/logic/drawEngine.js';
-import { GameState, Card, Action, Player, Position, GameAction, GameVariant, isDrawFamily } from '../shared/logic/types.js';
+import { GameState, Card, Action, Player, Position, GameAction, GameVariant, getVariantConfig } from '../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 import { AIContext } from '../shared/logic/ai/types.js';
 import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
@@ -268,7 +268,7 @@ export class BotClient {
     }
 
     // フロントと同じ: 自前の gameState から validActions を計算
-    const isDraw = isDrawFamily(aiGameState.variant);
+    const isDraw = getVariantConfig(aiGameState.variant).family === 'draw';
     const validActions = isDraw
       ? getDrawValidActions(aiGameState, this.seatNumber)
       : getValidActions(aiGameState, this.seatNumber);

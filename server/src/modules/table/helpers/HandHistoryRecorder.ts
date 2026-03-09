@@ -1,6 +1,6 @@
 // ハンドヒストリーのDB保存処理
 
-import { GameState, Card, GameAction, isStudFamily } from '../../../shared/logic/types.js';
+import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
 import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';

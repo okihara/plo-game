@@ -14,16 +14,46 @@ export function getUpCards(cards: Card[]): Card[] {
 
 export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem';
 
+// --- Variant Config ---
+
+export type VariantFamily = 'omaha' | 'holdem' | 'stud' | 'draw';
+export type BettingStructure = 'pot_limit' | 'fixed_limit' | 'no_limit';
+
+export interface VariantConfig {
+  family: VariantFamily;
+  betting: BettingStructure;
+  usesCommunityCards: boolean;
+  holeCardCount: number;
+  maxDraws: number;
+  usesBringIn: boolean;
+}
+
+export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
+  plo:                          { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  limit_holdem:                 { family: 'holdem', betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 2, maxDraws: 0, usesBringIn: false },
+  stud:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+  razz:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+  'limit_2-7_triple_draw':     { family: 'draw',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 5, maxDraws: 3, usesBringIn: false },
+  'no_limit_2-7_single_draw':  { family: 'draw',   betting: 'no_limit',   usesCommunityCards: false, holeCardCount: 5, maxDraws: 1, usesBringIn: false },
+};
+
+export function getVariantConfig(variant: GameVariant): VariantConfig {
+  return VARIANT_CONFIGS[variant];
+}
+
+/** @deprecated Use getVariantConfig(variant).family === 'stud' */
 export function isStudFamily(variant: GameVariant): boolean {
-  return variant === 'stud' || variant === 'razz';
+  return getVariantConfig(variant).family === 'stud';
 }
 
+/** @deprecated Use getVariantConfig(variant).family === 'draw' */
 export function isDrawFamily(variant: GameVariant): boolean {
-  return variant === 'limit_2-7_triple_draw' || variant === 'no_limit_2-7_single_draw';
+  return getVariantConfig(variant).family === 'draw';
 }
 
+/** @deprecated Use getVariantConfig(variant).family === 'holdem' */
 export function isHoldemFamily(variant: GameVariant): boolean {
-  return variant === 'limit_holdem';
+  return getVariantConfig(variant).family === 'holdem';
 }
 
 /** ドローフェーズのストリートかどうか（カードを捨てて引き直す） */

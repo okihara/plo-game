@@ -1,4 +1,4 @@
-import { Card as CardType, isStudFamily, isDrawFamily, GameVariant } from '../logic';
+import { Card as CardType, getVariantConfig, GameVariant } from '../logic';
 import { Card } from './Card';
 
 interface MyCardsProps {
@@ -15,9 +15,8 @@ interface MyCardsProps {
 
 export function MyCards({ cards, isDealing, dealOrder, folded = false, handName, variant, isDrawPhase, selectedCardIndices, onCardToggle }: MyCardsProps) {
   const v = (variant ?? 'plo') as GameVariant;
-  const isStud = isStudFamily(v);
-  const isDraw = isDrawFamily(v);
-  const useSmallCards = isStud || isDraw;
+  const config = getVariantConfig(v);
+  const useSmallCards = config.family === 'stud' || config.family === 'draw';
 
   return (
     <div

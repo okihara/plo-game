@@ -1,4 +1,4 @@
-import { GameState, Player as PlayerType, isStudFamily, isDrawFamily } from '../logic';
+import { GameState, Player as PlayerType, getVariantConfig } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -64,7 +64,7 @@ export function PokerTable({
         </div>
 
         {/* Community Cards (PLO/Holdem) / Stud Info */}
-        {!isStudFamily(state.variant) && !isDrawFamily(state.variant) ? (
+        {getVariantConfig(state.variant).usesCommunityCards ? (
           <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
         ) : (
           <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
@@ -92,7 +92,7 @@ export function PokerTable({
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${isStudFamily(state.variant) ? 'top-[50%]' : 'top-[62%]'}`}>
+            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );

@@ -1,4 +1,4 @@
-import { Card as CardType, isStudFamily, GameVariant } from '../logic';
+import { Card as CardType, getVariantConfig, GameVariant } from '../logic';
 
 // === 定数・型 ===
 
@@ -45,7 +45,7 @@ export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', s
   const suitSymbol = SUIT_SYMBOLS[card.suit];
   const suitBg = SUIT_BG_COLORS[card.suit];
   const styles = sizeStyles[size];
-  const isTiny = isStudFamily(variant as GameVariant);
+  const isTiny = getVariantConfig(variant as GameVariant).family === 'stud';
 
   return (
     <div

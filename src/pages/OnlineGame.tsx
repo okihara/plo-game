@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, isStudFamily, isDrawFamily, isHoldemFamily, isDrawStreet } from '../logic';
+import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
@@ -91,7 +91,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   }, []);
 
   // Draw判定
-  const isDraw = gameState ? isDrawFamily(gameState.variant) : false;
+  const isDraw = gameState ? getVariantConfig(gameState.variant).family === 'draw' : false;
   const isCurrentDrawStreet = gameState ? isDrawStreet(gameState.currentStreet) : false;
 
   // gameStateが変わったらbigBlindを設定
@@ -129,7 +129,8 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   const myCurrentHandName = useMemo(() => {
     if (!gameState) return undefined;
-    if (isStudFamily(gameState.variant)) {
+    const variantConfig = getVariantConfig(gameState.variant);
+    if (variantConfig.family === 'stud') {
       if (myHoleCards.length < 5) {
         return undefined;
       }
@@ -142,7 +143,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
           return undefined;
       }
     }
-    if (isHoldemFamily(gameState.variant)) {
+    if (variantConfig.family === 'holdem') {
       return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
     }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
@@ -374,9 +375,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           {isDraw && isCurrentDrawStreet ? (
             <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
-          ) : gameState.variant === 'no_limit_2-7_single_draw' ? (
+          ) : getVariantConfig(gameState.variant).betting === 'no_limit' ? (
             <NoLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
-          ) : isStudFamily(gameState.variant) || isDrawFamily(gameState.variant) || isHoldemFamily(gameState.variant) ? (
+          ) : getVariantConfig(gameState.variant).betting === 'fixed_limit' ? (
             <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : (
             <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />

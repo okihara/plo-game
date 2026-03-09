@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action, GameVariant, isDrawFamily } from '../../shared/logic/types.js';
+import { GameState, Action, GameVariant, getVariantConfig } from '../../shared/logic/types.js';
 import { isDrawStreet } from '../../shared/logic/drawEngine.js';
 import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
@@ -412,7 +412,7 @@ export class TableInstance {
     if (!this.gameState) return { action: 'fold', amount: 0 };
 
     // Draw: ドローフェーズ → stand pat（0枚交換）
-    if (isDrawFamily(this.variant) && isDrawStreet(this.gameState.currentStreet)) {
+    if (getVariantConfig(this.variant).family === 'draw' && isDrawStreet(this.gameState.currentStreet)) {
       return { action: 'draw', amount: 0, discardIndices: [] };
     }
 
