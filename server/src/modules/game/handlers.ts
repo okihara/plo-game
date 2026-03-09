@@ -106,7 +106,7 @@ export async function handleMatchmakingJoin(
   }
 
   const { blinds } = data;
-  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz', 'limit_2-7_triple_draw', 'no_limit_2-7_single_draw'];
+  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz', 'limit_2-7_triple_draw', 'no_limit_2-7_single_draw', 'limit_holdem'];
   const variant: import('../../shared/logic/types.js').GameVariant =
     VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo';
 

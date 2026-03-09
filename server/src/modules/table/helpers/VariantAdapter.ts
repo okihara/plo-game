@@ -5,7 +5,8 @@ import { GameState, GameVariant, Action, Player, Card } from '../../../shared/lo
 import { createInitialGameState, startNewHand, getValidActions, applyAction, wouldAdvanceStreet, determineWinner } from '../../../shared/logic/gameEngine.js';
 import { createStudGameState, startStudHand, getStudValidActions, applyStudAction, wouldStudAdvanceStreet, determineStudWinner } from '../../../shared/logic/studEngine.js';
 import { createDrawGameState, startDrawHand, getDrawValidActions, applyDrawAction, wouldDrawAdvanceStreet, determineDrawWinner } from '../../../shared/logic/drawEngine.js';
-import { evaluatePLOHand, evaluate27LowHand } from '../../../shared/logic/handEvaluator.js';
+import { createLimitHoldemGameState, startLimitHoldemHand, getLimitHoldemValidActions, applyLimitHoldemAction, wouldLimitHoldemAdvanceStreet, determineLimitHoldemWinner } from '../../../shared/logic/limitHoldemEngine.js';
+import { evaluatePLOHand, evaluateHoldemHand, evaluate27LowHand } from '../../../shared/logic/handEvaluator.js';
 import { StudVariantRules } from '../../../shared/logic/studVariantRules.js';
 import { StudHighRules } from '../../../shared/logic/rules/studHighRules.js';
 import { RazzRules } from '../../../shared/logic/rules/razzRules.js';
@@ -32,6 +33,11 @@ function isStudFamily(variant: GameVariant): boolean {
 /** Draw 系バリアントかどうか */
 function isDrawFamily(variant: GameVariant): boolean {
   return variant === 'limit_2-7_triple_draw' || variant === 'no_limit_2-7_single_draw';
+}
+
+/** Limit Hold'em かどうか */
+function isLimitHoldem(variant: GameVariant): boolean {
+  return variant === 'limit_holdem';
 }
 
 /** variant から maxDraws を取得 */
@@ -63,6 +69,9 @@ export class VariantAdapter {
     if (isDrawFamily(this.variant)) {
       return createDrawGameState(buyInChips, smallBlind, this.maxDraws!);
     }
+    if (isLimitHoldem(this.variant)) {
+      return createLimitHoldemGameState(buyInChips, smallBlind, bigBlind);
+    }
     const state = createInitialGameState(buyInChips);
     state.smallBlind = smallBlind;
     state.bigBlind = bigBlind;
@@ -79,6 +88,9 @@ export class VariantAdapter {
     if (isDrawFamily(this.variant)) {
       return startDrawHand(gameState);
     }
+    if (isLimitHoldem(this.variant)) {
+      return startLimitHoldemHand(gameState);
+    }
     return startNewHand(gameState);
   }
 
@@ -91,6 +103,9 @@ export class VariantAdapter {
     }
     if (isDrawFamily(this.variant)) {
       return getDrawValidActions(gameState, seatIndex);
+    }
+    if (isLimitHoldem(this.variant)) {
+      return getLimitHoldemValidActions(gameState, seatIndex);
     }
     return getValidActions(gameState, seatIndex);
   }
@@ -106,6 +121,12 @@ export class VariantAdapter {
       if (isDrawFamily(this.variant)) {
         if (player.holeCards.length === 5) {
           return evaluate27LowHand(player.holeCards).name;
+        }
+        return '';
+      }
+      if (isLimitHoldem(this.variant)) {
+        if (communityCards.length === 5 && player.holeCards.length === 2) {
+          return evaluateHoldemHand(player.holeCards, communityCards).name;
         }
         return '';
       }
@@ -136,6 +157,9 @@ export class VariantAdapter {
     if (isDrawFamily(this.variant)) {
       return applyDrawAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB, discardIndices);
     }
+    if (isLimitHoldem(this.variant)) {
+      return applyLimitHoldemAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
+    }
     return applyAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
   }
 
@@ -149,6 +173,9 @@ export class VariantAdapter {
     if (isDrawFamily(this.variant)) {
       return wouldDrawAdvanceStreet(gameState, seatIndex, action, amount, discardIndices);
     }
+    if (isLimitHoldem(this.variant)) {
+      return wouldLimitHoldemAdvanceStreet(gameState, seatIndex, action, amount);
+    }
     return wouldAdvanceStreet(gameState, seatIndex, action, amount);
   }
 
@@ -161,6 +188,9 @@ export class VariantAdapter {
     }
     if (isDrawFamily(this.variant)) {
       return determineDrawWinner(gameState, rakePercent, rakeCapBB);
+    }
+    if (isLimitHoldem(this.variant)) {
+      return determineLimitHoldemWinner(gameState, rakePercent, rakeCapBB);
     }
     return determineWinner(gameState, rakePercent, rakeCapBB);
   }

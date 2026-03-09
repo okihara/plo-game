@@ -15,6 +15,7 @@ const strategies: Record<GameVariant, AIVariantStrategy> = {
   razz: new RazzStrategy(),
   'limit_2-7_triple_draw': new DrawStrategy(),
   'no_limit_2-7_single_draw': new DrawStrategy(),
+  'limit_holdem': new PLOStrategy(), // TODO: 専用のHoldem AIストラテジーを作成
 };
 
 export function getVariantStrategy(variant: GameVariant): AIVariantStrategy {

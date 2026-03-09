@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameState, Action, isStudFamily } from '../logic';
+import { GameState, Action, isStudFamily, isHoldemFamily, GameVariant } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 
 interface FixedLimitActionPanelProps {
@@ -19,18 +19,22 @@ export function FixedLimitActionPanel({ state, mySeat, onAction }: FixedLimitAct
   const canRaise = isMyTurn && myPlayer.chips > toCall && !myPlayer.isAllIn;
 
   const isStud = isStudFamily(state.variant);
+  const isHoldem = isHoldemFamily(state.variant as GameVariant);
 
   // Fixed Limit ベットサイズ判定
   // Stud: 3rd/4th = Small Bet, 5th/6th/7th = Big Bet
   // Draw: predraw/postdraw1 = Small Bet, postdraw2/final = Big Bet
+  // Hold'em: preflop/flop = Small Bet, turn/river = Big Bet
   const isSmallBetStreet = isStud
     ? ['third', 'fourth'].includes(state.currentStreet)
-    : ['predraw', 'postdraw1'].includes(state.currentStreet);
+    : isHoldem
+      ? ['preflop', 'flop'].includes(state.currentStreet)
+      : ['predraw', 'postdraw1'].includes(state.currentStreet);
   const fixedBetSize = isSmallBetStreet ? state.smallBlind : state.bigBlind;
 
-  // ブリングイン（Studのみ）
-  const isBringInPhase = isStud && state.currentStreet === 'third' && state.currentBet === 0 && state.betCount === 0;
-  const isBringInOnly = isStud && state.currentStreet === 'third' && state.betCount === 0 && state.currentBet === state.bringIn;
+  // ブリングイン（Studのみ、Hold'emには無い）
+  const isBringInPhase = !isHoldem && isStud && state.currentStreet === 'third' && state.currentBet === 0 && state.betCount === 0;
+  const isBringInOnly = !isHoldem && isStud && state.currentStreet === 'third' && state.betCount === 0 && state.currentBet === state.bringIn;
   const canCheck = !isBringInPhase && toCall === 0;
 
   const [actionSent, setActionSent] = useState(false);

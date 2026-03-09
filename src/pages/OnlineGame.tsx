@@ -2,8 +2,8 @@ import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, isStudFamily, isDrawFamily, isDrawStreet } from '../logic';
-import { evaluateCurrentHand, evaluateStudHand } from '../logic/handEvaluator';
+import { Player as PlayerType, evaluateRazzHand, isStudFamily, isDrawFamily, isHoldemFamily, isDrawStreet } from '../logic';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
@@ -141,6 +141,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         default:
           return undefined;
       }
+    }
+    if (isHoldemFamily(gameState.variant)) {
+      return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
     }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
   }, [myHoleCards, gameState?.communityCards, gameState?.variant]);
@@ -373,7 +376,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
           ) : gameState.variant === 'no_limit_2-7_single_draw' ? (
             <NoLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
-          ) : isStudFamily(gameState.variant) || isDrawFamily(gameState.variant) ? (
+          ) : isStudFamily(gameState.variant) || isDrawFamily(gameState.variant) || isHoldemFamily(gameState.variant) ? (
             <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : (
             <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
