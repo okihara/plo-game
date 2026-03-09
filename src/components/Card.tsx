@@ -20,7 +20,7 @@ const SUIT_BG_COLORS: Record<string, string> = {
 };
 
 const sizeStyles: Record<CardSize, { card: string; suit: string; corner: string }> = {
-  sm: { card: 'w-[11cqw] h-[15.4cqw] text-[6.4cqw]', suit: 'text-[6.4cqw]', corner: 'text-[4cqw]' },
+  sm: { card: 'w-[11cqw] h-[15.4cqw] text-[6.4cqw]', suit: 'text-[6.4cqw]', corner: 'text-[5cqw]' },
   md: { card: 'w-[14cqw] h-[20.5cqw] text-[7.9cqw]', suit: 'text-[7.9cqw]', corner: 'text-[5cqw]' },
   lg: { card: 'w-[13cqw] h-[18cqw] text-[7cqw]', suit: 'text-[7cqw]', corner: 'text-[4.5cqw]' },
 };

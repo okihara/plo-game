@@ -37,12 +37,12 @@ function formatAction(action: Action, amount: number, formatChips: (n: number) =
 }
 
 const positionStyles: Record<number, string> = {
-  0: 'bottom-[-12%] left-1/2 -translate-x-1/2',
-  1: 'bottom-[5%] left-[-10%]',
-  2: 'top-[18%] left-[-10%]',
-  3: 'top-[-4%] left-1/2 -translate-x-1/2',
-  4: 'top-[18%] right-[-10%]',
-  5: 'bottom-[5%] right-[-10%]',
+  0: 'bottom-[-12%] left-1/2 -translate-x-1/2', // 自分
+  1: 'bottom-[14%] left-[-10%]', // 左下
+  2: 'top-[20%] left-[-10%]', // 左上
+  3: 'top-[-4%] left-1/2 -translate-x-1/2', // 上
+  4: 'top-[20%] right-[-10%]', // 右上
+  5: 'bottom-[14%] right-[-10%]', // 右下
 };
 
 const betPositionStyles: Record<number, string> = {

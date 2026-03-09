@@ -71,7 +71,7 @@ export function PlayerCards({
   if (positionIndex === 0 && !isSpectator) return null;
   
   // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
-  const cardOverlapMargin = getVariantConfig(variant).family === 'stud' ? '-ml-[6cqw]' : '-ml-[2cqw]';
+  const cardOverlapMargin = getVariantConfig(variant).family === 'stud' ? '-ml-[5cqw]' : '-ml-[2cqw]';
 
   return (
     <>
