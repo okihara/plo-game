@@ -363,6 +363,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           variant: prev?.variant ?? 'plo',
           ante: prev?.ante ?? 0,
           bringIn: 0,
+          validActions: null,
         }));
         setMyHoleCards([]);
         setShowdownCards(new Map());

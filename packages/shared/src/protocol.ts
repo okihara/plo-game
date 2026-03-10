@@ -108,6 +108,7 @@ export interface ClientGameState {
   variant: string;  // 'plo' | 'stud'
   ante: number;     // Stud: アンテ額
   bringIn: number;  // Stud: ブリングイン額
+  validActions: { action: string; minAmount: number; maxAmount: number }[] | null;
 }
 
 export interface TableInfo {

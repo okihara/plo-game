@@ -376,6 +376,10 @@ export class TableInstance {
   }
 
   public getClientGameState(): ClientGameState {
+    // 現プレイヤーのvalidActionsを計算
+    const va = this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex >= 0
+      ? this.variantAdapter.getValidActions(this.gameState, this.gameState.currentPlayerIndex)
+      : null;
     return StateTransformer.toClientGameState(
       this.id,
       this.playerManager.getSeats(),
@@ -383,7 +387,8 @@ export class TableInstance {
       this.actionController.getPendingAction(),
       this.isHandInProgress,
       this.smallBlind,
-      this.bigBlind
+      this.bigBlind,
+      va
     );
   }
 
