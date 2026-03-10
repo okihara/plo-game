@@ -15,7 +15,7 @@ import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
 import { adminRoutes } from './modules/admin/routes.js';
 import { lobbyRoutes } from './modules/lobby/routes.js';
-import { handHistoryRoutes } from './modules/history/routes.js';
+import { handHistoryRoutes, publicHandHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
 import { maintenanceService } from './modules/maintenance/MaintenanceService.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -65,6 +65,7 @@ fastify.get('/health', async () => {
 await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
+await fastify.register(publicHandHistoryRoutes, { prefix: '/api/hand' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
 await fastify.register(ogpRoutes, { prefix: '/api/ogp' });
 
@@ -126,6 +127,53 @@ if (env.NODE_ENV === 'production') {
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="${title}">
   <meta name="twitter:description" content="Baby PLO でのプレイヤースタッツを見る">
+  <meta name="twitter:image" content="${ogpImageUrl}">
+  <title>${title}</title>
+</head>
+<body></body>
+</html>`;
+      reply.header('Content-Type', 'text/html; charset=utf-8');
+      return reply.send(html);
+    }
+
+    // /hand/:handId へのクローラーアクセス → 動的OGPメタタグを返す
+    const handMatch = request.url.match(/^\/hand\/([^/?#]+)/);
+    if (handMatch && CRAWLER_UA.test(request.headers['user-agent'] || '')) {
+      const handId = handMatch[1];
+      const baseUrl = env.CLIENT_URL;
+      const ogpImageUrl = `${baseUrl}/api/ogp/hand/${handId}`;
+      const pageUrl = `${baseUrl}/hand/${handId}`;
+
+      let title = 'Baby PLO - ハンド履歴';
+      let description = 'Baby PLO でのハンド詳細を見る';
+      try {
+        const hand = await prisma.handHistory.findUnique({
+          where: { id: handId },
+          select: { blinds: true, potSize: true },
+        });
+        if (hand) {
+          title = `Hand #${handId.slice(-6)} (${hand.blinds}) | Baby PLO`;
+          description = `Pot ${hand.potSize} | Baby PLO でのハンド詳細`;
+        }
+      } catch {
+        // ignore
+      }
+
+      const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${pageUrl}">
+  <meta property="og:image" content="${ogpImageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Baby PLO">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">
   <meta name="twitter:image" content="${ogpImageUrl}">
   <title>${title}</title>
 </head>

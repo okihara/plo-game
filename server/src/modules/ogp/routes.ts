@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { maskName } from '../../shared/utils.js';
 import { renderOgpImage } from './renderOgpImage.js';
+import { renderHandOgpImage, getPositionName } from './renderHandOgpImage.js';
 
 export async function ogpRoutes(fastify: FastifyInstance) {
   // OGP画像生成: GET /api/ogp/player/:userId
@@ -77,6 +78,79 @@ export async function ogpRoutes(fastify: FastifyInstance) {
 
     reply.header('Content-Type', 'image/png');
     reply.header('Cache-Control', 'public, max-age=300, s-maxage=300');
+    return reply.send(png);
+  });
+
+  // OGP画像生成: GET /api/ogp/hand/:handId
+  fastify.get('/hand/:handId', async (request: FastifyRequest, reply) => {
+    const { handId } = request.params as { handId: string };
+
+    const hand = await prisma.handHistory.findUnique({
+      where: { id: handId },
+      include: {
+        players: {
+          select: {
+            username: true,
+            seatPosition: true,
+            holeCards: true,
+            finalHand: true,
+            profit: true,
+            user: {
+              select: { displayName: true, nameMasked: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!hand) {
+      return reply.status(404).send({ error: 'Hand not found' });
+    }
+
+    const allSeats = hand.players.map(p => p.seatPosition);
+
+    const players = hand.players.map(p => {
+      const rawName = p.username || `Seat ${p.seatPosition + 1}`;
+      const displayName = p.user?.displayName
+        ? p.user.displayName
+        : p.user?.nameMasked
+          ? maskName(rawName)
+          : rawName;
+
+      return {
+        username: displayName,
+        seatPosition: p.seatPosition,
+        holeCards: p.holeCards,
+        finalHand: p.finalHand,
+        profit: p.profit,
+        position: getPositionName(p.seatPosition, hand.dealerPosition, allSeats),
+      };
+    });
+
+    // アクション情報をプレイヤー名で変換
+    const seatNameMap = new Map(players.map(p => [p.seatPosition, p]));
+    const actions = (hand.actions as { seatIndex: number; action: string; amount: number; street?: string }[]).map(a => ({
+      position: seatNameMap.get(a.seatIndex)?.position || '',
+      playerName: seatNameMap.get(a.seatIndex)?.username || '',
+      action: a.action,
+      amount: a.amount,
+      street: a.street,
+    }));
+
+    const png = await renderHandOgpImage({
+      handId: hand.id,
+      blinds: hand.blinds,
+      communityCards: hand.communityCards,
+      potSize: hand.potSize,
+      rakeAmount: hand.rakeAmount,
+      players,
+      actions,
+      dealerPosition: hand.dealerPosition,
+      createdAt: hand.createdAt.toISOString(),
+    });
+
+    reply.header('Content-Type', 'image/png');
+    reply.header('Cache-Control', 'public, max-age=3600, s-maxage=3600');
     return reply.send(png);
   });
 }
