@@ -161,19 +161,19 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       elements.push(
         h('div', {
           style: {
-            display: 'flex', alignItems: 'center', gap: 6,
-            borderBottom: '1px solid #d8d2c8',
-            paddingBottom: 2, paddingTop: prevStreet ? 6 : 0,
-            marginBottom: 2,
+            display: 'flex', alignItems: 'center', gap: 8,
+            borderBottom: '2px solid #d8d2c8',
+            paddingBottom: 3, paddingTop: prevStreet ? 8 : 0,
+            marginBottom: 3,
           },
         },
-          h('div', { style: { display: 'flex', fontSize: 16, fontWeight: 700, color: '#1a1a1a' } },
+          h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } },
             STREET_LABELS[street] || street),
           ...(cards && cards.length > 0
-            ? cards.map(c => CardElement(c, 14))
+            ? cards.map(c => CardElement(c, 20))
             : []),
           ...(pot > 0
-            ? [h('div', { style: { display: 'flex', fontSize: 13, color: '#555', marginLeft: 2 } }, `Pot ${pot}`)]
+            ? [h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } }, `Pot ${pot}`)]
             : []),
         ),
       );
@@ -191,20 +191,20 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       h('div', {
         style: {
           display: 'flex', alignItems: 'center',
-          padding: '1px 0',
+          padding: '3px 0',
         },
       },
-        h('div', { style: { display: 'flex', width: 38, fontSize: 14, fontWeight: 700, color: '#555' } },
+        h('div', { style: { display: 'flex', width: 52, fontSize: 22, fontWeight: 700, color: '#555' } },
           a.position),
-        h('div', { style: { display: 'flex', width: 76, fontSize: 15, color: '#444', overflow: 'hidden' } },
+        h('div', { style: { display: 'flex', width: 108, fontSize: 24, color: '#444', overflow: 'hidden' } },
           truncName(a.playerName, 6)),
         ...(holeCards.length > 0
-          ? [h('div', { style: { display: 'flex', alignItems: 'center', gap: 1, marginRight: 4 } },
-              ...holeCards.map(c => CardElement(c, 12)))]
+          ? [h('div', { style: { display: 'flex', alignItems: 'center', gap: 1, marginRight: 6 } },
+              ...holeCards.map(c => CardElement(c, 18)))]
           : []),
-        h('div', { style: { display: 'flex', width: 54, fontSize: 15, fontWeight: 600, color: actionColor } },
+        h('div', { style: { display: 'flex', width: 76, fontSize: 24, fontWeight: 600, color: actionColor } },
           actionLabel),
-        h('div', { style: { display: 'flex', fontSize: 15, fontWeight: 600, color: amountColor } },
+        h('div', { style: { display: 'flex', fontSize: 24, fontWeight: 600, color: amountColor } },
           a.amount > 0 ? `${a.amount}` : ''),
       ),
     );
@@ -217,16 +217,16 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       elements.push(
         h('div', {
           style: {
-            display: 'flex', alignItems: 'center', gap: 6,
-            borderBottom: '1px solid #d8d2c8',
-            paddingBottom: 2, paddingTop: 6, marginBottom: 2,
+            display: 'flex', alignItems: 'center', gap: 8,
+            borderBottom: '2px solid #d8d2c8',
+            paddingBottom: 3, paddingTop: 8, marginBottom: 3,
           },
         },
-          h('div', { style: { display: 'flex', fontSize: 16, fontWeight: 700, color: '#1a1a1a' } },
+          h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } },
             STREET_LABELS[s]),
-          ...streetCards[s].map(c => CardElement(c, 14)),
+          ...streetCards[s].map(c => CardElement(c, 20)),
           ...(runningPot > 0
-            ? [h('div', { style: { display: 'flex', fontSize: 13, color: '#555', marginLeft: 2 } }, `Pot ${runningPot}`)]
+            ? [h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } }, `Pot ${runningPot}`)]
             : []),
         ),
       );
@@ -237,40 +237,42 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
   elements.push(
     h('div', {
       style: {
-        display: 'flex', alignItems: 'center', gap: 6,
-        borderBottom: '1px solid #d8d2c8',
-        paddingBottom: 2, paddingTop: 6, marginBottom: 2,
+        display: 'flex', alignItems: 'center', gap: 8,
+        borderBottom: '2px solid #d8d2c8',
+        paddingBottom: 3, paddingTop: 8, marginBottom: 3,
       },
     },
-      h('div', { style: { display: 'flex', fontSize: 16, fontWeight: 700, color: '#1a1a1a' } }, 'Result'),
-      ...data.communityCards.map(c => CardElement(c, 14)),
-      h('div', { style: { display: 'flex', fontSize: 13, color: '#555', marginLeft: 2 } },
+      h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } }, 'Result'),
+      ...data.communityCards.map(c => CardElement(c, 20)),
+      h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } },
         `Pot ${data.potSize}`),
     ),
   );
 
-  // プレイヤーをポジション順（BTN→SB→BB→UTG→HJ→CO）でソート
+  // チップ変動があったプレイヤーのみ、ポジション順（BTN→SB→BB→UTG→HJ→CO）でソート
   const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
-  const sortedPlayers = [...data.players].sort((a, b) => {
-    const aIdx = a.position ? POSITION_ORDER.indexOf(a.position) : 99;
-    const bIdx = b.position ? POSITION_ORDER.indexOf(b.position) : 99;
-    return aIdx - bIdx;
-  });
+  const sortedPlayers = [...data.players]
+    .filter(p => p.profit !== 0)
+    .sort((a, b) => {
+      const aIdx = a.position ? POSITION_ORDER.indexOf(a.position) : 99;
+      const bIdx = b.position ? POSITION_ORDER.indexOf(b.position) : 99;
+      return aIdx - bIdx;
+    });
 
   for (const p of sortedPlayers) {
     const profitColor = p.profit > 0 ? '#2d6a4f' : p.profit < 0 ? '#C0392B' : '#888';
     const profitStr = p.profit > 0 ? `+${p.profit}` : `${p.profit}`;
     elements.push(
       h('div', {
-        style: { display: 'flex', alignItems: 'center', padding: '1px 0' },
+        style: { display: 'flex', alignItems: 'center', padding: '3px 0' },
       },
-        h('div', { style: { display: 'flex', width: 38, fontSize: 14, fontWeight: 700, color: '#555' } },
+        h('div', { style: { display: 'flex', width: 52, fontSize: 22, fontWeight: 700, color: '#555' } },
           p.position || ''),
-        h('div', { style: { display: 'flex', width: 76, fontSize: 15, color: '#444', overflow: 'hidden' } },
+        h('div', { style: { display: 'flex', width: 108, fontSize: 24, color: '#444', overflow: 'hidden' } },
           truncName(p.username, 6)),
-        h('div', { style: { display: 'flex', flex: 1, fontSize: 14, color: '#555', overflow: 'hidden' } },
+        h('div', { style: { display: 'flex', flex: 1, fontSize: 22, color: '#555', overflow: 'hidden' } },
           p.finalHand || ''),
-        h('div', { style: { display: 'flex', fontSize: 15, fontWeight: 700, color: profitColor } },
+        h('div', { style: { display: 'flex', fontSize: 24, fontWeight: 700, color: profitColor } },
           profitStr),
       ),
     );
@@ -279,40 +281,57 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
   return elements;
 }
 
-// 要素の種類ごとの推定高さ（px）
-const STREET_HEADER_HEIGHT = 28; // ストリートヘッダー行
-const ACTION_ROW_HEIGHT = 20;    // アクション行
-const COL_MAX_HEIGHT = 440;      // カラム内利用可能高さ（630 - ヘッダー等 - padding）
+// 要素の種類ごとの推定高さ（px）— CSS値から算出、余裕を持たせて切れ防止
+// ストリートヘッダー: paddingTop(8) + content(26*1.2≈31) + paddingBottom(3) + border(2) + marginBottom(3) = 47
+const STREET_HEADER_HEIGHT = 47;
+// アクション行: padding(3*2) + content(24*1.2≈29) + ホールカード考慮 = 36
+const ACTION_ROW_HEIGHT = 36;
+// カラム利用可能高さ: 画像630 - コンテナpadding(16+12) - カラムpadding(10*2) - カラムborder(1*2) = 580
+const COL_MAX_HEIGHT = 580;
+
+function estimateRowHeight(el: ReactNode): number {
+  const props = (el as unknown as Record<string, unknown>)?.props as Record<string, unknown> | undefined;
+  const style = props?.style as Record<string, unknown> | undefined;
+  const isHeader = style?.borderBottom != null;
+  return isHeader ? STREET_HEADER_HEIGHT : ACTION_ROW_HEIGHT;
+}
 
 function buildActionColumns(data: HandOgpData): ReactNode {
   const elements = buildActionElements(data);
 
-  // 左カラムが埋まったら右カラムに流す
+  // ストリート単位のグループに分割（ヘッダー→次のヘッダーまでが1グループ）
+  const groups: { elements: ReactNode[]; height: number }[] = [];
+  for (const el of elements) {
+    const isHeader = estimateRowHeight(el) === STREET_HEADER_HEIGHT;
+    if (isHeader || groups.length === 0) {
+      groups.push({ elements: [el], height: estimateRowHeight(el) });
+    } else {
+      const last = groups[groups.length - 1];
+      last.elements.push(el);
+      last.height += estimateRowHeight(el);
+    }
+  }
+
+  // 左カラムにストリート単位で詰めて、溢れたら右カラムへ
   const leftElements: ReactNode[] = [];
   const rightElements: ReactNode[] = [];
   let leftHeight = 0;
+
   let overflowed = false;
-
-  for (const el of elements) {
-    // ストリートヘッダーかアクション行かを推定（props.style.borderBottomの有無で判定）
-    const props = (el as unknown as Record<string, unknown>)?.props as Record<string, unknown> | undefined;
-    const style = props?.style as Record<string, unknown> | undefined;
-    const isHeader = style?.borderBottom != null;
-    const rowH = isHeader ? STREET_HEADER_HEIGHT : ACTION_ROW_HEIGHT;
-
-    if (!overflowed && leftHeight + rowH <= COL_MAX_HEIGHT) {
-      leftElements.push(el);
-      leftHeight += rowH;
+  for (const g of groups) {
+    if (!overflowed && leftHeight + g.height <= COL_MAX_HEIGHT) {
+      leftElements.push(...g.elements);
+      leftHeight += g.height;
     } else {
       overflowed = true;
-      rightElements.push(el);
+      rightElements.push(...g.elements);
     }
   }
 
   const colStyle = {
     display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0,
     backgroundColor: '#f5f1ec', borderRadius: 8,
-    border: '1px solid #d8d2c8', padding: '8px 10px',
+    border: '1px solid #d8d2c8', padding: '10px 14px',
     overflow: 'hidden',
   };
 
@@ -329,57 +348,19 @@ function buildActionColumns(data: HandOgpData): ReactNode {
 // ── メインレイアウト ──
 
 function buildHandElement(data: HandOgpData): ReactNode {
-  const SIDE_PAD = 36;
-
-  const dateStr = new Date(data.createdAt).toLocaleDateString('ja-JP', {
-    year: 'numeric', month: '2-digit', day: '2-digit',
-    hour: '2-digit', minute: '2-digit',
-  });
+  const SIDE_PAD = 24;
 
   return h('div', {
     style: {
       display: 'flex', flexDirection: 'column',
       width: WIDTH, height: HEIGHT,
       backgroundColor: '#faf8f5',
-      padding: `0 ${SIDE_PAD}px`,
+      padding: `16px ${SIDE_PAD}px 12px`,
       fontFamily: 'Noto Sans CJK JP',
     },
   },
-    // Top accent line
-    h('div', { style: { display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, height: 5, backgroundColor: '#1a1a1a' } }),
-
-    // Header
-    h('div', {
-      style: {
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        paddingTop: 22, marginBottom: 8,
-      },
-    },
-      h('div', { style: { display: 'flex', alignItems: 'baseline', gap: 12 } },
-        h('div', { style: { display: 'flex', fontSize: 24, fontWeight: 700, color: '#1a1a1a' } },
-          `Hand #${data.handId.slice(-6)}`),
-        h('div', { style: { display: 'flex', fontSize: 18, fontWeight: 600, color: '#444' } },
-          data.blinds),
-        h('div', { style: { display: 'flex', fontSize: 14, color: '#555' } }, dateStr),
-      ),
-      h('div', { style: { display: 'flex', fontSize: 16, color: '#1a1a1a', fontWeight: 700 } }, 'Baby PLO'),
-    ),
-
-    // Divider
-    h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#d8d2c8', marginBottom: 10 } }),
-
-    // 2-column actions
+    // Actions (full height)
     buildActionColumns(data),
-
-    // Footer
-    h('div', {
-      style: {
-        display: 'flex', justifyContent: 'center',
-        paddingBottom: 12, paddingTop: 8,
-      },
-    },
-      h('div', { style: { display: 'flex', fontSize: 14, color: '#555' } }, 'baby-plo.up.railway.app'),
-    ),
   );
 }
 
