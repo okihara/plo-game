@@ -7,6 +7,9 @@ dist
 .env
 *.env.local
 
+# Font cache (downloaded at runtime)
+server/src/modules/ogp/fonts/
+
 # Generated TypeScript files in shared
 shared/types/*.js
 shared/types/*.js.map
