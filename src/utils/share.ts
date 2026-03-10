@@ -1,5 +1,5 @@
 export function buildStatsShareText(displayName: string): string {
-  return `#BabyPLO ${displayName}: Stats`;
+  return `#BabyPLO ${displayName} - Stats`;
 }
 
 export function openXShare(text: string, url: string): void {
