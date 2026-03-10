@@ -7,6 +7,7 @@
 import { PrismaClient } from '@prisma/client';
 import { evaluatePLOHand } from '../../packages/shared/src/handEvaluator';
 import type { Card, Rank, Suit } from '../../packages/shared/src/types';
+import { maskName } from '../src/shared/utils';
 
 const isProd = process.argv.includes('--prod');
 const dryRun = process.argv.includes('--dry-run');
@@ -41,12 +42,15 @@ type BadBeatType = 'bad_beat_fullhouse' | 'bad_beat_quads' | 'bad_beat_straight_
 async function main() {
   console.log(`\n最大 ${limit} ハンドを検索中...\n`);
 
-  // ボットユーザーIDを取得（provider === 'bot'）
-  const botUsers = await prisma.user.findMany({
-    where: { provider: 'bot' },
-    select: { id: true },
+  // 全ユーザー情報を取得（ボット判定 + displayName表示用）
+  const allUsers = await prisma.user.findMany({
+    select: { id: true, username: true, displayName: true, provider: true, nameMasked: true },
   });
-  const botUserIds = new Set(botUsers.map(u => u.id));
+  const botUserIds = new Set(allUsers.filter(u => u.provider === 'bot').map(u => u.id));
+  const userDisplayNames = new Map(allUsers.map(u => [
+    u.id,
+    u.displayName || (u.nameMasked ? maskName(u.username) : u.username),
+  ]));
   console.log(`ボットユーザー: ${botUserIds.size} 人（除外対象）\n`);
 
   const hands = await prisma.handHistory.findMany({
@@ -82,7 +86,7 @@ async function main() {
           userId: p.userId,
           handRank: result.rank,
           isWinner: p.userId ? winnerIds.has(p.userId) : false,
-          username: p.username || p.userId?.slice(-8) || '???',
+          username: (p.userId && userDisplayNames.get(p.userId)) || p.username || p.userId?.slice(-8) || '???',
         });
       } catch {
         // 評価失敗は無視
