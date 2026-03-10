@@ -1,6 +1,8 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Share2, Link, Check } from 'lucide-react';
 import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
+import { buildHandShareText, openXShare } from '../utils/share';
 
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
 
@@ -372,30 +374,92 @@ export function HandDetailDialog({
     });
   }, [hand.players, hand.dealerPosition]);
 
+  const [showShareMenu, setShowShareMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const shareUrl = `${window.location.origin}/hand/${hand.id}`;
+  const me = hand.players.find(p => p.isCurrentUser);
+  const myProfit = me?.profit ?? 0;
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const input = document.createElement('input');
+      input.value = shareUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+    setShowShareMenu(false);
+  };
+
+  const handleShareX = () => {
+    openXShare(buildHandShareText(hand.id, myProfit), shareUrl);
+    setShowShareMenu(false);
+  };
+
   return (
     <div className="absolute inset-0 z-50 flex flex-col light-bg">
-        {/* ヘッダー: 戻る + 自分のポジション・ホールカード */}
+        {/* ヘッダー: 戻る + 自分のポジション・ホールカード + シェア */}
         <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
           <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
             &larr; 戻る
           </button>
           {(() => {
-            const me = hand.players.find(p => p.isCurrentUser);
-            const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, allSeats) : '';
+            const mePlayer = hand.players.find(p => p.isCurrentUser);
+            const pos = mePlayer ? getPositionName(mePlayer.seatPosition, hand.dealerPosition, allSeats) : '';
             return (
               <div className="flex items-center gap-[1.5cqw]">
                 {pos && <PositionBadge position={pos} />}
-                {me && (
-                  <span className="text-cream-900 text-[3cqw] font-semibold truncate">{displayName(me)}</span>
+                {mePlayer && (
+                  <span className="text-cream-900 text-[3cqw] font-semibold truncate">{displayName(mePlayer)}</span>
                 )}
-                {me && me.holeCards.length > 0 && (
+                {mePlayer && mePlayer.holeCards.length > 0 && (
                   <div className="flex items-center gap-[0.4cqw]">
-                    {me.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+                    {mePlayer.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
                   </div>
                 )}
               </div>
             );
           })()}
+
+          {/* シェアボタン */}
+          <div className="ml-auto relative">
+            <button
+              onClick={() => setShowShareMenu(v => !v)}
+              className="w-[8cqw] h-[8cqw] flex items-center justify-center rounded-full bg-cream-100 active:bg-cream-300"
+            >
+              <Share2 className="w-[4cqw] h-[4cqw] text-cream-700" />
+            </button>
+            {showShareMenu && (
+              <div className="absolute right-0 top-full mt-[1cqw] z-[300] bg-white border border-cream-300 rounded-[2cqw] shadow-lg min-w-[36cqw] overflow-hidden">
+                <button
+                  onClick={handleCopyLink}
+                  className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-800 hover:bg-cream-100 active:bg-cream-200 transition-colors"
+                >
+                  {copied
+                    ? <Check className="w-[4cqw] h-[4cqw] text-forest" />
+                    : <Link className="w-[4cqw] h-[4cqw] text-cream-600" />}
+                  {copied ? 'コピーしました' : 'リンクをコピー'}
+                </button>
+                <button
+                  onClick={handleShareX}
+                  className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-800 hover:bg-cream-100 active:bg-cream-200 transition-colors border-t border-cream-200"
+                >
+                  <svg className="w-[4cqw] h-[4cqw] text-cream-700" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                  X でシェア
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="p-[3cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">

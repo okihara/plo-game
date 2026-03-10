@@ -2,6 +2,61 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { maskName } from '../../shared/utils.js';
 
+// 公開用ハンド詳細API（認証不要、シェアリンク用）
+export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
+  fastify.get('/:handId', async (request: FastifyRequest, reply) => {
+    const { handId } = request.params as { handId: string };
+
+    const hand = await prisma.handHistory.findUnique({
+      where: { id: handId },
+      include: {
+        players: {
+          select: {
+            userId: true,
+            username: true,
+            seatPosition: true,
+            holeCards: true,
+            finalHand: true,
+            profit: true,
+            user: {
+              select: { username: true, displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!hand) {
+      return reply.code(404).send({ error: 'Hand not found' });
+    }
+
+    return {
+      id: hand.id,
+      handNumber: hand.handNumber,
+      blinds: hand.blinds,
+      communityCards: hand.communityCards,
+      potSize: hand.potSize,
+      rakeAmount: hand.rakeAmount,
+      winners: hand.winners,
+      actions: hand.actions,
+      dealerPosition: hand.dealerPosition,
+      createdAt: hand.createdAt,
+      players: hand.players.map(p => {
+        const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
+        return {
+          username: p.user?.displayName ? p.user.displayName : (p.user?.nameMasked ? maskName(rawName) : rawName),
+          avatarUrl: p.user?.avatarUrl ?? null,
+          seatPosition: p.seatPosition,
+          holeCards: p.holeCards,
+          finalHand: p.finalHand,
+          profit: p.profit,
+          isCurrentUser: false,
+        };
+      }),
+    };
+  });
+}
+
 export async function handHistoryRoutes(fastify: FastifyInstance) {
   // Auth middleware
   fastify.addHook('preHandler', async (request, reply) => {
