@@ -49,6 +49,7 @@ export interface OnlineGameHookResult {
   announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
   privateTableInfo: { inviteCode: string } | null;
+  horseVariantInfo: { variant: string; variantLabel: string; roundIndex: number; totalRounds: number } | null;
 
   // アクション
   connect: () => Promise<void>;
@@ -197,6 +198,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
   const [privateTableInfo, setPrivateTableInfo] = useState<{ inviteCode: string } | null>(null);
+  const [horseVariantInfo, setHorseVariantInfo] = useState<{ variant: string; variantLabel: string; roundIndex: number; totalRounds: number } | null>(null);
 
   // Refs
   const prevStreetRef = useRef<string | null>(null);
@@ -473,6 +475,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsDisplaced(true);
         setIsConnected(false);
       },
+      onVariantChange: (data) => {
+        setHorseVariantInfo(data);
+      },
     });
 
     return () => {
@@ -545,6 +550,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     announcementStatus,
     bustedMessage,
     privateTableInfo,
+    horseVariantInfo,
     connect,
     disconnect,
     joinMatchmaking,

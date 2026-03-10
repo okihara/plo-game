@@ -16,6 +16,8 @@ const strategies: Record<GameVariant, AIVariantStrategy> = {
   'limit_2-7_triple_draw': new DrawStrategy(),
   'no_limit_2-7_single_draw': new DrawStrategy(),
   'limit_holdem': new PLOStrategy(), // TODO: 専用のHoldem AIストラテジーを作成
+  'omaha_hilo': new PLOStrategy(),  // Omaha系なのでPLOストラテジーを流用
+  'stud_hilo': new StudStrategy(),  // Stud系なのでStudストラテジーを流用
 };
 
 export function getVariantStrategy(variant: GameVariant): AIVariantStrategy {

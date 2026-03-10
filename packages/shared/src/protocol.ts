@@ -45,10 +45,13 @@ export interface ServerToClientEvents {
     amount: number;
   }) => void;
   'game:showdown': (data: {
-    winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
+    winners: { playerId: string; amount: number; handName: string; cards: Card[]; hiLoType?: 'high' | 'low' | 'scoop' }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
-  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[]; rake: number }) => void;
+  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]; rake: number }) => void;
+
+  // HORSE variant change
+  'game:variant_change': (data: { variant: string; variantLabel: string; roundIndex: number; totalRounds: number }) => void;
 
   // Spectator
   'table:spectating': (data: { tableId: string }) => void;

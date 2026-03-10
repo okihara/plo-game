@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem';
+export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo';
 
 // --- Variant Config ---
 
@@ -35,6 +35,8 @@ export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   razz:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
   'limit_2-7_triple_draw':     { family: 'draw',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 5, maxDraws: 3, usesBringIn: false },
   'no_limit_2-7_single_draw':  { family: 'draw',   betting: 'no_limit',   usesCommunityCards: false, holeCardCount: 5, maxDraws: 1, usesBringIn: false },
+  omaha_hilo:                   { family: 'omaha',  betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  stud_hilo:                    { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
 };
 
 export function getVariantConfig(variant: GameVariant): VariantConfig {
@@ -123,7 +125,7 @@ export interface GameState {
   lastFullRaiseBet: number;  // フルレイズが発生した時の currentBet（リオープン判定用）
   handHistory: GameAction[];
   isHandComplete: boolean;
-  winners: { playerId: number; amount: number; handName: string }[];
+  winners: { playerId: number; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[];
   rake: number;
   // Variant support
   variant: GameVariant;

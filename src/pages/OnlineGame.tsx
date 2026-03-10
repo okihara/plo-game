@@ -3,7 +3,7 @@ import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
-import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
@@ -52,6 +52,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     announcementStatus,
     bustedMessage,
     privateTableInfo,
+    horseVariantInfo,
     connect,
     disconnect,
     joinMatchmaking,
@@ -139,9 +140,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
           return evaluateStudHand(myHoleCards).name;
         case 'razz':
           return evaluateRazzHand(myHoleCards).name;
+        case 'stud_hilo': {
+          const { high, low } = evaluateStudHiLoHand(myHoleCards);
+          return low ? `${high.name} / ${low.name}` : high.name;
+        }
         default:
           return undefined;
       }
+    }
+    if (gameState.variant === 'omaha_hilo') {
+      const result = evaluateCurrentOmahaHiLoHand(myHoleCards, gameState.communityCards);
+      if (!result) return undefined;
+      return result.low ? `${result.high.name} / ${result.low.name}` : result.high.name;
     }
     if (variantConfig.family === 'holdem') {
       return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
@@ -237,6 +247,19 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             >
               <History style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
             </button>
+            {/* HORSE: 現在のバリアント表示 */}
+            {horseVariantInfo && (
+              <div className="flex items-center gap-[1vw] text-white/90" style={{ fontSize: 'min(1.8vh, 3vw)' }}>
+                {['H', 'O', 'R', 'S', 'E'].map((letter, i) => (
+                  <span
+                    key={letter}
+                    className={i === horseVariantInfo.roundIndex ? 'text-yellow-400 font-bold' : 'text-white/40'}
+                  >
+                    {letter}
+                  </span>
+                ))}
+              </div>
+            )}
             <div className="flex-1" />
             <div className="flex items-center gap-[3vw]">
             {/* サウンドトグル */}

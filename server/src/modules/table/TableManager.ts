@@ -14,9 +14,9 @@ export class TableManager {
   }
 
   // Create a new table
-  public createTable(blinds: string = '1/3', isFastFold: boolean = false, variant: GameVariant = 'plo'): TableInstance {
+  public createTable(blinds: string = '1/3', isFastFold: boolean = false, variant: GameVariant = 'plo', isHorse: boolean = false): TableInstance {
     const historyRecorder = variant !== 'plo' ? new NullHandHistoryRecorder() : undefined;
-    const table = new TableInstance(this.io, blinds, isFastFold, { variant, historyRecorder });
+    const table = new TableInstance(this.io, blinds, isFastFold, { variant, historyRecorder, isHorse });
     this.tables.set(table.id, table);
     return table;
   }
@@ -29,7 +29,7 @@ export class TableManager {
   // Find a table with available seats
   // Fast-fold: prefer table with most players that hasn't started a hand yet
   // Normal: prefer table with fewest players for balance
-  public findAvailableTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string, variant: GameVariant = 'plo'): TableInstance | null {
+  public findAvailableTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string, variant: GameVariant = 'plo', isHorse: boolean = false): TableInstance | null {
     let best: TableInstance | null = null;
     let bestScore = isFastFold ? -1 : Infinity;
 
@@ -37,7 +37,8 @@ export class TableManager {
       if (
         table.blinds === blinds &&
         table.isFastFold === isFastFold &&
-        table.variant === variant &&
+        table.isHorse === isHorse &&
+        (isHorse || table.variant === variant) &&
         !table.isPrivate &&
         table.hasAvailableSeat() &&
         table.id !== excludeTableId
@@ -63,10 +64,10 @@ export class TableManager {
   }
 
   // Get or create a table for given parameters
-  public getOrCreateTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string, variant: GameVariant = 'plo'): TableInstance {
-    const existing = this.findAvailableTable(blinds, isFastFold, excludeTableId, variant);
+  public getOrCreateTable(blinds: string, isFastFold: boolean = false, excludeTableId?: string, variant: GameVariant = 'plo', isHorse: boolean = false): TableInstance {
+    const existing = this.findAvailableTable(blinds, isFastFold, excludeTableId, variant, isHorse);
     if (existing) return existing;
-    return this.createTable(blinds, isFastFold, variant);
+    return this.createTable(blinds, isFastFold, variant, isHorse);
   }
 
   // Remove a table
@@ -146,7 +147,7 @@ export class TableManager {
         continue;
       }
 
-      const key = `${table.blinds}-${table.isFastFold}-${table.variant}`;
+      const key = `${table.blinds}-${table.isFastFold}-${table.variant}-${table.isHorse}`;
       const tables = tablesByBlinds.get(key) || [];
       tables.push(table);
       tablesByBlinds.set(key, tables);

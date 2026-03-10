@@ -13,15 +13,15 @@ export function lobbyRoutes(deps: LobbyDependencies) {
     fastify.get('/api/lobby/tables', async () => {
       const tablesInfo = tableManager.getTablesInfo().filter(t => !t.isPrivate);
       // 実テーブルから blinds × isFastFold ごとにプレイヤー数を集計
-      const key = (blinds: string, isFastFold: boolean) => `${blinds}:${isFastFold}`;
-      const map = new Map<string, { blinds: string; playerCount: number; isFastFold: boolean }>();
+      const key = (blinds: string, isFastFold: boolean, isHorse?: boolean) => `${blinds}:${isFastFold}:${isHorse ?? false}`;
+      const map = new Map<string, { blinds: string; playerCount: number; isFastFold: boolean; isHorse?: boolean }>();
       for (const t of tablesInfo) {
-        const k = key(t.blinds, t.isFastFold);
+        const k = key(t.blinds, t.isFastFold, t.isHorse);
         const entry = map.get(k);
         if (entry) {
           entry.playerCount += t.players;
         } else {
-          map.set(k, { blinds: t.blinds, playerCount: t.players, isFastFold: t.isFastFold });
+          map.set(k, { blinds: t.blinds, playerCount: t.players, isFastFold: t.isFastFold, ...(t.isHorse ? { isHorse: true } : {}) });
         }
       }
       return Array.from(map.values());

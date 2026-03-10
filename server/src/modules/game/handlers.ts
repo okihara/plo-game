@@ -106,9 +106,10 @@ export async function handleMatchmakingJoin(
   }
 
   const { blinds } = data;
-  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz', 'limit_2-7_triple_draw', 'no_limit_2-7_single_draw', 'limit_holdem'];
+  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz', 'limit_2-7_triple_draw', 'no_limit_2-7_single_draw', 'limit_holdem', 'omaha_hilo', 'stud_hilo'];
+  const isHorse = data.variant === 'horse';
   const variant: import('../../shared/logic/types.js').GameVariant =
-    VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo';
+    isHorse ? 'limit_holdem' : (VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo');
 
   try {
     const parts = blinds.split('/');
@@ -139,7 +140,7 @@ export async function handleMatchmakingJoin(
 
     // Find available table or create one
     const isFastFold = data.isFastFold ?? false;
-    const table = tableManager.getOrCreateTable(blinds, isFastFold, undefined, variant);
+    const table = tableManager.getOrCreateTable(blinds, isFastFold, undefined, variant, isHorse);
     if (isFastFold) setupFastFoldCallback(table, tableManager);
 
     // Deduct buy-in

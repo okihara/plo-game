@@ -33,6 +33,13 @@ export class TableInstance {
   public readonly isPrivate: boolean = false;
   public readonly inviteCode: string | null = null;
 
+  // HORSE (MIXゲーム) モード
+  public readonly isHorse: boolean = false;
+  private horseVariants: GameVariant[] = ['limit_holdem', 'omaha_hilo', 'razz', 'stud', 'stud_hilo'];
+  private horseCurrentIndex: number = 0;
+  private horseHandCount: number = 0;
+  private horseHandsPerRound: number = 0;
+
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
   public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
 
@@ -56,17 +63,18 @@ export class TableInstance {
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
-  private readonly actionController: ActionController;
+  private actionController: ActionController;
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private readonly spectatorManager: SpectatorManager;
-  private readonly variantAdapter: VariantAdapter;
+  private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
-    this.variant = options?.variant ?? 'plo';
+    this.isHorse = options?.isHorse ?? false;
+    this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
 
@@ -354,7 +362,8 @@ export class TableInstance {
       maxPlayers: this.maxPlayers,
       isFastFold: this.isFastFold,
       isPrivate: this.isPrivate,
-      variant: this.variant,
+      variant: this.currentVariant,
+      isHorse: this.isHorse,
     };
   }
 
@@ -467,6 +476,55 @@ export class TableInstance {
     return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
   }
 
+  /** HORSE: オービット完了時にバリアントを切り替え */
+  private advanceHorseVariantIfNeeded(): void {
+    if (!this.isHorse) return;
+
+    // 初回 or オービット完了
+    if (this.horseHandsPerRound === 0 || this.horseHandCount >= this.horseHandsPerRound) {
+      if (this.horseHandsPerRound > 0) {
+        // 次のバリアントへ
+        this.horseCurrentIndex = (this.horseCurrentIndex + 1) % this.horseVariants.length;
+      }
+      this.horseHandCount = 0;
+      this.horseHandsPerRound = this.getPlayerCount();
+
+      const newVariant = this.horseVariants[this.horseCurrentIndex];
+      this.variantAdapter = new VariantAdapter(newVariant);
+      this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+
+      // バリアント変更をクライアントに通知
+      this.broadcast.emitToRoom('game:variant_change', {
+        variant: newVariant,
+        variantLabel: this.getHorseVariantLabel(newVariant),
+        roundIndex: this.horseCurrentIndex,
+        totalRounds: this.horseVariants.length,
+      });
+    }
+
+    this.horseHandCount++;
+  }
+
+  /** HORSE: バリアントの表示名 */
+  private getHorseVariantLabel(variant: GameVariant): string {
+    switch (variant) {
+      case 'limit_holdem': return "Limit Hold'em";
+      case 'omaha_hilo': return 'Omaha Hi-Lo';
+      case 'razz': return 'Razz';
+      case 'stud': return '7-Card Stud';
+      case 'stud_hilo': return 'Stud Hi-Lo';
+      default: return variant;
+    }
+  }
+
+  /** HORSE: 現在のバリアント（外部から参照用） */
+  public get currentVariant(): GameVariant {
+    if (this.isHorse) {
+      return this.horseVariants[this.horseCurrentIndex];
+    }
+    return this.variant;
+  }
+
   private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
     if (maintenanceService.isMaintenanceActive()) return;
@@ -486,6 +544,11 @@ export class TableInstance {
 
     this._isHandInProgress = true;
     this.pendingEarlyFolds.clear(); // safety
+
+    // HORSE: バリアントローテーション
+    if (this.isHorse) {
+      this.advanceHorseVariantIfNeeded();
+    }
 
     // Preserve dealer position from previous hand
     const previousDealerPosition = this.gameState?.dealerPosition ?? -1;
@@ -784,6 +847,7 @@ export class TableInstance {
           amount: w.amount,
           handName: w.handName,
           cards: this.gameState!.players[w.playerId].holeCards,
+          ...(w.hiLoType ? { hiLoType: w.hiLoType } : {}),
         })),
         players: showdownPlayers,
       };
@@ -804,6 +868,7 @@ export class TableInstance {
         playerId: seats[w.playerId]?.odId || '',
         amount: w.amount,
         handName: w.handName,
+        ...(w.hiLoType ? { hiLoType: w.hiLoType } : {}),
       })),
       rake: this.gameState.rake,
     };
