@@ -7,6 +7,7 @@ import { PlayerDebug } from './pages/PlayerDebug';
 import { HandHistory } from './pages/HandHistory';
 import { SpectatorView } from './pages/SpectatorView';
 import { PlayerProfile } from './pages/PlayerProfile';
+import { HandDetailPage } from './pages/HandDetailPage';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
@@ -53,7 +54,10 @@ function App() {
   };
 
   let page;
-  if (currentPath.startsWith('/player/')) {
+  if (currentPath.startsWith('/hand/')) {
+    const handId = currentPath.replace('/hand/', '');
+    page = <HandDetailPage handId={handId} onBack={goBackToLobby} />;
+  } else if (currentPath.startsWith('/player/')) {
     const playerId = currentPath.replace('/player/', '');
     page = <PlayerProfile userId={playerId} onBack={goBackToLobby} />;
   } else if (currentPath.startsWith('/spectate/')) {
