@@ -167,13 +167,13 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
             marginBottom: 3,
           },
         },
-          h('div', { style: { display: 'flex', fontSize: 22, fontWeight: 700, color: '#1a1a1a' } },
+          h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } },
             STREET_LABELS[street] || street),
           ...(cards && cards.length > 0
-            ? cards.map(c => CardElement(c, 18))
+            ? cards.map(c => CardElement(c, 20))
             : []),
           ...(pot > 0
-            ? [h('div', { style: { display: 'flex', fontSize: 17, color: '#555', marginLeft: 2 } }, `Pot ${pot}`)]
+            ? [h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } }, `Pot ${pot}`)]
             : []),
         ),
       );
@@ -191,20 +191,20 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       h('div', {
         style: {
           display: 'flex', alignItems: 'center',
-          padding: '2px 0',
+          padding: '3px 0',
         },
       },
-        h('div', { style: { display: 'flex', width: 48, fontSize: 19, fontWeight: 700, color: '#555' } },
+        h('div', { style: { display: 'flex', width: 52, fontSize: 22, fontWeight: 700, color: '#555' } },
           a.position),
-        h('div', { style: { display: 'flex', width: 96, fontSize: 20, color: '#444', overflow: 'hidden' } },
+        h('div', { style: { display: 'flex', width: 108, fontSize: 24, color: '#444', overflow: 'hidden' } },
           truncName(a.playerName, 6)),
         ...(holeCards.length > 0
           ? [h('div', { style: { display: 'flex', alignItems: 'center', gap: 1, marginRight: 6 } },
-              ...holeCards.map(c => CardElement(c, 16)))]
+              ...holeCards.map(c => CardElement(c, 18)))]
           : []),
-        h('div', { style: { display: 'flex', width: 68, fontSize: 20, fontWeight: 600, color: actionColor } },
+        h('div', { style: { display: 'flex', width: 76, fontSize: 24, fontWeight: 600, color: actionColor } },
           actionLabel),
-        h('div', { style: { display: 'flex', fontSize: 20, fontWeight: 600, color: amountColor } },
+        h('div', { style: { display: 'flex', fontSize: 24, fontWeight: 600, color: amountColor } },
           a.amount > 0 ? `${a.amount}` : ''),
       ),
     );
@@ -222,11 +222,11 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
             paddingBottom: 3, paddingTop: 8, marginBottom: 3,
           },
         },
-          h('div', { style: { display: 'flex', fontSize: 22, fontWeight: 700, color: '#1a1a1a' } },
+          h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } },
             STREET_LABELS[s]),
-          ...streetCards[s].map(c => CardElement(c, 18)),
+          ...streetCards[s].map(c => CardElement(c, 20)),
           ...(runningPot > 0
-            ? [h('div', { style: { display: 'flex', fontSize: 17, color: '#555', marginLeft: 2 } }, `Pot ${runningPot}`)]
+            ? [h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } }, `Pot ${runningPot}`)]
             : []),
         ),
       );
@@ -242,35 +242,37 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
         paddingBottom: 3, paddingTop: 8, marginBottom: 3,
       },
     },
-      h('div', { style: { display: 'flex', fontSize: 22, fontWeight: 700, color: '#1a1a1a' } }, 'Result'),
-      ...data.communityCards.map(c => CardElement(c, 18)),
-      h('div', { style: { display: 'flex', fontSize: 17, color: '#555', marginLeft: 2 } },
+      h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } }, 'Result'),
+      ...data.communityCards.map(c => CardElement(c, 20)),
+      h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } },
         `Pot ${data.potSize}`),
     ),
   );
 
-  // プレイヤーをポジション順（BTN→SB→BB→UTG→HJ→CO）でソート
+  // チップ変動があったプレイヤーのみ、ポジション順（BTN→SB→BB→UTG→HJ→CO）でソート
   const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
-  const sortedPlayers = [...data.players].sort((a, b) => {
-    const aIdx = a.position ? POSITION_ORDER.indexOf(a.position) : 99;
-    const bIdx = b.position ? POSITION_ORDER.indexOf(b.position) : 99;
-    return aIdx - bIdx;
-  });
+  const sortedPlayers = [...data.players]
+    .filter(p => p.profit !== 0)
+    .sort((a, b) => {
+      const aIdx = a.position ? POSITION_ORDER.indexOf(a.position) : 99;
+      const bIdx = b.position ? POSITION_ORDER.indexOf(b.position) : 99;
+      return aIdx - bIdx;
+    });
 
   for (const p of sortedPlayers) {
     const profitColor = p.profit > 0 ? '#2d6a4f' : p.profit < 0 ? '#C0392B' : '#888';
     const profitStr = p.profit > 0 ? `+${p.profit}` : `${p.profit}`;
     elements.push(
       h('div', {
-        style: { display: 'flex', alignItems: 'center', padding: '2px 0' },
+        style: { display: 'flex', alignItems: 'center', padding: '3px 0' },
       },
-        h('div', { style: { display: 'flex', width: 48, fontSize: 19, fontWeight: 700, color: '#555' } },
+        h('div', { style: { display: 'flex', width: 52, fontSize: 22, fontWeight: 700, color: '#555' } },
           p.position || ''),
-        h('div', { style: { display: 'flex', width: 96, fontSize: 20, color: '#444', overflow: 'hidden' } },
+        h('div', { style: { display: 'flex', width: 108, fontSize: 24, color: '#444', overflow: 'hidden' } },
           truncName(p.username, 6)),
-        h('div', { style: { display: 'flex', flex: 1, fontSize: 18, color: '#555', overflow: 'hidden' } },
+        h('div', { style: { display: 'flex', flex: 1, fontSize: 22, color: '#555', overflow: 'hidden' } },
           p.finalHand || ''),
-        h('div', { style: { display: 'flex', fontSize: 20, fontWeight: 700, color: profitColor } },
+        h('div', { style: { display: 'flex', fontSize: 24, fontWeight: 700, color: profitColor } },
           profitStr),
       ),
     );
@@ -280,10 +282,10 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
 }
 
 // 要素の種類ごとの推定高さ（px）— CSS値から算出、余裕を持たせて切れ防止
-// ストリートヘッダー: paddingTop(8) + content(~26) + paddingBottom(3) + border(2) + marginBottom(3) = 42
-const STREET_HEADER_HEIGHT = 42;
-// アクション行: padding(2*2) + content(~24) + ホールカード考慮 = 30
-const ACTION_ROW_HEIGHT = 30;
+// ストリートヘッダー: paddingTop(8) + content(26*1.2≈31) + paddingBottom(3) + border(2) + marginBottom(3) = 47
+const STREET_HEADER_HEIGHT = 47;
+// アクション行: padding(3*2) + content(24*1.2≈29) + ホールカード考慮 = 36
+const ACTION_ROW_HEIGHT = 36;
 // カラム利用可能高さ: 画像630 - コンテナpadding(16+12) - カラムpadding(10*2) - カラムborder(1*2) = 580
 const COL_MAX_HEIGHT = 580;
 
