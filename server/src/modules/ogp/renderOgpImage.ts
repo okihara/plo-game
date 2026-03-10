@@ -47,17 +47,22 @@ interface OgpStats {
   handsPlayed: number;
   totalProfit: number;
   winRate: number;
+  totalAllInEVProfit: number;
+  evWinRate: number;
   vpip: number;
   pfr: number;
   threeBet: number;
   afq: number;
-  wtsd: number;
-  wsd: number;
+  cbet: number;
+  foldToCbet: number;
+  foldTo3Bet: number;
 }
 
 interface ProfitPoint {
   c: number;  // cumulative total
   e: number;  // cumulative EV
+  s: number;  // cumulative showdown
+  n: number;  // cumulative non-showdown
 }
 
 const WIDTH = 1200;
@@ -75,8 +80,8 @@ function h(type: string, props: Record<string, unknown>, ...children: unknown[])
 
 function StatBlock(label: string, value: string, color?: string, small?: boolean) {
   return h('div', { style: { display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1 } },
-    h('div', { style: { display: 'flex', fontSize: small ? 16 : 18, color: '#999', marginBottom: 4 } }, label),
-    h('div', { style: { display: 'flex', fontSize: small ? 26 : 30, fontWeight: 700, color: color || '#1a1a1a' } }, value),
+    h('div', { style: { display: 'flex', fontSize: small ? 14 : 15, color: '#666', marginBottom: 3 } }, label),
+    h('div', { style: { display: 'flex', fontSize: small ? 22 : 24, fontWeight: 700, color: color || '#1a1a1a' } }, value),
   );
 }
 
@@ -108,12 +113,14 @@ function niceTicks(min: number, max: number, maxCount: number): number[] {
   return ticks;
 }
 
-function buildChartSvg(points: ProfitPoint[], chartWidth: number, chartHeight: number): ReactNode {
-  const CW = chartWidth;
+function buildChartWithLabels(points: ProfitPoint[], totalWidth: number, chartHeight: number): ReactNode {
+  const Y_LABEL_W = 48;  // Y軸ラベル幅
+  const X_LABEL_H = 18;  // X軸ラベル高さ
+  const CW = totalWidth - Y_LABEL_W;
   const CH = chartHeight;
   const PAD = 8;
 
-  const allValues = points.flatMap(pt => [pt.c, pt.e]);
+  const allValues = points.flatMap(pt => [pt.c, pt.e, pt.s, pt.n]);
   const rawMin = Math.min(0, ...allValues);
   const rawMax = Math.max(0, ...allValues);
 
@@ -133,8 +140,9 @@ function buildChartSvg(points: ProfitPoint[], chartWidth: number, chartHeight: n
 
   const totalLine = points.map((pt, i) => `${toX(i)},${toY(pt.c)}`).join(' ');
   const evLine = points.map((pt, i) => `${toX(i)},${toY(pt.e)}`).join(' ');
+  const sdLine = points.map((pt, i) => `${toX(i)},${toY(pt.s)}`).join(' ');
+  const noSdLine = points.map((pt, i) => `${toX(i)},${toY(pt.n)}`).join(' ');
 
-  // グリッド線のみ（satori は SVG text 非対応）
   const gridElements: ReactNode[] = [];
   for (const v of yTicks) {
     gridElements.push(
@@ -147,37 +155,67 @@ function buildChartSvg(points: ProfitPoint[], chartWidth: number, chartHeight: n
     );
   }
 
-  return h('svg', {
+  const svgChart = h('svg', {
     viewBox: `0 0 ${CW} ${CH}`,
     width: CW,
     height: CH,
     xmlns: 'http://www.w3.org/2000/svg',
   },
     ...gridElements,
-    // EV line
-    h('polyline', {
-      points: evLine,
-      fill: 'none',
-      stroke: '#FFB800',
-      strokeWidth: 2,
-      strokeLinejoin: 'round',
-      strokeLinecap: 'round',
-    }),
-    // Total line
-    h('polyline', {
-      points: totalLine,
-      fill: 'none',
-      stroke: '#00C000',
-      strokeWidth: 2.5,
-      strokeLinejoin: 'round',
-      strokeLinecap: 'round',
-    }),
+    h('polyline', { points: noSdLine, fill: 'none', stroke: '#FF0000', strokeWidth: 1.5, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+    h('polyline', { points: sdLine, fill: 'none', stroke: '#0080FF', strokeWidth: 1.5, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+    h('polyline', { points: evLine, fill: 'none', stroke: '#FFB800', strokeWidth: 2, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+    h('polyline', { points: totalLine, fill: 'none', stroke: '#00C000', strokeWidth: 2.5, strokeLinejoin: 'round', strokeLinecap: 'round' }),
+  );
+
+  // Y軸ラベル（HTML divで実現）
+  const yLabels = yTicks.map(v =>
+    h('div', {
+      style: {
+        display: 'flex', position: 'absolute',
+        right: CW + 4, top: toY(v) - 7,
+        fontSize: 11, color: '#666', whiteSpace: 'nowrap',
+      },
+    }, formatCompact(v)),
+  );
+
+  // X軸ラベル（ハンド数）
+  const totalHands = points.length;
+  const xTickCount = 4;
+  const xLabels: ReactNode[] = [];
+  for (let i = 0; i <= xTickCount; i++) {
+    const idx = Math.round((i / xTickCount) * (totalHands - 1));
+    const handNum = idx + 1;
+    xLabels.push(
+      h('div', {
+        style: {
+          display: 'flex', position: 'absolute',
+          left: Y_LABEL_W + toX(idx) - 15,
+          top: CH + 2,
+          width: 30, justifyContent: 'center',
+          fontSize: 11, color: '#666',
+        },
+      }, handNum.toLocaleString()),
+    );
+  }
+
+  return h('div', {
+    style: { display: 'flex', position: 'relative', width: totalWidth, height: CH + X_LABEL_H },
+  },
+    // SVGチャート本体（右寄せ）
+    h('div', { style: { display: 'flex', position: 'absolute', left: Y_LABEL_W, top: 0 } }, svgChart),
+    // Y軸ラベル
+    ...yLabels,
+    // X軸ラベル
+    ...xLabels,
   );
 }
 
 function buildElement(name: string, stats: OgpStats | null, profitPoints: ProfitPoint[] | null): ReactNode {
   const profitColor = stats && stats.totalProfit >= 0 ? '#2d6a4f' : '#C0392B';
   const winRateColor = stats && stats.winRate >= 0 ? '#2d6a4f' : '#C0392B';
+  const evProfitColor = stats && stats.totalAllInEVProfit >= 0 ? '#2d6a4f' : '#C0392B';
+  const evWinRateColor = stats && stats.evWinRate >= 0 ? '#2d6a4f' : '#C0392B';
   const hasChart = profitPoints && profitPoints.length >= 2;
   const SIDE_PAD = 60;
   const CONTENT_W = WIDTH - SIDE_PAD * 2; // 1080
@@ -188,7 +226,9 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
         h('div', { style: { display: 'flex', justifyContent: 'center', gap: 0 } },
           StatBlock('総ハンド数', stats.handsPlayed.toLocaleString()),
           StatBlock('実収支', formatProfit(stats.totalProfit), profitColor),
-          StatBlock('Win Rate', `${stats.winRate >= 0 ? '+' : ''}${stats.winRate.toFixed(1)} chips/hand`, winRateColor),
+          StatBlock('Win Rate', `${stats.winRate >= 0 ? '+' : ''}${stats.winRate.toFixed(1)}`, winRateColor),
+          StatBlock('収支 (EV)', formatProfit(stats.totalAllInEVProfit), evProfitColor),
+          StatBlock('WR (EV)', `${stats.evWinRate >= 0 ? '+' : ''}${stats.evWinRate.toFixed(1)}`, evWinRateColor),
         ),
         // 区切り線
         h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#e8e2da' } }),
@@ -198,12 +238,13 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
           StatBlock('PFR', `${stats.pfr.toFixed(1)}%`, undefined, true),
           StatBlock('3Bet', `${stats.threeBet.toFixed(1)}%`, undefined, true),
           StatBlock('AFq', `${stats.afq.toFixed(1)}%`, undefined, true),
-          StatBlock('WTSD', `${stats.wtsd.toFixed(1)}%`, undefined, true),
-          StatBlock('W$SD', `${stats.wsd.toFixed(1)}%`, undefined, true),
+          StatBlock('CBet', `${stats.cbet.toFixed(1)}%`, undefined, true),
+          StatBlock('Fold CB', `${stats.foldToCbet.toFixed(1)}%`, undefined, true),
+          StatBlock('Fold 3B', `${stats.foldTo3Bet.toFixed(1)}%`, undefined, true),
         ),
       )
     : h('div', { style: { display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' } },
-        h('div', { style: { display: 'flex', fontSize: 24, color: '#aaa' } }, 'スタッツはまだありません'),
+        h('div', { style: { display: 'flex', fontSize: 24, color: '#666' } }, 'スタッツはまだありません'),
       );
 
   // チャートセクション（背景カード付き）
@@ -217,18 +258,26 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
         },
       },
         // 凡例（チャート上部右寄せ）
-        h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 20, marginBottom: 8 } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
-            h('div', { style: { display: 'flex', width: 24, height: 4, backgroundColor: '#00C000', borderRadius: 2 } }),
-            h('div', { style: { display: 'flex', fontSize: 15, fontWeight: 700, color: '#666' } }, 'Total'),
+        h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 16, marginBottom: 8 } },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
+            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#00C000', borderRadius: 2 } }),
+            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'Total'),
           ),
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 6 } },
-            h('div', { style: { display: 'flex', width: 24, height: 4, backgroundColor: '#FFB800', borderRadius: 2 } }),
-            h('div', { style: { display: 'flex', fontSize: 15, fontWeight: 700, color: '#666' } }, 'EV'),
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
+            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#FFB800', borderRadius: 2 } }),
+            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'EV'),
+          ),
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
+            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#0080FF', borderRadius: 2 } }),
+            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'Showdown'),
+          ),
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
+            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#FF0000', borderRadius: 2 } }),
+            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'Non-SD'),
           ),
         ),
-        // チャート本体
-        buildChartSvg(profitPoints!, chartInnerW, 210),
+        // チャート本体（Y軸ラベル+X軸ラベル付き）
+        buildChartWithLabels(profitPoints!, chartInnerW, 190),
       )
     : null;
 
@@ -237,11 +286,8 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
     h('div', { style: { display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, height: 6, backgroundColor: '#1a1a1a' } }),
     // ヘッダー
     h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 32, marginBottom: 12 } },
-      h('div', { style: { display: 'flex', alignItems: 'baseline' } },
-        h('div', { style: { display: 'flex', fontSize: 44, fontWeight: 700, color: '#1a1a1a' } }, name),
-        h('div', { style: { display: 'flex', fontSize: 22, color: '#aaa', marginLeft: 10 } }, 'のスタッツ'),
-      ),
-      h('div', { style: { display: 'flex', fontSize: 18, color: '#bbb', fontWeight: 700 } }, 'Baby PLO'),
+      h('div', { style: { display: 'flex', fontSize: 34, fontWeight: 700, color: '#1a1a1a' } }, name),
+      h('div', { style: { display: 'flex', fontSize: 18, color: '#1a1a1a', fontWeight: 700 } }, 'Baby PLO'),
     ),
     // 区切り線
     h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#d8d2c8' } }),
@@ -256,7 +302,7 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
   // フッター
   children.push(
     h('div', { style: { display: 'flex', justifyContent: 'center', paddingBottom: 20, paddingTop: 14 } },
-      h('div', { style: { display: 'flex', fontSize: 16, color: '#c0b8ac' } }, 'baby-plo.up.railway.app'),
+      h('div', { style: { display: 'flex', fontSize: 16, color: '#888' } }, 'baby-plo.up.railway.app'),
     ),
   );
 

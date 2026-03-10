@@ -17,7 +17,7 @@ export async function ogpRoutes(fastify: FastifyInstance) {
       prisma.handHistoryPlayer.findMany({
         where: { userId },
         orderBy: { handHistory: { createdAt: 'asc' } },
-        select: { profit: true, allInEVProfit: true },
+        select: { profit: true, finalHand: true, allInEVProfit: true },
       }),
     ]);
 
@@ -38,25 +38,32 @@ export async function ogpRoutes(fastify: FastifyInstance) {
           handsPlayed: cache.handsPlayed,
           totalProfit: cache.totalProfit,
           winRate: cache.totalProfit / cache.handsPlayed,
+          totalAllInEVProfit: cache.totalAllInEVProfit,
+          evWinRate: cache.totalAllInEVProfit / cache.handsPlayed,
           vpip: pct(cache.vpipCount, cache.detailedHands),
           pfr: pct(cache.pfrCount, cache.detailedHands),
           threeBet: pct(cache.threeBetCount, cache.threeBetOpportunity),
           afq: pct(cache.aggressiveActions, cache.totalPostflopActions),
-          wtsd: pct(cache.wtsdCount, cache.sawFlopCount),
-          wsd: pct(cache.wsdCount, cache.wtsdCount),
+          cbet: pct(cache.cbetCount, cache.cbetOpportunity),
+          foldToCbet: pct(cache.foldToCbetCount, cache.facedCbetCount),
+          foldTo3Bet: pct(cache.foldTo3BetCount, cache.faced3BetCount),
         }
       : null;
 
     // 収支推移データ
-    let profitPoints: { c: number; e: number }[] | null = null;
+    let profitPoints: { c: number; e: number; s: number; n: number }[] | null = null;
     if (historyRows.length >= 2) {
       const cacheEvDiff = cache ? cache.totalAllInEVProfit - cache.totalProfit : 0;
       let cumTotal = 0;
       let cumEV = 0;
+      let cumSD = 0;
+      let cumNoSD = 0;
       profitPoints = historyRows.map(r => {
+        const sd = r.finalHand != null;
         cumTotal += r.profit;
         cumEV += r.allInEVProfit ?? r.profit;
-        return { c: cumTotal, e: cumEV };
+        if (sd) cumSD += r.profit; else cumNoSD += r.profit;
+        return { c: cumTotal, e: cumEV, s: cumSD, n: cumNoSD };
       });
       // allInEVProfit が全てNULLの場合、キャッシュの差分で補正
       if (cumEV === cumTotal && cacheEvDiff !== 0) {

@@ -112,7 +112,7 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
             >
               ← 戻る
             </button>
-            <h1 className="text-[4cqw] font-bold text-cream-900 truncate">プレイヤースタッツ</h1>
+            <h1 className="text-[4cqw] font-bold text-cream-900 truncate">{playerName ?? 'Player'}</h1>
           </div>
           <div className="relative">
             <button
