@@ -170,7 +170,7 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
           h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } },
             STREET_LABELS[street] || street),
           ...(cards && cards.length > 0
-            ? cards.map(c => CardElement(c, 20))
+            ? cards.map(c => CardElement(c, 24))
             : []),
           ...(pot > 0
             ? [h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } }, `Pot ${pot}`)]
@@ -196,11 +196,11 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       },
         h('div', { style: { display: 'flex', width: 52, fontSize: 22, fontWeight: 700, color: '#555' } },
           a.position),
-        h('div', { style: { display: 'flex', width: 108, fontSize: 24, color: '#444', overflow: 'hidden' } },
-          truncName(a.playerName, 6)),
+        h('div', { style: { display: 'flex', width: 130, fontSize: 24, color: '#444', overflow: 'hidden' } },
+          truncName(a.playerName, 8)),
         ...(holeCards.length > 0
           ? [h('div', { style: { display: 'flex', alignItems: 'center', gap: 1, marginRight: 6 } },
-              ...holeCards.map(c => CardElement(c, 18)))]
+              ...holeCards.map(c => CardElement(c, 24)))]
           : []),
         h('div', { style: { display: 'flex', width: 76, fontSize: 24, fontWeight: 600, color: actionColor } },
           actionLabel),
@@ -224,7 +224,7 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
         },
           h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } },
             STREET_LABELS[s]),
-          ...streetCards[s].map(c => CardElement(c, 20)),
+          ...streetCards[s].map(c => CardElement(c, 24)),
           ...(runningPot > 0
             ? [h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } }, `Pot ${runningPot}`)]
             : []),
@@ -243,7 +243,7 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       },
     },
       h('div', { style: { display: 'flex', fontSize: 26, fontWeight: 700, color: '#1a1a1a' } }, 'Result'),
-      ...data.communityCards.map(c => CardElement(c, 20)),
+      ...data.communityCards.map(c => CardElement(c, 24)),
       h('div', { style: { display: 'flex', fontSize: 20, color: '#555', marginLeft: 2 } },
         `Pot ${data.potSize}`),
     ),
@@ -268,8 +268,8 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
       },
         h('div', { style: { display: 'flex', width: 52, fontSize: 22, fontWeight: 700, color: '#555' } },
           p.position || ''),
-        h('div', { style: { display: 'flex', width: 108, fontSize: 24, color: '#444', overflow: 'hidden' } },
-          truncName(p.username, 6)),
+        h('div', { style: { display: 'flex', width: 130, fontSize: 24, color: '#444', overflow: 'hidden' } },
+          truncName(p.username, 8)),
         h('div', { style: { display: 'flex', flex: 1, fontSize: 22, color: '#555', overflow: 'hidden' } },
           p.finalHand || ''),
         h('div', { style: { display: 'flex', fontSize: 24, fontWeight: 700, color: profitColor } },
@@ -286,8 +286,8 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
 const STREET_HEADER_HEIGHT = 47;
 // アクション行: padding(3*2) + content(24*1.2≈29) + ホールカード考慮 = 36
 const ACTION_ROW_HEIGHT = 36;
-// カラム利用可能高さ: 画像630 - コンテナpadding(16+12) - カラムpadding(10*2) - カラムborder(1*2) = 580
-const COL_MAX_HEIGHT = 580;
+// カラム利用可能高さ: 画像630 - コンテナpadding(8+8) = 614
+const COL_MAX_HEIGHT = 614;
 
 function estimateRowHeight(el: ReactNode): number {
   const props = (el as unknown as Record<string, unknown>)?.props as Record<string, unknown> | undefined;
@@ -330,13 +330,11 @@ function buildActionColumns(data: HandOgpData): ReactNode {
 
   const colStyle = {
     display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0,
-    backgroundColor: '#f5f1ec', borderRadius: 8,
-    border: '1px solid #d8d2c8', padding: '10px 14px',
     overflow: 'hidden',
   };
 
   return h('div', {
-    style: { display: 'flex', flex: 1, gap: 12, overflow: 'hidden' },
+    style: { display: 'flex', flex: 1, gap: 16, overflow: 'hidden' },
   },
     h('div', { style: colStyle }, ...leftElements),
     ...(rightElements.length > 0
@@ -348,14 +346,12 @@ function buildActionColumns(data: HandOgpData): ReactNode {
 // ── メインレイアウト ──
 
 function buildHandElement(data: HandOgpData): ReactNode {
-  const SIDE_PAD = 24;
-
   return h('div', {
     style: {
       display: 'flex', flexDirection: 'column',
       width: WIDTH, height: HEIGHT,
       backgroundColor: '#faf8f5',
-      padding: `16px ${SIDE_PAD}px 12px`,
+      padding: '8px 12px 8px',
       fontFamily: 'Noto Sans CJK JP',
     },
   },
