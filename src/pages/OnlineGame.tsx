@@ -1,15 +1,17 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, isStudFamily } from '../logic';
-import { evaluateCurrentHand, evaluateStudHand } from '../logic/handEvaluator';
+import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
   ActionPanel,
-  StudActionPanel,
+  FixedLimitActionPanel,
+  NoLimitActionPanel,
+  DrawPhasePanel,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -68,6 +70,29 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
+  const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
+
+  // Draw: ストリート変更時にカード選択リセット
+  const currentStreet = gameState?.currentStreet;
+  useEffect(() => {
+    setSelectedCardIndices(new Set());
+  }, [currentStreet]);
+
+  const handleCardToggle = useCallback((index: number) => {
+    setSelectedCardIndices(prev => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
+  }, []);
+
+  // Draw判定
+  const isDraw = gameState ? getVariantConfig(gameState.variant).family === 'draw' : false;
+  const isCurrentDrawStreet = gameState ? isDrawStreet(gameState.currentStreet) : false;
 
   // gameStateが変わったらbigBlindを設定
   useEffect(() => {
@@ -104,7 +129,8 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   const myCurrentHandName = useMemo(() => {
     if (!gameState) return undefined;
-    if (isStudFamily(gameState.variant)) {
+    const variantConfig = getVariantConfig(gameState.variant);
+    if (variantConfig.family === 'stud') {
       if (myHoleCards.length < 5) {
         return undefined;
       }
@@ -116,6 +142,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         default:
           return undefined;
       }
+    }
+    if (variantConfig.family === 'holdem') {
+      return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
     }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
   }, [myHoleCards, gameState?.communityCards, gameState?.variant]);
@@ -339,10 +368,17 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             folded={myPlayer?.folded}
             handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
             variant={gameState.variant}
+            isDrawPhase={isDraw && isCurrentDrawStreet}
+            selectedCardIndices={selectedCardIndices}
+            onCardToggle={handleCardToggle}
           />
 
-          {isStudFamily(gameState.variant) ? (
-            <StudActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
+          {isDraw && isCurrentDrawStreet ? (
+            <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
+          ) : getVariantConfig(gameState.variant).betting === 'no_limit' ? (
+            <NoLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
+          ) : getVariantConfig(gameState.variant).betting === 'fixed_limit' ? (
+            <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
           ) : (
             <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
           )}

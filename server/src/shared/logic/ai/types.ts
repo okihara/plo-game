@@ -143,5 +143,5 @@ export interface AIVariantStrategy {
     personality: BotPersonality,
     positionBonus: number,
     context: AIContext,
-  ): { action: Action; amount: number };
+  ): { action: Action; amount: number; discardIndices?: number[] };
 }

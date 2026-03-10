@@ -69,7 +69,8 @@ export class ActionController {
     seatIndex: number,
     action: Action,
     amount: number,
-    odId: string
+    odId: string,
+    discardIndices?: number[]
   ): ActionResult {
     // プレイヤーのターンかチェック
     if (gameState.currentPlayerIndex !== seatIndex) {
@@ -94,10 +95,10 @@ export class ActionController {
     this.clearActionTimer();
 
     // ストリート変更を事前検出（applyAction前に判定）
-    const willAdvanceStreet = this.variantAdapter.wouldAdvanceStreet(gameState, seatIndex, action, amount);
+    const willAdvanceStreet = this.variantAdapter.wouldAdvanceStreet(gameState, seatIndex, action, amount, discardIndices);
 
     // アクション適用
-    const newState = this.variantAdapter.applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
+    const newState = this.variantAdapter.applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB, discardIndices);
 
     // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {

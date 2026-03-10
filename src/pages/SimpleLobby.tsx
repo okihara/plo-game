@@ -336,6 +336,27 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             >
               Razz 4/8
             </button>
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'limit_2-7_triple_draw')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              2-7 TD 4/8
+            </button>
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'no_limit_2-7_single_draw')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              2-7 SD (NL) 4/8
+            </button>
+            <button
+              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'limit_holdem')}
+              disabled={!user || !!maintenance?.isActive}
+              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              LHE 4/8
+            </button>
           </div>
 
           {/* Debug link */}

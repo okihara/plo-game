@@ -10,7 +10,7 @@ export interface ClientToServerEvents {
   'table:spectate': (data: { tableId: string }) => void;
 
   // Game actions
-  'game:action': (data: { action: Action; amount?: number }) => void;
+  'game:action': (data: { action: Action; amount?: number; discardIndices?: number[] }) => void;
   'game:fast_fold': () => void;
 
   // Matchmaking pool

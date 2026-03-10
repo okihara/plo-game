@@ -151,6 +151,46 @@ function getGroups(values: number[]): { value: number; count: number }[] {
   return groups;
 }
 
+// Hold'em: 2枚のホールカード + 5枚のコミュニティカードから最強の5枚を選ぶ（C(7,5)=21通り）
+export function evaluateHoldemHand(holeCards: Card[], communityCards: Card[]): HandRank {
+  if (holeCards.length !== 2 || communityCards.length !== 5) {
+    throw new Error('Hold\'em requires 2 hole cards and 5 community cards');
+  }
+
+  const allCards = [...holeCards, ...communityCards];
+  const combos = getCombinations(allCards, 5);
+  let bestHand: HandRank = { rank: 0, name: '', highCards: [] };
+
+  for (const combo of combos) {
+    const handRank = evaluateFiveCardHand(combo);
+    if (compareHands(handRank, bestHand) > 0) {
+      bestHand = handRank;
+    }
+  }
+
+  return bestHand;
+}
+
+// Hold'em: コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
+export function evaluateCurrentHoldemHand(holeCards: Card[], communityCards: Card[]): HandRank | null {
+  if (holeCards.length !== 2 || communityCards.length < 3) {
+    return null;
+  }
+
+  const allCards = [...holeCards, ...communityCards];
+  const combos = getCombinations(allCards, 5);
+  let bestHand: HandRank = { rank: 0, name: '', highCards: [] };
+
+  for (const combo of combos) {
+    const handRank = evaluateFiveCardHand(combo);
+    if (compareHands(handRank, bestHand) > 0) {
+      bestHand = handRank;
+    }
+  }
+
+  return bestHand;
+}
+
 // コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
 export function evaluateCurrentHand(holeCards: Card[], communityCards: Card[]): HandRank | null {
   if (holeCards.length !== 4 || communityCards.length < 3) {

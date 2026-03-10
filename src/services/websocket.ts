@@ -239,8 +239,8 @@ class WebSocketService {
   }
 
   // Game actions
-  sendAction(action: Action, amount?: number): void {
-    this.socket?.emit('game:action', { action, amount });
+  sendAction(action: Action, amount?: number, discardIndices?: number[]): void {
+    this.socket?.emit('game:action', { action, amount, discardIndices });
   }
 
   sendFastFold(): void {
