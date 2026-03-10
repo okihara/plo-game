@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Share2, Link, Check } from 'lucide-react';
 import { ProfitChart } from './ProfitChart';
 import { ProfileEditDialog } from './ProfileEditDialog';
+import { buildStatsShareText, openXShare } from '../utils/share';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -69,6 +70,33 @@ export function ProfilePopup({
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(initialShowEdit);
+  const [copied, setCopied] = useState(false);
+  const [showShareMenu, setShowShareMenu] = useState(false);
+
+  const shareUrl = userId ? `${window.location.origin}/player/${userId}` : '';
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      const input = document.createElement('input');
+      input.value = shareUrl;
+      document.body.appendChild(input);
+      input.select();
+      document.execCommand('copy');
+      document.body.removeChild(input);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
+    setShowShareMenu(false);
+  };
+
+  const handleShareX = () => {
+    openXShare(buildStatsShareText(name), shareUrl);
+    setShowShareMenu(false);
+  };
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
 
   // スタッツ＆収支推移をAPIから並列取得
@@ -142,7 +170,7 @@ export function ProfilePopup({
                 <div className="w-full h-full flex items-center justify-center text-[5cqw]">👤</div>
               )}
             </div>
-            <div className="flex items-center gap-[1.5cqw] min-w-0">
+            <div className="flex items-center gap-[1.5cqw] min-w-0 flex-1">
               <h2 className="text-[4.5cqw] font-bold text-cream-900 truncate">{name}</h2>
               {isSelf && (
                 <button
@@ -153,6 +181,37 @@ export function ProfilePopup({
                 </button>
               )}
             </div>
+            {userId && !userId.startsWith('bot_') && (
+              <div className="relative shrink-0">
+                <button
+                  onClick={() => setShowShareMenu(v => !v)}
+                  className="w-[8cqw] h-[8cqw] flex items-center justify-center rounded-full bg-cream-100 active:bg-cream-300"
+                >
+                  <Share2 className="w-[4cqw] h-[4cqw] text-cream-700" />
+                </button>
+                {showShareMenu && (
+                  <>
+                    <div className="fixed inset-0 z-[299]" onClick={() => setShowShareMenu(false)} />
+                    <div className="absolute right-0 top-full mt-[1cqw] z-[300] bg-white border border-cream-300 rounded-[2cqw] shadow-lg overflow-hidden min-w-[40cqw]">
+                      <button
+                        onClick={handleCopyLink}
+                        className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-900 hover:bg-cream-100 active:bg-cream-200"
+                      >
+                        {copied ? <Check className="w-[4cqw] h-[4cqw] text-forest" /> : <Link className="w-[4cqw] h-[4cqw]" />}
+                        {copied ? 'コピーしました' : 'リンクをコピー'}
+                      </button>
+                      <button
+                        onClick={handleShareX}
+                        className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-900 hover:bg-cream-100 active:bg-cream-200 border-t border-cream-200"
+                      >
+                        <svg className="w-[4cqw] h-[4cqw]" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                        X でシェア
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Badges */}

@@ -22,6 +22,7 @@ import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { announcementService } from './modules/announcement/AnnouncementService.js';
 import { announcementRoutes } from './modules/announcement/routes.js';
 import { startRankingBadgeScheduler } from './modules/badges/rankingBadgeScheduler.js';
+import { ogpRoutes } from './modules/ogp/routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -65,6 +66,7 @@ await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
+await fastify.register(ogpRoutes, { prefix: '/api/ogp' });
 
 // 静的ファイル配信
 const staticRoot = env.NODE_ENV === 'production'
@@ -76,12 +78,63 @@ await fastify.register(fastifyStatic, {
 });
 
 if (env.NODE_ENV === 'production') {
+  // クローラー判定用User-Agentパターン
+  const CRAWLER_UA = /Twitterbot|facebookexternalhit|Discordbot|Slackbot|LinkedInBot|Googlebot|bingbot|LINE/i;
 
   // SPA フォールバック（API・admin以外のルートはindex.htmlを返す）
   fastify.setNotFoundHandler(async (request, reply) => {
     if (request.url.startsWith('/api/') || request.url.startsWith('/health') || request.url.startsWith('/admin/')) {
       return reply.status(404).send({ error: 'Not found' });
     }
+
+    // /player/:userId へのクローラーアクセス → 動的OGPメタタグを返す
+    const playerMatch = request.url.match(/^\/player\/([^/?#]+)/);
+    if (playerMatch && CRAWLER_UA.test(request.headers['user-agent'] || '')) {
+      const userId = playerMatch[1];
+      const baseUrl = env.CLIENT_URL;
+      const ogpImageUrl = `${baseUrl}/api/ogp/player/${userId}`;
+      const pageUrl = `${baseUrl}/player/${userId}`;
+
+      // ユーザー名を取得（OGPタイトルに使用）
+      let title = 'Baby PLO - プレイヤースタッツ';
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: userId },
+          select: { username: true, displayName: true, nameMasked: true },
+        });
+        if (user) {
+          const { maskName } = await import('./shared/utils.js');
+          const name = user.displayName || (user.nameMasked ? maskName(user.username) : user.username);
+          title = `${name} のスタッツ | Baby PLO`;
+        }
+      } catch {
+        // ignore
+      }
+
+      const html = `<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="Baby PLO でのプレイヤースタッツを見る">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="${pageUrl}">
+  <meta property="og:image" content="${ogpImageUrl}">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="Baby PLO">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="Baby PLO でのプレイヤースタッツを見る">
+  <meta name="twitter:image" content="${ogpImageUrl}">
+  <title>${title}</title>
+</head>
+<body></body>
+</html>`;
+      reply.header('Content-Type', 'text/html; charset=utf-8');
+      return reply.send(html);
+    }
+
     return reply.sendFile('index.html');
   });
 }
