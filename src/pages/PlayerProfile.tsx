@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Share2, Link, Check } from 'lucide-react';
 import { ProfitChart } from '../components/ProfitChart';
+import { buildStatsShareText, openXShare } from '../utils/share';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -52,6 +53,7 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(true);
+  const [playerName, setPlayerName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
 
@@ -77,9 +79,7 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
   };
 
   const handleShareX = () => {
-    const text = 'Baby PLO でのスタッツをチェック!';
-    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openXShare(buildStatsShareText(playerName ?? 'Player'), shareUrl);
     setShowShareMenu(false);
   };
 
@@ -95,6 +95,7 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
     ]).then(([statsData, historyData]) => {
       if (statsData?.stats) setStats(statsData.stats);
       if (statsData?.badges) setBadges(statsData.badges);
+      if (statsData?.displayName) setPlayerName(statsData.displayName);
       if (historyData?.points) setProfitHistory(historyData.points);
     }).finally(() => setLoading(false));
   }, [userId]);

@@ -13,15 +13,19 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
     const { userId } = request.params as { userId: string };
 
-    const [cache, rawBadges] = await Promise.all([
+    const [cache, rawBadges, user] = await Promise.all([
       prisma.playerStatsCache.findUnique({ where: { userId } }),
       getUserBadges(userId),
+      prisma.user.findUnique({ where: { id: userId }, select: { username: true, displayName: true, nameMasked: true } }),
     ]);
 
     const badges = groupBadgesForDisplay(rawBadges);
+    const displayName = user
+      ? (user.displayName || (user.nameMasked ? maskName(user.username) : user.username))
+      : null;
 
     if (!cache || cache.handsPlayed === 0) {
-      return { stats: null, handsAnalyzed: 0, badges };
+      return { stats: null, handsAnalyzed: 0, badges, displayName };
     }
 
     const pct = (num: number, denom: number) => denom > 0 ? (num / denom) * 100 : 0;
@@ -43,7 +47,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       wsd: pct(cache.wsdCount, cache.wtsdCount),
     };
 
-    return { stats, handsAnalyzed: cache.handsPlayed, badges };
+    return { stats, handsAnalyzed: cache.handsPlayed, badges, displayName };
   });
 
   // 収支推移データ（グラフ用）

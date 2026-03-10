@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Pencil, Share2, Link, Check } from 'lucide-react';
 import { ProfitChart } from './ProfitChart';
 import { ProfileEditDialog } from './ProfileEditDialog';
+import { buildStatsShareText, openXShare } from '../utils/share';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -93,9 +94,7 @@ export function ProfilePopup({
   };
 
   const handleShareX = () => {
-    const text = 'Baby PLO でのスタッツをチェック!';
-    const url = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    openXShare(buildStatsShareText(name), shareUrl);
     setShowShareMenu(false);
   };
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
