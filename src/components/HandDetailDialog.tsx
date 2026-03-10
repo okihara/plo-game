@@ -400,7 +400,7 @@ export function HandDetailDialog({
   };
 
   const handleShareX = () => {
-    openXShare(buildHandShareText(hand.blinds, myProfit), shareUrl);
+    openXShare(buildHandShareText(hand.id, myProfit), shareUrl);
     setShowShareMenu(false);
   };
 

@@ -2,9 +2,9 @@ export function buildStatsShareText(displayName: string): string {
   return `#BabyPLO ${displayName} - Stats`;
 }
 
-export function buildHandShareText(blinds: string, profit: number): string {
+export function buildHandShareText(handId: string, profit: number): string {
   const profitStr = profit >= 0 ? `+${profit}` : `${profit}`;
-  return `#BabyPLO ${blinds} Hand (${profitStr})`;
+  return `#BabyPLO HandId: ${handId.slice(-6)} (${profitStr})`;
 }
 
 export function openXShare(text: string, url: string): void {
