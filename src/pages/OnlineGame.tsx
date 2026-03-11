@@ -49,7 +49,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     announcementStatus,
     bustedMessage,
     privateTableInfo,
-    horseVariantInfo,
     connect,
     disconnect,
     joinMatchmaking,
@@ -122,6 +121,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   // ブラインド表示用
   const blindsLabel = blinds;
+
+  // バリアント表示名
+  const variantDisplayName: Record<string, string> = {
+    plo: 'PLO',
+    limit_holdem: 'LHE',
+    stud: 'Stud',
+    razz: 'Razz',
+    'limit_2-7_triple_draw': '2-7 TD',
+    'no_limit_2-7_single_draw': 'NL 2-7 SD',
+    omaha_hilo: 'O8',
+    stud_hilo: 'Stud8',
+  };
 
   const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
 
@@ -228,7 +239,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
+          <div className="absolute top-0 left-0 right-0 z-50 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
             <button
               onClick={onBack}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
@@ -242,20 +253,13 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             >
               <History className="w-[5cqw] h-[5cqw]" />
             </button>
-            {/* HORSE: 現在のバリアント表示 */}
-            {horseVariantInfo && (
-              <div className="flex items-center gap-[1cqw] text-white/90 text-[2.5cqw]">
-                {['H', 'O', 'R', 'S', 'E'].map((letter, i) => (
-                  <span
-                    key={letter}
-                    className={i === horseVariantInfo.roundIndex ? 'text-yellow-400 font-bold' : 'text-white/40'}
-                  >
-                    {letter}
-                  </span>
-                ))}
-              </div>
-            )}
-            <div className="flex-1" />
+
+            {/* バリアント + ブラインド（中央） */}
+            <div className="flex-1 flex justify-center">
+              <span className="bg-black/70 rounded-full px-[3cqw] py-[0.5cqw] text-white/90 text-[5cqw] font-medium tracking-wide">
+                {gameState ? variantDisplayName[gameState.variant] || gameState.variant : ''} {blindsLabel}
+              </span>
+            </div>
 
             {/* サウンドトグル */}
             <button
