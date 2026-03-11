@@ -155,10 +155,10 @@ export function useSpectatorState(tableId: string) {
     actionMarkerTimersRef.current.set(playerId, timer);
   }, []);
 
-  const recordAction = useCallback((playerId: number, action: Action, amount: number) => {
+  const recordAction = useCallback((playerId: number, action: Action, amount: number, drawCount?: number) => {
     setLastActions(prev => {
       const newMap = new Map(prev);
-      newMap.set(playerId, { action, amount, timestamp: Date.now() });
+      newMap.set(playerId, { action, amount, timestamp: Date.now(), drawCount });
       return newMap;
     });
     scheduleActionMarkerClear(playerId);
@@ -244,12 +244,12 @@ export function useSpectatorState(tableId: string) {
         prevCardCountRef.current = 0;
         setWinners([]);
       },
-      onActionTaken: ({ playerId, action, amount }) => {
+      onActionTaken: ({ playerId, action, amount, drawCount }) => {
         // refで最新のclientStateを参照
         const currentState = clientStateRef.current;
         const seat = currentState?.players.findIndex(p => p?.odId === playerId);
         if (seat !== undefined && seat >= 0) {
-          recordAction(seat, action, amount);
+          recordAction(seat, action, amount, drawCount);
         }
       },
       onHandComplete: (serverWinners) => {

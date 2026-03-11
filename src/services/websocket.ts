@@ -31,7 +31,7 @@ class WebSocketService {
     onTableLeft?: () => void;
     onGameState?: (state: ClientGameState) => void;
     onHoleCards?: (cards: Card[]) => void;
-    onActionTaken?: (data: { playerId: string; action: Action; amount: number }) => void;
+    onActionTaken?: (data: { playerId: string; action: Action; amount: number; drawCount?: number }) => void;
     onShowdown?: (data: {
       winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
       players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];

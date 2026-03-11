@@ -106,6 +106,7 @@ export class ActionController {
       action,
       amount,
       streetChanged: willAdvanceStreet,
+      ...(action === 'draw' && discardIndices ? { drawCount: discardIndices.length } : {}),
     });
 
     return {

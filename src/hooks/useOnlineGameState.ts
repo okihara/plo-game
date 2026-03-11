@@ -12,6 +12,7 @@ export interface LastAction {
   action: Action;
   amount: number;
   timestamp: number;
+  drawCount?: number;
 }
 
 // アクションタイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
@@ -219,10 +220,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // アクションマーカー管理（CSSアニメーションで自動フェードアウト）
   // ============================================
 
-  const recordAction = useCallback((playerId: number, action: Action, amount: number) => {
+  const recordAction = useCallback((playerId: number, action: Action, amount: number, drawCount?: number) => {
     setLastActions(prev => {
       const newMap = new Map(prev);
-      newMap.set(playerId, { action, amount, timestamp: Date.now() });
+      newMap.set(playerId, { action, amount, timestamp: Date.now(), drawCount });
       return newMap;
     });
   }, []);
@@ -415,7 +416,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         }
         setMyHoleCards(cards);
       },
-      onActionTaken: ({ playerId, action, amount }) => {
+      onActionTaken: ({ playerId, action, amount, drawCount }) => {
         playActionSound(action);
         // アクション完了 → タイマーリング＆アクション待ちグローを即座にクリア
         setActionTimeoutAt(null);
@@ -425,7 +426,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         const currentState = clientStateRef.current;
         const seat = currentState?.players.findIndex(p => p?.odId === playerId);
         if (seat !== undefined && seat >= 0) {
-          recordAction(seat, action, amount);
+          recordAction(seat, action, amount, drawCount);
         }
       },
       onHandComplete: (serverWinners) => {
