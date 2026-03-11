@@ -46,6 +46,7 @@ export class TableInstance {
   public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
 
   private gameState: GameState | null = null;
+  private lastDealerPosition = -1;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
@@ -543,16 +544,13 @@ export class TableInstance {
       this.advanceHorseVariantIfNeeded();
     }
 
-    // Preserve dealer position from previous hand
-    const previousDealerPosition = this.gameState?.dealerPosition ?? -1;
-
     // Create initial game state
     const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
     this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
 
     // Restore dealer position (startNewHand will increment it)
-    if (previousDealerPosition >= 0) {
-      this.gameState.dealerPosition = previousDealerPosition;
+    if (this.lastDealerPosition >= 0) {
+      this.gameState.dealerPosition = this.lastDealerPosition;
     }
 
     // Clear waiting flags and sync chips from seats to game state
@@ -574,6 +572,7 @@ export class TableInstance {
 
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
+    this.lastDealerPosition = this.gameState.dealerPosition;
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
