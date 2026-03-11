@@ -8,7 +8,6 @@ import type { LastAction, ActionTimeoutAt } from './useOnlineGameState';
 // 定数
 // ============================================
 
-const ACTION_MARKER_DISPLAY_TIME = 1000;
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
 // ============================================
@@ -124,7 +123,6 @@ export function useSpectatorState(tableId: string) {
   const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
 
   // Refs
-  const actionMarkerTimersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -134,25 +132,8 @@ export function useSpectatorState(tableId: string) {
   // アクションマーカー管理
   // ============================================
 
-  const clearAllActionMarkerTimers = useCallback(() => {
-    actionMarkerTimersRef.current.forEach(timer => clearTimeout(timer));
-    actionMarkerTimersRef.current.clear();
-  }, []);
-
-  const scheduleActionMarkerClear = useCallback((playerId: number) => {
-    const existingTimer = actionMarkerTimersRef.current.get(playerId);
-    if (existingTimer) clearTimeout(existingTimer);
-
-    const timer = setTimeout(() => {
-      setLastActions(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(playerId);
-        return newMap;
-      });
-      actionMarkerTimersRef.current.delete(playerId);
-    }, ACTION_MARKER_DISPLAY_TIME);
-
-    actionMarkerTimersRef.current.set(playerId, timer);
+  const clearAllActionMarkers = useCallback(() => {
+    setLastActions(new Map());
   }, []);
 
   const recordAction = useCallback((playerId: number, action: Action, amount: number, drawCount?: number) => {
@@ -161,8 +142,7 @@ export function useSpectatorState(tableId: string) {
       newMap.set(playerId, { action, amount, timestamp: Date.now(), drawCount });
       return newMap;
     });
-    scheduleActionMarkerClear(playerId);
-  }, [scheduleActionMarkerClear]);
+  }, []);
 
   const startDealingAnimation = useCallback(() => {
     if (dealingTimerRef.current) {
@@ -225,8 +205,21 @@ export function useSpectatorState(tableId: string) {
         // ストリート変更検出
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
+          clearAllActionMarkers();
         } else {
           setNewCommunityCardsCount(0);
+        }
+
+        // 手番プレイヤーのマーカーをクリア（同ストリート内で再び手番が回った場合）
+        if (state.currentPlayerSeat !== null) {
+          setLastActions(prev => {
+            if (prev.has(state.currentPlayerSeat!)) {
+              const newMap = new Map(prev);
+              newMap.delete(state.currentPlayerSeat!);
+              return newMap;
+            }
+            return prev;
+          });
         }
 
         prevStreetRef.current = state.currentStreet;
@@ -270,13 +263,13 @@ export function useSpectatorState(tableId: string) {
     });
 
     return () => {
-      clearAllActionMarkerTimers();
+      clearAllActionMarkers();
       if (dealingTimerRef.current) {
         clearTimeout(dealingTimerRef.current);
         dealingTimerRef.current = null;
       }
     };
-  }, [clearAllActionMarkerTimers, recordAction, startDealingAnimation]);
+  }, [clearAllActionMarkers, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState

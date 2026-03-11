@@ -388,8 +388,21 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // ストリート変更検出
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
+          clearAllActionMarkers();
         } else {
           setNewCommunityCardsCount(0);
+        }
+
+        // 手番プレイヤーのマーカーをクリア（同ストリート内で再び手番が回った場合）
+        if (state.currentPlayerSeat !== null) {
+          setLastActions(prev => {
+            if (prev.has(state.currentPlayerSeat!)) {
+              const newMap = new Map(prev);
+              newMap.delete(state.currentPlayerSeat!);
+              return newMap;
+            }
+            return prev;
+          });
         }
 
         prevStreetRef.current = state.currentStreet;

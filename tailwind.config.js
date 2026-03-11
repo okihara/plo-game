@@ -35,7 +35,7 @@ export default {
       animation: {
         'pulse-glow': 'pulse-glow 1.5s infinite',
         'thinking': 'thinking 1.4s infinite ease-in-out both',
-        'action-pop': 'action-pop 1s ease forwards',
+        'action-pop': 'action-pop 0.4s ease forwards',
         'deal-card': 'deal-card 0.4s ease-out forwards',
         'flip-card': 'flip-card 0.6s ease forwards',
         'fade-in': 'fade-in 0.3s ease',
@@ -53,9 +53,8 @@ export default {
         },
         'action-pop': {
           '0%': { transform: 'translateX(-50%) scale(0.5)', opacity: '0' },
-          '20%': { transform: 'translateX(-50%) scale(1)', opacity: '1' },
-          '80%': { transform: 'translateX(-50%) scale(1)', opacity: '1' },
-          '100%': { transform: 'translateX(-50%) scale(0.8)', opacity: '0' },
+          '30%': { transform: 'translateX(-50%) scale(1)', opacity: '1' },
+          '100%': { transform: 'translateX(-50%) scale(1)', opacity: '1' },
         },
         'deal-card': {
           '0%': { opacity: '1', transform: 'translate(0, 0) rotate(0deg) scale(0.5)' },
