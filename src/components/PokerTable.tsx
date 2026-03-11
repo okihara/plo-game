@@ -50,9 +50,9 @@ export function PokerTable({
     <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
       <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
         {/* Pot Display - above community cards */}
-        <div className="absolute top-[38%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg font-bold text-yellow-400 z-10">
+        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-yellow-400 z-10">
           <div className="flex flex-col items-center gap-[0.5cqw]">
-            <span className="text-[5cqw]">Pot: {formatChips(state.pot)}</span>
+            <span className="text-[5cqw]">Total: {formatChips(state.pot)}</span>
             {state.sidePots.length > 1 && (
               <div className="flex gap-[2cqw] text-[3.5cqw] text-yellow-300/80">
                 {state.sidePots.map((sp, i) => (
@@ -67,7 +67,7 @@ export function PokerTable({
         {getVariantConfig(state.variant).usesCommunityCards ? (
           <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
         ) : (
-          <div className="absolute top-[50%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
+          <div className="absolute top-[52%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
             <div className="flex gap-[2cqw] text-[3.2cqw] text-white/60">
               <span>Ante {formatChips(state.ante)}</span>
               <span className="text-white/30">|</span>
@@ -92,7 +92,7 @@ export function PokerTable({
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className={`absolute top-[63%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[4cqw] py-[1.5cqw] rounded-lg text-[5cqw] font-bold text-yellow-400 z-10 ${!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]'}`}>
+            <div className={`absolute top-[64%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-[5cqw] text-yellow-400 z-10 ${!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );
