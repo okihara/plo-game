@@ -132,7 +132,7 @@ export function PlayerCards({
       {/* Hand Name (showdown) */}
       {(showdownHandName || winHandName) && !player.folded && (
         <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap`} style={{ top: '28cqw' }}>
-          <span className={`text-[4.5cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
+          <span className={`text-[6cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
             {showdownHandName || winHandName}
           </span>
         </div>

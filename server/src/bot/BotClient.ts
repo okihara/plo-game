@@ -315,12 +315,19 @@ export class BotClient {
         this.sendAction(aiDecision.action, amount, aiDecision.discardIndices);
       }, delay);
     } else {
-      // Fallback: check or fold
+      // Fallback: draw > check > call > fold
+      const drawAction = validActions.find(a => a.action === 'draw');
       const checkAction = validActions.find(a => a.action === 'check');
       const callAction = validActions.find(a => a.action === 'call');
       const fallbackDelay = this.config.noDelay ? 0 : 800;
 
-      if (checkAction) {
+      if (drawAction) {
+        // ドローフェーズでAI判定が失敗した場合: スタンドパット
+        setTimeout(() => {
+          if (this.actionGeneration !== gen) return;
+          this.sendAction('draw', 0, []);
+        }, fallbackDelay);
+      } else if (checkAction) {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('check', 0);
