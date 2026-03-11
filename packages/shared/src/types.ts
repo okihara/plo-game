@@ -135,4 +135,5 @@ export interface GameState {
   maxBetsPerRound: number;   // Fixed Limit: 最大ベット回数/ストリート（通常4）
   discardPile?: Card[];      // Draw: 捨て札の山（ドロー時のデッキ補充用）
   maxDraws?: number;         // Draw: ドロー回数（1=Single Draw, 3=Triple Draw, デフォルト3）
+  validActions?: { action: string; minAmount: number; maxAmount: number }[] | null; // クライアント側でサーバーから受信した有効アクション
 }

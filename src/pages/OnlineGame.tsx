@@ -9,9 +9,6 @@ import {
   PokerTable,
   MyCards,
   ActionPanel,
-  FixedLimitActionPanel,
-  NoLimitActionPanel,
-  DrawPhasePanel,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -396,15 +393,15 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             onCardToggle={handleCardToggle}
           />
 
-          {isDraw && isCurrentDrawStreet ? (
-            <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
-          ) : getVariantConfig(gameState.variant).betting === 'no_limit' ? (
-            <NoLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
-          ) : getVariantConfig(gameState.variant).betting === 'fixed_limit' ? (
-            <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
-          ) : (
-            <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
-          )}
+          <ActionPanel
+            state={gameState}
+            mySeat={myPlayerIdx}
+            onAction={handleAction}
+            isFastFold={isFastFold}
+            onFastFold={handleFastFold}
+            isDrawPhase={isDraw && isCurrentDrawStreet}
+            selectedCardIndices={selectedCardIndices}
+          />
 
           {myPlayer && (
             <HandAnalysisOverlay

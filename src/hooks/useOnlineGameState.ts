@@ -164,6 +164,7 @@ function convertClientStateToGameState(
     bringIn: clientState.bringIn ?? 0,
     betCount: 0,
     maxBetsPerRound: 4,
+    validActions: clientState.validActions ?? null,
   };
 }
 
