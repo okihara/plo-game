@@ -228,25 +228,23 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[3vw]">
+          <div className="absolute top-0 left-0 right-0 z-40 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
             <button
               onClick={onBack}
-              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+              className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
-              <DoorOpen style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+              <DoorOpen className="w-[5cqw] h-[5cqw]" />
             </button>
             {/* ハンド履歴ボタン */}
             <button
               onClick={() => setShowHandHistory(true)}
-              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+              className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
-              <History style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+              <History className="w-[5cqw] h-[5cqw]" />
             </button>
             {/* HORSE: 現在のバリアント表示 */}
             {horseVariantInfo && (
-              <div className="flex items-center gap-[1vw] text-white/90" style={{ fontSize: 'min(1.8vh, 3vw)' }}>
+              <div className="flex items-center gap-[1cqw] text-white/90 text-[2.5cqw]">
                 {['H', 'O', 'R', 'S', 'E'].map((letter, i) => (
                   <span
                     key={letter}
@@ -258,7 +256,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
               </div>
             )}
             <div className="flex-1" />
-            <div className="flex items-center gap-[3vw]">
+
             {/* サウンドトグル */}
             <button
               onClick={() => {
@@ -266,21 +264,19 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
                 setSoundOn(next);
                 setSoundEnabled(next);
               }}
-              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+              className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
               {soundOn
-                ? <Volume2 style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
-                : <VolumeOff style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />}
+                ? <Volume2 className="w-[5cqw] h-[5cqw]" />
+                : <VolumeOff className="w-[5cqw] h-[5cqw]" />}
             </button>
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-                style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+                className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
               >
-                <Settings style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+                <Settings className="w-[5cqw] h-[5cqw]" />
               </button>
               {showSettingsMenu && (
                 <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 z-50 whitespace-nowrap">
@@ -325,7 +321,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
                   </button>
                 </div>
               )}
-            </div>
             </div>
           </div>
       {/* 招待コードボタン（プライベートテーブル） */}
