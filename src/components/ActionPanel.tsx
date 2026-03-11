@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { GameState, Action } from '../logic';
+import { GameState, Action, getVariantConfig } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 
 interface ActionPanelProps {
@@ -11,15 +11,6 @@ interface ActionPanelProps {
   // Draw用
   isDrawPhase?: boolean;
   selectedCardIndices?: Set<number>;
-}
-
-function getDrawLabel(street: string): string {
-  switch (street) {
-    case 'draw1': return 'First Draw';
-    case 'draw2': return 'Second Draw';
-    case 'draw3': return 'Final Draw';
-    default: return 'Draw';
-  }
 }
 
 export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, isDrawPhase, selectedCardIndices }: ActionPanelProps) {
@@ -46,7 +37,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const canRaise = !!(raiseOrBet || allinInfo);
   const minRaise = raiseOrBet?.minAmount ?? allinInfo?.minAmount ?? 0;
   const maxRaise = raiseOrBet?.maxAmount ?? allinInfo?.maxAmount ?? myPlayer.chips;
-  const isFixedLimit = raiseOrBet ? raiseOrBet.minAmount === raiseOrBet.maxAmount : false;
+  const isFixedLimit = getVariantConfig(state.variant).betting === 'fixed_limit';
   const isShortStack = !!allinInfo && !raiseOrBet && !checkInfo;
 
   // ファストフォールド: ターン前でもフォールド可能
@@ -121,9 +112,6 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     const count = selectedCardIndices.size;
     return (
       <div className="px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
-        <div className="text-center text-[2.5cqw] text-gray-400 mb-[1.5cqw] font-bold">
-          {getDrawLabel(state.currentStreet)}
-        </div>
         <div className="flex justify-center">
           <button
             onClick={() => {
@@ -162,10 +150,10 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const rightDisabled = isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent);
 
   // スライダー表示: 可変額のbet/raiseがある場合のみ（Fixed Limitでは非表示）
-  const showSlider = canRaise && !isFixedLimit;
+  const showSlider = !isFixedLimit;
 
   return (
-    <div className={`${showSlider ? 'h-[25cqw]' : ''} px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
+    <div className={`h-[25cqw] px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
       {/* Preset Buttons & Bet Slider */}
       {showSlider && (
         <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>

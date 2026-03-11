@@ -16,6 +16,29 @@ interface PokerTableProps {
   showdownHandNames?: Map<number, string>;
 }
 
+function getStreetLabel(street: string): string {
+  switch (street) {
+    case 'preflop': return 'Preflop';
+    case 'flop': return 'Flop';
+    case 'turn': return 'Turn';
+    case 'river': return 'River';
+    case 'showdown': return 'Showdown';
+    case 'third': return '3rd';
+    case 'fourth': return '4th';
+    case 'fifth': return '5th';
+    case 'sixth': return '6th';
+    case 'seventh': return '7th';
+    case 'predraw': return '1st Bet';
+    case 'postdraw1': return '2nd Bet';
+    case 'postdraw2': return '3rd Bet';
+    case 'draw1': return '1st Draw';
+    case 'draw2': return '2nd Draw';
+    case 'draw3': return 'Final Draw';
+    case 'final': return 'Final';
+    default: return street;
+  }
+}
+
 export function PokerTable({
   state,
   lastActions,
@@ -80,7 +103,7 @@ export function PokerTable({
               ))}
             </div>
             <span className={`text-[6cqw] text-white/70 uppercase tracking-wider mt-[1cqw] inline-block border-2 border-white/70 px-[2cqw] py-[0.5cqw]`}>
-              {state.currentStreet || '-'}
+              {getStreetLabel(state.currentStreet)}
             </span>
           </div>
         )}
