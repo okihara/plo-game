@@ -33,7 +33,6 @@ interface PlayerCardsProps {
   isDealing: boolean;
   dealOrder: number;
   lastAction: LastAction | null;
-  isSpectator: boolean;
   variant: GameVariant;
   showdownHandName?: string;
   winHandName?: string;
@@ -47,7 +46,6 @@ export function PlayerCards({
   isDealing,
   dealOrder,
   lastAction,
-  isSpectator,
   variant,
   showdownHandName,
   winHandName,
@@ -67,8 +65,8 @@ export function PlayerCards({
     }
   }, [showCards, player.folded, player.holeCards.length]);
 
-  // 自分の位置（positionIndex=0）かつ観戦者でない場合はMyCardsで表示するので非表示
-  if (positionIndex === 0 && !isSpectator) return null;
+  // 自分の位置（positionIndex=0）はMyCardsで表示するので非表示
+  if (positionIndex === 0) return null;
   
   // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
   const cardOverlapMargin = getVariantConfig(variant).family === 'stud' ? '-ml-[5cqw]' : '-ml-[2cqw]';

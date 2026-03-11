@@ -199,7 +199,6 @@
   </div>
 
   <script>
-    var SPECTATE_BASE_URL = '<%- spectateBaseUrl %>';
     function formatBytes(bytes) {
       if (bytes < 1024) return bytes + ' B';
       if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
@@ -335,7 +334,6 @@
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px">' +
               pendingInfo +
-              '<a href="' + SPECTATE_BASE_URL + '/spectate/' + t.id + '" target="_blank">👁観戦</a>' +
               '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(t.pot) + '</span>' +
               '<span style="color:#64748b">' + t.playerCount + '/' + t.maxPlayers + '</span>' +
             '</div>' +

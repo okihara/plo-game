@@ -15,7 +15,6 @@ import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
-import { SpectatorManager } from './helpers/SpectatorManager.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
@@ -66,7 +65,6 @@ export class TableInstance {
   private actionController: ActionController;
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
-  private readonly spectatorManager: SpectatorManager;
   private variantAdapter: VariantAdapter;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean }) {
@@ -90,7 +88,6 @@ export class TableInstance {
     this.actionController = new ActionController(this.broadcast, this.variantAdapter);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
-    this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
   }
 
   // ============================================
@@ -279,7 +276,7 @@ export class TableInstance {
             this.gameState,
             this.playerManager.getSeats(),
             this.broadcast,
-            () => this.broadcastAllHoleCardsToSpectators(),
+            () => {},
           );
         }
         this.broadcastGameState();
@@ -390,15 +387,6 @@ export class TableInstance {
       this.bigBlind,
       va
     );
-  }
-
-  // スペクテーター管理
-  public addSpectator(socket: Socket): void {
-    this.spectatorManager.addSpectator(socket);
-  }
-
-  public sendAllHoleCardsToSpectator(socket: Socket): void {
-    this.spectatorManager.sendAllHoleCards(socket, this.gameState, this.isHandInProgress);
   }
 
   // デバッグ・管理用
@@ -596,9 +584,6 @@ export class TableInstance {
       }
     }
 
-    // スペクテーターに全員のホールカードを送信
-    this.broadcastAllHoleCardsToSpectators();
-
     // ハンドヒストリー用スナップショット記録
     this.historyRecorder.recordHandStart(seats, this.gameState);
 
@@ -623,7 +608,9 @@ export class TableInstance {
       const seatIndex = this.gameState.currentPlayerIndex;
       const odId = this.pendingEarlyFolds.get(seatIndex)!;
       this.pendingEarlyFolds.delete(seatIndex);
-      this.handleAction(odId, 'fold', 0);
+      // drawストリート等ではfoldが無効なため、デフォルトアクションを使用
+      const defaultAction = this.getDefaultDisconnectAction(seatIndex);
+      this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
       return;
     }
 
@@ -962,7 +949,4 @@ export class TableInstance {
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }
 
-  private broadcastAllHoleCardsToSpectators(): void {
-    this.spectatorManager.broadcastAllHoleCards(this.gameState);
-  }
 }

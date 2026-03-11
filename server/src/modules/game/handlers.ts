@@ -212,24 +212,6 @@ export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: 
   }
 }
 
-export function handleSpectate(socket: AuthenticatedSocket, data: { tableId: string }, tableManager: TableManager): void {
-  const { tableId } = data;
-  const table = tableManager.getTable(tableId);
-  if (!table) {
-    socket.emit('table:error', { message: 'Table not found' });
-    return;
-  }
-
-  table.addSpectator(socket);
-
-  const clientState = table.getClientGameState();
-  socket.emit('game:state', { state: clientState });
-
-  table.sendAllHoleCardsToSpectator(socket);
-
-  socket.emit('table:spectating', { tableId });
-}
-
 // ========== Private table handlers ==========
 
 export async function handlePrivateCreate(

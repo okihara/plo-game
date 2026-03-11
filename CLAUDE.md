@@ -7,7 +7,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 PLOポーカーゲーム - スマートフォン向けPot Limit Omaha実装。
 
 - **オンラインモード**: リアルタイムマルチプレイヤー
-- **観戦モード**: `/spectate/:tableId` で全プレイヤーのカードを見ながらデバッグ観戦
 
 ## Development Commands
 
@@ -78,7 +77,6 @@ src/
 ├── pages/
 │   ├── SimpleLobby.tsx           # ロビー（ブラインド選択・ログイン）
 │   ├── OnlineGame.tsx            # メインゲーム画面
-│   ├── SpectatorView.tsx         # デバッグ観戦画面
 │   ├── HandHistory.tsx           # ハンド履歴閲覧 (/history)
 │   └── PlayerDebug.tsx           # デバッグ (/debug/player)
 ├── components/
@@ -92,8 +90,7 @@ src/
 │   ├── HandAnalysisOverlay.tsx   # ハンド分析表示
 │   └── ProfilePopup.tsx          # プレイヤースタッツポップアップ
 ├── hooks/
-│   ├── useOnlineGameState.ts     # WebSocket + ゲーム状態管理（プレイヤー用）
-│   └── useSpectatorState.ts      # WebSocket + ゲーム状態管理（観戦用）
+│   └── useOnlineGameState.ts     # WebSocket + ゲーム状態管理（プレイヤー用）
 ├── services/
 │   └── websocket.ts              # WebSocket接続シングルトン（wsService）
 ├── logic/
@@ -132,7 +129,6 @@ server/src/
 │   │       ├── FoldProcessor.ts      # フォールド処理
 │   │       ├── StateTransformer.ts   # GameState → ClientGameState変換
 │   │       ├── HandHistoryRecorder.ts # ハンド履歴DB保存（fire-and-forget）
-│   │       ├── SpectatorManager.ts   # 観戦者管理
 │   │       └── AdminHelper.ts       # 管理・デバッグ機能
 │   ├── fastfold/
 │   │   └── MatchmakingPool.ts    # FFマッチメイキング（500ms間隔キュー処理）
@@ -173,7 +169,7 @@ server/src/
 ### Socket.ioイベント
 
 **Client → Server:**
-- `table:leave`, `table:spectate` - テーブル離脱/観戦
+- `table:leave` - テーブル離脱
 - `game:action`, `game:fast_fold` - ゲームアクション
 - `matchmaking:join`, `matchmaking:leave` - マッチメイキング
 - `debug:set_chips` - デバッグ用チップ設定（開発環境のみ）
@@ -182,12 +178,10 @@ server/src/
 - `connection:established` - 接続確認（playerId通知）
 - `game:state` - ゲーム状態更新（ルーム全体ブロードキャスト）
 - `game:hole_cards` - ホールカード（各プレイヤー個別送信）
-- `game:all_hole_cards` - 全員のカード（スペクテーター専用）
 - `game:action_required`, `game:action_taken` - アクション
 - `game:hand_complete`, `game:showdown` - ハンド結果
 - `table:joined`, `table:left`, `table:error` - テーブル状態
 - `table:change`, `table:busted` - FastFoldテーブル移動/バスト
-- `table:spectating` - 観戦開始確認
 - `maintenance:status` - メンテナンス通知
 
 ### ゲーム状態の変換フロー
@@ -202,13 +196,6 @@ server/src/
 レンダリング: PokerTable → Player（showCards=false → 裏面表示）
 ```
 
-**スペクテーター:**
-```
-サーバー: game:all_hole_cards で全員のカードを送信
-クライアント: useSpectatorState が全員の holeCards をセット
-レンダリング: PokerTable(isSpectator) → Player(showCards=true) → 常時表面表示
-```
-
 ### UIレイアウト（9:16縦画面）
 
 ```
@@ -221,7 +208,7 @@ server/src/
 │                  │     Player × 6（円周配置）
 │                  │     Pot表示（中央下）
 ├──────────────────┤
-│ MyCards (24cqw)  │  ← 自分の4枚（観戦モードはスペーサー）
+│ MyCards (24cqw)  │  ← 自分の4枚
 ├──────────────────┤
 │ ActionPanel      │  ← プリセット+スライダー+3ボタン
 └──────────────────┘
@@ -232,7 +219,6 @@ server/src/
 - `humanIndex`（自分の席番号）を基準に6人を回転配置
 - `positionIndex=0` が画面下部（自分の位置）
 - `positionIndex !== 0` のプレイヤーのみ Player にカード表示（自分は MyCards で表示）
-- `isSpectator=true` の場合は全positionでカード表示
 
 ### 認証フロー
 
@@ -331,7 +317,7 @@ server/src/
 
 - `/admin/status` - HTMLダッシュボード（2秒自動更新）
 - `/api/admin/stats` - JSON API
-- テーブル一覧、プレイヤー状態、アクション待機、メッセージログ、観戦リンク表示
+- テーブル一覧、プレイヤー状態、アクション待機、メッセージログ表示
 
 ## Deployment (Railway)
 

@@ -7,7 +7,6 @@ import type { Action, Card } from './types';
 export interface ClientToServerEvents {
   // Table actions
   'table:leave': () => void;
-  'table:spectate': (data: { tableId: string }) => void;
 
   // Game actions
   'game:action': (data: { action: Action; amount?: number; discardIndices?: number[] }) => void;
@@ -52,12 +51,6 @@ export interface ServerToClientEvents {
 
   // HORSE variant change
   'game:variant_change': (data: { variant: string; variantLabel: string; roundIndex: number; totalRounds: number }) => void;
-
-  // Spectator
-  'table:spectating': (data: { tableId: string }) => void;
-  'game:all_hole_cards': (data: {
-    players: { seatIndex: number; cards: Card[] }[];
-  }) => void;
 
   // Maintenance
   'maintenance:status': (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;

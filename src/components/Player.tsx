@@ -20,7 +20,6 @@ interface PlayerProps {
   actionTimeoutAt?: ActionTimeoutAt | null;
   actionTimeoutMs?: number | null;
   onAvatarClick?: () => void;
-  isSpectator?: boolean;
   variant?: GameVariant;
 }
 
@@ -83,7 +82,6 @@ export function Player({
   actionTimeoutAt,
   actionTimeoutMs,
   onAvatarClick,
-  isSpectator = false,
   variant = 'plo',
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
@@ -240,7 +238,6 @@ export function Player({
         isDealing={isDealing}
         dealOrder={dealOrder}
         lastAction={lastAction}
-        isSpectator={isSpectator}
         variant={currentVariant}
         showdownHandName={showdownHandName}
         winHandName={winHandName}

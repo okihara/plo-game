@@ -340,8 +340,7 @@ export function adminRoutes(deps: AdminDependencies) {
 
     // HTML Dashboard
     fastify.get('/admin/status', async (request, reply) => {
-      const spectateBaseUrl = env.CLIENT_URL || '';
-      return reply.view('dashboard.ejs', { spectateBaseUrl });
+      return reply.view('dashboard.ejs', {});
     });
 
     // Users HTML page

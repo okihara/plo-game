@@ -5,7 +5,6 @@ import { OnlineGame } from './pages/OnlineGame';
 import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { HandHistory } from './pages/HandHistory';
-import { SpectatorView } from './pages/SpectatorView';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
@@ -60,14 +59,6 @@ function App() {
   } else if (currentPath.startsWith('/player/')) {
     const playerId = currentPath.replace('/player/', '');
     page = <PlayerProfile userId={playerId} onBack={goBackToLobby} />;
-  } else if (currentPath.startsWith('/spectate/')) {
-    const tableId = currentPath.replace('/spectate/', '');
-    page = (
-      <SpectatorView
-        tableId={tableId}
-        onBack={goBackToLobby}
-      />
-    );
   } else if (currentPath === '/history') {
     page = (
       <HandHistory onBack={goBackToLobby} />

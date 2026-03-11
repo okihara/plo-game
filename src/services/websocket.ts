@@ -39,8 +39,6 @@ class WebSocketService {
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
     onTableChanged?: (tableId: string, seat: number) => void;
     onBusted?: (message: string) => void;
-    onSpectating?: (tableId: string) => void;
-    onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
     onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
     onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
@@ -177,17 +175,6 @@ class WebSocketService {
         this.listeners.onVariantChange?.(data);
       });
 
-      // Spectator events
-      this.socket.on('table:spectating', ({ tableId }) => {
-        wsLog('table:spectating', { tableId });
-        this.listeners.onSpectating?.(tableId);
-      });
-
-      this.socket.on('game:all_hole_cards', ({ players }) => {
-        wsLog('game:all_hole_cards', { players });
-        this.listeners.onAllHoleCards?.(players);
-      });
-
       // Maintenance events
       this.socket.on('maintenance:status', (data) => {
         wsLog('maintenance:status', data);
@@ -261,11 +248,6 @@ class WebSocketService {
 
   leaveMatchmaking(): void {
     this.socket?.emit('matchmaking:leave');
-  }
-
-  // Spectator
-  spectateTable(tableId: string): void {
-    this.socket?.emit('table:spectate', { tableId });
   }
 
   // Private table

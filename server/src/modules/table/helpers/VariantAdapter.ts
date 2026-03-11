@@ -203,7 +203,7 @@ export class VariantAdapter {
     gameState: GameState,
     seats: (SeatInfo | null)[],
     broadcast: BroadcastService,
-    broadcastSpectatorCards: () => void,
+    _broadcastSpectatorCards: () => void,
   ): void {
     if (this.config.usesCommunityCards) return;
 
@@ -215,6 +215,5 @@ export class VariantAdapter {
         });
       }
     }
-    broadcastSpectatorCards();
   }
 }
