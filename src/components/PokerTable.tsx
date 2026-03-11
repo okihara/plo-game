@@ -67,21 +67,23 @@ export function PokerTable({
         {getVariantConfig(state.variant).usesCommunityCards ? (
           <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
         ) : (
-          <div className="absolute top-[52%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 flex flex-col items-center gap-[1cqw]">
-            <div className="flex gap-[2cqw] text-[3.2cqw] text-white/60">
-              <span>Ante {formatChips(state.ante)}</span>
-              <span className="text-white/30">|</span>
-              <span>BI {formatChips(state.bringIn)}</span>
-              <span className="text-white/30">|</span>
-              <span>SB {formatChips(state.smallBlind)}</span>
-              <span className="text-white/30">|</span>
-              <span>BB {formatChips(state.bigBlind)}</span>
+          <div className="absolute top-[52%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-center">
+            <div className="flex gap-[2cqw] text-[6cqw] text-white/60 justify-center whitespace-nowrap">
+              {[
+                state.ante ? `Ante ${formatChips(state.ante)}` : null,
+                state.bringIn ? `BI ${formatChips(state.bringIn)}` : null,
+                `SB ${formatChips(state.smallBlind)}`,
+                `BB ${formatChips(state.bigBlind)}`,
+              ].filter(Boolean).map((text, i) => (
+                <span key={i}>
+                  {i > 0 && <span className="text-white/30 mr-[2cqw]">|</span>}
+                  {text}
+                </span>
+              ))}
             </div>
-            {!state.isHandComplete && (
-              <span className="text-[3.5cqw] text-white/40 uppercase tracking-wider">
-                {state.currentStreet}
-              </span>
-            )}
+            <span className={`text-[6cqw] text-white/70 uppercase tracking-wider mt-[1cqw] inline-block border-2 border-white/70 px-[2cqw] py-[0.5cqw]`}>
+              {state.currentStreet || '-'}
+            </span>
           </div>
         )}
 
