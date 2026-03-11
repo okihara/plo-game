@@ -86,6 +86,36 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     }
   }, [state.isHandComplete]);
 
+  // --- Hooks must be before any early return ---
+
+  const handlePreset = useCallback((preset: number) => {
+    const betByPot = Math.round((state.pot + toCall) * preset) + toCall;
+    const clampedValue = Math.max(minRaise, Math.min(maxRaise, betByPot));
+    setSliderValue(clampedValue);
+  }, [state.pot, toCall, minRaise, maxRaise]);
+
+  const handleAction = useCallback((action: Action) => {
+    let amount = 0;
+    if (action === 'call') {
+      amount = callInfo?.minAmount ?? Math.min(toCall, myPlayer.chips);
+    } else if (action === 'bet' || action === 'raise') {
+      amount = sliderValue;
+    } else if (action === 'allin') {
+      amount = allinInfo?.minAmount ?? myPlayer.chips;
+    }
+    setActionSent(true);
+    onAction(action, amount);
+  }, [toCall, myPlayer.chips, sliderValue, onAction, callInfo, allinInfo]);
+
+  const handleFoldClick = useCallback(() => {
+    if (isMyTurn) {
+      handleAction('fold');
+    } else if (canFastFold && onFastFold) {
+      setActionSent(true);
+      onFastFold();
+    }
+  }, [isMyTurn, canFastFold, onFastFold, handleAction]);
+
   // --- Draw Phase ---
   if (isDrawPhase && drawInfo && selectedCardIndices) {
     const count = selectedCardIndices.size;
@@ -115,34 +145,6 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   }
 
   // --- Betting Phase ---
-
-  const handlePreset = useCallback((preset: number) => {
-    const betByPot = Math.round((state.pot + toCall) * preset) + toCall;
-    const clampedValue = Math.max(minRaise, Math.min(maxRaise, betByPot));
-    setSliderValue(clampedValue);
-  }, [state.pot, toCall, minRaise, maxRaise]);
-
-  const handleAction = useCallback((action: Action) => {
-    let amount = 0;
-    if (action === 'call') {
-      amount = callInfo?.minAmount ?? Math.min(toCall, myPlayer.chips);
-    } else if (action === 'bet' || action === 'raise') {
-      amount = sliderValue;
-    } else if (action === 'allin') {
-      amount = allinInfo?.minAmount ?? myPlayer.chips;
-    }
-    setActionSent(true);
-    onAction(action, amount);
-  }, [toCall, myPlayer.chips, sliderValue, onAction, callInfo, allinInfo]);
-
-  const handleFoldClick = useCallback(() => {
-    if (isMyTurn) {
-      handleAction('fold');
-    } else if (canFastFold && onFastFold) {
-      setActionSent(true);
-      onFastFold();
-    }
-  }, [isMyTurn, canFastFold, onFastFold, handleAction]);
 
   // 中央ボタン: check or call
   const centerAction: Action = canCheck ? 'check' : 'call';
