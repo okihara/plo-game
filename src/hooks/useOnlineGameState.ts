@@ -489,8 +489,6 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsDisplaced(true);
         setIsConnected(false);
       },
-      onVariantChange: (data) => {
-      },
     });
 
     return () => {
