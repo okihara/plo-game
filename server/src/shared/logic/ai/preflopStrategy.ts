@@ -90,8 +90,8 @@ export function getPreflopDecision(
       return { action: 'fold', amount: 0 };
     }
 
-    // オープンレイズ
-    if (!facingRaise && random < personality.pfr / personality.vpip) {
+    // オープン（未レイズポット）: リンプせずレイズ or フォールド
+    if (!facingRaise) {
       const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
       if (raiseAction) {
         const raiseSize = getOpenRaiseSize(state, playerIndex, personality);
@@ -100,7 +100,7 @@ export function getPreflopDecision(
       }
     }
 
-    // コール
+    // コール（レイズに直面している場合）
     const callAction = validActions.find(a => a.action === 'call');
     if (callAction && potOdds < effectiveStrength * 0.8) {
       return { action: 'call', amount: callAction.minAmount };
@@ -118,16 +118,20 @@ export function getPreflopDecision(
       return { action: 'fold', amount: 0 };
     }
 
-    // チェック
+    // チェック（BBなど）
     const checkAction = validActions.find(a => a.action === 'check');
     if (checkAction) return { action: 'check', amount: 0 };
 
-    // 通常のオープンレイズにはコール（ポットオッズに見合えば）
-    if (potOdds < effectiveStrength * 0.6) {
-      const callAction = validActions.find(a => a.action === 'call');
-      if (callAction) return { action: 'call', amount: callAction.minAmount };
+    // レイズに直面 → コール（ポットオッズに見合えば）
+    if (facingRaise) {
+      if (potOdds < effectiveStrength * 0.6) {
+        const callAction = validActions.find(a => a.action === 'call');
+        if (callAction) return { action: 'call', amount: callAction.minAmount };
+      }
+      return { action: 'fold', amount: 0 };
     }
 
+    // 未レイズポット: リンプせずフォールド（マージナルハンドでオープンリンプしない）
     return { action: 'fold', amount: 0 };
   }
 
