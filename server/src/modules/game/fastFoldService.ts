@@ -34,6 +34,11 @@ function movePlayerToNewTable(params: {
   }
 
   const newTable = tableManager.getOrCreateTable(sourceTable.blinds, true, sourceTable.id);
+  if (!newTable) {
+    cashOutPlayer(odId, chips, sourceTable.id).catch(e => console.error('[FastFold] cashOut error:', e));
+    socket.emit('table:left');
+    return;
+  }
   setupFastFoldCallback(newTable, tableManager);
 
   const seatNumber = newTable.seatPlayer(

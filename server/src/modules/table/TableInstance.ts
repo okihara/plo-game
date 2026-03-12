@@ -15,7 +15,6 @@ import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
-import { SpectatorManager } from './helpers/SpectatorManager.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 
@@ -33,6 +32,13 @@ export class TableInstance {
   public readonly isPrivate: boolean = false;
   public readonly inviteCode: string | null = null;
 
+  // HORSE (MIXゲーム) モード
+  public readonly isHorse: boolean = false;
+  private horseVariants: GameVariant[] = ['limit_holdem', 'omaha_hilo', 'razz', 'stud', 'stud_hilo'];
+  private horseCurrentIndex: number = 0;
+  private horseHandCount: number = 0;
+  private horseHandsPerRound: number = 0;
+
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
   public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean }[]) => void;
 
@@ -40,6 +46,7 @@ export class TableInstance {
   public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
 
   private gameState: GameState | null = null;
+  private lastDealerPosition = -1;
   private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
@@ -56,17 +63,17 @@ export class TableInstance {
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
-  private readonly actionController: ActionController;
+  private actionController: ActionController;
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
-  private readonly spectatorManager: SpectatorManager;
-  private readonly variantAdapter: VariantAdapter;
+  private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
-    this.variant = options?.variant ?? 'plo';
+    this.isHorse = options?.isHorse ?? false;
+    this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
 
@@ -82,7 +89,6 @@ export class TableInstance {
     this.actionController = new ActionController(this.broadcast, this.variantAdapter);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
-    this.spectatorManager = new SpectatorManager(roomName, this.playerManager);
   }
 
   // ============================================
@@ -271,7 +277,7 @@ export class TableInstance {
             this.gameState,
             this.playerManager.getSeats(),
             this.broadcast,
-            () => this.broadcastAllHoleCardsToSpectators(),
+            () => {},
           );
         }
         this.broadcastGameState();
@@ -354,7 +360,8 @@ export class TableInstance {
       maxPlayers: this.maxPlayers,
       isFastFold: this.isFastFold,
       isPrivate: this.isPrivate,
-      variant: this.variant,
+      variant: this.currentVariant,
+      isHorse: this.isHorse,
     };
   }
 
@@ -367,6 +374,10 @@ export class TableInstance {
   }
 
   public getClientGameState(): ClientGameState {
+    // 現プレイヤーのvalidActionsを計算
+    const va = this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex >= 0
+      ? this.variantAdapter.getValidActions(this.gameState, this.gameState.currentPlayerIndex)
+      : null;
     return StateTransformer.toClientGameState(
       this.id,
       this.playerManager.getSeats(),
@@ -374,17 +385,9 @@ export class TableInstance {
       this.actionController.getPendingAction(),
       this.isHandInProgress,
       this.smallBlind,
-      this.bigBlind
+      this.bigBlind,
+      va
     );
-  }
-
-  // スペクテーター管理
-  public addSpectator(socket: Socket): void {
-    this.spectatorManager.addSpectator(socket);
-  }
-
-  public sendAllHoleCardsToSpectator(socket: Socket): void {
-    this.spectatorManager.sendAllHoleCards(socket, this.gameState, this.isHandInProgress);
   }
 
   // デバッグ・管理用
@@ -467,6 +470,36 @@ export class TableInstance {
     return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
   }
 
+  /** HORSE: オービット完了時にバリアントを切り替え */
+  private advanceHorseVariantIfNeeded(): void {
+    if (!this.isHorse) return;
+
+    // 初回 or オービット完了
+    if (this.horseHandsPerRound === 0 || this.horseHandCount >= this.horseHandsPerRound) {
+      if (this.horseHandsPerRound > 0) {
+        // 次のバリアントへ
+        this.horseCurrentIndex = (this.horseCurrentIndex + 1) % this.horseVariants.length;
+      }
+      this.horseHandCount = 0;
+      this.horseHandsPerRound = this.getPlayerCount();
+
+      const newVariant = this.horseVariants[this.horseCurrentIndex];
+      this.variantAdapter = new VariantAdapter(newVariant);
+      this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+
+    }
+
+    this.horseHandCount++;
+  }
+
+  /** HORSE: 現在のバリアント（外部から参照用） */
+  public get currentVariant(): GameVariant {
+    if (this.isHorse) {
+      return this.horseVariants[this.horseCurrentIndex];
+    }
+    return this.variant;
+  }
+
   private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
     if (maintenanceService.isMaintenanceActive()) return;
@@ -487,16 +520,18 @@ export class TableInstance {
     this._isHandInProgress = true;
     this.pendingEarlyFolds.clear(); // safety
 
-    // Preserve dealer position from previous hand
-    const previousDealerPosition = this.gameState?.dealerPosition ?? -1;
+    // HORSE: バリアントローテーション
+    if (this.isHorse) {
+      this.advanceHorseVariantIfNeeded();
+    }
 
     // Create initial game state
     const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
     this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
 
     // Restore dealer position (startNewHand will increment it)
-    if (previousDealerPosition >= 0) {
-      this.gameState.dealerPosition = previousDealerPosition;
+    if (this.lastDealerPosition >= 0) {
+      this.gameState.dealerPosition = this.lastDealerPosition;
     }
 
     // Clear waiting flags and sync chips from seats to game state
@@ -518,6 +553,7 @@ export class TableInstance {
 
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
+    this.lastDealerPosition = this.gameState.dealerPosition;
 
     // Send hole cards to each player (human and bot)
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -527,9 +563,6 @@ export class TableInstance {
         this.broadcast.emitToSocket(seat.socket, seat.odId, 'game:hole_cards', holeCardsData);
       }
     }
-
-    // スペクテーターに全員のホールカードを送信
-    this.broadcastAllHoleCardsToSpectators();
 
     // ハンドヒストリー用スナップショット記録
     this.historyRecorder.recordHandStart(seats, this.gameState);
@@ -555,7 +588,9 @@ export class TableInstance {
       const seatIndex = this.gameState.currentPlayerIndex;
       const odId = this.pendingEarlyFolds.get(seatIndex)!;
       this.pendingEarlyFolds.delete(seatIndex);
-      this.handleAction(odId, 'fold', 0);
+      // drawストリート等ではfoldが無効なため、デフォルトアクションを使用
+      const defaultAction = this.getDefaultDisconnectAction(seatIndex);
+      this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
       return;
     }
 
@@ -784,6 +819,7 @@ export class TableInstance {
           amount: w.amount,
           handName: w.handName,
           cards: this.gameState!.players[w.playerId].holeCards,
+          ...(w.hiLoType ? { hiLoType: w.hiLoType } : {}),
         })),
         players: showdownPlayers,
       };
@@ -804,6 +840,7 @@ export class TableInstance {
         playerId: seats[w.playerId]?.odId || '',
         amount: w.amount,
         handName: w.handName,
+        ...(w.hiLoType ? { hiLoType: w.hiLoType } : {}),
       })),
       rake: this.gameState.rake,
     };
@@ -892,7 +929,4 @@ export class TableInstance {
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }
 
-  private broadcastAllHoleCardsToSpectators(): void {
-    this.spectatorManager.broadcastAllHoleCards(this.gameState);
-  }
 }

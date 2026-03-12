@@ -1,17 +1,14 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
-import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
   MyCards,
   ActionPanel,
-  FixedLimitActionPanel,
-  NoLimitActionPanel,
-  DrawPhasePanel,
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
@@ -71,6 +68,21 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
+  const [variantNotice, setVariantNotice] = useState<string | null>(null);
+  const prevVariantRef = React.useRef<string | undefined>(undefined);
+
+  // バリアント変更通知（初回表示 + 変更時）
+  useEffect(() => {
+    if (!gameState) return;
+    const currentVariant = gameState.variant;
+    if (prevVariantRef.current !== currentVariant) {
+      const name = variantDisplayName[currentVariant] || currentVariant;
+      setVariantNotice(`${name} ${blinds}`);
+      const timer = setTimeout(() => setVariantNotice(null), 2000);
+      prevVariantRef.current = currentVariant;
+      return () => clearTimeout(timer);
+    }
+  }, [gameState?.variant]);
 
   // Draw: ストリート変更時にカード選択リセット
   const currentStreet = gameState?.currentStreet;
@@ -125,6 +137,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   // ブラインド表示用
   const blindsLabel = blinds;
 
+  // バリアント表示名
+  const variantDisplayName: Record<string, string> = {
+    plo: 'PLO',
+    limit_holdem: 'LHE',
+    stud: 'Stud',
+    razz: 'Razz',
+    'limit_2-7_triple_draw': '2-7 TD',
+    'no_limit_2-7_single_draw': 'NL 2-7 SD',
+    omaha_hilo: 'O8',
+    stud_hilo: 'Stud8',
+  };
+
   const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
 
   const myCurrentHandName = useMemo(() => {
@@ -139,9 +163,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
           return evaluateStudHand(myHoleCards).name;
         case 'razz':
           return evaluateRazzHand(myHoleCards).name;
+        case 'stud_hilo': {
+          const { high, low } = evaluateStudHiLoHand(myHoleCards);
+          return low ? `${high.name} / ${low.name}` : high.name;
+        }
         default:
           return undefined;
       }
+    }
+    if (gameState.variant === 'omaha_hilo') {
+      const result = evaluateCurrentOmahaHiLoHand(myHoleCards, gameState.communityCards);
+      if (!result) return undefined;
+      return result.low ? `${result.high.name} / ${result.low.name}` : result.high.name;
     }
     if (variantConfig.family === 'holdem') {
       return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
@@ -221,24 +254,28 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-40 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[3vw]">
+          <div className="absolute top-0 left-0 right-0 z-50 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
             <button
               onClick={onBack}
-              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+              className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
-              <DoorOpen style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+              <DoorOpen className="w-[5cqw] h-[5cqw]" />
             </button>
             {/* ハンド履歴ボタン */}
             <button
               onClick={() => setShowHandHistory(true)}
-              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+              className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
-              <History style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+              <History className="w-[5cqw] h-[5cqw]" />
             </button>
-            <div className="flex-1" />
-            <div className="flex items-center gap-[3vw]">
+
+            {/* バリアント + ブラインド（中央） */}
+            <div className="flex-1 flex justify-center">
+              <span className="bg-black/70 rounded-full px-[3cqw] py-[0.5cqw] text-white/90 text-[5cqw] font-medium tracking-wide">
+                {gameState ? variantDisplayName[gameState.variant] || gameState.variant : ''} {blindsLabel}
+              </span>
+            </div>
+
             {/* サウンドトグル */}
             <button
               onClick={() => {
@@ -246,21 +283,19 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
                 setSoundOn(next);
                 setSoundEnabled(next);
               }}
-              className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+              className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
               {soundOn
-                ? <Volume2 style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
-                : <VolumeOff style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />}
+                ? <Volume2 className="w-[5cqw] h-[5cqw]" />
+                : <VolumeOff className="w-[5cqw] h-[5cqw]" />}
             </button>
             {/* 設定ボタン */}
             <div className="relative">
               <button
                 onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="flex items-center justify-center text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-                style={{ width: 'min(6vh, 10vw)', height: 'min(6vh, 10vw)' }}
+                className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
               >
-                <Settings style={{ width: 'min(3.8vh, 6.3vw)', height: 'min(3.8vh, 6.3vw)' }} />
+                <Settings className="w-[5cqw] h-[5cqw]" />
               </button>
               {showSettingsMenu && (
                 <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 z-50 whitespace-nowrap">
@@ -306,7 +341,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
                 </div>
               )}
             </div>
-            </div>
           </div>
       {/* 招待コードボタン（プライベートテーブル） */}
       {privateTableInfo && (
@@ -349,6 +383,15 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         </div>
       )}
 
+          {/* バリアント変更通知（テーブル中央） */}
+          {variantNotice && (
+            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
+              <div className="bg-black/80 text-white font-bold px-[6cqw] py-[3cqw] rounded-[2cqw] text-[8cqw] animate-fade-in">
+                {variantNotice}
+              </div>
+            </div>
+          )}
+
           <PokerTable
             state={gameState}
             lastActions={lastActions}
@@ -373,15 +416,15 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             onCardToggle={handleCardToggle}
           />
 
-          {isDraw && isCurrentDrawStreet ? (
-            <DrawPhasePanel state={gameState} mySeat={myPlayerIdx} selectedCardIndices={selectedCardIndices} onAction={handleAction} />
-          ) : getVariantConfig(gameState.variant).betting === 'no_limit' ? (
-            <NoLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
-          ) : getVariantConfig(gameState.variant).betting === 'fixed_limit' ? (
-            <FixedLimitActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} />
-          ) : (
-            <ActionPanel state={gameState} mySeat={myPlayerIdx} onAction={handleAction} isFastFold={isFastFold} onFastFold={handleFastFold} />
-          )}
+          <ActionPanel
+            state={gameState}
+            mySeat={myPlayerIdx}
+            onAction={handleAction}
+            isFastFold={isFastFold}
+            onFastFold={handleFastFold}
+            isDrawPhase={isDraw && isCurrentDrawStreet}
+            selectedCardIndices={selectedCardIndices}
+          />
 
           {myPlayer && (
             <HandAnalysisOverlay

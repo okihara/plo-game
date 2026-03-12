@@ -13,7 +13,6 @@ import {
   handleMatchmakingLeave,
   handleDisconnect,
   handleDebugSetChips,
-  handleSpectate,
   handlePrivateCreate,
   handlePrivateJoin,
 } from './handlers.js';
@@ -64,7 +63,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('game:fast_fold', () => handleFastFold(socket, tableManager));
     socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager));
     socket.on('matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager));
-    socket.on('table:spectate', (data) => handleSpectate(socket, data, tableManager));
     socket.on('private:create', (data) => handlePrivateCreate(socket, data, tableManager));
     socket.on('private:join', (data) => handlePrivateJoin(socket, data, tableManager));
 

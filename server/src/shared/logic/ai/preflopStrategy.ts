@@ -29,6 +29,12 @@ export function getPreflopDecision(
   const facingRaise = state.currentBet > state.bigBlind;
   const facingBigRaise = toCall > state.pot * 0.5;
 
+  // === AAxx は常にプレミアムハンド扱い ===
+  // PLOでAAxxはどんな構成でもプリフロップでレイズすべき最強カテゴリ
+  if (evaluation.hasPair && evaluation.pairRank?.startsWith('A')) {
+    return playPremium(state, validActions, Math.max(effectiveStrength, 0.80), facingRaise, personality);
+  }
+
   // プリフロップのレイズ回数で3bet/4bet状況を検出
   // raiseCount=1: オープンレイズ, =2: 3bet, >=3: 4bet+
   const preflopRaiseCount = state.handHistory.filter(

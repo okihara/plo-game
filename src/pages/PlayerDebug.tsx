@@ -348,7 +348,6 @@ export function PlayerDebug() {
                           dealOrder={posIndex}
                           actionTimeoutAt={isTimerActive && timerStartTime ? timerStartTime + 15000 : null}
                           actionTimeoutMs={isTimerActive ? 15000 : null}
-                          isSpectator={posIndex === 0}
                           variant={variant}
                         />
                       ))}

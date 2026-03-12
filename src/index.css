@@ -45,9 +45,8 @@ body {
 
 @keyframes action-pop {
   0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
-  20% { transform: translateX(-50%) scale(1); opacity: 1; }
-  80% { transform: translateX(-50%) scale(1); opacity: 1; }
-  100% { transform: translateX(-50%) scale(0.8); opacity: 0; }
+  30% { transform: translateX(-50%) scale(1); opacity: 1; }
+  100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
 @keyframes fade-in {
@@ -69,7 +68,7 @@ body {
 }
 
 .animate-action-pop {
-  animation: action-pop 1s ease forwards;
+  animation: action-pop 0.4s ease forwards;
 }
 
 .animate-fade-in {

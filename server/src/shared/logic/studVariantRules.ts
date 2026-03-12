@@ -14,6 +14,7 @@ export interface PotWinner {
   playerId: number;
   amount: number;
   handName: string;
+  hiLoType?: 'high' | 'low' | 'scoop';
 }
 
 export interface StudVariantRules {

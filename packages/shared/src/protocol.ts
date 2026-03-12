@@ -7,7 +7,6 @@ import type { Action, Card } from './types';
 export interface ClientToServerEvents {
   // Table actions
   'table:leave': () => void;
-  'table:spectate': (data: { tableId: string }) => void;
 
   // Game actions
   'game:action': (data: { action: Action; amount?: number; discardIndices?: number[] }) => void;
@@ -45,16 +44,10 @@ export interface ServerToClientEvents {
     amount: number;
   }) => void;
   'game:showdown': (data: {
-    winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
+    winners: { playerId: string; amount: number; handName: string; cards: Card[]; hiLoType?: 'high' | 'low' | 'scoop' }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
-  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string }[]; rake: number }) => void;
-
-  // Spectator
-  'table:spectating': (data: { tableId: string }) => void;
-  'game:all_hole_cards': (data: {
-    players: { seatIndex: number; cards: Card[] }[];
-  }) => void;
+  'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]; rake: number }) => void;
 
   // Maintenance
   'maintenance:status': (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
@@ -105,6 +98,7 @@ export interface ClientGameState {
   variant: string;  // 'plo' | 'stud'
   ante: number;     // Stud: アンテ額
   bringIn: number;  // Stud: ブリングイン額
+  validActions: { action: string; minAmount: number; maxAmount: number }[] | null;
 }
 
 export interface TableInfo {

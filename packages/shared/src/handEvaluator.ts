@@ -565,6 +565,141 @@ function format27LowName(values: number[]): string {
  * Razz: アップカードのみでショウイングハンドのロー強度を評価（アクション順序決定用）
  * 低いハンドほど良い
  */
+// =========================================================================
+//  8-or-Better Low Hand Evaluation (for Hi-Lo variants)
+// =========================================================================
+
+/**
+ * 8-or-better ロー5枚ハンド評価
+ * - Razzと同じA-5ローボール（Ace=1、ストレート/フラッシュ無視）
+ * - クオリファイ条件: 5枚すべて8以下（ペアなしの場合）
+ * - クオリファイしない場合は null を返す
+ */
+function evaluate8OrBetterFiveCardLow(cards: Card[]): HandRank | null {
+  const hand = evaluateRazzFiveCardHand(cards);
+
+  // ノーペア（rank=1）でないとクオリファイしにくいが、
+  // ペアありでもクオリファイ自体は可能（ただし弱い）
+  // クオリファイ条件: 5枚のユニーク値がすべて8以下
+  const values = cards.map(c => getRazzRankValue(c.rank));
+  const allEightOrLower = values.every(v => v <= 8);
+  if (!allEightOrLower) return null;
+
+  return hand;
+}
+
+/**
+ * 8-or-better: 5〜7枚から最良のクオリファイングロー5枚を選択
+ * クオリファイするハンドがない場合は null を返す
+ */
+export function evaluate8OrBetterLow(allCards: Card[]): HandRank | null {
+  if (allCards.length < 5) return null;
+
+  const combos = getCombinations(allCards, 5);
+  let bestLow: HandRank | null = null;
+
+  for (const combo of combos) {
+    const hand = evaluate8OrBetterFiveCardLow(combo);
+    if (hand && (!bestLow || compareLowHands(hand, bestLow) < 0)) {
+      bestLow = hand;
+    }
+  }
+
+  return bestLow;
+}
+
+/**
+ * Omaha Hi-Lo: ハイとローの両方を評価
+ * - ハイ: PLOと同じ（ホール2枚+コミュ3枚で最強ハイハンド）
+ * - ロー: ホール2枚+コミュ3枚で最良の8-or-betterロー
+ */
+export function evaluateOmahaHiLoHand(
+  holeCards: Card[],
+  communityCards: Card[],
+): { high: HandRank; low: HandRank | null } {
+  if (holeCards.length !== 4 || communityCards.length !== 5) {
+    throw new Error('Omaha Hi-Lo requires 4 hole cards and 5 community cards');
+  }
+
+  const holeCardCombos = getCombinations(holeCards, 2);
+  const communityCombos = getCombinations(communityCards, 3);
+
+  let bestHigh: HandRank = { rank: 0, name: '', highCards: [] };
+  let bestLow: HandRank | null = null;
+
+  for (const holeCombo of holeCardCombos) {
+    for (const communityCombo of communityCombos) {
+      const fiveCards = [...holeCombo, ...communityCombo];
+
+      // ハイ評価
+      const highHand = evaluateFiveCardHand(fiveCards);
+      if (compareHands(highHand, bestHigh) > 0) {
+        bestHigh = highHand;
+      }
+
+      // ロー評価（8-or-better）
+      const lowHand = evaluate8OrBetterFiveCardLow(fiveCards);
+      if (lowHand && (!bestLow || compareLowHands(lowHand, bestLow) < 0)) {
+        bestLow = lowHand;
+      }
+    }
+  }
+
+  return { high: bestHigh, low: bestLow };
+}
+
+/**
+ * Omaha Hi-Lo: コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
+ */
+export function evaluateCurrentOmahaHiLoHand(
+  holeCards: Card[],
+  communityCards: Card[],
+): { high: HandRank; low: HandRank | null } | null {
+  if (holeCards.length !== 4 || communityCards.length < 3) {
+    return null;
+  }
+
+  const holeCardCombos = getCombinations(holeCards, 2);
+  const communityCombos = getCombinations(communityCards, 3);
+
+  let bestHigh: HandRank = { rank: 0, name: '', highCards: [] };
+  let bestLow: HandRank | null = null;
+
+  for (const holeCombo of holeCardCombos) {
+    for (const communityCombo of communityCombos) {
+      const fiveCards = [...holeCombo, ...communityCombo];
+
+      const highHand = evaluateFiveCardHand(fiveCards);
+      if (compareHands(highHand, bestHigh) > 0) {
+        bestHigh = highHand;
+      }
+
+      const lowHand = evaluate8OrBetterFiveCardLow(fiveCards);
+      if (lowHand && (!bestLow || compareLowHands(lowHand, bestLow) < 0)) {
+        bestLow = lowHand;
+      }
+    }
+  }
+
+  return { high: bestHigh, low: bestLow };
+}
+
+/**
+ * Stud Hi-Lo: 5〜7枚からハイとローの両方を評価
+ * - ハイ: evaluateStudHand と同じ
+ * - ロー: 8-or-better
+ */
+export function evaluateStudHiLoHand(allCards: Card[]): { high: HandRank; low: HandRank | null } {
+  if (allCards.length < 5 || allCards.length > 7) {
+    throw new Error(`Stud Hi-Lo requires 5-7 cards, got ${allCards.length}`);
+  }
+
+  const high = evaluateStudHand(allCards);
+  const low = evaluate8OrBetterLow(allCards);
+
+  return { high, low };
+}
+
 export function evaluateRazzShowingHand(upCards: Card[]): HandRank {
   if (upCards.length === 0) {
     return { rank: 0, name: '', highCards: [] };
