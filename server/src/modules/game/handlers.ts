@@ -141,6 +141,10 @@ export async function handleMatchmakingJoin(
     // Find available table or create one
     const isFastFold = data.isFastFold ?? false;
     const table = tableManager.getOrCreateTable(blinds, isFastFold, undefined, variant, isHorse);
+    if (!table) {
+      socket.emit('table:error', { message: 'テーブルが満席です' });
+      return;
+    }
     if (isFastFold) setupFastFoldCallback(table, tableManager);
 
     // Deduct buy-in
