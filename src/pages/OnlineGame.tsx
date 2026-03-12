@@ -71,17 +71,17 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   const [variantNotice, setVariantNotice] = useState<string | null>(null);
   const prevVariantRef = React.useRef<string | undefined>(undefined);
 
-  // バリアント変更通知
+  // バリアント変更通知（初回表示 + 変更時）
   useEffect(() => {
     if (!gameState) return;
     const currentVariant = gameState.variant;
-    if (prevVariantRef.current !== undefined && prevVariantRef.current !== currentVariant) {
+    if (prevVariantRef.current !== currentVariant) {
       const name = variantDisplayName[currentVariant] || currentVariant;
-      setVariantNotice(name);
-      const timer = setTimeout(() => setVariantNotice(null), 1000);
+      setVariantNotice(`${name} ${blinds}`);
+      const timer = setTimeout(() => setVariantNotice(null), 2000);
+      prevVariantRef.current = currentVariant;
       return () => clearTimeout(timer);
     }
-    prevVariantRef.current = currentVariant;
   }, [gameState?.variant]);
 
   // Draw: ストリート変更時にカード選択リセット
@@ -383,9 +383,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         </div>
       )}
 
-          {/* バリアント変更通知 */}
+          {/* バリアント変更通知（テーブル中央） */}
           {variantNotice && (
-            <div className="absolute inset-0 z-[180] flex items-center justify-center pointer-events-none">
+            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
               <div className="bg-black/80 text-white font-bold px-[6cqw] py-[3cqw] rounded-[2cqw] text-[8cqw] animate-fade-in">
                 {variantNotice}
               </div>

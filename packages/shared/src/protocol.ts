@@ -49,9 +49,6 @@ export interface ServerToClientEvents {
   }) => void;
   'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]; rake: number }) => void;
 
-  // HORSE variant change
-  'game:variant_change': (data: { variant: string; variantLabel: string; roundIndex: number; totalRounds: number }) => void;
-
   // Maintenance
   'maintenance:status': (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
 

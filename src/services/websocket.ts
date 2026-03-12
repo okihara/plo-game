@@ -43,7 +43,6 @@ class WebSocketService {
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
     onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
     onDisplaced?: () => void;
-    onVariantChange?: (data: { variant: string; variantLabel: string; roundIndex: number; totalRounds: number }) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -167,12 +166,6 @@ class WebSocketService {
       this.socket.on('game:hand_complete', ({ winners }) => {
         wsLog('game:hand_complete', { winners });
         this.listeners.onHandComplete?.(winners);
-      });
-
-      // HORSE variant change
-      this.socket.on('game:variant_change', (data) => {
-        wsLog('game:variant_change', data);
-        this.listeners.onVariantChange?.(data);
       });
 
       // Maintenance events

@@ -487,28 +487,9 @@ export class TableInstance {
       this.variantAdapter = new VariantAdapter(newVariant);
       this.actionController = new ActionController(this.broadcast, this.variantAdapter);
 
-      // バリアント変更をクライアントに通知
-      this.broadcast.emitToRoom('game:variant_change', {
-        variant: newVariant,
-        variantLabel: this.getHorseVariantLabel(newVariant),
-        roundIndex: this.horseCurrentIndex,
-        totalRounds: this.horseVariants.length,
-      });
     }
 
     this.horseHandCount++;
-  }
-
-  /** HORSE: バリアントの表示名 */
-  private getHorseVariantLabel(variant: GameVariant): string {
-    switch (variant) {
-      case 'limit_holdem': return "Limit Hold'em";
-      case 'omaha_hilo': return 'Omaha Hi-Lo';
-      case 'razz': return 'Razz';
-      case 'stud': return '7-Card Stud';
-      case 'stud_hilo': return 'Stud Hi-Lo';
-      default: return variant;
-    }
   }
 
   /** HORSE: 現在のバリアント（外部から参照用） */
