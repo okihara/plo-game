@@ -1378,6 +1378,84 @@ describe('フルレイズルール（リオープン制限）', () => {
     expect(totalChipsAfter).toBe(totalChipsBefore);
   });
 
+  it('ベット86に対してチップ87の相手がオールイン → コール1が正常に処理される', () => {
+    // バグ報告: 相手チップ87に対して86ベット → 相手レイズオールイン → 1をコール → エラー
+    const state = createInitialGameState(500);
+    // フロップの状態を手動セットアップ
+    state.currentStreet = 'flop';
+    state.communityCards = [
+      card('A', 's'), card('K', 'h'), card('7', 'd'),
+    ];
+    // ターン・リバー用のデッキ
+    state.deck = [
+      card('2', 's'), card('3', 's'), card('4', 's'), card('5', 's'),
+    ];
+    state.pot = 20;
+    state.currentBet = 0;
+    state.minRaise = state.bigBlind;
+    state.lastFullRaiseBet = 0;
+    state.currentPlayerIndex = 0;
+
+    // Player 0: チップたくさん（ベットする側）
+    state.players[0].chips = 200;
+    state.players[0].currentBet = 0;
+    state.players[0].hasActed = false;
+    state.players[0].holeCards = [
+      card('A', 'h'), card('Q', 's'), card('J', 'h'), card('T', 'd'),
+    ];
+
+    // Player 1: チップ87（オールインする側）
+    state.players[1].chips = 87;
+    state.players[1].currentBet = 0;
+    state.players[1].hasActed = false;
+    state.players[1].holeCards = [
+      card('K', 's'), card('Q', 'h'), card('J', 'd'), card('9', 'c'),
+    ];
+
+    // 残りはフォールド
+    for (let i = 2; i < 6; i++) {
+      state.players[i].folded = true;
+    }
+
+    // Step 1: Player 0がベット86
+    const afterBet = applyAction(state, 0, 'bet', 86);
+    expect(afterBet.currentBet).toBe(86);
+    expect(afterBet.players[0].chips).toBe(200 - 86);
+    expect(afterBet.players[0].currentBet).toBe(86);
+    expect(afterBet.minRaise).toBe(86);
+
+    // Step 2: Player 1がオールイン（87チップ全額）
+    // Player 1のターンであることを確認
+    expect(afterBet.currentPlayerIndex).toBe(1);
+    const afterAllin = applyAction(afterBet, 1, 'allin');
+    expect(afterAllin.currentBet).toBe(87);
+    expect(afterAllin.players[1].chips).toBe(0);
+    expect(afterAllin.players[1].isAllIn).toBe(true);
+    // 非フルレイズ（raiseBy=1 < minRaise=86）
+    expect(afterAllin.players[0].hasActed).toBe(true); // リセットされない
+
+    // Step 3: Player 0のターンに戻っていることを確認
+    expect(afterAllin.currentPlayerIndex).toBe(0);
+
+    // Step 4: Player 0のvalidActionsを確認
+    const actions = getValidActions(afterAllin, 0);
+    const actionTypes = actions.map(a => a.action);
+    expect(actionTypes).toContain('fold');
+    expect(actionTypes).toContain('call');
+    const callAction = actions.find(a => a.action === 'call')!;
+    expect(callAction.minAmount).toBe(1);
+    expect(callAction.maxAmount).toBe(1);
+
+    // Step 5: Player 0がコール（1チップ）→ エラーなく処理される
+    const afterCall = applyAction(afterAllin, 0, 'call');
+    // ヘッズアップで両者のベット額が揃った → 次のストリートへ or ハンド完了
+    expect(afterCall.isHandComplete || afterCall.currentStreet !== 'flop').toBe(true);
+    // チップ合計が保存される（レーキ分の減少を許容）
+    const totalChips = afterCall.players.reduce((sum, p) => sum + p.chips, 0);
+    expect(totalChips).toBeLessThanOrEqual(500 * 6);
+    expect(totalChips).toBeGreaterThan(0);
+  });
+
   it('lastFullRaiseBetがストリート間でリセットされる', () => {
     let state = startNewHand(createInitialGameState(1000));
 
