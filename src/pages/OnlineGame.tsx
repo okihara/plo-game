@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
@@ -68,6 +68,21 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
+  const [variantNotice, setVariantNotice] = useState<string | null>(null);
+  const prevVariantRef = React.useRef<string | undefined>(undefined);
+
+  // バリアント変更通知
+  useEffect(() => {
+    if (!gameState) return;
+    const currentVariant = gameState.variant;
+    if (prevVariantRef.current !== undefined && prevVariantRef.current !== currentVariant) {
+      const name = variantDisplayName[currentVariant] || currentVariant;
+      setVariantNotice(name);
+      const timer = setTimeout(() => setVariantNotice(null), 1000);
+      return () => clearTimeout(timer);
+    }
+    prevVariantRef.current = currentVariant;
+  }, [gameState?.variant]);
 
   // Draw: ストリート変更時にカード選択リセット
   const currentStreet = gameState?.currentStreet;
@@ -367,6 +382,15 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
           </div>
         </div>
       )}
+
+          {/* バリアント変更通知 */}
+          {variantNotice && (
+            <div className="absolute inset-0 z-[180] flex items-center justify-center pointer-events-none">
+              <div className="bg-black/80 text-white font-bold px-[6cqw] py-[3cqw] rounded-[2cqw] text-[8cqw] animate-fade-in">
+                {variantNotice}
+              </div>
+            </div>
+          )}
 
           <PokerTable
             state={gameState}
