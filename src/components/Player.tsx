@@ -20,11 +20,10 @@ interface PlayerProps {
   actionTimeoutAt?: ActionTimeoutAt | null;
   actionTimeoutMs?: number | null;
   onAvatarClick?: () => void;
-  isSpectator?: boolean;
   variant?: GameVariant;
 }
 
-function formatAction(action: Action, amount: number, formatChips: (n: number) => string): string {
+function formatAction(action: Action, amount: number, formatChips: (n: number) => string, drawCount?: number): string {
   switch (action) {
     case 'fold': return 'FOLD';
     case 'check': return 'CHECK';
@@ -32,17 +31,18 @@ function formatAction(action: Action, amount: number, formatChips: (n: number) =
     case 'bet': return `BET ${formatChips(amount)}`;
     case 'raise': return `RAISE ${formatChips(amount)}`;
     case 'allin': return 'ALL-IN';
+    case 'draw': return drawCount === 0 ? 'STAND PAT' : `DRAW ${drawCount ?? ''}`;
     default: return '';
   }
 }
 
 const positionStyles: Record<number, string> = {
-  0: 'bottom-[-12%] left-1/2 -translate-x-1/2',
-  1: 'bottom-[5%] left-[-10%]',
-  2: 'top-[18%] left-[-10%]',
-  3: 'top-[-4%] left-1/2 -translate-x-1/2',
-  4: 'top-[18%] right-[-10%]',
-  5: 'bottom-[5%] right-[-10%]',
+  0: 'bottom-[-12%] left-1/2 -translate-x-1/2', // 自分
+  1: 'bottom-[14%] left-[-10%]', // 左下
+  2: 'top-[20%] left-[-10%]', // 左上
+  3: 'top-[-4%] left-1/2 -translate-x-1/2', // 上
+  4: 'top-[20%] right-[-10%]', // 右上
+  5: 'bottom-[14%] right-[-10%]', // 右下
 };
 
 const betPositionStyles: Record<number, string> = {
@@ -82,7 +82,6 @@ export function Player({
   actionTimeoutAt,
   actionTimeoutMs,
   onAvatarClick,
-  isSpectator = false,
   variant = 'plo',
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
@@ -219,8 +218,8 @@ export function Player({
         )}
         {/* Last Action Marker (CSS animation handles fade-out) */}
         {showActionMarker && (
-          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[4cqw] -translate-y-1/2 px-[4cqw] py-[2cqw] rounded-xl text-[5.8cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
-            {formatAction(lastAction.action, lastAction.amount, formatChips)}
+          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[4cqw] -translate-y-1/2 px-[3cqw] py-[1cqw] rounded-xl text-[5.0cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
+            {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount)}
           </div>
         )}
       </div>
@@ -239,7 +238,6 @@ export function Player({
         isDealing={isDealing}
         dealOrder={dealOrder}
         lastAction={lastAction}
-        isSpectator={isSpectator}
         variant={currentVariant}
         showdownHandName={showdownHandName}
         winHandName={winHandName}

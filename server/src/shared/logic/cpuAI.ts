@@ -14,7 +14,7 @@ export function getCPUAction(
   state: GameState,
   playerIndex: number,
   context?: AIContext
-): { action: Action; amount: number } {
+): { action: Action; amount: number; discardIndices?: number[] } {
   const player = state.players[playerIndex];
   const positionBonus = getPositionBonus(player.position);
 

@@ -94,7 +94,8 @@ export class StateTransformer {
     pendingAction: PendingAction | null,
     isHandInProgress: boolean,
     smallBlind: number,
-    bigBlind: number
+    bigBlind: number,
+    validActions?: { action: string; minAmount: number; maxAmount: number }[] | null,
   ): ClientGameState {
     // タイムアウト情報を計算
     const actionTimeoutAt = pendingAction
@@ -125,6 +126,7 @@ export class StateTransformer {
         variant: 'plo',
         ante: 0,
         bringIn: 0,
+        validActions: null,
       };
     }
 
@@ -153,6 +155,7 @@ export class StateTransformer {
       variant: gameState.variant ?? 'plo',
       ante: gameState.ante ?? 0,
       bringIn: gameState.bringIn ?? 0,
+      validActions: validActions ?? null,
     };
   }
 }

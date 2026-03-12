@@ -528,10 +528,10 @@ export function determineStudWinner(state: GameState, rakePercent: number = 0, r
   const potWinners = rules.resolveShowdown(showdownPlayers, contestedPots);
 
   newState.winners = [];
-  for (const { playerId, amount, handName } of potWinners) {
-    const player = newState.players.find(p => p.id === playerId)!;
-    player.chips += amount;
-    newState.winners.push({ playerId, amount, handName });
+  for (const pw of potWinners) {
+    const player = newState.players.find(p => p.id === pw.playerId)!;
+    player.chips += pw.amount;
+    newState.winners.push({ playerId: pw.playerId, amount: pw.amount, handName: pw.handName, ...(pw.hiLoType ? { hiLoType: pw.hiLoType } : {}) });
   }
 
   return newState;

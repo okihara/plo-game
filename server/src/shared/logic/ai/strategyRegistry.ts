@@ -3,6 +3,8 @@ import { AIVariantStrategy } from './types.js';
 import { PLOStrategy } from './ploStrategy.js';
 import { StudStrategy } from './studStrategy.js';
 import { RazzStrategy } from './razzStrategy.js';
+import { DrawStrategy } from './drawStrategy.js';
+import { LimitHoldemStrategy } from './limitHoldemStrategy.js';
 
 // 新しいゲーム種類を追加する場合:
 // 1. xxxStrategy.ts を作成 (AIVariantStrategy を実装)
@@ -12,8 +14,11 @@ const strategies: Record<GameVariant, AIVariantStrategy> = {
   plo: new PLOStrategy(),
   stud: new StudStrategy(),
   razz: new RazzStrategy(),
-  'limit_2-7_triple_draw': new PLOStrategy(), // TODO: Triple Draw専用AI戦略を実装
-  'no_limit_2-7_single_draw': new PLOStrategy(), // TODO: Single Draw専用AI戦略を実装
+  'limit_2-7_triple_draw': new DrawStrategy(),
+  'no_limit_2-7_single_draw': new DrawStrategy(),
+  'limit_holdem': new LimitHoldemStrategy(),
+  'omaha_hilo': new PLOStrategy(),  // Omaha系なのでPLOストラテジーを流用
+  'stud_hilo': new StudStrategy(),  // Stud系なのでStudストラテジーを流用
 };
 
 export function getVariantStrategy(variant: GameVariant): AIVariantStrategy {

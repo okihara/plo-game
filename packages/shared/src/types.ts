@@ -12,14 +12,60 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw';
+export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo';
 
-export function isStudFamily(variant: GameVariant): boolean {
-  return variant === 'stud' || variant === 'razz';
+// --- Variant Config ---
+
+export type VariantFamily = 'omaha' | 'holdem' | 'stud' | 'draw';
+export type BettingStructure = 'pot_limit' | 'fixed_limit' | 'no_limit';
+
+export interface VariantConfig {
+  family: VariantFamily;
+  betting: BettingStructure;
+  usesCommunityCards: boolean;
+  holeCardCount: number;
+  maxDraws: number;
+  usesBringIn: boolean;
 }
 
+export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
+  plo:                          { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  limit_holdem:                 { family: 'holdem', betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 2, maxDraws: 0, usesBringIn: false },
+  stud:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+  razz:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+  'limit_2-7_triple_draw':     { family: 'draw',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 5, maxDraws: 3, usesBringIn: false },
+  'no_limit_2-7_single_draw':  { family: 'draw',   betting: 'no_limit',   usesCommunityCards: false, holeCardCount: 5, maxDraws: 1, usesBringIn: false },
+  omaha_hilo:                   { family: 'omaha',  betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  stud_hilo:                    { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+};
+
+export function getVariantConfig(variant: GameVariant): VariantConfig {
+  return VARIANT_CONFIGS[variant];
+}
+
+/** @deprecated Use getVariantConfig(variant).family === 'stud' */
+export function isStudFamily(variant: GameVariant): boolean {
+  return getVariantConfig(variant).family === 'stud';
+}
+
+/** @deprecated Use getVariantConfig(variant).family === 'draw' */
 export function isDrawFamily(variant: GameVariant): boolean {
-  return variant === 'limit_2-7_triple_draw' || variant === 'no_limit_2-7_single_draw';
+  return getVariantConfig(variant).family === 'draw';
+}
+
+/** @deprecated Use getVariantConfig(variant).family === 'holdem' */
+export function isHoldemFamily(variant: GameVariant): boolean {
+  return getVariantConfig(variant).family === 'holdem';
+}
+
+/** ドローフェーズのストリートかどうか（カードを捨てて引き直す） */
+export function isDrawStreet(street: Street): boolean {
+  return street === 'draw1' || street === 'draw2' || street === 'draw3';
+}
+
+/** ベッティングフェーズのストリートかどうか（Draw系） */
+export function isDrawBettingStreet(street: Street): boolean {
+  return street === 'predraw' || street === 'postdraw1' || street === 'postdraw2' || street === 'final';
 }
 
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
@@ -79,7 +125,7 @@ export interface GameState {
   lastFullRaiseBet: number;  // フルレイズが発生した時の currentBet（リオープン判定用）
   handHistory: GameAction[];
   isHandComplete: boolean;
-  winners: { playerId: number; amount: number; handName: string }[];
+  winners: { playerId: number; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[];
   rake: number;
   // Variant support
   variant: GameVariant;
@@ -89,4 +135,5 @@ export interface GameState {
   maxBetsPerRound: number;   // Fixed Limit: 最大ベット回数/ストリート（通常4）
   discardPile?: Card[];      // Draw: 捨て札の山（ドロー時のデッキ補充用）
   maxDraws?: number;         // Draw: ドロー回数（1=Single Draw, 3=Triple Draw, デフォルト3）
+  validActions?: { action: string; minAmount: number; maxAmount: number }[] | null; // クライアント側でサーバーから受信した有効アクション
 }

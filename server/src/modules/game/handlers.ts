@@ -33,7 +33,7 @@ export async function handleTableLeave(socket: AuthenticatedSocket, tableManager
 
 export async function handleGameAction(
   socket: AuthenticatedSocket,
-  data: { action: Action; amount?: number },
+  data: { action: Action; amount?: number; discardIndices?: number[] },
   tableManager: TableManager
 ): Promise<void> {
   const table = tableManager.getPlayerTable(socket.odId!);
@@ -42,7 +42,7 @@ export async function handleGameAction(
     return;
   }
 
-  const success = table.handleAction(socket.odId!, data.action, data.amount || 0);
+  const success = table.handleAction(socket.odId!, data.action, data.amount || 0, data.discardIndices);
   if (!success) {
     socket.emit('table:error', { message: 'Invalid action' });
     return;
@@ -106,9 +106,10 @@ export async function handleMatchmakingJoin(
   }
 
   const { blinds } = data;
-  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz'];
+  const VALID_VARIANTS: import('../../shared/logic/types.js').GameVariant[] = ['plo', 'stud', 'razz', 'limit_2-7_triple_draw', 'no_limit_2-7_single_draw', 'limit_holdem', 'omaha_hilo', 'stud_hilo'];
+  const isHorse = data.variant === 'horse';
   const variant: import('../../shared/logic/types.js').GameVariant =
-    VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo';
+    isHorse ? 'limit_holdem' : (VALID_VARIANTS.includes(data.variant as any) ? (data.variant as any) : 'plo');
 
   try {
     const parts = blinds.split('/');
@@ -139,7 +140,11 @@ export async function handleMatchmakingJoin(
 
     // Find available table or create one
     const isFastFold = data.isFastFold ?? false;
-    const table = tableManager.getOrCreateTable(blinds, isFastFold, undefined, variant);
+    const table = tableManager.getOrCreateTable(blinds, isFastFold, undefined, variant, isHorse);
+    if (!table) {
+      socket.emit('table:error', { message: 'テーブルが満席です' });
+      return;
+    }
     if (isFastFold) setupFastFoldCallback(table, tableManager);
 
     // Deduct buy-in
@@ -209,24 +214,6 @@ export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: 
   } else {
     socket.emit('table:error', { message: '[debug] Failed to set chips' });
   }
-}
-
-export function handleSpectate(socket: AuthenticatedSocket, data: { tableId: string }, tableManager: TableManager): void {
-  const { tableId } = data;
-  const table = tableManager.getTable(tableId);
-  if (!table) {
-    socket.emit('table:error', { message: 'Table not found' });
-    return;
-  }
-
-  table.addSpectator(socket);
-
-  const clientState = table.getClientGameState();
-  socket.emit('game:state', { state: clientState });
-
-  table.sendAllHoleCardsToSpectator(socket);
-
-  socket.emit('table:spectating', { tableId });
 }
 
 // ========== Private table handlers ==========

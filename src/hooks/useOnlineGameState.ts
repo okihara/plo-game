@@ -12,6 +12,7 @@ export interface LastAction {
   action: Action;
   amount: number;
   timestamp: number;
+  drawCount?: number;
 }
 
 // アクションタイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
@@ -55,7 +56,7 @@ export interface OnlineGameHookResult {
   disconnect: () => void;
   joinMatchmaking: () => void;
   leaveMatchmaking: () => void;
-  handleAction: (action: Action, amount: number) => void;
+  handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
   handleFastFold: () => void;
   startNextHand: () => void;
 }
@@ -163,6 +164,7 @@ function convertClientStateToGameState(
     bringIn: clientState.bringIn ?? 0,
     betCount: 0,
     maxBetsPerRound: 4,
+    validActions: clientState.validActions ?? null,
   };
 }
 
@@ -216,10 +218,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // アクションマーカー管理（CSSアニメーションで自動フェードアウト）
   // ============================================
 
-  const recordAction = useCallback((playerId: number, action: Action, amount: number) => {
+  const recordAction = useCallback((playerId: number, action: Action, amount: number, drawCount?: number) => {
     setLastActions(prev => {
       const newMap = new Map(prev);
-      newMap.set(playerId, { action, amount, timestamp: Date.now() });
+      newMap.set(playerId, { action, amount, timestamp: Date.now(), drawCount });
       return newMap;
     });
   }, []);
@@ -288,8 +290,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // ゲームアクション
   // ============================================
 
-  const handleAction = useCallback((action: Action, amount: number) => {
-    wsService.sendAction(action, amount);
+  const handleAction = useCallback((action: Action, amount: number, discardIndices?: number[]) => {
+    wsService.sendAction(action, amount, discardIndices);
     setActionTimeoutAt(null);
   }, []);
 
@@ -361,6 +363,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           variant: prev?.variant ?? 'plo',
           ante: prev?.ante ?? 0,
           bringIn: 0,
+          validActions: null,
         }));
         setMyHoleCards([]);
         setShowdownCards(new Map());
@@ -383,8 +386,21 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // ストリート変更検出
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
+          clearAllActionMarkers();
         } else {
           setNewCommunityCardsCount(0);
+        }
+
+        // 手番プレイヤーのマーカーをクリア（同ストリート内で再び手番が回った場合）
+        if (state.currentPlayerSeat !== null) {
+          setLastActions(prev => {
+            if (prev.has(state.currentPlayerSeat!)) {
+              const newMap = new Map(prev);
+              newMap.delete(state.currentPlayerSeat!);
+              return newMap;
+            }
+            return prev;
+          });
         }
 
         prevStreetRef.current = state.currentStreet;
@@ -411,7 +427,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         }
         setMyHoleCards(cards);
       },
-      onActionTaken: ({ playerId, action, amount }) => {
+      onActionTaken: ({ playerId, action, amount, drawCount }) => {
         playActionSound(action);
         // アクション完了 → タイマーリング＆アクション待ちグローを即座にクリア
         setActionTimeoutAt(null);
@@ -421,7 +437,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         const currentState = clientStateRef.current;
         const seat = currentState?.players.findIndex(p => p?.odId === playerId);
         if (seat !== undefined && seat >= 0) {
-          recordAction(seat, action, amount);
+          recordAction(seat, action, amount, drawCount);
         }
       },
       onHandComplete: (serverWinners) => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Player as PlayerType, GameVariant, isStudFamily } from '../logic';
+import { Player as PlayerType, GameVariant, getVariantConfig } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction } from '../hooks/useOnlineGameState';
 
@@ -33,7 +33,6 @@ interface PlayerCardsProps {
   isDealing: boolean;
   dealOrder: number;
   lastAction: LastAction | null;
-  isSpectator: boolean;
   variant: GameVariant;
   showdownHandName?: string;
   winHandName?: string;
@@ -47,7 +46,6 @@ export function PlayerCards({
   isDealing,
   dealOrder,
   lastAction,
-  isSpectator,
   variant,
   showdownHandName,
   winHandName,
@@ -67,11 +65,11 @@ export function PlayerCards({
     }
   }, [showCards, player.folded, player.holeCards.length]);
 
-  // 自分の位置（positionIndex=0）かつ観戦者でない場合はMyCardsで表示するので非表示
-  if (positionIndex === 0 && !isSpectator) return null;
+  // 自分の位置（positionIndex=0）はMyCardsで表示するので非表示
+  if (positionIndex === 0) return null;
   
   // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
-  const cardOverlapMargin = isStudFamily(variant) ? '-ml-[6cqw]' : '-ml-[2cqw]';
+  const cardOverlapMargin = getVariantConfig(variant).family === 'stud' ? '-ml-[5cqw]' : '-ml-[2cqw]';
 
   return (
     <>
@@ -132,7 +130,7 @@ export function PlayerCards({
       {/* Hand Name (showdown) */}
       {(showdownHandName || winHandName) && !player.folded && (
         <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap`} style={{ top: '28cqw' }}>
-          <span className={`text-[4.5cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
+          <span className={`text-[6cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
             {showdownHandName || winHandName}
           </span>
         </div>

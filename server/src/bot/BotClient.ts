@@ -1,6 +1,5 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
-import { getValidActions } from '../shared/logic/gameEngine.js';
 import { GameState, Card, Action, Player, Position, GameAction, GameVariant } from '../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 import { AIContext } from '../shared/logic/ai/types.js';
@@ -172,12 +171,17 @@ export class BotClient {
       });
 
       this.socket.on('game:hole_cards', (data: { cards: Card[] }) => {
+        const isUpdate = this.holeCards.length > 0; // ドロー後のカード更新か
         this.holeCards = data.cards;
-        this.handActions = [];
-        console.log(`[${this.config.name}] Received hole cards`);
-        // ファストフォールド: 次のgame:stateで判定する
-        if (this.config.isFastFold) {
-          this.pendingFastFoldCheck = true;
+        if (!isUpdate) {
+          this.handActions = [];
+          console.log(`[${this.config.name}] Received hole cards`);
+          // ファストフォールド: 次のgame:stateで判定する
+          if (this.config.isFastFold) {
+            this.pendingFastFoldCheck = true;
+          }
+        } else {
+          console.log(`[${this.config.name}] Hole cards updated (draw)`);
         }
       });
 
@@ -261,8 +265,8 @@ export class BotClient {
       return;
     }
 
-    // フロントと同じ: 自前の gameState から validActions を計算
-    const validActions = getValidActions(aiGameState, this.seatNumber);
+    // サーバーから受信した validActions を使用（バリアント間の不一致を防止）
+    const validActions = (this.gameState?.validActions as { action: Action; minAmount: number; maxAmount: number }[]) ?? [];
 
     if (validActions.length === 0) {
       return;
@@ -308,15 +312,22 @@ export class BotClient {
       const delay = this.computeThinkingDelay(aiDecision.action, amount, validActions);
       setTimeout(() => {
         if (this.actionGeneration !== gen) return;
-        this.sendAction(aiDecision.action, amount);
+        this.sendAction(aiDecision.action, amount, aiDecision.discardIndices);
       }, delay);
     } else {
-      // Fallback: check or fold
+      // Fallback: draw > check > call > fold
+      const drawAction = validActions.find(a => a.action === 'draw');
       const checkAction = validActions.find(a => a.action === 'check');
       const callAction = validActions.find(a => a.action === 'call');
       const fallbackDelay = this.config.noDelay ? 0 : 800;
 
-      if (checkAction) {
+      if (drawAction) {
+        // ドローフェーズでAI判定が失敗した場合: スタンドパット
+        setTimeout(() => {
+          if (this.actionGeneration !== gen) return;
+          this.sendAction('draw', 0, []);
+        }, fallbackDelay);
+      } else if (checkAction) {
         setTimeout(() => {
           if (this.actionGeneration !== gen) return;
           this.sendAction('check', 0);
@@ -521,13 +532,14 @@ export class BotClient {
     return Math.max(1000, Math.min(12000, delay));
   }
 
-  private sendAction(action: Action, amount: number): void {
+  private sendAction(action: Action, amount: number, discardIndices?: number[]): void {
     if (!this.socket || !this.isConnected) return;
 
     this.isThinking = false;
-    console.log(`[${this.config.name}] Action: ${action}${amount > 0 ? ` $${amount}` : ''}`);
+    const discardInfo = discardIndices ? ` (discard ${discardIndices.length})` : '';
+    console.log(`[${this.config.name}] Action: ${action}${amount > 0 ? ` $${amount}` : ''}${discardInfo}`);
     this.lastActionAt = Date.now();
-    this.socket.emit('game:action', { action, amount });
+    this.socket.emit('game:action', { action, amount, discardIndices });
   }
 
   /**

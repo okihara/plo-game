@@ -31,7 +31,7 @@ class WebSocketService {
     onTableLeft?: () => void;
     onGameState?: (state: ClientGameState) => void;
     onHoleCards?: (cards: Card[]) => void;
-    onActionTaken?: (data: { playerId: string; action: Action; amount: number }) => void;
+    onActionTaken?: (data: { playerId: string; action: Action; amount: number; drawCount?: number }) => void;
     onShowdown?: (data: {
       winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
       players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
@@ -39,8 +39,6 @@ class WebSocketService {
     onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
     onTableChanged?: (tableId: string, seat: number) => void;
     onBusted?: (message: string) => void;
-    onSpectating?: (tableId: string) => void;
-    onAllHoleCards?: (players: { seatIndex: number; cards: Card[] }[]) => void;
     onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
     onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
@@ -170,17 +168,6 @@ class WebSocketService {
         this.listeners.onHandComplete?.(winners);
       });
 
-      // Spectator events
-      this.socket.on('table:spectating', ({ tableId }) => {
-        wsLog('table:spectating', { tableId });
-        this.listeners.onSpectating?.(tableId);
-      });
-
-      this.socket.on('game:all_hole_cards', ({ players }) => {
-        wsLog('game:all_hole_cards', { players });
-        this.listeners.onAllHoleCards?.(players);
-      });
-
       // Maintenance events
       this.socket.on('maintenance:status', (data) => {
         wsLog('maintenance:status', data);
@@ -239,8 +226,8 @@ class WebSocketService {
   }
 
   // Game actions
-  sendAction(action: Action, amount?: number): void {
-    this.socket?.emit('game:action', { action, amount });
+  sendAction(action: Action, amount?: number, discardIndices?: number[]): void {
+    this.socket?.emit('game:action', { action, amount, discardIndices });
   }
 
   sendFastFold(): void {
@@ -254,11 +241,6 @@ class WebSocketService {
 
   leaveMatchmaking(): void {
     this.socket?.emit('matchmaking:leave');
-  }
-
-  // Spectator
-  spectateTable(tableId: string): void {
-    this.socket?.emit('table:spectate', { tableId });
   }
 
   // Private table
