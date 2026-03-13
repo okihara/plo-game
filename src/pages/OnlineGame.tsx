@@ -3,7 +3,7 @@ import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
-import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
@@ -143,13 +143,13 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   // バリアント表示名
   const variantDisplayName: Record<string, string> = {
     plo: 'PLO',
-    limit_holdem: 'LHE',
+    limit_holdem: 'FLH',
     stud: 'Stud',
     razz: 'Razz',
     'limit_2-7_triple_draw': '2-7 TD',
     'no_limit_2-7_single_draw': 'NL 2-7 SD',
-    omaha_hilo: 'O8',
-    stud_hilo: 'Stud8',
+    omaha_hilo: 'FLO8',
+    stud_hilo: 'Stud Hi-Lo',
   };
 
   const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
@@ -173,6 +173,12 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         default:
           return undefined;
       }
+    }
+    if (variantConfig.family === 'draw') {
+      if (myHoleCards.length === 5) {
+        return evaluate27LowHand(myHoleCards).name;
+      }
+      return undefined;
     }
     if (gameState.variant === 'omaha_hilo') {
       const result = evaluateCurrentOmahaHiLoHand(myHoleCards, gameState.communityCards);
