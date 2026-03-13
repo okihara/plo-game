@@ -79,7 +79,7 @@ export function PlayerCards({
             ? player.holeCards.map((card, i) => (
                 <div key={i} className={i > 0 ? cardOverlapMargin : ''}>
                   {isRevealing ? (
-                    <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '400px' }}>
+                    <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '100cqw' }}>
                       <div
                         className="w-full h-full animate-reveal-card"
                         style={{
