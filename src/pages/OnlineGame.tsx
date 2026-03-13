@@ -13,12 +13,15 @@ import {
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
+
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 import { BustedScreen } from '../components/BustedScreen';
 
 import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
+
+const NOTICE_DISPLAY_MS = 3000;
 
 interface OnlineGameProps {
   blinds: string;
@@ -78,7 +81,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     if (prevVariantRef.current !== currentVariant) {
       const name = variantDisplayName[currentVariant] || currentVariant;
       setVariantNotice(`${name} ${blinds}`);
-      const timer = setTimeout(() => setVariantNotice(null), 2000);
+      const timer = setTimeout(() => setVariantNotice(null), NOTICE_DISPLAY_MS);
       prevVariantRef.current = currentVariant;
       return () => clearTimeout(timer);
     }
@@ -366,7 +369,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
                       const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
                       navigator.clipboard.writeText(url).then(() => {
                         setInviteCopied(true);
-                        setTimeout(() => setInviteCopied(false), 2000);
+                        setTimeout(() => setInviteCopied(false), NOTICE_DISPLAY_MS);
                       });
                     }}
                     className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
@@ -385,8 +388,8 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           {/* バリアント変更通知（テーブル中央） */}
           {variantNotice && (
-            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
-              <div className="bg-black/80 text-white font-bold px-[6cqw] py-[3cqw] rounded-[2cqw] text-[8cqw] animate-fade-in">
+            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
+              <div className="bg-black text-white font-bold w-[70cqw] h-[60cqw] flex items-center justify-center rounded-[2cqw] text-[8cqw] animate-fade-in whitespace-nowrap">
                 {variantNotice}
               </div>
             </div>

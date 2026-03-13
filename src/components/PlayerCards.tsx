@@ -34,9 +34,6 @@ interface PlayerCardsProps {
   dealOrder: number;
   lastAction: LastAction | null;
   variant: GameVariant;
-  showdownHandName?: string;
-  winHandName?: string;
-  isWinner: boolean;
 }
 
 export function PlayerCards({
@@ -47,9 +44,6 @@ export function PlayerCards({
   dealOrder,
   lastAction,
   variant,
-  showdownHandName,
-  winHandName,
-  isWinner,
 }: PlayerCardsProps) {
   // ショウダウン時のカード公開アニメーション
   const [isRevealing, setIsRevealing] = useState(false);
@@ -74,7 +68,7 @@ export function PlayerCards({
   return (
     <>
       {/* Hole Cards */}
-    <div className={`absolute flex ${showCards && !player.folded ? 'z-[45]' : 'z-[15]'} ${cardPositionStyle}`}>
+    <div className={`absolute flex ${showCards && !player.folded ? 'z-[15]' : 'z-[15]'} ${cardPositionStyle}`}>
         {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
                 <div key={i} className={i > 0 ? cardOverlapMargin : ''}>
@@ -126,15 +120,6 @@ export function PlayerCards({
               })
         }
       </div>
-
-      {/* Hand Name (showdown) */}
-      {(showdownHandName || winHandName) && !player.folded && (
-        <div className={`absolute left-1/2 -translate-x-1/2 z-[46] whitespace-nowrap`} style={{ top: '0cqw' }}>
-          <span className={`text-[6cqw] font-bold px-[2cqw] py-[0.5cqw] rounded bg-black/70 ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
-            {showdownHandName || winHandName}
-          </span>
-        </div>
-      )}
     </>
   );
 }
