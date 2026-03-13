@@ -162,20 +162,20 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
               { label: '1/3', value: 0.33 },
               { label: '1/2', value: 0.5 },
               { label: '3/4', value: 0.75 },
-              { label: 'ポット', value: 1 },
+              { label: 'Pot', value: 1 },
             ].map(({ label, value }) => (
               <button
                 key={label}
                 onClick={() => handlePreset(value)}
                 disabled={!canRaise || !isMyTurn || actionSent}
-                className="flex-1 py-[1.8cqw] px-[0.9cqw] border-2 border-gray-500 rounded-md bg-gray-700 text-gray-200 text-[2.3cqw] font-bold transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
+                className="flex-1 py-[0.8cqw] px-[0.9cqw] border-[0.5cqw] border-gray-500 rounded-[0.5cqw] bg-gray-700 text-gray-200 text-[4cqw] transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
               >
                 {label}
               </button>
             ))}
           </div>
           <div className="w-1/2 flex items-center gap-[1.8cqw]">
-            <span className="text-emerald-400 font-bold text-[2.7cqw] min-w-[10.7cqw] text-right border-2 border-gray-600 rounded px-[1.8cqw] py-[0.9cqw] bg-gray-800">
+            <span className="text-emerald-400 text-[3.5cqw] w-[10.7cqw] text-right border-[0.5cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
               {formatChips(sliderValue)}
             </span>
             <input
