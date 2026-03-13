@@ -46,7 +46,7 @@ const positionStyles: Record<number, string> = {
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-12cqw]',
+  0: 'top-[-15cqw]',
   1: 'top-0 right-[-15cqw]',
   2: 'top-[8cqw] right-[-15cqw]',
   3: 'bottom-[-12cqw]',
@@ -212,7 +212,7 @@ export function Player({
         )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
-          <div className="absolute left-1/2 -translate-x-1/2 top-[-4cqw] bg-black rounded-lg px-[2cqw] py-[0.5cqw] flex items-center justify-center text-[5cqw] text-white z-[35] leading-none">
+          <div className="absolute left-1/2 -translate-x-1/2 top-[-3cqw] bg-black rounded-lg px-[2cqw] py-[0.5cqw] flex items-center justify-center text-[5cqw] text-white z-[35] leading-none">
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
