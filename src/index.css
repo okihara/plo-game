@@ -82,17 +82,17 @@ body {
 /* Card dealing animation - cards fly from table center to player position */
 @keyframes deal-card {
   0% {
-    opacity: 0;
-    transform: translate(var(--deal-from-x, 0), var(--deal-from-y, 0)) scale(0.5);
+    opacity: 1;
+    transform: translate(var(--deal-from-x, 0), var(--deal-from-y, 0)) scale(1);
   }
   100% {
     opacity: 1;
-    transform: translate(0, 0) scale(1);
+    transform: translate(var(0, 0), var(--deal-to-y, 0)) scale(1);
   }
 }
 
 .animate-deal-card {
-  animation: deal-card 0.5s ease-out forwards;
+  animation: deal-card 0.4s ease-out forwards;
 }
 
 /* Win/Lose animations */

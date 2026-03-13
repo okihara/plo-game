@@ -409,7 +409,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           <MyCards
             cards={myHoleCards}
-            isDealing={isDealingCards}
             dealOrder={humanDealOrder}
             folded={myPlayer?.folded}
             handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
