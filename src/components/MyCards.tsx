@@ -40,8 +40,9 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false, handName,
               onClick={isDrawPhase && onCardToggle ? () => onCardToggle(cardIndex) : undefined}
             >
               <div className="relative">
-                <Card card={card} size={useSmallCards ? 'sm' : 'lg'} />
-                {isSelected && (
+              <Card card={card} size={useSmallCards ? 'sm' : 'lg'} />
+              {/* 丸のポッチ */}
+              {isSelected && (
                   <div className="absolute -top-[1.5cqw] left-1/2 -translate-x-1/2 w-[3cqw] h-[3cqw] rounded-full bg-red-500 border-2 border-white shadow-md" />
                 )}
               </div>
