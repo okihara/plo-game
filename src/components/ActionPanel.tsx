@@ -119,7 +119,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
               onAction('draw', 0, Array.from(selectedCardIndices));
             }}
             disabled={!isMyTurn || actionSent}
-            className={`w-[60%] py-[3.2cqw] px-[1.8cqw] rounded-xl text-[3cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+            className={`w-[60%] py-[3.2cqw] px-[1.8cqw] rounded-[3cqw] text-[3cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
               count === 0
                 ? 'bg-gradient-to-b from-blue-500 to-blue-600'
                 : 'bg-gradient-to-b from-amber-500 to-amber-600'
@@ -221,7 +221,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
           <button
             onClick={handleFoldClick}
             disabled={!(isMyTurn && !actionSent && canFold) && !(canFastFold && !actionSent)}
-            className={`flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+            className={`flex-1 py-[3.2cqw] px-[1.8cqw] rounded-[1cqw] text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
               canFastFold && !isMyTurn
                 ? 'bg-gradient-to-b from-red-500 to-red-600'
                 : 'bg-gradient-to-b from-gray-500 to-gray-600'
@@ -233,7 +233,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
         <button
           onClick={() => handleAction(centerAction)}
           disabled={centerDisabled}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-[1cqw] text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             canCheck
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
               : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
@@ -244,7 +244,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
         <button
           onClick={() => handleAction(rightAction)}
           disabled={rightDisabled}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-[1cqw] text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             isShortStack || sliderValue >= myPlayer.chips
               ? 'bg-gradient-to-b from-red-500 to-red-600'
               : 'bg-gradient-to-b from-amber-500 to-amber-600'
