@@ -20,10 +20,10 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false, handName,
 
   return (
     <div
-      className={`@container relative flex flex-col items-center justify-center h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
+      className={`@container relative flex flex-col items-center justify-end h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
     >
       {cards.length > 0 && (
-      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : 'gap-[2cqw]'} justify-center`}>
+      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : 'gap-[1cqw]'} justify-center`}>
         {cards.map((card, cardIndex) => {
           const dealDelay = (cardIndex * 6 + dealOrder) * 40;
           const isSelected = isDrawPhase && selectedCardIndices?.has(cardIndex);
