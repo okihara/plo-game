@@ -265,8 +265,8 @@ export class TableInstance {
         this.handleAllInRunOut(this.gameState, previousCardCount);
       } else {
         // 通常のハンド完了（全員フォールド or リバーベッティング終了）
-        this.broadcastGameState();
         this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+        // this.broadcastGameState();
       }
     } else if (result.streetChanged) {
       // アクション演出を待ってからカードを表示
