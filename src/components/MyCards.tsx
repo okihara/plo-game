@@ -56,7 +56,7 @@ export function MyCards({ cards, isDealing, dealOrder, folded = false, handName,
         </div>
       )}
       {!isDrawPhase && handName && (
-        <div className="absolute bottom-[1cqw] left-1/2 -translate-x-1/2 text-[4.5cqw] font-bold text-amber-300 whitespace-nowrap bg-black/90 px-[2cqw] py-[0.5cqw] rounded">
+        <div className="absolute bottom-[-2cqw] left-1/2 -translate-x-1/2 text-[4.5cqw] font-bold text-amber-300 whitespace-nowrap bg-black/90 px-[2cqw] py-[0.5cqw] rounded">
           {handName}
         </div>
       )}
