@@ -143,7 +143,7 @@ export function Player({
       <div className="relative">
         {/* Current Player Glow Ring */}
         {isCurrentPlayer && (
-          <div className="absolute inset-0 w-[22cqw] h-[22cqw] rounded-full animate-ping bg-amber-400/40" />
+          <div className="absolute inset-[-3cqw] w-[28cqw] h-[28cqw] rounded-full animate-ping bg-amber-400/90" />
         )}
         {isCurrentPlayer && (
           <div className="absolute inset-[-2cqw] w-[26cqw] h-[26cqw] rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-spin opacity-70" style={{ animationDuration: '3s' }} />
