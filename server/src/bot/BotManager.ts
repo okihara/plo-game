@@ -168,28 +168,18 @@ export class BotManager {
     return null;
   }
 
-  /** マッチメイキング参加失敗時: 該当ボットを切断し、別のボットで再試行 */
+  /** マッチメイキング参加失敗時: 該当ボットを切断（補充はヘルスチェックに任せる） */
   private async handleJoinFailed(failedBot: BotClient, reason: string): Promise<void> {
     if (!this.isRunning) return;
 
     const playerId = failedBot.getPlayerId();
     const botName = failedBot.getName();
-    console.log(`[BotManager] Bot ${botName} join failed (${reason}), replacing...`);
+    console.log(`[BotManager] Bot ${botName} join failed (${reason}), removing.`);
 
-    // 失敗したボットを除去
+    // 失敗したボットを除去（補充はヘルスチェックが判断する）
     if (playerId) this.bots.delete(playerId);
     this.usedNames.delete(botName);
     failedBot.disconnect().catch(() => {});
-
-    // 少し待ってから別のボットで再試行
-    await this.sleep(1000);
-    if (!this.isRunning) return;
-
-    try {
-      await this.createBot();
-    } catch (err) {
-      console.error('[BotManager] Failed to create replacement bot:', err);
-    }
   }
 
   private getAvailableName(): string | null {

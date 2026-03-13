@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react';
-import { Share2, Link, Check } from 'lucide-react';
+import { Share2, Link, Check, Image } from 'lucide-react';
 import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
+
+const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 export interface HandDetailPlayer {
   username: string;
@@ -376,6 +378,8 @@ export function HandDetailDialog({
 
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [imageCopied, setImageCopied] = useState(false);
+  const [imageLoading, setImageLoading] = useState(false);
 
   const shareUrl = `${window.location.origin}/hand/${hand.id}`;
   const me = hand.players.find(p => p.isCurrentUser);
@@ -397,6 +401,41 @@ export function HandDetailDialog({
       setTimeout(() => setCopied(false), 2000);
     }
     setShowShareMenu(false);
+  };
+
+  const handleCopyImage = async () => {
+    if (imageLoading) return;
+    setImageLoading(true);
+    try {
+      // OGP画像をfetch → img要素でデコード → canvasでPNG Blobに変換
+      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}`);
+      if (!res.ok) throw new Error('Failed to fetch image');
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const img = new window.Image();
+      img.crossOrigin = 'anonymous';
+      const pngBlob = await new Promise<Blob>((resolve, reject) => {
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          const ctx = canvas.getContext('2d')!;
+          ctx.drawImage(img, 0, 0);
+          URL.revokeObjectURL(url);
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob failed')), 'image/png');
+        };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('Image decode failed')); };
+        img.src = url;
+      });
+      await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob })]);
+      setImageLoading(false);
+      setImageCopied(true);
+      setTimeout(() => { setImageCopied(false); setShowShareMenu(false); }, 1000);
+    } catch (e) {
+      console.error('[handleCopyImage] error:', e);
+      setImageLoading(false);
+      setShowShareMenu(false);
+    }
   };
 
   const handleShareX = () => {
@@ -438,6 +477,8 @@ export function HandDetailDialog({
               <Share2 className="w-[4cqw] h-[4cqw] text-cream-700" />
             </button>
             {showShareMenu && (
+              <>
+              <div className="fixed inset-0 z-[299]" onClick={() => !imageLoading && setShowShareMenu(false)} />
               <div className="absolute right-0 top-full mt-[1cqw] z-[300] bg-white border border-cream-300 rounded-[2cqw] shadow-lg min-w-[36cqw] overflow-hidden">
                 <button
                   onClick={handleCopyLink}
@@ -449,6 +490,16 @@ export function HandDetailDialog({
                   {copied ? 'コピーしました' : 'リンクをコピー'}
                 </button>
                 <button
+                  onClick={handleCopyImage}
+                  disabled={imageLoading}
+                  className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-800 hover:bg-cream-100 active:bg-cream-200 transition-colors border-t border-cream-200 disabled:opacity-50"
+                >
+                  {imageCopied
+                    ? <Check className="w-[4cqw] h-[4cqw] text-forest" />
+                    : <Image className="w-[4cqw] h-[4cqw] text-cream-600" />}
+                  {imageLoading ? '生成中...' : imageCopied ? 'コピーしました' : '画像をコピー'}
+                </button>
+                <button
                   onClick={handleShareX}
                   className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-800 hover:bg-cream-100 active:bg-cream-200 transition-colors border-t border-cream-200"
                 >
@@ -458,6 +509,7 @@ export function HandDetailDialog({
                   X でシェア
                 </button>
               </div>
+              </>
             )}
           </div>
         </div>

@@ -84,7 +84,7 @@ export function PlayerDebug() {
   const [actionTimestamp, setActionTimestamp] = useState<number | null>(null);
   const [isTimerActive, setIsTimerActive] = useState(false);
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
-  const [showHandName, setShowHandName] = useState(false);
+  const [handNameOption, setHandNameOption] = useState<string>('');
 
   // Create player based on state
   const player = createPlayer('Player', {
@@ -257,15 +257,40 @@ export function PlayerDebug() {
                     <span className="text-sm">ベット額を表示</span>
                   </label>
 
-                  <label className="flex items-center gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={showHandName}
-                      onChange={(e) => setShowHandName(e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm">役名を表示</span>
-                  </label>
+                  <div>
+                    <label className="text-sm text-cream-600 block mb-1">役名を表示</label>
+                    <select
+                      value={handNameOption}
+                      onChange={(e) => setHandNameOption(e.target.value)}
+                      className="w-full px-3 py-2 bg-cream-100 border border-cream-300 rounded text-sm"
+                    >
+                      <option value="">なし</option>
+                      <optgroup label="Hi ハンド">
+                        <option value="ワンペア">ワンペア（4文字）</option>
+                        <option value="ツーペア">ツーペア（4文字）</option>
+                        <option value="フラッシュ">フラッシュ（5文字）</option>
+                        <option value="フルハウス">フルハウス（5文字）</option>
+                        <option value="ハイカード">ハイカード（5文字）</option>
+                        <option value="ストレート">ストレート（5文字）</option>
+                        <option value="スリーカード">スリーカード（6文字）</option>
+                        <option value="フォーカード">フォーカード（6文字）</option>
+                        <option value="ストレートフラッシュ">ストレートフラッシュ（10文字）</option>
+                      </optgroup>
+                      <optgroup label="Lo / Razz">
+                        <option value="Wheel">Wheel（5文字）</option>
+                        <option value="8-low">8-low（5文字）</option>
+                        <option value="6-low">6-low（5文字）</option>
+                        <option value="Number One">Number One（10文字）</option>
+                        <option value="7-5 low">7-5 low（7文字）</option>
+                        <option value="T-8 low">T-8 low（7文字）</option>
+                      </optgroup>
+                      <optgroup label="Hi-Lo（スクープ）">
+                        <option value="フルハウス / 8-low">フルハウス / 8-low</option>
+                        <option value="フラッシュ / Wheel">フラッシュ / Wheel</option>
+                        <option value="ストレートフラッシュ / 6-low">ストレートフラッシュ / 6-low</option>
+                      </optgroup>
+                    </select>
+                  </div>
 
                   {showBet && (
                     <div className="ml-7 mt-2">
@@ -328,7 +353,7 @@ export function PlayerDebug() {
             <div className="lg:col-span-2">
               <div className="bg-black rounded-lg shadow-[0_2px_8px_rgba(139,126,106,0.12)] flex items-center justify-center p-4">
                 {/* 実機と同じ9:16コンテナ */}
-                <div className="@container flex flex-col w-full max-w-[360px] aspect-[9/16] bg-[#1a1510] overflow-hidden relative">
+                <div className="@container flex flex-col w-full max-w-[600px] aspect-[9/16] bg-[#1a1510] overflow-hidden relative">
                   {/* PokerTableと同じ構造: h-[129cqw] */}
                   <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
                     <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
@@ -341,7 +366,7 @@ export function PlayerDebug() {
                           isWinner={isWinner}
                           winAmount={isWinner ? 500 : undefined}
                           winHandName={isWinner ? 'フルハウス' : undefined}
-                          showdownHandName={showHandName ? 'フルハウス' : undefined}
+                          showdownHandName={handNameOption || undefined}
                           lastAction={lastAction}
                           showCards={showCards}
                           isDealing={isDealing}

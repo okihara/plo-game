@@ -3,7 +3,7 @@ import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
-import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
 import {
   PokerTable,
@@ -13,12 +13,15 @@ import {
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
+
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
 import { SearchingTableScreen } from '../components/SearchingTableScreen';
 import { BustedScreen } from '../components/BustedScreen';
 
 import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
+
+const NOTICE_DISPLAY_MS = 3000;
 
 interface OnlineGameProps {
   blinds: string;
@@ -78,7 +81,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     if (prevVariantRef.current !== currentVariant) {
       const name = variantDisplayName[currentVariant] || currentVariant;
       setVariantNotice(`${name} ${blinds}`);
-      const timer = setTimeout(() => setVariantNotice(null), 2000);
+      const timer = setTimeout(() => setVariantNotice(null), NOTICE_DISPLAY_MS);
       prevVariantRef.current = currentVariant;
       return () => clearTimeout(timer);
     }
@@ -140,13 +143,13 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
   // バリアント表示名
   const variantDisplayName: Record<string, string> = {
     plo: 'PLO',
-    limit_holdem: 'LHE',
+    limit_holdem: 'FLH',
     stud: 'Stud',
     razz: 'Razz',
     'limit_2-7_triple_draw': '2-7 TD',
     'no_limit_2-7_single_draw': 'NL 2-7 SD',
-    omaha_hilo: 'O8',
-    stud_hilo: 'Stud8',
+    omaha_hilo: 'FLO8',
+    stud_hilo: 'Stud Hi-Lo',
   };
 
   const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
@@ -170,6 +173,12 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         default:
           return undefined;
       }
+    }
+    if (variantConfig.family === 'draw') {
+      if (myHoleCards.length === 5) {
+        return evaluate27LowHand(myHoleCards).name;
+      }
+      return undefined;
     }
     if (gameState.variant === 'omaha_hilo') {
       const result = evaluateCurrentOmahaHiLoHand(myHoleCards, gameState.communityCards);
@@ -254,7 +263,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-50 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
+          <div className="absolute top-0 left-0 right-0 z-10 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
             <button
               onClick={onBack}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
@@ -366,7 +375,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
                       const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
                       navigator.clipboard.writeText(url).then(() => {
                         setInviteCopied(true);
-                        setTimeout(() => setInviteCopied(false), 2000);
+                        setTimeout(() => setInviteCopied(false), NOTICE_DISPLAY_MS);
                       });
                     }}
                     className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
@@ -385,8 +394,8 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           {/* バリアント変更通知（テーブル中央） */}
           {variantNotice && (
-            <div className="absolute top-[35%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
-              <div className="bg-black/80 text-white font-bold px-[6cqw] py-[3cqw] rounded-[2cqw] text-[8cqw] animate-fade-in">
+            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
+              <div className="bg-black text-white font-bold w-[70cqw] h-[60cqw] flex items-center justify-center rounded-[2cqw] text-[8cqw] animate-fade-in whitespace-nowrap">
                 {variantNotice}
               </div>
             </div>
@@ -406,7 +415,6 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
           <MyCards
             cards={myHoleCards}
-            isDealing={isDealingCards}
             dealOrder={humanDealOrder}
             folded={myPlayer?.folded}
             handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
