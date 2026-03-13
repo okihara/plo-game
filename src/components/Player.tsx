@@ -212,7 +212,7 @@ export function Player({
         )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-full w-[14cqw] h-[14cqw] flex items-center justify-center text-[7cqw] text-white z-[35] leading-none">
+          <div className="absolute left-1/2 -translate-x-1/2 top-[-4cqw] bg-black rounded-lg px-[2cqw] py-[0.5cqw] flex items-center justify-center text-[5cqw] text-white z-[35] leading-none">
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
