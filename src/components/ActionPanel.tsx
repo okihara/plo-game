@@ -2,6 +2,26 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import { GameState, Action, getVariantConfig } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 
+function ActionButton({ onClick, disabled, colorFrom, colorTo, borderColor, label, className = '' }: {
+  onClick: () => void;
+  disabled: boolean;
+  colorFrom: string;
+  colorTo: string;
+  borderColor: string;
+  label: string;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`h-[11cqw] rounded-[1cqw] text-[3.5cqw] font-bold uppercase tracking-wide transition-all active:scale-95 active:shadow-none active:border-b-0 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-lg bg-gradient-to-b ${colorFrom} ${colorTo} border-b-[0.8cqw] ${borderColor} ${className}`}
+    >
+      {label}
+    </button>
+  );
+}
+
 interface ActionPanelProps {
   state: GameState;
   mySeat: number;
@@ -113,20 +133,18 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     return (
       <div className="px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]">
         <div className="flex justify-center">
-          <button
+          <ActionButton
             onClick={() => {
               setActionSent(true);
               onAction('draw', 0, Array.from(selectedCardIndices));
             }}
             disabled={!isMyTurn || actionSent}
-            className={`w-[60%] py-[3.2cqw] px-[1.8cqw] rounded-[3cqw] text-[3cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
-              count === 0
-                ? 'bg-gradient-to-b from-blue-500 to-blue-600'
-                : 'bg-gradient-to-b from-amber-500 to-amber-600'
-            }`}
-          >
-            {count === 0 ? 'STAND PAT' : `DRAW ${count}`}
-          </button>
+            colorFrom={count === 0 ? 'from-blue-500' : 'from-amber-500'}
+            colorTo={count === 0 ? 'to-blue-600' : 'to-amber-600'}
+            borderColor={count === 0 ? 'border-blue-800' : 'border-amber-800'}
+            label={count === 0 ? 'STAND PAT' : `DRAW ${count}`}
+            className="w-[60%] rounded-[3cqw]"
+          />
         </div>
       </div>
     );
@@ -168,14 +186,14 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
                 key={label}
                 onClick={() => handlePreset(value)}
                 disabled={!canRaise || !isMyTurn || actionSent}
-                className="flex-1 py-[0.8cqw] px-[0.9cqw] border-[0.5cqw] border-gray-500 rounded-[0.5cqw] bg-gray-700 text-gray-200 text-[4cqw] transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
+                className="flex-1 py-[0.8cqw] px-[0.9cqw] border-[0.3cqw] border-gray-500 rounded-[1cqw] bg-gray-700 text-gray-200 text-[4cqw] transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
               >
                 {label}
               </button>
             ))}
           </div>
           <div className="w-1/2 flex items-center gap-[1.8cqw]">
-            <span className="text-emerald-400 text-[3.5cqw] w-[10.7cqw] text-right border-[0.5cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
+            <span className="text-emerald-400 text-[3.5cqw] w-[10.7cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
               {formatChips(sliderValue)}
             </span>
             <input
@@ -218,40 +236,32 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
               </div>
             </label>
           )}
-          <button
+          <ActionButton
             onClick={handleFoldClick}
             disabled={!(isMyTurn && !actionSent && canFold) && !(canFastFold && !actionSent)}
-            className={`flex-1 py-[3.2cqw] px-[1.8cqw] rounded-[1cqw] text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
-              canFastFold && !isMyTurn
-                ? 'bg-gradient-to-b from-red-500 to-red-600'
-                : 'bg-gradient-to-b from-gray-500 to-gray-600'
-            }`}
-          >
-            FOLD
-          </button>
+            colorFrom={canFastFold && !isMyTurn ? 'from-red-500' : 'from-gray-500'}
+            colorTo={canFastFold && !isMyTurn ? 'to-red-600' : 'to-gray-600'}
+            borderColor={canFastFold && !isMyTurn ? 'border-red-800' : 'border-gray-800'}
+            label="FOLD"
+            className="flex-1"
+          />
         </div>
-        <button
+        <ActionButton
           onClick={() => handleAction(centerAction)}
           disabled={centerDisabled}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-[1cqw] text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
-            canCheck
-              ? 'bg-gradient-to-b from-blue-500 to-blue-600'
-              : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
-          }`}
-        >
-          {centerLabel}
-        </button>
-        <button
+          colorFrom={canCheck ? 'from-blue-500' : 'from-emerald-500'}
+          colorTo={canCheck ? 'to-blue-600' : 'to-emerald-600'}
+          borderColor={canCheck ? 'border-blue-800' : 'border-emerald-800'}
+          label={centerLabel}
+        />
+        <ActionButton
           onClick={() => handleAction(rightAction)}
           disabled={rightDisabled}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-[1cqw] text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
-            isShortStack || sliderValue >= myPlayer.chips
-              ? 'bg-gradient-to-b from-red-500 to-red-600'
-              : 'bg-gradient-to-b from-amber-500 to-amber-600'
-          }`}
-        >
-          {rightLabel}
-        </button>
+          colorFrom={isShortStack || sliderValue >= myPlayer.chips ? 'from-red-500' : 'from-amber-500'}
+          colorTo={isShortStack || sliderValue >= myPlayer.chips ? 'to-red-600' : 'to-amber-600'}
+          borderColor={isShortStack || sliderValue >= myPlayer.chips ? 'border-red-800' : 'border-amber-800'}
+          label={rightLabel}
+        />
       </div>
     </div>
   );
