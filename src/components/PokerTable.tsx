@@ -115,7 +115,7 @@ export function PokerTable({
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
           return (
-            <div className={`absolute top-[64%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-[5cqw] text-yellow-400 z-10 ${!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]'}`}>
+            <div className={`absolute top-[64%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 px-[3cqw] rounded-[15cqw] text-[5cqw] text-white-80 z-10 ${!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]'}`}>
               {formatChips(carriedPot)}
             </div>
           );

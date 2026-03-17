@@ -46,7 +46,7 @@ const positionStyles: Record<number, string> = {
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-12cqw]',
+  0: 'top-[-15cqw]',
   1: 'top-0 right-[-15cqw]',
   2: 'top-[8cqw] right-[-15cqw]',
   3: 'bottom-[-12cqw]',
@@ -54,7 +54,7 @@ const betPositionStyles: Record<number, string> = {
   5: 'top-0 left-[-15cqw]',
 };
 
-const dealerButtonStyle = 'top-[-3cqw] right-[-3cqw]';
+const dealerButtonStyle = 'top-[-7cqw] right-[-7cqw]';
 
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
@@ -143,7 +143,7 @@ export function Player({
       <div className="relative">
         {/* Current Player Glow Ring */}
         {isCurrentPlayer && (
-          <div className="absolute inset-0 w-[22cqw] h-[22cqw] rounded-full animate-ping bg-amber-400/40" />
+          <div className="absolute inset-[-3cqw] w-[28cqw] h-[28cqw] rounded-full animate-ping bg-white/90" />
         )}
         {isCurrentPlayer && (
           <div className="absolute inset-[-2cqw] w-[26cqw] h-[26cqw] rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-spin opacity-70" style={{ animationDuration: '3s' }} />
@@ -199,8 +199,8 @@ export function Player({
           )}
         </div>
         {/* Dealer Button (PLO only - Stud has no positional dealer) */}
-        {player.position === 'BTN' && currentVariant !== 'stud' && (
-          <div className={`absolute w-[11cqw] h-[11cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[5.5cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
+        {player.position === 'BTN' && (
+          <div className={`absolute w-[16.5cqw] h-[16.5cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[8cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
             D
           </div>
         )}
@@ -212,25 +212,25 @@ export function Player({
         )}
         {/* Remaining seconds display */}
         {remainingTime !== null && (
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/80 rounded-full w-[14cqw] h-[14cqw] flex items-center justify-center text-[7cqw] text-white z-[35] leading-none">
+          <div className="absolute left-1/2 -translate-x-1/2 top-[-3cqw] bg-black rounded-lg px-[2cqw] py-[0.5cqw] flex items-center justify-center text-[5cqw] text-white z-[35] leading-none">
             {Math.ceil(remainingTime / 1000)}s
           </div>
         )}
         {/* Last Action Marker (CSS animation handles fade-out) */}
-        {showActionMarker && (
-          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[4cqw] -translate-y-1/2 px-[3cqw] py-[1cqw] rounded-xl text-[5.0cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
+        {showActionMarker && !showdownHandName && (
+          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[-2cqw] -translate-y-1/2 px-[3cqw] py-[1cqw] rounded-xl text-[5.0cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount)}
           </div>
         )}
       </div>
 
       {/* Player Info */}
-      <div className={`bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[3.1cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''}`}>
-        <div className="text-[3.5cqw] text-white-400 whitespace-nowrap">{player.name}</div>
+      <div className={`bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[1.0cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''}`}>
+        <div className="text-[3.5cqw] text-white whitespace-nowrap">{player.name}</div>
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
 
-      {/* Hole Cards + Hand Name */}
+      {/* Hole Cards */}
       <PlayerCards
         player={player}
         positionIndex={positionIndex}
@@ -239,10 +239,20 @@ export function Player({
         dealOrder={dealOrder}
         lastAction={lastAction}
         variant={currentVariant}
-        showdownHandName={showdownHandName}
-        winHandName={winHandName}
-        isWinner={isWinner}
       />
+
+      {/* Hand Name (showdown) */}
+      {(showdownHandName || winHandName) && !player.folded && (() => {
+        const handName = (showdownHandName || winHandName) as string;
+        const fontSize = handName.length >= 10 ? 'text-[2.5cqw]' : 'text-[5cqw]';
+        return (
+          <div className="absolute left-1/2 -translate-x-1/2 z-[46]" style={{ top: '-1cqw' }}>
+            <span className={`${fontSize} font-bold w-[37cqw] h-[10cqw] inline-flex items-center justify-center rounded bg-black/90 whitespace-nowrap ${isWinner ? 'text-amber-300' : 'text-gray-300'}`}>
+              {handName}
+            </span>
+          </div>
+        );
+      })()}
 
       {/* Current Bet */}
       {player.currentBet > 0 && (

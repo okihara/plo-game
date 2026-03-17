@@ -51,8 +51,8 @@ export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', s
     <div
       className={`
         flex flex-col items-center justify-center
-        ${suitBg} text-white border border-white/40
-        rounded-lg shadow-md relative
+        ${suitBg} text-white border-[0.3cqw] border-white/40
+        rounded-[1.5cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)] relative
         ${styles.card}
         ${className}
       `}
@@ -83,7 +83,7 @@ export function FaceDownCard({ size = 'sm' }: FaceDownCardProps) {
     <div
       className={`
         bg-gradient-to-br from-blue-800 to-blue-950
-        border border-blue-500 rounded shadow-md
+        border-[0.3cqw] border-blue-500 rounded-[1cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)]
         relative overflow-hidden
         ${faceDownSizeStyles[size]}
       `}
@@ -94,9 +94,9 @@ export function FaceDownCard({ size = 'sm' }: FaceDownCardProps) {
           background: `repeating-linear-gradient(
             45deg,
             transparent,
-            transparent 3px,
-            rgba(255,255,255,0.3) 3px,
-            rgba(255,255,255,0.3) 6px
+            transparent 0.8cqw,
+            rgba(255,255,255,0.3) 0.8cqw,
+            rgba(255,255,255,0.3) 1.5cqw
           )`,
         }}
       />
@@ -124,7 +124,7 @@ export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: Card
   return (
     <div
       className={`${styles.card} relative`}
-      style={{ perspective: '400px' }}
+      style={{ perspective: '100cqw' }}
     >
       <div
         className="w-full h-full animate-flip-card"
@@ -138,7 +138,7 @@ export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: Card
           style={{ backfaceVisibility: 'hidden' }}
         />
         <div
-          className="absolute inset-0 bg-gradient-to-br from-blue-800 to-blue-950 border border-blue-500 rounded-lg shadow-md overflow-hidden"
+          className="absolute inset-0 bg-gradient-to-br from-blue-800 to-blue-950 border-[0.3cqw] border-blue-500 rounded-[1.5cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)] overflow-hidden"
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
           <div
@@ -147,9 +147,9 @@ export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: Card
               background: `repeating-linear-gradient(
                 45deg,
                 transparent,
-                transparent 3px,
-                rgba(255,255,255,0.3) 3px,
-                rgba(255,255,255,0.3) 6px
+                transparent 0.8cqw,
+                rgba(255,255,255,0.3) 0.8cqw,
+                rgba(255,255,255,0.3) 1.5cqw
               )`,
             }}
           />
