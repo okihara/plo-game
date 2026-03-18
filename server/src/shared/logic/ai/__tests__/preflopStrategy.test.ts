@@ -150,11 +150,11 @@ describe('getPreflopDecision', () => {
       // LAGのvpipThreshold=0.59, pfrThreshold≈0.67
       // T987ds score≈0.67, BTN+0.10 → eff=0.77 > pfrThreshold → actually raises
       // Use a weaker hand that falls in VPIP but not PFR range
-      const marginalHand: Card[] = [c('9h'), c('8d'), c('7h'), c('6d')]; // 9876ds score≈0.64
+      const marginalHand: Card[] = [c('7h'), c('6d'), c('5h'), c('4d')]; // 7654ds score≈0.64
       const state2 = makePreflopState({
         heroIndex: 0, heroPosition: 'UTG', heroCards: marginalHand,
       });
-      // UTG+0.00 → eff=0.64, LAG vpipThreshold=0.59, pfrThreshold=0.67 → VPIP圏だがPFR圏外
+      // UTG+0.00 → eff=0.64, LAG vpipThreshold=0.60, pfrThreshold=0.68 → VPIP圏だがPFR圏外
       const result = getPreflopDecision(state2, 0, LAG, POS_UTG);
       // 未レイズポットでマージナルハンド → フォールド（リンプしない）
       expect(result.action).toBe('fold');
@@ -296,9 +296,9 @@ describe('getPreflopDecision', () => {
       expect(result.action).not.toBe('fold');
     });
 
-    it('4ベットに対しミドルランダウン(T987ds)はフォールドする', () => {
+    it('4ベットに対し弱いハンド(Q832r)はフォールドする', () => {
       setRandom(0.5);
-      const state = make4BetState(MEDIUM_HAND);
+      const state = make4BetState(WEAK_HAND);
       const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
       expect(result.action).toBe('fold');
     });

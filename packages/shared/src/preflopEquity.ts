@@ -105,7 +105,7 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
     return { ...EMPTY_RESULT };
   }
 
-  const score = Math.min(1, Math.max(0, (equity - minEq) / eqRange));
+  const rawScore = (equity - minEq) / eqRange;
 
   // Structural flags (same logic as original)
   const values = validCards.map(c => getRankValue(c.rank));
@@ -169,6 +169,36 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
       hasDangler = true;
     }
   }
+
+  const tripleOrMoreSuited = suitCountValues.some(c => c >= 3);
+  const isRainbow = suitCountValues.every(c => c === 1);
+
+  // === プレイアビリティ補正 ===
+  // オールインエクイティはリバーまで見た勝率であり、
+  // 実戦ではフロップ以降のドロー力・ナッツ力が
+  // エクイティ実現率に大きく影響する。
+  let playability = 0;
+
+  // スーテッドネス: フラッシュドローでポストフロップのエクイティを実現しやすい
+  if (isDoubleSuited) playability += 0.04;
+  else if (isSingleSuited) playability += 0.02;
+  if (tripleOrMoreSuited) playability -= 0.03; // 同スート3枚はフラッシュアウツ減少
+  if (isRainbow) playability -= 0.02;
+
+  // コネクティビティ: ストレートドロー・ラップで多くのボードに絡める
+  if (isRundown && !hasDangler) playability += 0.03;
+  else if (hasWrap) playability += 0.01;
+  if (hasDangler) playability -= 0.04; // 1枚が孤立、ポストフロップで機能しない
+
+  // ナットフラッシュドロー: Aスーテッドはドロー時にナッツ保証
+  if (hasAceSuited) playability += 0.02;
+
+  // ペア + バックアップなし: セット以外のポストフロップが弱い
+  if (pairRanks.length > 0 && isRainbow && !hasWrap && !isRundown) {
+    playability -= 0.03;
+  }
+
+  const score = Math.min(1, Math.max(0, rawScore + playability));
 
   return {
     score,
