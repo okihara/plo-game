@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { getPreflopDecision } from '../preflopStrategy.js';
 import { c, makePersonality, makeGameState, makePlayer } from './testHelpers.js';
-import type { GameAction, Card } from '../../types.js';
+import type { GameAction, Card, Position } from '../../types.js';
 
 // Math.random を制御
 let mathRandomSpy: ReturnType<typeof vi.spyOn>;
@@ -31,7 +31,7 @@ function makePreflopState(opts: {
   heroCurrentBet?: number;
 }) {
   const bb = 10;
-  const positions = ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
+  const positions: Position[] = ['UTG', 'HJ', 'CO', 'BTN', 'SB', 'BB'];
   const players = positions.map((pos, i) =>
     makePlayer({
       id: i,
@@ -179,7 +179,7 @@ describe('getPreflopDecision', () => {
       const state = makePreflopState({
         heroIndex: 5, heroPosition: 'BB', heroCards: AA_WEAK,
         currentBet: 30, pot: 45,
-        handHistory: [{ player: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
+        handHistory: [{ playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
       });
       const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
       expect(result.action).not.toBe('fold');
@@ -196,7 +196,7 @@ describe('getPreflopDecision', () => {
         heroIndex: 5, heroPosition: 'BB', heroCards: STRONG_HAND,
         currentBet: 30, pot: 45,
         heroCurrentBet: 10,
-        handHistory: [{ player: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
+        handHistory: [{ playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
       });
       const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
       expect(['call', 'raise']).toContain(result.action);
@@ -208,7 +208,7 @@ describe('getPreflopDecision', () => {
         heroIndex: 5, heroPosition: 'BB', heroCards: WEAK_HAND,
         currentBet: 30, pot: 45,
         heroCurrentBet: 10,
-        handHistory: [{ player: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
+        handHistory: [{ playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
       });
       const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
       expect(result.action).toBe('fold');
@@ -231,7 +231,7 @@ describe('getPreflopDecision', () => {
         heroIndex: 5, heroPosition: 'BB', heroCards: TRASH_HAND,
         currentBet: 30, pot: 45,
         heroCurrentBet: 10,
-        handHistory: [{ player: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
+        handHistory: [{ playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
       });
       const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
       expect(result.action).toBe('fold');
@@ -247,8 +247,8 @@ describe('getPreflopDecision', () => {
       currentBet: 90, pot: 125,
       heroCurrentBet: 30,
       handHistory: [
-        { player: 3, action: 'raise' as const, amount: 30, street: 'preflop' },
-        { player: 5, action: 'raise' as const, amount: 90, street: 'preflop' },
+        { playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' },
+        { playerId: 5, action: 'raise' as const, amount: 90, street: 'preflop' },
       ],
     });
 
@@ -283,9 +283,9 @@ describe('getPreflopDecision', () => {
       currentBet: 270, pot: 380,
       heroCurrentBet: 90,
       handHistory: [
-        { player: 0, action: 'raise' as const, amount: 30, street: 'preflop' },
-        { player: 3, action: 'raise' as const, amount: 90, street: 'preflop' },
-        { player: 0, action: 'raise' as const, amount: 270, street: 'preflop' },
+        { playerId: 0, action: 'raise' as const, amount: 30, street: 'preflop' },
+        { playerId: 3, action: 'raise' as const, amount: 90, street: 'preflop' },
+        { playerId: 0, action: 'raise' as const, amount: 270, street: 'preflop' },
       ],
     });
 
