@@ -27,7 +27,7 @@ export function getPreflopDecision(
   const random = Math.random();
 
   const facingRaise = state.currentBet > state.bigBlind;
-  const facingBigRaise = toCall > state.pot * 0.5;
+  const facingBigRaise = facingRaise && toCall > state.pot * 0.5;
 
   // === AAxx は常にプレミアムハンド扱い ===
   // PLOでAAxxはどんな構成でもプリフロップでレイズすべき最強カテゴリ
