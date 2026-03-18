@@ -156,14 +156,14 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   const hasWrap = span <= 4 && uniqueValues.length >= 3;
 
   let hasDangler = false;
-  if (uniqueValues.length === 4) {
+  if (uniqueValues.length >= 3) {
     const gaps: number[] = [];
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < uniqueValues.length - 1; i++) {
       gaps.push(uniqueValues[i + 1] - uniqueValues[i]);
     }
     const maxGap = Math.max(...gaps);
     const maxGapIdx = gaps.indexOf(maxGap);
-    if (maxGap >= 5 && (maxGapIdx === 0 || maxGapIdx === 2)) {
+    if (maxGap >= 5 && (maxGapIdx === 0 || maxGapIdx === uniqueValues.length - 2)) {
       hasDangler = true;
     } else if (maxGap >= 4) {
       hasDangler = true;
