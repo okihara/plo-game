@@ -69,6 +69,22 @@ npm run dev:server
 
 ## Architecture
 
+### 共有パッケージ構成（@plo/shared）
+
+フロントエンド・サーバー双方から参照される共有ロジック。
+
+```
+packages/shared/src/
+├── index.ts              # re-export
+├── types.ts              # 共有型定義（GameState, Player, Card, Rank, Suit等）
+├── deck.ts               # カード操作（getRankValue等）
+├── handEvaluator.ts      # PLOハンド評価（ホール2枚+コミュニティ3枚）
+├── preflopEquity.ts      # プリフロップ評価（エクイティ+プレイアビリティ）
+├── protocol.ts           # WebSocket通信プロトコル
+└── data/
+    └── preflopEquity.json # 事前計算済みエクイティデータ（16,432ハンド）
+```
+
 ### フロントエンド構成
 
 ```
@@ -145,7 +161,18 @@ server/src/
 └── shared/
     ├── logic/
     │   ├── types.ts              # 共有型（GameState, Player, Card）
-    │   └── gameEngine.ts         # 共有ゲームロジック
+    │   ├── gameEngine.ts         # 共有ゲームロジック
+    │   ├── cpuAI.ts              # Bot AIエントリーポイント（getCPUAction）
+    │   ├── preflopEquity.ts      # @plo/shared からの re-export
+    │   └── ai/
+    │       ├── types.ts          # AI型定義（BotPersonality, OpponentModel等）
+    │       ├── preflopStrategy.ts # プリフロップ戦略（オープン/ディフェンス/3bet/4bet）
+    │       ├── postflopStrategy.ts # ポストフロップ戦略
+    │       ├── boardAnalysis.ts  # ボードテクスチャ分析
+    │       ├── handStrength.ts   # ハンド強度評価
+    │       ├── equityEstimator.ts # エクイティ推定
+    │       ├── blockerAnalysis.ts # ブロッカー分析
+    │       └── nutsAnalysis.ts   # ナッツ分析
     └── types/
         └── websocket.ts          # WebSocketイベント型定義（C2S/S2C）
 ```
@@ -242,6 +269,77 @@ server/src/
 - **ProfilePopup.tsx** (`src/components/ProfilePopup.tsx`) - プレイヤークリック時にスタッツ表示
 - 表示スタッツ: VPIP, PFR, 3Bet, AFq, CBet, Fold to CBet, Fold to 3Bet, WTSD, W$SD, 勝率, 損益
 - 直近1000ハンドから計算、ストリート情報のない旧データはハンド数・勝率のみ
+
+### プリフロップハンド評価
+
+`packages/shared/src/preflopEquity.ts` で提供。フロントエンド（HandAnalysisOverlay）とサーバー（Bot AI）の両方が使用。
+
+**スコア算出（2段階）:**
+
+1. **エクイティルックアップ**: 事前計算済みモンテカルロシミュレーション結果（16,432通りの正規化ハンド × 10K反復）から6人テーブルでのオールインエクイティを引き、0-1に min-max 正規化
+2. **プレイアビリティ補正**: エクイティ実現率を構造フラグで調整
+
+| 補正項目 | 値 | 理由 |
+|---------|------|------|
+| ダブルスーテッド | +0.04 | フラッシュドロー2つでエクイティ実現◎ |
+| シングルスーテッド | +0.02 | フラッシュドロー1つ |
+| ランダウン（ダングラーなし） | +0.03 | ストレートドロー豊富 |
+| ラップポテンシャル | +0.01 | ドロー力あり |
+| Aスーテッド | +0.02 | ナッツフラッシュドロー保証 |
+| ダングラー | -0.04 | 孤立カード、ポストフロップ不参加 |
+| トリプルスーテッド | -0.03 | フラッシュアウツ減少 |
+| レインボー | -0.02 | フラッシュドローなし |
+| ペア+レインボー（ドローなし） | -0.03 | セット以外の発展性なし |
+
+**インターフェース:**
+
+```typescript
+interface PreFlopEvaluation {
+  score: number;           // 0-1（エクイティ+プレイアビリティ）
+  hasPair: boolean;
+  pairRank: string | null; // "AA", "KK" 等
+  hasAceSuited: boolean;
+  isDoubleSuited: boolean;
+  isSingleSuited: boolean;
+  isRundown: boolean;      // 連続4枚（5-6-7-8等）
+  hasWrap: boolean;        // span≤4で3枚以上
+  hasDangler: boolean;     // gap≥4の孤立カード
+}
+```
+
+### Bot AI（プリフロップ戦略）
+
+`server/src/shared/logic/ai/preflopStrategy.ts` でBotのプリフロップ判断を制御。
+
+**判断フロー:**
+
+```
+effectiveStrength = score + positionBonus
+         ↓
+AAxx? → playPremium（常にレイズ）
+         ↓
+> 0.85 → playPremium（70-90%レイズ、残りトラップ）
+         ↓
+4bet直面? → 0.80+ かつ ペア/DS のみコール、他フォールド
+         ↓
+3bet直面? → facing3BetDecision（構造+パーソナリティ判定）
+         ↓
+> pfrThreshold → オープンレイズ or コール
+         ↓
+> vpipThreshold → チェック（BB）/ コール（ポットオッズ次第）/ 未レイズならフォールド
+         ↓
+弱い → チェック or フォールド（BTN/COからスチール可能性あり）
+```
+
+**閾値:**
+
+| パラメータ | 計算式 | TAG(vpip=0.20) | LAG(vpip=0.38) |
+|-----------|--------|---------------|---------------|
+| vpipThreshold | max(0.55, 0.85 - vpip×0.65) | 0.72 | 0.60 |
+| pfrThreshold | vpipThreshold + (vpip-pfr)×0.8 | 0.76 | 0.68 |
+| 3bet防御最低 | 0.60 + (1-vpip)×0.15 | 0.72 | 0.69 |
+
+**ポジションボーナス:** BTN +0.10, CO +0.08, HJ +0.05, UTG ±0, SB/BB -0.05
 
 ### 設計パターン
 

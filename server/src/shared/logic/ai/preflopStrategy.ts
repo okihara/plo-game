@@ -27,7 +27,7 @@ export function getPreflopDecision(
   const random = Math.random();
 
   const facingRaise = state.currentBet > state.bigBlind;
-  const facingBigRaise = toCall > state.pot * 0.5;
+  const facingBigRaise = facingRaise && toCall > state.pot * 0.5;
 
   // === AAxx は常にプレミアムハンド扱い ===
   // PLOでAAxxはどんな構成でもプリフロップでレイズすべき最強カテゴリ
@@ -44,22 +44,22 @@ export function getPreflopDecision(
   const facing4Bet = preflopRaiseCount >= 3;
 
   // VPIP閾値: パーソナリティに基づいてハンド参加閾値を計算
-  // vpip=0.40なら effectiveStrength 0.20以上で参加
-  // vpip=0.15なら effectiveStrength 0.55以上で参加
-  const vpipThreshold = Math.max(0.10, 0.70 - personality.vpip * 1.3);
+  // vpip=0.40なら effectiveStrength 0.59以上で参加
+  // vpip=0.20なら effectiveStrength 0.72以上で参加
+  const vpipThreshold = Math.max(0.55, 0.85 - personality.vpip * 0.65);
 
   // PFR閾値: レイズする閾値
   const pfrThreshold = vpipThreshold + (personality.vpip - personality.pfr) * 0.8;
 
-  // === プレミアムハンド (effectiveStrength > 0.75) ===
-  if (effectiveStrength > 0.75) {
+  // === プレミアムハンド (effectiveStrength > 0.85) ===
+  if (effectiveStrength > 0.85) {
     return playPremium(state, validActions, effectiveStrength, facingRaise, personality);
   }
 
   // === 4ベット以上に直面: プレミアム以外はほぼフォールド ===
   if (facing4Bet) {
-    // 非常に強い手（0.65+）かつ構造が良い場合のみコール
-    if (effectiveStrength > 0.65 && (evaluation.hasPair || evaluation.isDoubleSuited)) {
+    // 非常に強い手（0.80+）かつ構造が良い場合のみコール
+    if (effectiveStrength > 0.80 && (evaluation.hasPair || evaluation.isDoubleSuited)) {
       const callAction = validActions.find(a => a.action === 'call');
       if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
@@ -163,8 +163,8 @@ function facing3BetDecision(
   random: number
 ): { action: Action; amount: number } {
   // 3ベットに対する最低必要強度（パーソナリティ依存）
-  // TAG (vpip=0.20): ~0.52, LAG (vpip=0.38): ~0.49
-  const minStrength = 0.40 + (1 - personality.vpip) * 0.15;
+  // TAG (vpip=0.20): ~0.72, LAG (vpip=0.38): ~0.69
+  const minStrength = 0.60 + (1 - personality.vpip) * 0.15;
 
   // 最低強度未満は即フォールド
   if (effectiveStrength < minStrength) {
@@ -265,7 +265,7 @@ function evaluate3Bet(
   if (positionBonus >= 0.08) threeBetChance += 0.03;
 
   // 強いほど3ベット率UP
-  if (effectiveStrength > 0.70) threeBetChance += 0.05;
+  if (effectiveStrength > 0.85) threeBetChance += 0.05;
 
   if (random >= threeBetChance) return null;
 
