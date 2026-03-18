@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
-import { Share2, Link, Check, Image } from 'lucide-react';
+import { Share2, Link, Check, Image, FileText } from 'lucide-react';
 import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
+import { toPokerStarsText } from '../utils/pokerStarsFormat';
 
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
 
@@ -443,6 +444,24 @@ export function HandDetailDialog({
     setShowShareMenu(false);
   };
 
+  const [psCopied, setPsCopied] = useState(false);
+
+  const handleCopyPokerStars = async () => {
+    const text = toPokerStarsText(hand);
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    setPsCopied(true);
+    setTimeout(() => { setPsCopied(false); setShowShareMenu(false); }, 1500);
+  };
+
   return (
     <div className="absolute inset-0 z-50 flex flex-col light-bg">
         {/* ヘッダー: 戻る + 自分のポジション・ホールカード + シェア */}
@@ -507,6 +526,15 @@ export function HandDetailDialog({
                     <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                   </svg>
                   X でシェア
+                </button>
+                <button
+                  onClick={handleCopyPokerStars}
+                  className="flex items-center gap-[2cqw] w-full px-[3cqw] py-[2.5cqw] text-[3cqw] text-cream-800 hover:bg-cream-100 active:bg-cream-200 transition-colors border-t border-cream-200"
+                >
+                  {psCopied
+                    ? <Check className="w-[4cqw] h-[4cqw] text-forest" />
+                    : <FileText className="w-[4cqw] h-[4cqw] text-cream-600" />}
+                  {psCopied ? 'コピーしました' : 'PokerStars形式でコピー'}
                 </button>
               </div>
               </>
