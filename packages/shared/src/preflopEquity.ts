@@ -6,7 +6,7 @@
  * Same interface as the original getPreFlopEvaluation.
  */
 
-import { Card, Rank, Suit } from './types';
+import { Card, Rank } from './types';
 import { getRankValue } from './deck';
 import equityData from './data/preflopEquity.json';
 

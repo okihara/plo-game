@@ -1,4 +1,4 @@
-import { Card, Suit, Rank } from './types';
+import { Card, Suit } from './types';
 import { evaluatePLOHand, compareHands } from './handEvaluator';
 import { getRankValue } from './deck';
 
