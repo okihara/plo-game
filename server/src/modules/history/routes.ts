@@ -93,6 +93,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
               communityCards: true,
               potSize: true,
               winners: true,
+              actions: true,
               dealerPosition: true,
               createdAt: true,
               players: {
@@ -125,6 +126,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       finalHand: ph.finalHand,
       holeCards: ph.holeCards,
       isWinner: ph.handHistory.winners.includes(userId),
+      actions: ph.handHistory.actions,
       dealerPosition: ph.handHistory.dealerPosition,
       createdAt: ph.handHistory.createdAt,
       players: ph.handHistory.players.map(p => {
