@@ -27,6 +27,9 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   // 同一ユーザーの最新socket接続を追跡（odId → socket）
   const activeConnections = new Map<string, AuthenticatedSocket>();
 
+  // 切断猶予タイマー管理（odId → setTimeout ID）
+  const gracePeriodTimers = new Map<string, NodeJS.Timeout>();
+
   // Create default tables
   tableManager.createTable('1/3', false); // Regular table
   const defaultFfTable = tableManager.createTable('1/3', true); // Fast fold table
@@ -61,7 +64,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('table:leave', () => handleTableLeave(socket, tableManager));
     socket.on('game:action', (data) => handleGameAction(socket, data, tableManager));
     socket.on('game:fast_fold', () => handleFastFold(socket, tableManager));
-    socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager));
+    socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager, gracePeriodTimers));
     socket.on('matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager));
     socket.on('private:create', (data) => handlePrivateCreate(socket, data, tableManager));
     socket.on('private:join', (data) => handlePrivateJoin(socket, data, tableManager));
@@ -79,7 +82,7 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         activeConnections.delete(odId);
       }
 
-      handleDisconnect(socket, tableManager);
+      handleDisconnect(socket, tableManager, gracePeriodTimers);
     });
 
     if (process.env.NODE_ENV !== 'production') {

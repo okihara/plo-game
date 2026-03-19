@@ -178,7 +178,8 @@ export class ActionController {
     const currentSeat = seats[currentPlayerIndex];
 
     // 切断・離席済みプレイヤーの処理（FoldProcessorに委譲）
-    if (!currentSeat || !currentSeat.socket) {
+    // ただし切断猶予中（disconnectedAt あり）はタイムアウトまで待つ
+    if (!currentSeat || (!currentSeat.socket && !currentSeat.disconnectedAt)) {
       onDisconnectedFold();
       return;
     }

@@ -1,5 +1,6 @@
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
+import { TABLE_CONSTANTS } from '../table/constants.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
@@ -82,27 +83,75 @@ export async function handleFastFold(socket: AuthenticatedSocket, tableManager: 
   }
 }
 
-export async function handleDisconnect(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
-  console.log(`Player disconnected: ${socket.odId}`);
+export async function handleDisconnect(
+  socket: AuthenticatedSocket,
+  tableManager: TableManager,
+  gracePeriodTimers: Map<string, NodeJS.Timeout>
+): Promise<void> {
+  const odId = socket.odId!;
+  console.log(`Player disconnected: ${odId}`);
 
   try {
-    const table = tableManager.getPlayerTable(socket.odId!);
-    if (table) {
-      await unseatAndCashOut(table, socket.odId!, tableManager);
-    }
+    const table = tableManager.getPlayerTable(odId);
+    if (!table) return;
+
+    // 席を切断状態にマーク（チップ・席は保持、ソケットだけ外す）
+    table.markPlayerDisconnected(odId);
+
+    // 既存のタイマーがあればクリア（短時間の複数回切断対策）
+    const existingTimer = gracePeriodTimers.get(odId);
+    if (existingTimer) clearTimeout(existingTimer);
+
+    // Grace period タイマー開始
+    const timer = setTimeout(async () => {
+      gracePeriodTimers.delete(odId);
+      // 猶予期限切れ → 従来通りの unseatAndCashOut
+      try {
+        const currentTable = tableManager.getPlayerTable(odId);
+        if (currentTable) {
+          console.log(`[GracePeriod] Expired for ${odId}, unseating from table ${currentTable.id}`);
+          await unseatAndCashOut(currentTable, odId, tableManager);
+        }
+      } catch (err) {
+        console.error(`[GracePeriod] Error during cleanup for ${odId}:`, err);
+      }
+    }, TABLE_CONSTANTS.DISCONNECT_GRACE_MS);
+
+    gracePeriodTimers.set(odId, timer);
   } catch (err) {
-    console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
+    console.error(`Error during disconnect cleanup for ${odId}:`, err);
   }
 }
 
 export async function handleMatchmakingJoin(
   socket: AuthenticatedSocket,
   data: { blinds: string; isFastFold?: boolean; variant?: string },
-  tableManager: TableManager
+  tableManager: TableManager,
+  gracePeriodTimers: Map<string, NodeJS.Timeout>
 ): Promise<void> {
   if (maintenanceService.isMaintenanceActive()) {
     socket.emit('table:error', { message: 'メンテナンス中のため参加できません' });
     return;
+  }
+
+  // 切断猶予中の席があれば復帰を試みる
+  const graceTimer = gracePeriodTimers.get(socket.odId!);
+  if (graceTimer) {
+    clearTimeout(graceTimer);
+    gracePeriodTimers.delete(socket.odId!);
+
+    const existingTable = tableManager.getPlayerTable(socket.odId!);
+    if (existingTable) {
+      const result = existingTable.reconnectPlayer(socket.odId!, socket);
+      if (result) {
+        console.log(`[Reconnect] Player ${socket.odId} restored to table ${existingTable.id} seat ${result.seatIndex}`);
+        socket.emit('table:joined', { tableId: existingTable.id, seat: result.seatIndex });
+        if (result.holeCards.length > 0) {
+          socket.emit('game:hole_cards', { cards: result.holeCards });
+        }
+        return; // 復帰成功、新規テーブル参加をスキップ
+      }
+    }
   }
 
   const { blinds } = data;

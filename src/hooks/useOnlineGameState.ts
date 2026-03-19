@@ -26,6 +26,7 @@ export interface OnlineGameHookResult {
   // 接続状態
   isConnecting: boolean;
   isConnected: boolean;
+  isReconnecting: boolean;
   connectionError: string | null;
   isDisplaced: boolean;
 
@@ -176,8 +177,13 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isDisplaced, setIsDisplaced] = useState(false);
+
+  // stale closure 対策
+  const isReconnectingRef = useRef(false);
+  const joinMatchmakingRef = useRef(() => {});
 
   // ゲーム状態
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
@@ -282,6 +288,11 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     }
   }, [blinds, isFastFold, privateMode, variant]);
 
+  // stale closure 対策: joinMatchmaking の最新版を ref に保持
+  useEffect(() => {
+    joinMatchmakingRef.current = joinMatchmaking;
+  }, [joinMatchmaking]);
+
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();
   }, []);
@@ -316,12 +327,33 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   useEffect(() => {
     wsService.setListeners({
       onConnected: () => {
+        const wasReconnecting = isReconnectingRef.current;
         setIsConnected(true);
         setConnectionError(null);
+        setIsReconnecting(false);
+        isReconnectingRef.current = false;
+
+        if (wasReconnecting) {
+          // 再接続成功 → joinMatchmaking を再呼び出し（サーバー側で復帰ロジックが走る）
+          joinMatchmakingRef.current();
+        }
       },
-      onDisconnected: (message) => {
+      onDisconnected: (reason) => {
         setIsConnected(false);
-        setConnectionError(message);
+        // 'io server disconnect' = サーバーが明示的に切断（displaced等）→ 再接続しない
+        // それ以外 = ネットワーク断等 → Socket.io が自動再接続を試みる
+        if (reason !== 'io server disconnect') {
+          setIsReconnecting(true);
+          isReconnectingRef.current = true;
+          setConnectionError(null);
+        } else {
+          setConnectionError(reason);
+        }
+      },
+      onReconnectFailed: () => {
+        setIsReconnecting(false);
+        isReconnectingRef.current = false;
+        setConnectionError('再接続に失敗しました');
       },
       onError: (message) => {
         setConnectionError(message);
@@ -541,6 +573,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   return {
     isConnecting,
     isConnected,
+    isReconnecting,
     connectionError,
     isDisplaced,
     gameState,

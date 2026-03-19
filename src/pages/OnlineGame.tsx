@@ -34,6 +34,7 @@ interface OnlineGameProps {
 export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }: OnlineGameProps) {
   const {
     isConnecting,
+    isReconnecting,
     connectionError,
     isDisplaced,
     gameState,
@@ -244,6 +245,17 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   return (
     <>
+      {/* 再接続中オーバーレイ */}
+      {isReconnecting && (
+        <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/60 pointer-events-none">
+          <div className="text-center">
+            <div className="animate-spin w-8 h-8 border-2 border-white/30 border-t-white rounded-full mx-auto mb-3" />
+            <p className="text-white font-bold" style={{ fontSize: 'min(2vh, 3.5vw)' }}>
+              再接続中...
+            </p>
+          </div>
+        </div>
+      )}
       {/* メンテナンス通知バナー */}
       {maintenanceStatus?.isActive && (
         <div className="absolute top-[4%] left-0 right-0 z-50 flex justify-center pointer-events-none">

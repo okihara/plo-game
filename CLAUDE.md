@@ -379,27 +379,37 @@ AAxx? → playPremium（常にレイズ）
 
 | コード | ポーカールーム | 補足 |
 |--------|---------------|------|
-| `socket` | お客さんの**体** | タブごとに別の体。物理的存在 |
-| `odId` | **会員証** | 同一人物なら全タブで同じ |
-| `socket.id` | **入館証番号** | Socket.ioが自動発行、タブごとにユニーク |
-| `activeConnections` | 入口の**受付名簿** | 会員証 → 今店内にいる体 |
+| `socket` | お客さんの**来店** | 来店のたびに新しい来店番号が発行される |
+| `odId` | **会員証** | 同一人物なら来店が変わっても同じ |
+| `socket.id` | **来店番号** | その来店でだけ使う一時的な識別番号 |
+| `activeConnections` | 入口の**受付名簿** | 会員証 → 今の来店 |
 | `TableManager` | **フロアマネージャー** | テーブル管理・案内係 |
 | `playerTables` | フロアの**手帳** | 誰がどのテーブルにいるか |
 | `TableInstance` | 個別の**ポーカーテーブル** | ディーラー付き |
-| `SeatInfo` | テーブルの**椅子** | 座っている人の体（socket）への参照 |
+| `SeatInfo` | テーブルの**椅子** | 座っている人の来店（socket）への参照 |
 | `BroadcastService` | ディーラーの**声** | テーブル全員に聞こえる |
 | `emitToSocket` | ディーラーが**個人にこっそり囁く** | ホールカード配布等 |
 | `Socket.io Room` | テーブルの**周囲** | そこにいる人だけ聞こえる範囲 |
 | `cashOutPlayer` | **キャッシャー** | チップ→残高に換金 |
+| `gracePeriodTimers` | フロアの**「席キープ」メモ** | 「この人30秒以内に戻るかも」 |
+| `markPlayerDisconnected` | **「トイレ行きます」** | チップ置いたまま一時退店 |
+| `reconnectPlayer` | **「戻りました」** | 再来店して同じ席に座り直す |
 
 **入店〜着席:**
 1. 入口で会員証を見せる（authMiddleware）→ 入店許可
-2. 受付名簿をチェック（activeConnections）→ 同一人物がいたら前の体を追い出す（displaced）
-3. フロアに「席ある？」（matchmaking:join）→ 手帳で既に座ってたら先に立たせる
-4. フロアが空き席を探す（getOrCreateTable）→ 手帳に記録（setPlayerTable）
-5. テーブルに座る（seatPlayer）→ 椅子に体を紐づけ → テーブル周囲に入る（socket.join）
+2. 受付名簿をチェック（activeConnections）→ 同一人物の前回来店がまだ残っていたら無効化する（displaced）
+3. フロアに「席ある？」（matchmaking:join）→ **席キープメモを確認、あれば同じ席に復帰**（reconnectPlayer）
+4. 復帰でなければ → 手帳で既に座ってたら先に立たせる
+5. フロアが空き席を探す（getOrCreateTable）→ 手帳に記録（setPlayerTable）
+6. テーブルに座る（seatPlayer）→ 椅子に今回の来店を紐づけ → テーブル周囲に入る（socket.join）
 
-**退席〜退店:**
+**切断〜復帰（grace period）:**
+1. 一時退店（disconnect）→ 椅子にチップを置いたまま店を出る（markPlayerDisconnected）
+2. フロアが「席キープ」メモに30秒タイマーを記録（gracePeriodTimers）
+3. 30秒以内に再来店した → 同じ椅子に座り直す（reconnectPlayer）→ ホールカード再配布
+4. 30秒超えたら → フロアが「もう戻らないな」→ 椅子から立たせてチップ換金（unseatAndCashOut）
+
+**退席〜退店（自発的離脱）:**
 1. 椅子から立つ（unseatPlayer）→ テーブル周囲から離れる（socket.leave）
 2. キャッシャーでチップを換金（cashOutPlayer）
 3. フロアが手帳から消す（removePlayerFromTracking）
@@ -409,7 +419,7 @@ AAxx? → playPremium（常にレイズ）
 フォールドした瞬間にフロアが飛んできて「別テーブルへどうぞ！」（movePlayerToNewTable）。チップを持ったまま即座に別テーブルへ移動し、新しいハンドに参加。
 
 **同一ユーザー単一接続（displaced）:**
-同一人物が別の入口（タブ）から入店すると、受付が名簿をチェックして前の体に「別の入口から来た方を優先します」と通知（connection:displaced）し退店させる。新しい体がフロアに案内される際、前の体が座っていた椅子は通常の入店フローで片付けられる。
+同一人物が別のタブから再来店すると、受付が名簿をチェックして前回の来店を「新しい来店を優先します」と無効化（connection:displaced）する。新しい来店がフロアに案内される際、前回の来店に紐づいていた椅子は通常の入店フローで片付けられる。displacedの場合は席キープメモは作らない（意図的な来店切り替えのため）。
 
 ### 管理ダッシュボード
 

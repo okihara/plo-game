@@ -43,6 +43,7 @@ class WebSocketService {
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
     onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
     onDisplaced?: () => void;
+    onReconnectFailed?: () => void;
   } = {};
 
   connect(): Promise<string> {
@@ -72,7 +73,10 @@ class WebSocketService {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
-        reconnection: false,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
       });
 
       let settled = false;
@@ -114,6 +118,12 @@ class WebSocketService {
         this.socket?.disconnect();
         this.socket = null;
         this.playerId = null;
+      });
+
+      // 再接続全試行失敗
+      this.socket.io.on('reconnect_failed', () => {
+        wsLog('reconnect_failed');
+        this.listeners.onReconnectFailed?.();
       });
 
       // Table events
