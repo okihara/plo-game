@@ -391,15 +391,25 @@ AAxx? → playPremium（常にレイズ）
 | `emitToSocket` | ディーラーが**個人にこっそり囁く** | ホールカード配布等 |
 | `Socket.io Room` | テーブルの**周囲** | そこにいる人だけ聞こえる範囲 |
 | `cashOutPlayer` | **キャッシャー** | チップ→残高に換金 |
+| `gracePeriodTimers` | フロアの**「席キープ」メモ** | 「この人30秒以内に戻るかも」 |
+| `markPlayerDisconnected` | **「トイレ行きます」** | チップ置いたまま席を離れる |
+| `reconnectPlayer` | **「戻りました」** | 同じ席に座り直す |
 
 **入店〜着席:**
 1. 入口で会員証を見せる（authMiddleware）→ 入店許可
 2. 受付名簿をチェック（activeConnections）→ 同一人物がいたら前の体を追い出す（displaced）
-3. フロアに「席ある？」（matchmaking:join）→ 手帳で既に座ってたら先に立たせる
-4. フロアが空き席を探す（getOrCreateTable）→ 手帳に記録（setPlayerTable）
-5. テーブルに座る（seatPlayer）→ 椅子に体を紐づけ → テーブル周囲に入る（socket.join）
+3. フロアに「席ある？」（matchmaking:join）→ **席キープメモを確認、あれば同じ席に復帰**（reconnectPlayer）
+4. 復帰でなければ → 手帳で既に座ってたら先に立たせる
+5. フロアが空き席を探す（getOrCreateTable）→ 手帳に記録（setPlayerTable）
+6. テーブルに座る（seatPlayer）→ 椅子に体を紐づけ → テーブル周囲に入る（socket.join）
 
-**退席〜退店:**
+**切断〜復帰（grace period）:**
+1. 通信途絶（disconnect）→ 椅子にチップを置いたまま体だけ消える（markPlayerDisconnected）
+2. フロアが「席キープ」メモに30秒タイマーを記録（gracePeriodTimers）
+3. 30秒以内に戻ってきた → 同じ椅子に座り直す（reconnectPlayer）→ ホールカード再配布
+4. 30秒超えたら → フロアが「もう戻らないな」→ 椅子から立たせてチップ換金（unseatAndCashOut）
+
+**退席〜退店（自発的離脱）:**
 1. 椅子から立つ（unseatPlayer）→ テーブル周囲から離れる（socket.leave）
 2. キャッシャーでチップを換金（cashOutPlayer）
 3. フロアが手帳から消す（removePlayerFromTracking）
@@ -409,7 +419,7 @@ AAxx? → playPremium（常にレイズ）
 フォールドした瞬間にフロアが飛んできて「別テーブルへどうぞ！」（movePlayerToNewTable）。チップを持ったまま即座に別テーブルへ移動し、新しいハンドに参加。
 
 **同一ユーザー単一接続（displaced）:**
-同一人物が別の入口（タブ）から入店すると、受付が名簿をチェックして前の体に「別の入口から来た方を優先します」と通知（connection:displaced）し退店させる。新しい体がフロアに案内される際、前の体が座っていた椅子は通常の入店フローで片付けられる。
+同一人物が別の入口（タブ）から入店すると、受付が名簿をチェックして前の体に「別の入口から来た方を優先します」と通知（connection:displaced）し退店させる。新しい体がフロアに案内される際、前の体が座っていた椅子は通常の入店フローで片付けられる。displacedの場合は席キープメモは作らない（意図的な接続切り替えのため）。
 
 ### 管理ダッシュボード
 
