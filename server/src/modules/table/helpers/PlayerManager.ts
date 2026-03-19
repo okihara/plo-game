@@ -76,6 +76,28 @@ export class PlayerManager {
   }
 
   /**
+   * 切断マーク（席は保持、ソケットを null に）
+   */
+  markDisconnected(seatIndex: number): void {
+    const seat = this.seats[seatIndex];
+    if (seat) {
+      seat.socket = null;
+      seat.disconnectedAt = Date.now();
+    }
+  }
+
+  /**
+   * 再接続（ソケットを差し替え、切断状態をクリア）
+   */
+  reconnectPlayer(seatIndex: number, socket: Socket): void {
+    const seat = this.seats[seatIndex];
+    if (seat) {
+      seat.socket = socket;
+      seat.disconnectedAt = null;
+    }
+  }
+
+  /**
    * FastFold移動済みマーク（席情報は残してソケット参照を切る）
    */
   markLeftForFastFold(seatIndex: number): void {

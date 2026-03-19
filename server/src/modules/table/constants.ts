@@ -21,6 +21,9 @@ export const TABLE_CONSTANTS = {
   RAKE_PERCENT: 0.05,  // 5%
   RAKE_CAP_BB: 3,      // キャップ = 3BB
 
+  // 切断猶予
+  DISCONNECT_GRACE_MS: 30000,  // 30秒
+
   // ダッシュボード
   MAX_MESSAGE_LOG: 50,
 } as const;

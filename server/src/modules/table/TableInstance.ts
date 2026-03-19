@@ -238,6 +238,50 @@ export class TableInstance {
     return { odId, chips, socket };
   }
 
+  /**
+   * プレイヤーを切断状態にマーク（席は保持、ソケットだけ外す）
+   */
+  public markPlayerDisconnected(odId: string): void {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return;
+
+    this.playerManager.markDisconnected(seatIndex);
+    // 切断状態を他プレイヤーに反映
+    this.broadcast.emitToRoom('game:state', { state: this.getClientGameState() });
+  }
+
+  /**
+   * 切断猶予中プレイヤーの復帰
+   * @returns 復帰成功時: { seatIndex, holeCards }、失敗時: null
+   */
+  public reconnectPlayer(odId: string, socket: Socket): { seatIndex: number; holeCards: import('../../shared/logic/types.js').Card[] } | null {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return null;
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    if (!seat || !seat.disconnectedAt) return null;
+
+    // ソケット差し替え + 切断状態クリア
+    this.playerManager.reconnectPlayer(seatIndex, socket);
+
+    // Socket.io ルームに再参加
+    socket.join(this.roomName);
+
+    // ホールカードを取得（ハンド中のみ）
+    let holeCards: import('../../shared/logic/types.js').Card[] = [];
+    if (this.gameState && !this.gameState.isHandComplete && this.gameState.players[seatIndex]) {
+      const player = this.gameState.players[seatIndex];
+      if (!player.folded) {
+        holeCards = player.holeCards;
+      }
+    }
+
+    // 復帰を反映（isConnected が変わる）
+    this.broadcast.emitToRoom('game:state', { state: this.getClientGameState() });
+
+    return { seatIndex, holeCards };
+  }
+
   // Handle player action
   public handleAction(odId: string, action: Action, amount: number, discardIndices?: number[]): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
