@@ -4,6 +4,7 @@ import { HandDetailDialog } from './HandDetailDialog';
 import type { HandDetail, HandDetailPlayer } from './HandDetailDialog';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
+import { getPreFlopEvaluation } from '@plo/shared';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
@@ -18,6 +19,15 @@ const SUIT_TEXT_COLORS: Record<string, string> = {
   h: 'text-red-600', d: 'text-blue-600', c: 'text-green-700', s: 'text-gray-800',
 };
 
+interface HandAction {
+  seatIndex: number;
+  odId: string;
+  odName: string;
+  action: string;
+  amount: number;
+  street?: string;
+}
+
 interface HandSummary {
   id: string;
   handNumber: number;
@@ -28,9 +38,133 @@ interface HandSummary {
   finalHand: string | null;
   holeCards: string[];
   isWinner: boolean;
+  actions: HandAction[];
   dealerPosition: number;
   createdAt: string;
   players: HandDetailPlayer[];
+}
+
+type PreflopQuality = 'good' | 'ok' | 'nogood' | 'bad';
+type PreflopActionType = 'open' | 'call' | 'fold' | '3bet';
+
+const POSITION_BONUS: Record<string, number> = {
+  BTN: 0.10, CO: 0.08, HJ: 0.05, UTG: 0.00, SB: -0.05, BB: -0.05,
+};
+
+interface PreflopEval {
+  actionType: PreflopActionType;
+  quality: PreflopQuality;
+  score: number;
+}
+
+function getPreflopDecisionQuality(hand: HandSummary): PreflopEval | null {
+  const me = hand.players.find(p => p.isCurrentUser);
+  if (!me) return null;
+
+  const actions = hand.actions as HandAction[];
+  if (!actions || actions.length === 0) return null;
+
+  // ホールカードからスコアを計算
+  if (hand.holeCards.length !== 4) return null;
+  const cards = hand.holeCards.map(s => ({
+    rank: s.slice(0, -1),
+    suit: s.slice(-1),
+  })) as Card[];
+  const evaluation = getPreFlopEvaluation(cards);
+  const score = evaluation.score;
+
+  // ポジションを取得してeffectiveStrengthを算出
+  const position = getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition));
+  const posBonus = POSITION_BONUS[position] ?? 0;
+  const es = Math.min(1, score + posBonus);
+
+  // プリフロップのアクションを取得
+  const preflopActions = actions.filter(a => !a.street || a.street === 'preflop');
+
+  // 自分のプリフロップ最終アクションを特定
+  const myActions = preflopActions.filter(a => a.seatIndex === me.seatPosition);
+  if (myActions.length === 0) return null;
+  const myLastAction = myActions[myActions.length - 1];
+
+  // BBでチェックのみ（誰もレイズしなかった）→ 評価不要
+  if (myLastAction.action === 'check') return null;
+
+  // 自分のアクション前にレイズがあったか判定
+  const myFirstActionIdx = preflopActions.findIndex(a => a.seatIndex === me.seatPosition);
+  const actionsBeforeMe = preflopActions.slice(0, myFirstActionIdx);
+  const raisesBeforeMe = actionsBeforeMe.filter(a => a.action === 'raise' || a.action === 'allin').length;
+
+  // アクションタイプを判定
+  let actionType: PreflopActionType;
+  if (myLastAction.action === 'fold') {
+    actionType = 'fold';
+  } else if (myLastAction.action === 'call') {
+    actionType = 'call';
+  } else if (myLastAction.action === 'raise' || myLastAction.action === 'allin') {
+    actionType = raisesBeforeMe >= 1 ? '3bet' : 'open';
+  } else {
+    return null;
+  }
+
+  // アクションタイプ別に四段階評価
+  let quality: PreflopQuality;
+
+  switch (actionType) {
+    case 'open':
+      // オープンレイズ: ハンドがポジションに対して十分強いか
+      if (es >= 0.82) quality = 'good';
+      else if (es >= 0.72) quality = 'ok';
+      else if (es >= 0.62) quality = 'nogood';
+      else quality = 'bad';
+      break;
+
+    case '3bet':
+      // 3ベット: より高い基準が必要
+      if (es >= 0.88) quality = 'good';
+      else if (es >= 0.78) quality = 'ok';
+      else if (es >= 0.68) quality = 'nogood';
+      else quality = 'bad';
+      break;
+
+    case 'call':
+      // コール: オープンより低い基準でOK
+      if (es >= 0.75) quality = 'good';
+      else if (es >= 0.65) quality = 'ok';
+      else if (es >= 0.55) quality = 'nogood';
+      else quality = 'bad';
+      break;
+
+    case 'fold':
+      // フォールド: 弱いハンドを降りるのは正解（逆スケール）
+      if (es < 0.62) quality = 'good';
+      else if (es < 0.72) quality = 'ok';
+      else if (es < 0.82) quality = 'nogood';
+      else quality = 'bad';
+      break;
+  }
+
+  return { actionType, quality, score };
+}
+
+const QUALITY_COLORS: Record<PreflopQuality, { bg: string; text: string }> = {
+  good:   { bg: 'bg-emerald-100 border-emerald-400', text: 'text-emerald-700' },
+  ok:     { bg: 'bg-sky-100 border-sky-400',         text: 'text-sky-700' },
+  nogood: { bg: 'bg-amber-100 border-amber-400',     text: 'text-amber-700' },
+  bad:    { bg: 'bg-red-100 border-red-400',         text: 'text-red-700' },
+};
+
+const ACTION_LABELS: Record<PreflopActionType, string> = {
+  open: 'Open', call: 'Call', fold: 'Fold', '3bet': '3Bet',
+};
+
+function PreflopQualityBadge({ eval: e }: { eval: PreflopEval }) {
+  const colors = QUALITY_COLORS[e.quality];
+  const label = ACTION_LABELS[e.actionType];
+  return (
+    <span className={`${colors.bg} ${colors.text} text-[2.2cqw] font-bold px-[1.5cqw] py-[0.3cqw] rounded-[0.6cqw] border shrink-0`}>
+      {label}
+    </span>
+  );
 }
 
 
@@ -125,6 +259,10 @@ function HandSummaryCard({
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
             return pos ? <PositionBadge position={pos} /> : null;
+          })()}
+          {(() => {
+            const result = getPreflopDecisionQuality(hand);
+            return result ? <PreflopQualityBadge eval={result} /> : null;
           })()}
           {(() => {
             const name = hand.finalHand
