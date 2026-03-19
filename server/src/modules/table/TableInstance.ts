@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 
 // ヘルパーモジュール
 import { TABLE_CONSTANTS } from './constants.js';
-import { MessageLog, PendingAction, AdminSeat, DebugState } from './types.js';
+import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
@@ -23,14 +23,18 @@ export type { MessageLog, PendingAction };
 
 export class TableInstance {
   public readonly id: string;
-  public readonly blinds: string;
-  public readonly smallBlind: number;
-  public readonly bigBlind: number;
+  public blinds: string;
+  public smallBlind: number;
+  public bigBlind: number;
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
   public readonly variant: GameVariant = 'plo';
   public readonly isPrivate: boolean = false;
   public readonly inviteCode: string | null = null;
+
+  // ゲームモード（キャッシュ / トーナメント）
+  public readonly gameMode: GameMode = 'cash';
+  private readonly lifecycleCallbacks: TableLifecycleCallbacks;
 
   // HORSE (MIXゲーム) モード
   public readonly isHorse: boolean = false;
@@ -68,7 +72,7 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
@@ -76,6 +80,15 @@ export class TableInstance {
     this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
+    this.gameMode = options?.gameMode ?? 'cash';
+
+    // デフォルト: キャッシュゲーム用コールバック（table:busted通知 → unseat）
+    this.lifecycleCallbacks = options?.lifecycleCallbacks ?? {
+      onPlayerBusted: (_odId, _seatIndex, socket) => {
+        socket?.emit('table:busted', { message: 'チップがなくなりました' });
+        return true; // TableInstanceがunseatPlayerを呼ぶ
+      },
+    };
 
     const [sb, bb] = blinds.split('/').map(Number);
     this.smallBlind = sb;
@@ -363,6 +376,22 @@ export class TableInstance {
       variant: this.currentVariant,
       isHorse: this.isHorse,
     };
+  }
+
+  /**
+   * ブラインドを動的に変更する（トーナメントのレベル進行用）
+   * ハンド中は即座に反映されず、次のハンドから適用される
+   */
+  public updateBlinds(newBlinds: string): void {
+    const [sb, bb] = newBlinds.split('/').map(Number);
+    if (isNaN(sb) || isNaN(bb) || sb <= 0 || bb <= 0) {
+      console.error(`[Table ${this.id}] updateBlinds: invalid format "${newBlinds}"`);
+      return;
+    }
+    this.blinds = newBlinds;
+    this.smallBlind = sb;
+    this.bigBlind = bb;
+    console.log(`[Table ${this.id}] Blinds updated to ${newBlinds}`);
   }
 
   /**
@@ -847,12 +876,19 @@ export class TableInstance {
     this.broadcast.emitToRoom('game:hand_complete', handCompleteData);
 
     // Update seat chips
+    const settledChips: { odId: string; seatIndex: number; chips: number }[] = [];
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
       // waitingForNextHandのプレイヤーはハンドに参加していないのでチップを上書きしない
       if (seat && this.gameState.players[i] && !seat.waitingForNextHand) {
         this.playerManager.updateChips(i, this.gameState.players[i].chips);
+        settledChips.push({ odId: seat.odId, seatIndex: i, chips: this.gameState.players[i].chips });
       }
+    }
+
+    // チップ精算コールバック（トーナメント等での外部同期用）
+    if (this.lifecycleCallbacks.onHandSettled && settledChips.length > 0) {
+      this.lifecycleCallbacks.onHandSettled(settledChips);
     }
 
     this._isHandInProgress = false;
@@ -873,9 +909,11 @@ export class TableInstance {
       if (seat.leftForFastFold) {
         this.playerManager.unseatPlayer(i);
       } else if (seat.chips <= 0) {
-        // Notify player they're busted (table:busted, NOT table:error)
-        seat.socket?.emit('table:busted', { message: 'チップがなくなりました' });
-        this.unseatPlayer(seat.odId);
+        // コールバックでバスト処理を委譲（キャッシュ/トーナメントで挙動が異なる）
+        const shouldUnseat = this.lifecycleCallbacks.onPlayerBusted(seat.odId, i, seat.socket);
+        if (shouldUnseat) {
+          this.unseatPlayer(seat.odId);
+        }
       }
     }
     this.pendingStartHand = false;
