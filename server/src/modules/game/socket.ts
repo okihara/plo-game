@@ -1,6 +1,8 @@
 import { Server } from 'socket.io';
 import { FastifyInstance } from 'fastify';
 import { TableManager } from '../table/TableManager.js';
+import { TournamentManager } from '../tournament/TournamentManager.js';
+import { registerTournamentHandlers } from '../tournament/socket.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
 import { setupAuthMiddleware, AuthenticatedSocket } from './authMiddleware.js';
@@ -19,10 +21,12 @@ import {
 
 interface GameSocketDependencies {
   tableManager: TableManager;
+  tournamentManager: TournamentManager;
 }
 
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
+  const tournamentManager = new TournamentManager(io);
 
   // 同一ユーザーの最新socket接続を追跡（odId → socket）
   const activeConnections = new Map<string, AuthenticatedSocket>();
@@ -66,6 +70,9 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('private:create', (data) => handlePrivateCreate(socket, data, tableManager));
     socket.on('private:join', (data) => handlePrivateJoin(socket, data, tableManager));
 
+    // トーナメントイベント登録
+    registerTournamentHandlers(socket, tournamentManager);
+
     socket.on('disconnect', () => {
       // displaced されたsocketはクリーンアップをスキップ
       // （新しいsocketの matchmaking:join で正しく処理される）
@@ -80,6 +87,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       }
 
       handleDisconnect(socket, tableManager);
+
+      // トーナメントの切断処理
+      const tournamentId = tournamentManager.getPlayerTournament(odId);
+      if (tournamentId) {
+        const tournament = tournamentManager.getTournament(tournamentId);
+        tournament?.handleDisconnect(odId);
+      }
     });
 
     if (process.env.NODE_ENV !== 'production') {
@@ -87,5 +101,5 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     }
   });
 
-  return { tableManager };
+  return { tableManager, tournamentManager };
 }

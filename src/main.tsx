@@ -2,6 +2,8 @@ import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SimpleLobby } from './pages/SimpleLobby';
 import { OnlineGame } from './pages/OnlineGame';
+import { TournamentLobby } from './pages/TournamentLobby';
+import { TournamentGame } from './pages/TournamentGame';
 import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { HandHistory } from './pages/HandHistory';
@@ -27,6 +29,7 @@ function App() {
   const [isFastFold, setIsFastFold] = useState(false);
   const [variant, setVariant] = useState<string | undefined>(undefined);
   const [privateMode, setPrivateMode] = useState<PrivateMode | null>(null);
+  const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   useEffect(() => {
@@ -40,7 +43,7 @@ function App() {
     return <PlayerDebug />;
   }
 
-  const isGameScreen = (!!blinds || !!privateMode || currentPath.startsWith('/private/'));
+  const isGameScreen = (!!blinds || !!privateMode || !!tournamentId || currentPath.startsWith('/private/') || currentPath.startsWith('/tournament/'));
   const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
 
   const goBackToLobby = () => {
@@ -48,6 +51,7 @@ function App() {
     setIsFastFold(false);
     setVariant(undefined);
     setPrivateMode(null);
+    setTournamentId(null);
     window.history.pushState({}, '', '/');
     setCurrentPath('/');
   };
@@ -63,6 +67,16 @@ function App() {
     page = (
       <HandHistory onBack={goBackToLobby} />
     );
+  } else if (currentPath === '/tournaments') {
+    page = (
+      <TournamentLobby
+        onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
+        onBack={goBackToLobby}
+      />
+    );
+  } else if (currentPath.startsWith('/tournament/') || tournamentId) {
+    const tId = tournamentId || currentPath.replace('/tournament/', '');
+    page = <TournamentGame tournamentId={tId} onBack={goBackToLobby} />;
   } else if (currentPath.startsWith('/private/')) {
     const code = currentPath.replace('/private/', '');
     page = <OnlineGame blinds="1/3" privateMode={{ type: 'join', inviteCode: code }} onBack={goBackToLobby} />;
@@ -76,6 +90,7 @@ function App() {
         onPlayOnline={(selectedBlinds, fastFold, selectedVariant) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); setVariant(selectedVariant); }}
         onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
         onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
+        onTournaments={() => { window.history.pushState({}, '', '/tournaments'); setCurrentPath('/tournaments'); }}
       />
     );
   }

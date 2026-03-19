@@ -395,6 +395,52 @@ export class TableInstance {
   }
 
   /**
+   * 切断プレイヤーの再接続: ソケットを更新し、状態を再送信する
+   * トーナメントの切断復帰で使用
+   */
+  public reconnectPlayer(odId: string, socket: Socket): boolean {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return false;
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    if (!seat) return false;
+
+    // ソケット更新
+    seat.socket = socket;
+    socket.join(this.roomName);
+
+    // 現在のゲーム状態を再送信
+    socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+    socket.emit('game:state', { state: this.getClientGameState() });
+
+    // ハンド中ならホールカードも再送信
+    if (this.gameState && !this.gameState.isHandComplete) {
+      const holeCards = this.gameState.players[seatIndex]?.holeCards;
+      if (holeCards && holeCards.length > 0) {
+        this.broadcast.emitToSocket(socket, odId, 'game:hole_cards', { cards: holeCards });
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * プレイヤーのチップ数を取得（テーブル移動時に使用）
+   */
+  public getPlayerChips(odId: string): number | null {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return null;
+
+    // ハンド中はgameStateの値が最新
+    if (this.gameState && this.gameState.players[seatIndex]) {
+      return this.gameState.players[seatIndex].chips;
+    }
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    return seat?.chips ?? null;
+  }
+
+  /**
    * 指定席の有効アクションを返す（テスト・デバッグ用）
    */
   public getValidActionsForSeat(seatIndex: number): { action: string; minAmount: number; maxAmount: number }[] {

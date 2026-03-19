@@ -13,6 +13,7 @@ interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
   onCreatePrivate: (blinds: string) => void;
   onJoinPrivate: (inviteCode: string) => void;
+  onTournaments?: () => void;
 }
 
 interface TableOption {
@@ -35,7 +36,7 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTournaments }: SimpleLobbyProps) {
   const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -232,6 +233,17 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                 Twitterでログイン
               </button>
             </div>
+          )}
+
+          {/* Tournament Button */}
+          {onTournaments && (
+            <button
+              onClick={onTournaments}
+              className="w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-purple-500 to-purple-600 border-purple-700/30 shadow-[0_4px_12px_rgba(147,51,234,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(147,51,234,0.45)] active:scale-[0.97] text-white font-bold text-[3.5cqw] flex items-center justify-center gap-[2cqw]"
+            >
+              <span>🏆</span>
+              トーナメント
+            </button>
           )}
 
           {/* Tables - Fast Fold */}

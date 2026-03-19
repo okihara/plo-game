@@ -43,6 +43,20 @@ class WebSocketService {
     onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
     onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
     onDisplaced?: () => void;
+    // Tournament events
+    onTournamentList?: (data: { tournaments: any[] }) => void;
+    onTournamentRegistered?: (data: { tournamentId: string }) => void;
+    onTournamentUnregistered?: (data: { tournamentId: string }) => void;
+    onTournamentState?: (state: any) => void;
+    onTournamentTableAssigned?: (data: { tableId: string; tournamentId: string }) => void;
+    onTournamentTableMove?: (data: { fromTableId: string; toTableId: string; reason: string }) => void;
+    onTournamentBlindChange?: (data: { level: any; nextLevel: any | null; nextLevelAt: number }) => void;
+    onTournamentPlayerEliminated?: (data: { odId: string; odName: string; position: number; playersRemaining: number }) => void;
+    onTournamentEliminated?: (data: { position: number; totalPlayers: number; prizeAmount: number }) => void;
+    onTournamentFinalTable?: (data: { tableId: string }) => void;
+    onTournamentCompleted?: (data: { results: any[]; totalPlayers: number; prizePool: number }) => void;
+    onTournamentError?: (data: { message: string }) => void;
+    onTournamentCancelled?: (data: { tournamentId: string }) => void;
   } = {};
 
   connect(): Promise<string> {
@@ -186,6 +200,60 @@ class WebSocketService {
         this.listeners.onPrivateCreated?.(data);
       });
 
+      // Tournament events
+      (this.socket as any).on('tournament:list', (data: any) => {
+        wsLog('tournament:list', data);
+        this.listeners.onTournamentList?.(data);
+      });
+      (this.socket as any).on('tournament:registered', (data: any) => {
+        wsLog('tournament:registered', data);
+        this.listeners.onTournamentRegistered?.(data);
+      });
+      (this.socket as any).on('tournament:unregistered', (data: any) => {
+        wsLog('tournament:unregistered', data);
+        this.listeners.onTournamentUnregistered?.(data);
+      });
+      (this.socket as any).on('tournament:state', (data: any) => {
+        wsLog('tournament:state', data);
+        this.listeners.onTournamentState?.(data);
+      });
+      (this.socket as any).on('tournament:table_assigned', (data: any) => {
+        wsLog('tournament:table_assigned', data);
+        this.listeners.onTournamentTableAssigned?.(data);
+      });
+      (this.socket as any).on('tournament:table_move', (data: any) => {
+        wsLog('tournament:table_move', data);
+        this.listeners.onTournamentTableMove?.(data);
+      });
+      (this.socket as any).on('tournament:blind_change', (data: any) => {
+        wsLog('tournament:blind_change', data);
+        this.listeners.onTournamentBlindChange?.(data);
+      });
+      (this.socket as any).on('tournament:player_eliminated', (data: any) => {
+        wsLog('tournament:player_eliminated', data);
+        this.listeners.onTournamentPlayerEliminated?.(data);
+      });
+      (this.socket as any).on('tournament:eliminated', (data: any) => {
+        wsLog('tournament:eliminated', data);
+        this.listeners.onTournamentEliminated?.(data);
+      });
+      (this.socket as any).on('tournament:final_table', (data: any) => {
+        wsLog('tournament:final_table', data);
+        this.listeners.onTournamentFinalTable?.(data);
+      });
+      (this.socket as any).on('tournament:completed', (data: any) => {
+        wsLog('tournament:completed', data);
+        this.listeners.onTournamentCompleted?.(data);
+      });
+      (this.socket as any).on('tournament:error', (data: any) => {
+        wsLog('tournament:error', data);
+        this.listeners.onTournamentError?.(data);
+      });
+      (this.socket as any).on('tournament:cancelled', (data: any) => {
+        wsLog('tournament:cancelled', data);
+        this.listeners.onTournamentCancelled?.(data);
+      });
+
       // Timeout for initial connection
       this.connectionTimeoutId = setTimeout(() => {
         if (!settled) {
@@ -250,6 +318,23 @@ class WebSocketService {
 
   joinPrivateTable(inviteCode: string): void {
     this.socket?.emit('private:join', { inviteCode });
+  }
+
+  // Tournament actions
+  listTournaments(): void {
+    (this.socket as any)?.emit('tournament:list');
+  }
+
+  registerTournament(tournamentId: string): void {
+    (this.socket as any)?.emit('tournament:register', { tournamentId });
+  }
+
+  unregisterTournament(tournamentId: string): void {
+    (this.socket as any)?.emit('tournament:unregister', { tournamentId });
+  }
+
+  reenterTournament(tournamentId: string): void {
+    (this.socket as any)?.emit('tournament:reenter', { tournamentId });
   }
 
 }
