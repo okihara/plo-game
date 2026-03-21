@@ -2,6 +2,8 @@
 
 > 現在のコードベースを分析し、ゼロから再設計するとしたらどうするかをまとめた設計文書。
 
+**関連**: コード構造のみを起点にした別視点の提案は [code-review-redesign-proposal.md](./code-review-redesign-proposal.md)（プロトコル一元化・フック分割・React Router 等）。
+
 ## 目次
 
 1. [現状の課題](#現状の課題)
