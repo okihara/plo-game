@@ -93,24 +93,34 @@ if (env.NODE_ENV === 'production') {
     if (playerMatch && CRAWLER_UA.test(request.headers['user-agent'] || '')) {
       const userId = playerMatch[1];
       const baseUrl = env.CLIENT_URL;
-      const ogpImageUrl = `${baseUrl}/api/ogp/player/${userId}`;
       const pageUrl = `${baseUrl}/player/${userId}`;
 
-      // ユーザー名を取得（OGPタイトルに使用）
+      // ユーザー名とスタッツを取得（OGPタイトル・キャッシュバストに使用）
       let title = 'Baby PLO - プレイヤースタッツ';
+      let handsPlayed = 0;
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { username: true, displayName: true, nameMasked: true },
-        });
+        const [user, statsCache] = await Promise.all([
+          prisma.user.findUnique({
+            where: { id: userId },
+            select: { username: true, displayName: true, nameMasked: true },
+          }),
+          prisma.playerStatsCache.findUnique({
+            where: { userId },
+            select: { handsPlayed: true },
+          }),
+        ]);
         if (user) {
           const { maskName } = await import('./shared/utils.js');
           const name = user.displayName || (user.nameMasked ? maskName(user.username) : user.username);
           title = `${name} のスタッツ | Baby PLO`;
         }
+        if (statsCache) {
+          handsPlayed = statsCache.handsPlayed;
+        }
       } catch {
         // ignore
       }
+      const ogpImageUrl = `${baseUrl}/api/ogp/player/${userId}?v=${handsPlayed}`;
 
       const html = `<!DOCTYPE html>
 <html lang="ja">
