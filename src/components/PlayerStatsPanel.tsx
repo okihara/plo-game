@@ -55,17 +55,17 @@ function formatRate(rate: number): string {
   return `${sign}${rate.toFixed(1)}`;
 }
 
-/** 要素から最も近い @container 祖先を探し、1cqw 相当の px 値を返す */
-function getContainerCq(el: HTMLElement): number {
+/** 要素から最も近い @container 祖先を探し、1cqw 相当の px 値とコンテナ rect を返す */
+function getContainerInfo(el: HTMLElement): { cq: number; containerRect: DOMRect | null } {
   let node: HTMLElement | null = el.parentElement;
   while (node) {
     const ct = getComputedStyle(node).containerType;
     if (ct === 'inline-size' || ct === 'size') {
-      return node.getBoundingClientRect().width / 100;
+      return { cq: node.getBoundingClientRect().width / 100, containerRect: node.getBoundingClientRect() };
     }
     node = node.parentElement;
   }
-  return Math.min(window.innerWidth, window.innerHeight * 9 / 16) / 100;
+  return { cq: Math.min(window.innerWidth, window.innerHeight * 9 / 16) / 100, containerRect: null };
 }
 
 export function PlayerStatsPanel({
@@ -211,16 +211,18 @@ function StatRow({
       const el = anchorRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      const cq = getContainerCq(el);
+      const { cq, containerRect } = getContainerInfo(el);
+      const cLeft = containerRect?.left ?? 0;
+      const cWidth = containerRect?.width ?? window.innerWidth;
       const margin = Math.max(6, 0.8 * cq);
-      const maxUsable = window.innerWidth - 2 * margin;
       const width = Math.min(
         48 * cq,
-        Math.max(12 * cq, Math.floor(maxUsable * 0.5)),
+        Math.max(12 * cq, Math.floor((cWidth - 2 * margin) * 0.5)),
       );
       const gap = 0.6 * cq;
+      // アンカーのコンテナ内 cqw 座標を基準に配置
       let left = r.left;
-      left = Math.max(margin, Math.min(left, window.innerWidth - width - margin));
+      left = Math.max(cLeft + margin, Math.min(left, cLeft + cWidth - width - margin));
       const top = r.bottom + gap;
       const maxHeight = Math.max(12 * cq, window.innerHeight - top - margin);
       setPlacement({ top, left, width, maxHeight });
