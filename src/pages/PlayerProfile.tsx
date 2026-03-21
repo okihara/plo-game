@@ -1,26 +1,10 @@
 import { useEffect, useState } from 'react';
 import { Share2, Link, Check } from 'lucide-react';
 import { ProfitChart } from '../components/ProfitChart';
+import { PlayerStatsPanel, type PlayerStatsDisplay } from '../components/PlayerStatsPanel';
 import { buildStatsShareText, openXShare } from '../utils/share';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
-
-interface PlayerStats {
-  handsPlayed: number;
-  winRate: number;
-  totalProfit: number;
-  totalAllInEVProfit: number;
-  vpip: number;
-  pfr: number;
-  threeBet: number;
-  fourBet: number;
-  afq: number;
-  cbet: number;
-  foldToCbet: number;
-  foldTo3Bet: number;
-  wtsd: number;
-  wsd: number;
-}
 
 interface DisplayBadge {
   category: string;
@@ -38,18 +22,8 @@ interface PlayerProfileProps {
   onBack: () => void;
 }
 
-function formatProfit(profit: number): string {
-  const sign = profit >= 0 ? '+' : '';
-  return `${sign}${profit.toLocaleString()}`;
-}
-
-function formatRate(rate: number): string {
-  const sign = rate >= 0 ? '+' : '';
-  return `${sign}${rate.toFixed(1)}`;
-}
-
 export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
-  const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [stats, setStats] = useState<PlayerStatsDisplay | null>(null);
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -170,42 +144,13 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
             </div>
           )}
 
-          {/* Stats Card */}
-          <div className="bg-cream-100 rounded-[3cqw] p-[3.5cqw]">
-            {loading ? (
-              <div className="flex flex-col items-center py-[6cqw]">
-                <div className="w-[5cqw] h-[5cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
-                <p className="text-cream-500 text-[2.5cqw] mt-[1.5cqw]">読み込み中...</p>
-              </div>
-            ) : stats ? (
-              <>
-                {/* 収支セクション */}
-                <div className="grid grid-cols-3 gap-x-[2cqw] gap-y-[1.5cqw] mb-[2.5cqw]">
-                  <StatItem label="総ハンド数" value={stats.handsPlayed.toLocaleString()} />
-                  <StatItem label="実収支" value={formatProfit(stats.totalProfit)} color={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
-                  <StatItem label="Win Rate" value={formatRate(stats.winRate)} color={stats.winRate >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
-                  <div />
-                  <StatItem label="収支 (EV)" value={formatProfit(stats.totalAllInEVProfit ?? stats.totalProfit)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
-                  <StatItem label="Win Rate (EV)" value={formatRate((stats.totalAllInEVProfit ?? stats.totalProfit) / stats.handsPlayed)} color={(stats.totalAllInEVProfit ?? stats.totalProfit) >= 0 ? 'text-forest' : 'text-[#C0392B]'} />
-                </div>
-                {/* ポーカースタッツ */}
-                <div className="grid grid-cols-4 gap-x-[1.5cqw] gap-y-[1.5cqw]">
-                  <StatItem label="VPIP" value={`${stats.vpip.toFixed(1)}%`} />
-                  <StatItem label="PFR" value={`${stats.pfr.toFixed(1)}%`} />
-                  <StatItem label="3Bet" value={`${stats.threeBet.toFixed(1)}%`} />
-                  <StatItem label="4Bet" value={`${stats.fourBet.toFixed(1)}%`} />
-                  <StatItem label="AFq" value={`${stats.afq.toFixed(1)}%`} />
-                  <StatItem label="CBet" value={`${stats.cbet.toFixed(1)}%`} />
-                  <StatItem label="Fold to CB" value={`${stats.foldToCbet.toFixed(1)}%`} />
-                  <StatItem label="Fold to 3B" value={`${stats.foldTo3Bet.toFixed(1)}%`} />
-                </div>
-              </>
-            ) : (
-              <p className="text-cream-500 text-[3cqw] text-center py-[6cqw]">
-                スタッツはまだありません
-              </p>
-            )}
-          </div>
+          {loading || stats ? (
+            <PlayerStatsPanel loading={loading} stats={stats} />
+          ) : (
+            <p className="text-cream-800 text-[3cqw] text-center py-[6cqw]">
+              スタッツはまだありません
+            </p>
+          )}
 
           {/* Profit Chart */}
           {!loading && profitHistory.length >= 2 && (
@@ -215,15 +160,6 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function StatItem({ label, value, color }: { label: string; value: string; color?: string }) {
-  return (
-    <div className="text-center">
-      <div className="text-cream-600 text-[2.5cqw] mb-[0.5cqw]">{label}</div>
-      <div className={`text-[4.5cqw] font-bold ${color || 'text-cream-900'}`}>{value}</div>
     </div>
   );
 }
