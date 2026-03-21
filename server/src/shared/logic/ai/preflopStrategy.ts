@@ -29,12 +29,6 @@ export function getPreflopDecision(
   const facingRaise = state.currentBet > state.bigBlind;
   const facingBigRaise = facingRaise && toCall > state.pot * 0.5;
 
-  // === AAxx は常にプレミアムハンド扱い ===
-  // PLOでAAxxはどんな構成でもプリフロップでレイズすべき最強カテゴリ
-  if (evaluation.hasPair && evaluation.pairRank?.startsWith('A')) {
-    return playPremium(state, validActions, Math.max(effectiveStrength, 0.80), facingRaise, personality);
-  }
-
   // プリフロップのレイズ回数で3bet/4bet状況を検出
   // raiseCount=1: オープンレイズ, =2: 3bet, >=3: 4bet+
   const preflopRaiseCount = state.handHistory.filter(
@@ -42,6 +36,33 @@ export function getPreflopDecision(
   ).length;
   const facing3Bet = preflopRaiseCount >= 2;
   const facing4Bet = preflopRaiseCount >= 3;
+
+  const isAAxx = evaluation.hasPair && evaluation.pairRank?.startsWith('A');
+
+  // === AAxx は常にプレミアムハンド扱い ===
+  // PLOでAAxxはどんな構成でもプリフロップでレイズすべき最強カテゴリ
+  // ただし4bet+に直面した場合はコール止め（オールインしない）
+  if (isAAxx) {
+    if (facing4Bet) {
+      // AAxxでも4bet+ではコール止め（さらにレイズしない）
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+      return { action: 'fold', amount: 0 };
+    }
+    return playPremium(state, validActions, Math.max(effectiveStrength, 0.80), facingRaise, personality);
+  }
+
+  // === 4ベット以上に直面: AA以外はフォールド ===
+  // PLOでは4bet+ポットにAAxx以外で参加するのは-EV
+  if (facing4Bet) {
+    return { action: 'fold', amount: 0 };
+  }
+
+  // === 3ベットに直面: ハンド構造を考慮した判断 ===
+  // プレミアムハンド（0.85+）でも3betに直面したら構造を考慮
+  if (facing3Bet) {
+    return facing3BetDecision(state, effectiveStrength, evaluation, validActions, personality, random);
+  }
 
   // VPIP閾値: パーソナリティに基づいてハンド参加閾値を計算
   // vpip=0.40なら effectiveStrength 0.59以上で参加
@@ -52,23 +73,9 @@ export function getPreflopDecision(
   const pfrThreshold = vpipThreshold + (personality.vpip - personality.pfr) * 0.8;
 
   // === プレミアムハンド (effectiveStrength > 0.85) ===
+  // ここに到達するのはオープンor単一レイズに直面した場合のみ
   if (effectiveStrength > 0.85) {
     return playPremium(state, validActions, effectiveStrength, facingRaise, personality);
-  }
-
-  // === 4ベット以上に直面: プレミアム以外はほぼフォールド ===
-  if (facing4Bet) {
-    // 非常に強い手（0.80+）かつ構造が良い場合のみコール
-    if (effectiveStrength > 0.80 && (evaluation.hasPair || evaluation.isDoubleSuited)) {
-      const callAction = validActions.find(a => a.action === 'call');
-      if (callAction) return { action: 'call', amount: callAction.minAmount };
-    }
-    return { action: 'fold', amount: 0 };
-  }
-
-  // === 3ベットに直面: ハンド構造を考慮した判断 ===
-  if (facing3Bet) {
-    return facing3BetDecision(effectiveStrength, evaluation, validActions, personality, random);
   }
 
   // === 3ベット判断（オープンレイズに対して re-raise） ===
@@ -156,6 +163,7 @@ export function getPreflopDecision(
  * PLOでは3betポットでのプレイアビリティが重要。
  */
 function facing3BetDecision(
+  state: GameState,
   effectiveStrength: number,
   evaluation: PreFlopEvaluation,
   validActions: { action: Action; minAmount: number; maxAmount: number }[],
@@ -197,6 +205,17 @@ function facing3BetDecision(
   const adjustedFoldRate = Math.max(0.10, personality.foldTo3Bet - strengthBonus);
   if (random < adjustedFoldRate) {
     return { action: 'fold', amount: 0 };
+  }
+
+  // プレミアムハンド（0.85+）かつ良い構造なら4betも検討（コール止めが基本）
+  if (effectiveStrength > 0.85 && hasGoodStructure) {
+    const raiseAction = validActions.find(a => a.action === 'raise');
+    if (raiseAction && random < personality.threeBetFreq * 0.5) {
+      // 4betサイズ: ポットの2.5倍（控えめ）
+      const raiseSize = Math.floor(state.pot * 2.5);
+      const amount = Math.min(raiseAction.maxAmount, Math.max(raiseAction.minAmount, raiseSize));
+      return { action: 'raise', amount };
+    }
   }
 
   // コール

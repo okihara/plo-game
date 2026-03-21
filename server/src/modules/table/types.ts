@@ -2,6 +2,30 @@
 
 import { Socket } from 'socket.io';
 
+// ゲームモード（キャッシュゲーム / トーナメント）
+export type GameMode = 'cash' | 'tournament';
+
+/**
+ * テーブルライフサイクルコールバック
+ * キャッシュゲームとトーナメントで異なる振る舞いを外部から注入する
+ */
+export interface TableLifecycleCallbacks {
+  /**
+   * プレイヤーがバスト（チップ0）した時の処理
+   * - キャッシュゲーム: table:busted通知 → unseat → cashOut
+   * - トーナメント: 順位記録 → リバイ提示 or 脱落処理
+   * @returns true: TableInstanceがunseatPlayerを呼ぶ, false: 呼び出し側が管理
+   */
+  onPlayerBusted: (odId: string, seatIndex: number, socket: Socket | null) => boolean;
+
+  /**
+   * ハンド完了後のチップ精算処理
+   * - キャッシュゲーム: 何もしない（離席時にcashOut）
+   * - トーナメント: チップをトーナメントエントリに同期
+   */
+  onHandSettled?: (seatChips: { odId: string; seatIndex: number; chips: number }[]) => void;
+}
+
 export interface SeatInfo {
   odId: string;
   odName: string; // username（マスク対象）
