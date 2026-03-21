@@ -1,21 +1,11 @@
 import {
-  createContext,
-  useContext,
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
   type ReactNode,
 } from 'react';
-import { createPortal } from 'react-dom';
 import { Info } from 'lucide-react';
-
-/** 親パネル幅の 1% を px にした値（= 1cqw 相当）。ポータルは body 直下のため CSS の cqw が使えない */
-const StatsPanelCqContext = createContext<number>(3.6);
-
-function useStatsPanelCq() {
-  return useContext(StatsPanelCqContext);
-}
 
 export interface PlayerStatsDisplay {
   handsPlayed: number;
@@ -65,34 +55,24 @@ function formatRate(rate: number): string {
   return `${sign}${rate.toFixed(1)}`;
 }
 
+/** 要素から最も近い @container 祖先を探し、1cqw 相当の px 値を返す */
+function getContainerCq(el: HTMLElement): number {
+  let node: HTMLElement | null = el.parentElement;
+  while (node) {
+    const ct = getComputedStyle(node).containerType;
+    if (ct === 'inline-size' || ct === 'size') {
+      return node.getBoundingClientRect().width / 100;
+    }
+    node = node.parentElement;
+  }
+  return Math.min(window.innerWidth, window.innerHeight * 9 / 16) / 100;
+}
+
 export function PlayerStatsPanel({
   loading,
   stats,
   showPlaceholderWhenEmpty = false,
 }: PlayerStatsPanelProps) {
-  const rootRef = useRef<HTMLDivElement>(null);
-  const [containerWidthPx, setContainerWidthPx] = useState(0);
-
-  useEffect(() => {
-    const el = rootRef.current;
-    if (!el || typeof ResizeObserver === 'undefined') return;
-    const ro = new ResizeObserver((entries) => {
-      const w = entries[0]?.contentRect.width;
-      if (w && w > 0) setContainerWidthPx(w);
-    });
-    ro.observe(el);
-    const w0 = el.getBoundingClientRect().width;
-    if (w0 > 0) setContainerWidthPx(w0);
-    return () => ro.disconnect();
-  }, []);
-
-  const cq =
-    containerWidthPx > 0
-      ? containerWidthPx / 100
-      : typeof window !== 'undefined'
-        ? Math.min(400, window.innerWidth * 0.92) / 100
-        : 3.6;
-
   const evProfit = stats ? stats.totalAllInEVProfit ?? stats.totalProfit : 0;
   const evWinRate = stats && stats.handsPlayed > 0 ? evProfit / stats.handsPlayed : 0;
 
@@ -184,11 +164,9 @@ export function PlayerStatsPanel({
   );
 
   return (
-    <StatsPanelCqContext.Provider value={cq}>
-      <div ref={rootRef} className="w-full min-w-0">
-        {inner}
-      </div>
-    </StatsPanelCqContext.Provider>
+    <div className="w-full min-w-0">
+      {inner}
+    </div>
   );
 }
 
@@ -218,7 +196,6 @@ function StatRow({
   isPlaceholder?: boolean;
   dense?: boolean;
 }) {
-  const cq = useStatsPanelCq();
   const info = statInfo[label];
   const [showTooltip, setShowTooltip] = useState(false);
   const tooltipRef = useRef<HTMLDivElement>(null);
@@ -234,7 +211,7 @@ function StatRow({
       const el = anchorRef.current;
       if (!el) return;
       const r = el.getBoundingClientRect();
-      // 画面端クランプは px（ビューポート）。余白・ギャップ・幅はパネル cqw 相当 cq と整合
+      const cq = getContainerCq(el);
       const margin = Math.max(6, 0.8 * cq);
       const maxUsable = window.innerWidth - 2 * margin;
       const width = Math.min(
@@ -255,7 +232,7 @@ function StatRow({
       window.removeEventListener('scroll', update, true);
       window.removeEventListener('resize', update);
     };
-  }, [showTooltip, cq]);
+  }, [showTooltip]);
 
   useEffect(() => {
     if (!showTooltip) return;
@@ -312,47 +289,28 @@ function StatRow({
       >
         {value}
       </span>
-      {showTooltip &&
-        info &&
-        placement &&
-        createPortal(
-          <div
-            ref={tooltipRef}
-            className="fixed z-[500] box-border overflow-y-auto overscroll-contain border border-cream-700 bg-cream-900 shadow-xl"
-            style={{
-              top: placement.top,
-              left: placement.left,
-              width: placement.width,
-              maxHeight: placement.maxHeight,
-              padding: `${2.5 * cq}px`,
-              borderRadius: `${2 * cq}px`,
-            }}
-          >
-            <div
-              className="font-semibold leading-snug text-white"
-              style={{ fontSize: `${3.2 * cq}px`, marginBottom: `${0.6 * cq}px` }}
-            >
-              {label}
-            </div>
-            <div
-              className="leading-relaxed text-white"
-              style={{ fontSize: `${2.8 * cq}px`, marginBottom: `${0.6 * cq}px` }}
-            >
-              {info.desc}
-            </div>
-            <div
-              className="leading-snug text-emerald-200 bg-black/30"
-              style={{
-                fontSize: `${2.5 * cq}px`,
-                borderRadius: `${0.6 * cq}px`,
-                padding: `${0.6 * cq}px ${0.8 * cq}px`,
-              }}
-            >
-              {info.formula}
-            </div>
-          </div>,
-          document.body,
-        )}
+      {showTooltip && info && placement && (
+        <div
+          ref={tooltipRef}
+          className="fixed z-[500] box-border overflow-y-auto overscroll-contain border border-cream-700 bg-cream-900 shadow-xl p-[2.5cqw] rounded-[2cqw]"
+          style={{
+            top: placement.top,
+            left: placement.left,
+            width: placement.width,
+            maxHeight: placement.maxHeight,
+          }}
+        >
+          <div className="font-semibold leading-snug text-white text-[3.2cqw] mb-[0.6cqw]">
+            {label}
+          </div>
+          <div className="leading-relaxed text-white text-[2.8cqw] mb-[0.6cqw]">
+            {info.desc}
+          </div>
+          <div className="leading-snug text-emerald-200 bg-black/30 text-[2.5cqw] rounded-[0.6cqw] px-[0.8cqw] py-[0.6cqw]">
+            {info.formula}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
