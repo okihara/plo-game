@@ -85,6 +85,14 @@ function StatBlock(label: string, value: string, color?: string, small?: boolean
   );
 }
 
+/** 左パネル用: 横並び label + value */
+function StatRow(label: string, value: string, color?: string) {
+  return h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' } },
+    h('div', { style: { display: 'flex', fontSize: 16, color: '#666' } }, label),
+    h('div', { style: { display: 'flex', fontSize: 20, fontWeight: 700, color: color || '#1a1a1a' } }, value),
+  );
+}
+
 // チャート用ヘルパー
 function formatCompact(v: number): string {
   const abs = Math.abs(v);
@@ -212,99 +220,90 @@ function buildChartWithLabels(points: ProfitPoint[], totalWidth: number, chartHe
 }
 
 function buildElement(name: string, stats: OgpStats | null, profitPoints: ProfitPoint[] | null): ReactNode {
-  const profitColor = stats && stats.totalProfit >= 0 ? '#2d6a4f' : '#C0392B';
-  const winRateColor = stats && stats.winRate >= 0 ? '#2d6a4f' : '#C0392B';
-  const evProfitColor = stats && stats.totalAllInEVProfit >= 0 ? '#2d6a4f' : '#C0392B';
-  const evWinRateColor = stats && stats.evWinRate >= 0 ? '#2d6a4f' : '#C0392B';
+  const profitColor = (v: number) => v >= 0 ? '#2d6a4f' : '#C0392B';
   const hasChart = profitPoints && profitPoints.length >= 2;
-  const SIDE_PAD = 60;
-  const CONTENT_W = WIDTH - SIDE_PAD * 2; // 1080
+  const SIDE_PAD = 48;
+  const CONTENT_W = WIDTH - SIDE_PAD * 2; // 1104
+  const GAP = 28;
+  const LEFT_W = hasChart ? 380 : CONTENT_W;
+  const RIGHT_W = CONTENT_W - LEFT_W - GAP;
 
-  const statsContent = stats
-    ? h('div', { style: { display: 'flex', flexDirection: 'column', gap: hasChart ? 16 : 32, paddingTop: hasChart ? 16 : 28, paddingBottom: hasChart ? 16 : 28 } },
+  // ── 左パネル: スタッツ ──
+  const leftPanel = stats
+    ? h('div', { style: { display: 'flex', flexDirection: 'column', width: LEFT_W } },
         // 収支セクション
-        h('div', { style: { display: 'flex', justifyContent: 'center', gap: 0 } },
-          StatBlock('総ハンド数', stats.handsPlayed.toLocaleString()),
-          StatBlock('実収支', formatProfit(stats.totalProfit), profitColor),
-          StatBlock('Win Rate', `${stats.winRate >= 0 ? '+' : ''}${stats.winRate.toFixed(1)}`, winRateColor),
-          StatBlock('収支 (EV)', formatProfit(stats.totalAllInEVProfit), evProfitColor),
-          StatBlock('WR (EV)', `${stats.evWinRate >= 0 ? '+' : ''}${stats.evWinRate.toFixed(1)}`, evWinRateColor),
+        h('div', { style: { display: 'flex', flexDirection: 'column', marginBottom: 12 } },
+          ...[
+            ['総ハンド数', stats.handsPlayed.toLocaleString(), undefined],
+            ['実収支', formatProfit(stats.totalProfit), profitColor(stats.totalProfit)],
+            ['Win Rate', `${stats.winRate >= 0 ? '+' : ''}${stats.winRate.toFixed(1)}`, profitColor(stats.winRate)],
+            ['収支 (EV)', formatProfit(stats.totalAllInEVProfit), profitColor(stats.totalAllInEVProfit)],
+            ['WR (EV)', `${stats.evWinRate >= 0 ? '+' : ''}${stats.evWinRate.toFixed(1)}`, profitColor(stats.evWinRate)],
+          ].map(([l, v, c]) =>
+            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' } },
+              h('div', { style: { display: 'flex', fontSize: 20, color: '#333' } }, l),
+              h('div', { style: { display: 'flex', fontSize: 28, fontWeight: 700, color: (c as string) || '#1a1a1a' } }, v),
+            ),
+          ),
         ),
         // 区切り線
-        h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#e8e2da' } }),
-        // ポーカースタッツ
-        h('div', { style: { display: 'flex', justifyContent: 'center', gap: 0 } },
-          StatBlock('VPIP', `${stats.vpip.toFixed(1)}%`, undefined, true),
-          StatBlock('PFR', `${stats.pfr.toFixed(1)}%`, undefined, true),
-          StatBlock('3Bet', `${stats.threeBet.toFixed(1)}%`, undefined, true),
-          StatBlock('AFq', `${stats.afq.toFixed(1)}%`, undefined, true),
-          StatBlock('CBet', `${stats.cbet.toFixed(1)}%`, undefined, true),
-          StatBlock('Fold CB', `${stats.foldToCbet.toFixed(1)}%`, undefined, true),
-          StatBlock('Fold 3B', `${stats.foldTo3Bet.toFixed(1)}%`, undefined, true),
+        h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#d8d2c8', marginBottom: 12 } }),
+        // ポーカースタッツ（VPIP / PFR / 3Bet）
+        h('div', { style: { display: 'flex', flexDirection: 'column' } },
+          ...[
+            ['VPIP', `${stats.vpip.toFixed(1)}%`],
+            ['PFR', `${stats.pfr.toFixed(1)}%`],
+            ['3Bet', `${stats.threeBet.toFixed(1)}%`],
+          ].map(([l, v]) =>
+            h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0' } },
+              h('div', { style: { display: 'flex', fontSize: 20, color: '#333' } }, l),
+              h('div', { style: { display: 'flex', fontSize: 28, fontWeight: 700, color: '#1a1a1a' } }, v),
+            ),
+          ),
         ),
       )
     : h('div', { style: { display: 'flex', flex: 1, alignItems: 'center', justifyContent: 'center' } },
         h('div', { style: { display: 'flex', fontSize: 24, color: '#666' } }, 'スタッツはまだありません'),
       );
 
-  // チャートセクション（背景カード付き）
-  const CHART_PAD = 20;
-  const chartInnerW = CONTENT_W - CHART_PAD * 2;
-  const chartSection = hasChart
+  // ── 右パネル: チャート ──
+  const CHART_PAD = 16;
+  const chartInnerW = RIGHT_W - CHART_PAD * 2;
+  const rightPanel = hasChart
     ? h('div', {
         style: {
-          display: 'flex', flexDirection: 'column', flex: 1,
-          backgroundColor: '#f0ece6', borderRadius: 16, padding: `12px ${CHART_PAD}px 16px`,
+          display: 'flex', flexDirection: 'column', width: RIGHT_W, flex: 1,
+          backgroundColor: '#f0ece6', borderRadius: 16, padding: `14px ${CHART_PAD}px 16px`,
         },
       },
-        // 凡例（チャート上部右寄せ）
-        h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 16, marginBottom: 8 } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
-            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#00C000', borderRadius: 2 } }),
-            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'Total'),
-          ),
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
-            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#FFB800', borderRadius: 2 } }),
-            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'EV'),
-          ),
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
-            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#0080FF', borderRadius: 2 } }),
-            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'Showdown'),
-          ),
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 5 } },
-            h('div', { style: { display: 'flex', width: 20, height: 4, backgroundColor: '#FF0000', borderRadius: 2 } }),
-            h('div', { style: { display: 'flex', fontSize: 13, fontWeight: 700, color: '#666' } }, 'Non-SD'),
+        // 凡例
+        h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 12, marginBottom: 8 } },
+          ...[
+            ['#00C000', 'Total'],
+            ['#FFB800', 'EV'],
+            ['#0080FF', 'SD'],
+            ['#FF0000', 'Non-SD'],
+          ].map(([c, t]) =>
+            h('div', { style: { display: 'flex', alignItems: 'center', gap: 4 } },
+              h('div', { style: { display: 'flex', width: 16, height: 3, backgroundColor: c, borderRadius: 2 } }),
+              h('div', { style: { display: 'flex', fontSize: 12, fontWeight: 700, color: '#666' } }, t),
+            ),
           ),
         ),
-        // チャート本体（Y軸ラベル+X軸ラベル付き）
-        buildChartWithLabels(profitPoints!, chartInnerW, 190),
+        // チャート本体
+        buildChartWithLabels(profitPoints!, chartInnerW, 340),
       )
     : null;
 
-  const children: ReactNode[] = [
-    // 上部アクセントライン
-    h('div', { style: { display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, height: 6, backgroundColor: '#1a1a1a' } }),
-    // ヘッダー
-    h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 32, marginBottom: 12 } },
-      h('div', { style: { display: 'flex', fontSize: 34, fontWeight: 700, color: '#1a1a1a' } }, name),
-      h('div', { style: { display: 'flex', fontSize: 18, color: '#1a1a1a', fontWeight: 700 } }, 'Baby PLO'),
-    ),
-    // 区切り線
-    h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#d8d2c8' } }),
-    // スタッツ
-    statsContent,
-  ];
-
-  if (chartSection) {
-    children.push(chartSection);
-  }
-
-  // フッター
-  children.push(
-    h('div', { style: { display: 'flex', justifyContent: 'center', paddingBottom: 20, paddingTop: 14 } },
-      h('div', { style: { display: 'flex', fontSize: 16, color: '#888' } }, 'baby-plo.up.railway.app'),
-    ),
-  );
+  // ── メインレイアウト ──
+  const bodyContent = hasChart
+    ? h('div', { style: { display: 'flex', flex: 1, gap: GAP, paddingTop: 16, paddingBottom: 12 } },
+        leftPanel,
+        rightPanel,
+      )
+    : h('div', { style: { display: 'flex', flex: 1, paddingTop: 16, paddingBottom: 12 } },
+        leftPanel,
+      );
 
   return h('div', {
     style: {
@@ -316,7 +315,23 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
       padding: `0 ${SIDE_PAD}px`,
       fontFamily: 'Noto Sans CJK JP',
     },
-  }, ...children);
+  },
+    // 上部アクセントライン
+    h('div', { style: { display: 'flex', position: 'absolute', top: 0, left: 0, right: 0, height: 6, backgroundColor: '#1a1a1a' } }),
+    // ヘッダー
+    h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 32, marginBottom: 12 } },
+      h('div', { style: { display: 'flex', fontSize: 34, fontWeight: 700, color: '#1a1a1a' } }, name),
+      h('div', { style: { display: 'flex', fontSize: 18, color: '#1a1a1a', fontWeight: 700 } }, 'Baby PLO'),
+    ),
+    // 区切り線
+    h('div', { style: { display: 'flex', width: '100%', height: 1, backgroundColor: '#d8d2c8' } }),
+    // メインコンテンツ（左右分割）
+    bodyContent,
+    // フッター
+    h('div', { style: { display: 'flex', justifyContent: 'center', paddingBottom: 16, paddingTop: 8 } },
+      h('div', { style: { display: 'flex', fontSize: 14, color: '#888' } }, 'baby-plo.up.railway.app'),
+    ),
+  );
 }
 
 export async function renderOgpImage(name: string, stats: OgpStats | null, profitPoints?: ProfitPoint[] | null): Promise<Buffer> {
