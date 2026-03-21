@@ -68,6 +68,8 @@ enum TransactionType {
 model HandHistory {
   id             String   @id @default(cuid())
   tableId        String
+  /// キャッシュゲームは null。トーナメント実装時に設定
+  tournamentId   String?
   handNumber     Int
   blinds         String   // e.g., "10/20"
   communityCards String[] // Array of card strings
@@ -81,6 +83,7 @@ model HandHistory {
   players HandHistoryPlayer[]
 
   @@index([tableId])
+  @@index([tournamentId])
   @@index([createdAt])
 }
 

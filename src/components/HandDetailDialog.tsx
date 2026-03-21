@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
-import { Share2, Link, Check, Image, FileText } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Share2, Link, Check, Image, FileText, Eye, EyeOff, UserRound } from 'lucide-react';
 import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
@@ -66,6 +67,8 @@ const STREET_LABELS: Record<string, string> = {
 
 const STREETS = ['preflop', 'flop', 'turn', 'river'] as const;
 
+const MASKED_PLAYER_NAME = '********';
+
 function getStreetCards(communityCards: string[]): Record<string, string[]> {
   return {
     flop: communityCards.slice(0, 3),
@@ -93,8 +96,20 @@ function computeStreetStartPots(actions: HandDetailAction[], blinds: string): Re
   return pots;
 }
 
-function displayName(player: { isCurrentUser: boolean; username: string }): string {
-  return player.username;
+function playerLabel(p: HandDetailPlayer, hideOpponentNames: boolean): string {
+  if (!hideOpponentNames || p.isCurrentUser) return p.username;
+  return MASKED_PLAYER_NAME;
+}
+
+function AnonymousAvatar({ className = '' }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center justify-center rounded-full bg-cream-300 border border-cream-500/30 text-cream-600 ${className}`}
+      aria-hidden
+    >
+      <UserRound className="w-[55%] h-[55%]" strokeWidth={2.25} />
+    </span>
+  );
 }
 
 /** プリフロでアクション記録がないプレイヤーに fold を補完（ポジション順の正しい位置に挿入） */
@@ -217,17 +232,25 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
       <span className="w-[9cqw] shrink-0">
         {pos ? <PositionBadge position={pos} /> : null}
       </span>
-      <span className="w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate">{playerName}</span>
+      <span
+        className={`w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate ${
+          playerName === MASKED_PLAYER_NAME ? 'font-mono tracking-tight' : ''
+        }`}
+      >
+        {playerName}
+      </span>
       <span className="w-[14cqw] shrink-0 text-cream-900 text-[3cqw] font-bold">{ACTION_LABELS[action.action] || action.action}</span>
       <span className="text-forest text-[3cqw] font-bold font-mono">{action.amount > 0 ? action.amount : ''}</span>
     </div>
   );
 }
 
-function PlayerRow({ player, position, communityCards }: {
+function PlayerRow({ player, position, communityCards, displayName, anonymousAvatar }: {
   player: HandDetailPlayer;
   position: string | null;
   communityCards: string[];
+  displayName: string;
+  anonymousAvatar: boolean;
 }) {
   const handName = player.finalHand
     || (player.holeCards.length === 4 && communityCards.length >= 3
@@ -247,11 +270,17 @@ function PlayerRow({ player, position, communityCards }: {
     >
       <div className="flex items-center gap-[1.5cqw] w-[30cqw] shrink-0">
         {position ? <PositionBadge position={position} /> : <span className="w-[7cqw] shrink-0" />}
-        {player.avatarUrl && (
+        {anonymousAvatar ? (
+          <AnonymousAvatar className="w-[4.5cqw] h-[4.5cqw] shrink-0" />
+        ) : player.avatarUrl ? (
           <img src={player.avatarUrl} alt="" className="w-[4.5cqw] h-[4.5cqw] rounded-full object-cover border border-cream-300 shrink-0" />
-        )}
-        <span className={`font-semibold text-[3cqw] truncate ${player.isCurrentUser ? 'text-forest' : 'text-cream-900'}`}>
-          {displayName(player)}
+        ) : null}
+        <span
+          className={`font-semibold text-[3cqw] truncate ${player.isCurrentUser ? 'text-forest' : 'text-cream-900'} ${
+            anonymousAvatar ? 'font-mono tracking-tight' : ''
+          }`}
+        >
+          {displayName}
         </span>
       </div>
       <div className="flex items-center gap-[0.4cqw] shrink-0">
@@ -265,10 +294,26 @@ function PlayerRow({ player, position, communityCards }: {
   );
 }
 
-function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[] }) {
+function ActionHistory({
+  hand,
+  allSeats,
+  hideOpponentNames,
+}: {
+  hand: HandDetail;
+  allSeats: number[];
+  hideOpponentNames: boolean;
+}) {
   const streetCards = getStreetCards(hand.communityCards);
   const streetStartPot = computeStreetStartPots(hand.actions, hand.blinds);
   const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
+
+  const nameForSeat = (seatIndex: number, fallbackOdName: string) => {
+    const p = hand.players.find(x => x.seatPosition === seatIndex);
+    if (p) {
+      return playerLabel(p, hideOpponentNames);
+    }
+    return hideOpponentNames ? MASKED_PLAYER_NAME : fallbackOdName;
+  };
 
   let lastStreet = '';
   let isFirstHeader = true;
@@ -282,8 +327,7 @@ function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[
         const isFirst = isFirstHeader;
         if (showHeader) isFirstHeader = false;
 
-        const player = hand.players.find(p => p.seatPosition === a.seatIndex);
-        const name = player ? displayName(player) : a.odName;
+        const name = nameForSeat(a.seatIndex, a.odName);
 
         return (
           <div key={i}>
@@ -315,7 +359,15 @@ function ActionHistory({ hand, allSeats }: { hand: HandDetail; allSeats: number[
   );
 }
 
-function ResultSection({ hand, allSeats }: { hand: HandDetail; allSeats: number[] }) {
+function ResultSection({
+  hand,
+  allSeats,
+  hideOpponentNames,
+}: {
+  hand: HandDetail;
+  allSeats: number[];
+  hideOpponentNames: boolean;
+}) {
   const activePlayers = useMemo(() => {
     const foldedSeats = new Set(
       hand.actions.filter(a => a.action === 'fold').map(a => a.seatIndex)
@@ -343,7 +395,9 @@ function ResultSection({ hand, allSeats }: { hand: HandDetail; allSeats: number[
             <span className="w-[9cqw] shrink-0">
               {pos && <PositionBadge position={pos} />}
             </span>
-            <span className="w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate">{displayName(p)}</span>
+            <span className="w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate font-mono tracking-tight">
+              {playerLabel(p, hideOpponentNames)}
+            </span>
             <span className="w-[18cqw] shrink-0 text-cream-700 text-[2.5cqw] truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
             <ProfitDisplay profit={p.profit} />
           </div>
@@ -377,6 +431,7 @@ export function HandDetailDialog({
     });
   }, [hand.players, hand.dealerPosition]);
 
+  const [hideOpponentNames, setHideOpponentNames] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
@@ -462,21 +517,18 @@ export function HandDetailDialog({
     setTimeout(() => { setPsCopied(false); setShowShareMenu(false); }, 1500);
   };
 
-  return (
-    <div className="absolute inset-0 z-50 flex flex-col light-bg">
-        {/* ヘッダー: 戻る + 自分のポジション・ホールカード + シェア */}
+  const shell = (
+    <div className="absolute inset-0 z-[280] flex flex-col light-bg min-h-0 h-full">
+        {/* ヘッダー: 自分のポジション・ホールカード + プライバシー + シェア */}
         <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
-          <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
-            &larr; 戻る
-          </button>
           {(() => {
             const mePlayer = hand.players.find(p => p.isCurrentUser);
             const pos = mePlayer ? getPositionName(mePlayer.seatPosition, hand.dealerPosition, allSeats) : '';
             return (
-              <div className="flex items-center gap-[1.5cqw]">
+              <div className="flex items-center gap-[1.5cqw] min-w-0 flex-1">
                 {pos && <PositionBadge position={pos} />}
                 {mePlayer && (
-                  <span className="text-cream-900 text-[3cqw] font-semibold truncate">{displayName(mePlayer)}</span>
+                  <span className="text-cream-900 text-[3cqw] font-semibold truncate">{mePlayer.username}</span>
                 )}
                 {mePlayer && mePlayer.holeCards.length > 0 && (
                   <div className="flex items-center gap-[0.4cqw]">
@@ -487,8 +539,27 @@ export function HandDetailDialog({
             );
           })()}
 
-          {/* シェアボタン */}
-          <div className="ml-auto relative">
+          <div className="ml-auto flex items-center gap-[1.5cqw] shrink-0">
+            <button
+              type="button"
+              onClick={() => setHideOpponentNames(v => !v)}
+              aria-pressed={hideOpponentNames}
+              aria-label={hideOpponentNames ? '相手の名前を表示' : '自分以外の名前を隠す'}
+              title={hideOpponentNames ? '相手の名前を表示' : '自分以外の名前を隠す'}
+              className={`flex items-center gap-[1cqw] rounded-full px-[2.2cqw] py-[1.2cqw] text-[2.6cqw] font-medium transition-colors ${
+                hideOpponentNames
+                  ? 'bg-forest/15 text-forest'
+                  : 'bg-cream-100 text-cream-700 active:bg-cream-300'
+              }`}
+            >
+              {hideOpponentNames ? (
+                <EyeOff className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
+              ) : (
+                <Eye className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
+              )}
+              <span className="max-[400px]:hidden whitespace-nowrap">名前を隠す</span>
+            </button>
+            <div className="relative">
             <button
               onClick={() => setShowShareMenu(v => !v)}
               className="w-[8cqw] h-[8cqw] flex items-center justify-center rounded-full bg-cream-100 active:bg-cream-300"
@@ -539,10 +610,11 @@ export function HandDetailDialog({
               </div>
               </>
             )}
+            </div>
           </div>
         </div>
 
-        <div className="p-[3cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
+        <div className="p-[3cqw] pb-[4cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
           {/* ハンド情報 */}
           <div className="flex items-center gap-[1.5cqw]">
             <span className="text-cream-700 text-[3cqw]">{new Date(hand.createdAt).toLocaleString('ja-JP')}</span>
@@ -558,6 +630,8 @@ export function HandDetailDialog({
                 player={p}
                 position={getPositionName(p.seatPosition, hand.dealerPosition, allSeats)}
                 communityCards={hand.communityCards}
+                displayName={playerLabel(p, hideOpponentNames)}
+                anonymousAvatar={hideOpponentNames && !p.isCurrentUser}
               />
             ))}
           </div>
@@ -565,11 +639,25 @@ export function HandDetailDialog({
           {/* アクション履歴 + Result */}
           <div className="bg-cream-100 rounded-[2.5cqw] px-[3cqw] py-[3cqw] border border-cream-300">
             <div className="space-y-[0.5cqw]">
-              <ActionHistory hand={normalizedHand} allSeats={allSeats} />
+              <ActionHistory hand={normalizedHand} allSeats={allSeats} hideOpponentNames={hideOpponentNames} />
             </div>
-            <ResultSection hand={normalizedHand} allSeats={allSeats} />
+            <ResultSection hand={normalizedHand} allSeats={allSeats} hideOpponentNames={hideOpponentNames} />
           </div>
+        </div>
+
+        <div className="shrink-0 border-t border-cream-300 bg-white px-[4cqw] pt-[1.8cqw] pb-[max(1.8cqw,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(139,126,106,0.08)]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full py-[2cqw] rounded-[2cqw] bg-forest text-white text-[3.2cqw] font-bold shadow-sm active:scale-[0.99] transition-transform"
+          >
+            閉じる
+          </button>
         </div>
     </div>
   );
+
+  const viewport =
+    typeof document !== 'undefined' ? document.getElementById('plo-viewport') : null;
+  return viewport ? createPortal(shell, viewport) : shell;
 }
