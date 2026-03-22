@@ -17,6 +17,7 @@ import { adminRoutes } from './modules/admin/routes.js';
 import { lobbyRoutes } from './modules/lobby/routes.js';
 import { handHistoryRoutes, publicHandHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
+import { labelRoutes } from './modules/labels/routes.js';
 import { maintenanceService } from './modules/maintenance/MaintenanceService.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { announcementService } from './modules/announcement/AnnouncementService.js';
@@ -67,6 +68,7 @@ await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
 await fastify.register(publicHandHistoryRoutes, { prefix: '/api/hand' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
+await fastify.register(labelRoutes, { prefix: '/api/labels' });
 await fastify.register(ogpRoutes, { prefix: '/api/ogp' });
 
 // 静的ファイル配信

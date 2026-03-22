@@ -27,6 +27,8 @@ model User {
   transactions  Transaction[]
   handHistories HandHistoryPlayer[]
   badges        Badge[]
+  ownedLabels   PlayerLabel[]   @relation("LabelOwner")
+  receivedLabels PlayerLabel[]  @relation("LabelTarget")
 
   @@unique([provider, providerId])
   @@index([email])
@@ -153,6 +155,22 @@ model Badge {
 
   @@index([userId])
   @@index([userId, type])
+}
+
+model PlayerLabel {
+  id           String   @id @default(cuid())
+  ownerId      String
+  targetUserId String
+  color        String   // red, blue, green, yellow, orange, purple, gray, teal
+  note         String   @default("")
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  owner  User @relation("LabelOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  target User @relation("LabelTarget", fields: [targetUserId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, targetUserId])
+  @@index([ownerId])
 }
 
 model MaintenanceMode {

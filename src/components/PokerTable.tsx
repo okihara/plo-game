@@ -3,6 +3,7 @@ import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import { LABEL_COLORS } from '../hooks/usePlayerLabels';
 
 interface PokerTableProps {
   state: GameState;
@@ -14,6 +15,7 @@ interface PokerTableProps {
   actionTimeoutMs?: number | null;
   onPlayerClick?: (player: PlayerType) => void;
   showdownHandNames?: Map<number, string>;
+  getLabel?: (targetUserId: string) => { color: string } | undefined;
 }
 
 function getStreetLabel(street: string): string {
@@ -49,6 +51,7 @@ export function PokerTable({
   actionTimeoutMs,
   onPlayerClick,
   showdownHandNames,
+  getLabel,
 }: PokerTableProps) {
   const { formatChips } = useGameSettings();
 
@@ -142,6 +145,7 @@ export function PokerTable({
               actionTimeoutMs={isCurrentPlayer ? actionTimeoutMs : null}
               onAvatarClick={() => onPlayerClick?.(player)}
               variant={state.variant}
+              labelColor={player.odId ? LABEL_COLORS.find(c => c.id === getLabel?.(player.odId!)?.color)?.hex : undefined}
             />
           );
         })}
