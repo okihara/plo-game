@@ -17,6 +17,7 @@ import { adminRoutes } from './modules/admin/routes.js';
 import { lobbyRoutes } from './modules/lobby/routes.js';
 import { handHistoryRoutes, publicHandHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
+import { labelRoutes } from './modules/labels/routes.js';
 import { maintenanceService } from './modules/maintenance/MaintenanceService.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
 import { announcementService } from './modules/announcement/AnnouncementService.js';
@@ -67,6 +68,7 @@ await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
 await fastify.register(publicHandHistoryRoutes, { prefix: '/api/hand' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
+await fastify.register(labelRoutes, { prefix: '/api/labels' });
 await fastify.register(ogpRoutes, { prefix: '/api/ogp' });
 
 // 静的ファイル配信
@@ -93,24 +95,34 @@ if (env.NODE_ENV === 'production') {
     if (playerMatch && CRAWLER_UA.test(request.headers['user-agent'] || '')) {
       const userId = playerMatch[1];
       const baseUrl = env.CLIENT_URL;
-      const ogpImageUrl = `${baseUrl}/api/ogp/player/${userId}`;
       const pageUrl = `${baseUrl}/player/${userId}`;
 
-      // ユーザー名を取得（OGPタイトルに使用）
+      // ユーザー名とスタッツを取得（OGPタイトル・キャッシュバストに使用）
       let title = 'Baby PLO - プレイヤースタッツ';
+      let handsPlayed = 0;
       try {
-        const user = await prisma.user.findUnique({
-          where: { id: userId },
-          select: { username: true, displayName: true, nameMasked: true },
-        });
+        const [user, statsCache] = await Promise.all([
+          prisma.user.findUnique({
+            where: { id: userId },
+            select: { username: true, displayName: true, nameMasked: true },
+          }),
+          prisma.playerStatsCache.findUnique({
+            where: { userId },
+            select: { handsPlayed: true },
+          }),
+        ]);
         if (user) {
           const { maskName } = await import('./shared/utils.js');
           const name = user.displayName || (user.nameMasked ? maskName(user.username) : user.username);
           title = `${name} のスタッツ | Baby PLO`;
         }
+        if (statsCache) {
+          handsPlayed = statsCache.handsPlayed;
+        }
       } catch {
         // ignore
       }
+      const ogpImageUrl = `${baseUrl}/api/ogp/player/${userId}?v=${handsPlayed}`;
 
       const html = `<!DOCTYPE html>
 <html lang="ja">

@@ -21,6 +21,7 @@ interface PlayerProps {
   actionTimeoutMs?: number | null;
   onAvatarClick?: () => void;
   variant?: GameVariant;
+  labelColor?: string;
 }
 
 function formatAction(action: Action, amount: number, formatChips: (n: number) => string, drawCount?: number): string {
@@ -83,6 +84,7 @@ export function Player({
   actionTimeoutMs,
   onAvatarClick,
   variant = 'plo',
+  labelColor,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   const currentVariant = variant;
@@ -129,7 +131,7 @@ export function Player({
     : null;
 
   return (
-    <div className={`absolute flex flex-col items-center ${positionStyles[positionIndex]} ${isWinner ? 'z-[30]' : ''}`}>
+    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[30]' : ''}`} onClick={onAvatarClick}>
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-12cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
@@ -181,12 +183,11 @@ export function Player({
           </svg>
         )}
         <div
-          onClick={onAvatarClick}
           className={`
             w-[22cqw] h-[22cqw] rounded-full
             bg-gradient-to-br from-gray-500 to-gray-700
             border-[0.7cqw] flex items-center justify-center
-            text-[8cqw] relative overflow-hidden cursor-pointer z-10
+            text-[8cqw] relative overflow-hidden z-10
             ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
             ${player.folded ? 'brightness-[0.3] grayscale' : ''}
             ${isWinner ? 'border-yellow-400 shadow-[0_0_10cqw_rgba(255,200,0,0.8),0_0_20cqw_rgba(255,150,0,0.4)] animate-pulse' : ''}
@@ -225,7 +226,13 @@ export function Player({
       </div>
 
       {/* Player Info */}
-      <div className={`bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[1.0cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''}`}>
+      <div className={`relative bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[1.0cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''}`}>
+        {labelColor && (
+          <div
+            className="absolute top-[-1cqw] left-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"
+            style={{ backgroundColor: labelColor }}
+          />
+        )}
         <div className="text-[3.5cqw] text-white whitespace-nowrap">{player.name}</div>
         <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
       </div>
