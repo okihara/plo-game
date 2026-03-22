@@ -1,9 +1,10 @@
 import { useEffect, useState, useRef } from 'react';
-import { Pencil, Share2, Link, Check } from 'lucide-react';
+import { Pencil, Share2, Link, Check, X } from 'lucide-react';
 import { ProfitChart } from './ProfitChart';
 import { ProfileEditDialog } from './ProfileEditDialog';
 import { PlayerStatsPanel, type PlayerStatsDisplay } from './PlayerStatsPanel';
 import { buildStatsShareText, openXShare } from '../utils/share';
+import { LABEL_COLORS, type PlayerLabel } from '../hooks/usePlayerLabels';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -29,6 +30,9 @@ interface ProfilePopupProps {
   twitterAvatarUrl?: string | null;
   useTwitterAvatar?: boolean;
   initialShowEdit?: boolean;
+  label?: PlayerLabel;
+  onLabelChange?: (targetUserId: string, color: string, note: string) => void;
+  onLabelRemove?: (targetUserId: string) => void;
 }
 
 // avatarIdから画像パスを生成
@@ -46,6 +50,9 @@ export function ProfilePopup({
   twitterAvatarUrl,
   useTwitterAvatar = false,
   initialShowEdit = false,
+  label,
+  onLabelChange,
+  onLabelRemove,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStatsDisplay | null>(null);
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
@@ -56,6 +63,7 @@ export function ProfilePopup({
   const [showEditDialog, setShowEditDialog] = useState(initialShowEdit);
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
+  const [labelNote, setLabelNote] = useState(label?.note ?? '');
 
   const shareUrl = userId ? `${window.location.origin}/player/${userId}` : '';
 
@@ -164,6 +172,28 @@ export function ProfilePopup({
                   <Pencil className="w-[3.5cqw] h-[3.5cqw]" />
                 </button>
               )}
+              {!isSelf && userId && !userId.startsWith('bot_') && onLabelChange && (
+                <div className="flex items-center gap-[1cqw] shrink-0 ml-auto">
+                  {LABEL_COLORS.map(c => {
+                    const isSelected = label?.color === c.id;
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => {
+                          if (isSelected) {
+                            onLabelRemove?.(userId);
+                            setLabelNote('');
+                          } else {
+                            onLabelChange(userId, c.id, labelNote);
+                          }
+                        }}
+                        className={`w-[5cqw] h-[5cqw] rounded-full border-[0.5cqw] transition-transform ${isSelected ? 'scale-125 border-cream-900' : 'border-transparent active:scale-110'}`}
+                        style={{ backgroundColor: c.hex }}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </div>
             {userId && !userId.startsWith('bot_') && (
               <div className="relative shrink-0">
@@ -197,6 +227,27 @@ export function ProfilePopup({
               </div>
             )}
           </div>
+
+          {/* Label Note */}
+          {!isSelf && userId && label && onLabelChange && (
+            <div className="mb-[1.5cqw] flex gap-[1.5cqw]">
+              <input
+                type="text"
+                value={labelNote}
+                onChange={e => setLabelNote(e.target.value)}
+                onBlur={() => onLabelChange(userId, label.color, labelNote)}
+                onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+                placeholder="メモを入力..."
+                className="flex-1 text-[3cqw] px-[2cqw] py-[1.5cqw] border border-cream-300 rounded-[2cqw] bg-cream-50 text-cream-900 placeholder:text-cream-400 outline-none focus:border-cream-500"
+              />
+              <button
+                onClick={() => { onLabelRemove?.(userId); setLabelNote(''); }}
+                className="text-cream-500 active:text-cream-700 px-[1cqw]"
+              >
+                <X className="w-[4cqw] h-[4cqw]" />
+              </button>
+            </div>
+          )}
 
           {/* Badges */}
           {badges.length > 0 && (

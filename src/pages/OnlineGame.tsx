@@ -12,6 +12,7 @@ import {
   HandAnalysisOverlay,
 } from '../components';
 import { ProfilePopup } from '../components/ProfilePopup';
+import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 
 import { ConnectingScreen } from '../components/ConnectingScreen';
@@ -61,6 +62,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
   const { user } = useAuth();
+  const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
   const [analysisEnabled, setAnalysisEnabled] = useState(false);
   const [showHandName, setShowHandName] = useState(true);
@@ -411,6 +413,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
             actionTimeoutMs={actionTimeoutMs}
             onPlayerClick={setSelectedPlayer}
             showdownHandNames={showdownHandNames}
+            getLabel={getLabel}
           />
 
           <MyCards
@@ -485,6 +488,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
               onClose={() => setSelectedPlayer(null)}
               twitterAvatarUrl={selectedPlayer.id === myPlayerIdx ? user?.twitterAvatarUrl : undefined}
               useTwitterAvatar={selectedPlayer.id === myPlayerIdx ? user?.useTwitterAvatar : undefined}
+              label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
+              onLabelChange={setLabel}
+              onLabelRemove={removeLabel}
             />
           )}
 
