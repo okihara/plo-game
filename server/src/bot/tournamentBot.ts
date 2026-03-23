@@ -7,7 +7,7 @@ const NO_DELAY = process.env.NO_DELAY === 'true';
 const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'Bot Tournament';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
 const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '1500', 10);
-const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.75'); // 分（デフォルト45秒）
+const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.50'); // 分（デフォルト45秒）
 
 // テスト用高速ブラインドスケジュール（50/100 スタート）
 const FAST_BLIND_SCHEDULE = [
