@@ -7,6 +7,7 @@ import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
+import { WeeklyChampions } from '../components/WeeklyChampions';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
@@ -117,16 +118,20 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
     <div className="h-full w-full light-bg relative overflow-hidden">
       <div className="relative z-10 flex flex-col items-center px-[5cqw] py-[4cqw] h-full min-h-0 overflow-y-auto">
         {/* Logo & Mascot */}
-        <div className="text-center mb-[3cqw]">
-          <div className="w-[20cqw] h-[20cqw] mx-auto mb-[1.5cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60">
-            <img
-              src="/images/plo_baby.png"
-              alt="Baby PLO"
-              className="w-full h-full object-cover scale-125"
-            />
+        <div className="mb-[3cqw] w-full">
+          <div className="flex items-center justify-center gap-[3cqw]">
+            <div className="w-[15cqw] h-[15cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60 shrink-0">
+              <img
+                src="/images/plo_baby.png"
+                alt="Baby PLO"
+                className="w-full h-full object-cover scale-125"
+              />
+            </div>
+            <div>
+              <h1 className="text-[6cqw] font-bold text-cream-900 tracking-tight">BabyPLO</h1>
+              <p className="text-[2.5cqw] text-cream-600 mt-[0.5cqw]">いつでも入って、いつでも抜ける<br />気軽に遊べるPLOアプリ</p>
+            </div>
           </div>
-          <h1 className="text-[6cqw] font-bold text-cream-900 tracking-tight">Baby PLO</h1>
-          <p className="text-[2.5cqw] text-cream-600 mt-[0.5cqw]">いつでも入って、いつでも抜ける 気軽に遊べるPLOアプリ</p>
           {maintenance?.isActive && (
             <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-red-50 border border-red-300 rounded-[2cqw] text-[2.5cqw] text-red-700 leading-relaxed">
               <p className="font-bold text-[3cqw] text-red-800 text-center">メンテナンス中</p>
@@ -268,32 +273,8 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             })}
           </div>
 
-          {/* Tables - Normal + Stud + Private */}
-          <div className="mt-[2.5cqw] flex gap-[2cqw]">
-            {TABLE_OPTIONS.filter(t => !t.isFastFold && !t.variant).map((table) => {
-              const count = playerCounts[table.blinds] ?? 0;
-              return (
-                <button
-                  key={table.id}
-                  onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, false)}
-                  disabled={!table.enabled || !!maintenance?.isActive || !user}
-                  className={`flex-1 py-[2.5cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
-                    table.enabled && !maintenance?.isActive && user
-                      ? 'bg-gradient-to-b from-forest-light to-forest border-forest/40 shadow-[0_4px_12px_rgba(45,90,61,0.3),inset_0_1px_0_rgba(255,255,255,0.25)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.4),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.25),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-gradient-to-b from-forest-light to-forest border-forest/40 opacity-50 cursor-not-allowed'
-                  }`}
-                >
-                  <div className="flex items-center justify-center gap-[2cqw]">
-                    <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
-                    <div className="flex flex-col items-start">
-                      <span className="text-[2.8cqw] font-bold text-white/90">PLO</span>
-                      <span className="text-[2cqw] text-white/70">{table.buyIn} / {table.rake}</span>
-                      <span className="text-[2cqw] text-white/70">{count}人</span>
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
+          {/* Tables - Private (一時的に非表示) */}
+          {/* <div className="mt-[2.5cqw] flex gap-[2cqw]">
             <button
               onClick={() => user && !maintenance?.isActive && setShowPrivateDialog(true)}
               disabled={!user || !!maintenance?.isActive}
@@ -311,7 +292,10 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                 </div>
               </div>
             </button>
-          </div>
+          </div> */}
+
+          {/* Weekly Champions */}
+          <WeeklyChampions />
 
           {/* Mini Leaderboard */}
           <LobbyLeaderboard userId={user?.id} onShowFull={() => setShowRanking(true)} refreshKey={rankingRefreshKey} />
