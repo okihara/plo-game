@@ -740,6 +740,87 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
+  // G-2. ヘッズアップでのハンド開始テスト
+  // ============================================
+
+  describe('ヘッズアップでのハンド開始', () => {
+    it('ヘッズアップ（残り2人）でminPlayersToStartが2に設定される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 3);
+      tournament.start();
+
+      // 1人バスト → 残り2人 → heads_up
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('heads_up');
+
+      // テーブルのminPlayersToStartが2に設定されている
+      const tables = (tournament as any).tables as Map<string, any>;
+      const table = tables.values().next().value;
+      expect(table._minPlayersToStart).toBe(2);
+    });
+
+    it('多テーブルからヘッズアップ: ファイナルテーブル形成時にminPlayersToStartが2に設定される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      registerNPlayers(tournament, 10);
+      tournament.start();
+
+      expect(tournament.getTableCount()).toBe(2);
+
+      // 8人バスト → 残り2人
+      for (let i = 2; i < 10; i++) {
+        simulateBust(tournament, `player_${i}`, 300);
+      }
+
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 8000 },
+        { odId: 'player_1', seatIndex: 1, chips: 7000 },
+      ]);
+
+      expect(tournament.getTableCount()).toBe(1);
+
+      const tables = (tournament as any).tables as Map<string, any>;
+      const table = tables.values().next().value;
+      expect(table._minPlayersToStart).toBe(2);
+    });
+
+    it('3人以上残りの場合はminPlayersToStartが変更されない', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      registerNPlayers(tournament, 10);
+      tournament.start();
+
+      // 5人バスト → 残り5人 → final_table
+      for (let i = 5; i < 10; i++) {
+        simulateBust(tournament, `player_${i}`, 300);
+      }
+
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 3000 },
+        { odId: 'player_2', seatIndex: 2, chips: 3000 },
+        { odId: 'player_3', seatIndex: 3, chips: 3000 },
+        { odId: 'player_4', seatIndex: 4, chips: 3000 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('final_table');
+
+      const tables = (tournament as any).tables as Map<string, any>;
+      const table = tables.values().next().value;
+      expect(table._minPlayersToStart).toBeNull();
+    });
+  });
+
+  // ============================================
   // H. リエントリーテスト
   // ============================================
 

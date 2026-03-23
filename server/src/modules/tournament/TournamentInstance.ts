@@ -708,6 +708,9 @@ export class TournamentInstance {
       if (this.tables.size > 1) {
         this.scheduleFormFinalTable();
       } else {
+        // 既に1テーブル: ヘッズアップ開始を許可
+        const table = this.tables.values().next().value;
+        if (table) table.setMinPlayersToStart(2);
         this.broadcastTournamentState();
       }
     } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
@@ -896,6 +899,11 @@ export class TournamentInstance {
         this.tables.delete(tableId);
         this.tablePlayerMap.delete(tableId);
       }
+    }
+
+    // ヘッズアップなら2人でハンド開始を許可
+    if (remaining <= 2) {
+      finalTable.setMinPlayersToStart(2);
     }
 
     this.io.to(this.roomName).emit('tournament:final_table', {

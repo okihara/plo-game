@@ -540,7 +540,14 @@ export class TableInstance {
     }
   }
 
+  private _minPlayersToStart: number | null = null;
+
+  public setMinPlayersToStart(n: number): void {
+    this._minPlayersToStart = n;
+  }
+
   private get minPlayersToStart(): number {
+    if (this._minPlayersToStart !== null) return this._minPlayersToStart;
     if (this.isPrivate) return 2;
     return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
   }
