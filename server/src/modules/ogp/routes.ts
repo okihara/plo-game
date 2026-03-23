@@ -84,6 +84,7 @@ export async function ogpRoutes(fastify: FastifyInstance) {
   // OGP画像生成: GET /api/ogp/hand/:handId
   fastify.get('/hand/:handId', async (request: FastifyRequest, reply) => {
     const { handId } = request.params as { handId: string };
+    const forceMask = (request.query as Record<string, string>).mask === '1';
 
     const hand = await prisma.handHistory.findUnique({
       where: { id: handId },
@@ -111,11 +112,13 @@ export async function ogpRoutes(fastify: FastifyInstance) {
 
     const players = hand.players.map(p => {
       const rawName = p.username || `Seat ${p.seatPosition + 1}`;
-      const displayName = p.user?.displayName
-        ? p.user.displayName
-        : p.user?.nameMasked
-          ? maskName(rawName)
-          : rawName;
+      const displayName = forceMask
+        ? maskName(rawName)
+        : p.user?.displayName
+          ? p.user.displayName
+          : p.user?.nameMasked
+            ? maskName(rawName)
+            : rawName;
 
       return {
         username: displayName,

@@ -412,9 +412,11 @@ function ResultSection({
 export function HandDetailDialog({
   hand,
   onClose,
+  initialHideOpponentNames,
 }: {
   hand: HandDetail;
   onClose: () => void;
+  initialHideOpponentNames?: boolean;
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
   const normalizedHand = useMemo(() => ({
@@ -431,13 +433,13 @@ export function HandDetailDialog({
     });
   }, [hand.players, hand.dealerPosition]);
 
-  const [hideOpponentNames, setHideOpponentNames] = useState(false);
+  const [hideOpponentNames, setHideOpponentNames] = useState(initialHideOpponentNames ?? false);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
 
-  const shareUrl = `${window.location.origin}/hand/${hand.id}`;
+  const shareUrl = `${window.location.origin}/hand/${hand.id}${hideOpponentNames ? '?mask=1' : ''}`;
   const me = hand.players.find(p => p.isCurrentUser);
   const myProfit = me?.profit ?? 0;
 
@@ -464,7 +466,7 @@ export function HandDetailDialog({
     setImageLoading(true);
     try {
       // OGP画像をfetch → img要素でデコード → canvasでPNG Blobに変換
-      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}`);
+      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}${hideOpponentNames ? '?mask=1' : ''}`);
       if (!res.ok) throw new Error('Failed to fetch image');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -502,7 +504,10 @@ export function HandDetailDialog({
   const [psCopied, setPsCopied] = useState(false);
 
   const handleCopyPokerStars = async () => {
-    const text = toPokerStarsText(hand);
+    const maskedHand = hideOpponentNames
+      ? { ...hand, players: hand.players.map(p => ({ ...p, username: playerLabel(p, true) })) }
+      : hand;
+    const text = toPokerStarsText(maskedHand);
     try {
       await navigator.clipboard.writeText(text);
     } catch {

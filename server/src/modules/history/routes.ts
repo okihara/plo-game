@@ -6,6 +6,7 @@ import { maskName } from '../../shared/utils.js';
 export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
   fastify.get('/:handId', async (request: FastifyRequest, reply) => {
     const { handId } = request.params as { handId: string };
+    const forceMask = (request.query as Record<string, string>).mask === '1';
 
     const hand = await prisma.handHistory.findUnique({
       where: { id: handId },
@@ -43,9 +44,12 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
       createdAt: hand.createdAt,
       players: hand.players.map(p => {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
+        const username = forceMask
+          ? maskName(rawName)
+          : p.user?.displayName ? p.user.displayName : (p.user?.nameMasked ? maskName(rawName) : rawName);
         return {
-          username: p.user?.displayName ? p.user.displayName : (p.user?.nameMasked ? maskName(rawName) : rawName),
-          avatarUrl: p.user?.avatarUrl ?? null,
+          username,
+          avatarUrl: forceMask ? null : (p.user?.avatarUrl ?? null),
           seatPosition: p.seatPosition,
           holeCards: p.holeCards,
           finalHand: p.finalHand,
