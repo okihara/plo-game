@@ -52,5 +52,5 @@ export function HandDetailPage({ handId, onBack }: HandDetailPageProps) {
     );
   }
 
-  return <HandDetailDialog hand={hand} onClose={onBack} initialHideOpponentNames={!tokenFromUrl} />;
+  return <HandDetailDialog hand={hand} onClose={onBack} initialHideOpponentNames={!tokenFromUrl} isPublicPage />;
 }

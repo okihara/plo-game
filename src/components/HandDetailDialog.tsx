@@ -414,10 +414,12 @@ export function HandDetailDialog({
   hand,
   onClose,
   initialHideOpponentNames,
+  isPublicPage,
 }: {
   hand: HandDetail;
   onClose: () => void;
   initialHideOpponentNames?: boolean;
+  isPublicPage?: boolean;
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
   const normalizedHand = useMemo(() => ({
@@ -546,7 +548,7 @@ export function HandDetailDialog({
             );
           })()}
 
-          <div className="ml-auto flex items-center gap-[1.5cqw] shrink-0">
+          {!isPublicPage && <div className="ml-auto flex items-center gap-[1.5cqw] shrink-0">
             <button
               type="button"
               onClick={() => setHideOpponentNames(v => !v)}
@@ -618,7 +620,7 @@ export function HandDetailDialog({
               </>
             )}
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="p-[3cqw] pb-[4cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
