@@ -380,6 +380,10 @@ class WebSocketService {
     this.socket?.emit('tournament:reenter', { tournamentId });
   }
 
+  requestTournamentState(tournamentId: string): void {
+    this.socket?.emit('tournament:request_state', { tournamentId });
+  }
+
 }
 
 // Singleton instance

@@ -317,7 +317,11 @@ export class TournamentInstance {
     const player = this.players.get(odId);
     if (!player) return false;
 
-    if (player.status !== 'disconnected' && player.status !== 'playing') return false;
+    // eliminated は再接続不可
+    if (player.status === 'eliminated') return false;
+
+    // ソケット更新
+    player.socket = socket;
 
     // 切断タイマーをクリア
     const timer = this.disconnectTimers.get(odId);
@@ -326,8 +330,10 @@ export class TournamentInstance {
       this.disconnectTimers.delete(odId);
     }
 
-    player.status = 'playing';
-    player.socket = socket;
+    // disconnected → playing に復帰（registered はそのまま）
+    if (player.status === 'disconnected') {
+      player.status = 'playing';
+    }
 
     // トーナメントルームに再参加
     socket.join(this.roomName);

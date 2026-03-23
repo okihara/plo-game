@@ -30,9 +30,11 @@ interface OnlineGameProps {
   privateMode?: PrivateMode;
   variant?: string;
   onBack: () => void;
+  /** トーナメント用: true ならマッチメイキングに参加しない（既にテーブル着席済み） */
+  skipMatchmaking?: boolean;
 }
 
-export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }: OnlineGameProps) {
+export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, skipMatchmaking }: OnlineGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -118,8 +120,10 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     }
   }, [gameState, setBigBlind]);
 
-  // 接続と参加
+  // 接続と参加（トーナメント時は useTournamentState が接続を管理するのでスキップ）
   useEffect(() => {
+    if (skipMatchmaking) return;
+
     connect().then(() => {
       joinMatchmaking();
     });
@@ -127,7 +131,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     return () => {
       disconnect();
     };
-  }, [connect, disconnect, joinMatchmaking]);
+  }, [connect, disconnect, joinMatchmaking, skipMatchmaking]);
 
   // バスト時にロビーへ戻す
   useEffect(() => {
@@ -193,7 +197,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
   }, [myHoleCards, gameState?.communityCards, gameState?.variant]);
 
-  if (isConnecting) {
+  if (isConnecting && !skipMatchmaking) {
     return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }
 
@@ -232,9 +236,19 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack }:
 
   // テーブル待機中
   if (!gameState) {
-    // バスト中はバストスクリーンを表示
     if (bustedMessage) {
       return <BustedScreen message={bustedMessage} />;
+    }
+    // トーナメント: ゲーム状態が届くまで待機（検索画面ではなくシンプルなローディング）
+    if (skipMatchmaking) {
+      return (
+        <div className="flex items-center justify-center h-full bg-gray-950">
+          <div className="text-center">
+            <div className="animate-spin w-10 h-10 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4" />
+            <p className="text-white/60 text-sm">テーブルに接続中...</p>
+          </div>
+        </div>
+      );
     }
     return <SearchingTableScreen blindsLabel={blindsLabel} onCancel={onBack} />;
   }

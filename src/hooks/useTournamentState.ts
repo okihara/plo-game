@@ -103,6 +103,11 @@ export function useTournamentState() {
 
       onTournamentState: (state) => {
         setTournamentState(state);
+        // 再接続時: tournament:state が来た = このトーナメントに登録済み
+        if (state.tournamentId) {
+          setIsRegistered(true);
+          setRegisteredTournamentId(state.tournamentId);
+        }
       },
 
       onTournamentTableAssigned: (_data) => {

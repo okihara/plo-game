@@ -67,6 +67,30 @@ export function registerTournamentHandlers(
     socket.emit('tournament:list', { tournaments });
   });
 
+  // トーナメントテーブルの状態を再送信（ページ遷移でゲーム画面に入った時用）
+  socket.on('tournament:request_state', (data: { tournamentId: string }) => {
+    const tournament = tournamentManager.getTournament(data.tournamentId);
+    if (!tournament) return;
+
+    const player = tournament.getPlayer(odId);
+    if (!player) return;
+
+    // ソケット更新（ページ遷移でリスナーが変わるため）
+    player.socket = socket;
+    socket.join(`tournament:${data.tournamentId}`);
+
+    // トーナメント状態を送信
+    socket.emit('tournament:state', tournament.getClientState(odId));
+
+    // テーブルに着席済みなら game:state も再送信
+    if (player.tableId) {
+      const table = tournament.getTable(player.tableId);
+      if (table) {
+        table.reconnectPlayer(odId, socket);
+      }
+    }
+  });
+
   // トーナメント参加登録
   socket.on('tournament:register', async (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);
@@ -108,11 +132,21 @@ export function registerTournamentHandlers(
           update: {},
         });
       },
-      memoryOp: () => tournament.registerPlayer(odId, user.username, socket, {
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        nameMasked: user.nameMasked,
-      }),
+      memoryOp: () => {
+        // running 中なら遅刻登録（テーブル着席込み）、それ以外は通常登録
+        if (tournament.isLateRegistrationOpen()) {
+          return tournament.lateRegister(odId, user.username, socket, {
+            displayName: user.displayName,
+            avatarUrl: user.avatarUrl,
+            nameMasked: user.nameMasked,
+          });
+        }
+        return tournament.registerPlayer(odId, user.username, socket, {
+          displayName: user.displayName,
+          avatarUrl: user.avatarUrl,
+          nameMasked: user.nameMasked,
+        });
+      },
       compensate: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },

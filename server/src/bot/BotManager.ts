@@ -2,7 +2,7 @@ import { BotClient, BotStatus } from './BotClient.js';
 
 const MAINTENANCE_PAUSE_MS = 60_000; // メンテナンス検知時の待機時間
 
-const BOT_NAMES = [
+export const BOT_NAMES = [
   // --- 継続11体（5000ハンド未満） ---
   'YumaS', 'chihiro7', 'RyujiK', 'shiori12', 'haruna88',
   'hana_plo', 'aoi1208', 'KoharuN', 'JunpeiT', 'kyoko_p',
@@ -27,7 +27,7 @@ const BOT_NAMES = [
   'kyosuke_t', 'AmiH07', 'soma_k13', 'wakana_3', 'daiki_s4',
   'erina_m6', 'hiroto_n', 'yume_pkr', 'mitsuki_t',
 ];
-const BOT_AVATARS = Array.from({ length: 70 }, (_, i) =>
+export const BOT_AVATARS = Array.from({ length: 70 }, (_, i) =>
   `/images/icons/icon_${String(i + 1).padStart(3, '0')}.png`
 );
 

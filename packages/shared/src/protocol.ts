@@ -33,6 +33,7 @@ export interface ClientToServerEvents {
   'tournament:register': (data: { tournamentId: string }) => void;
   'tournament:unregister': (data: { tournamentId: string }) => void;
   'tournament:reenter': (data: { tournamentId: string }) => void;
+  'tournament:request_state': (data: { tournamentId: string }) => void;
 }
 
 // ========== Server -> Client Events ==========

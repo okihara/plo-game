@@ -5,13 +5,14 @@ import { EliminationOverlay } from '../components/EliminationOverlay';
 import { TournamentResultOverlay } from '../components/TournamentResultOverlay';
 import { TableMoveOverlay } from '../components/TableMoveOverlay';
 import { useTournamentState } from '../hooks/useTournamentState';
+import { wsService } from '../services/websocket';
 
 interface TournamentGameProps {
   tournamentId: string;
   onBack: () => void;
 }
 
-export function TournamentGame({ tournamentId: _tournamentId, onBack }: TournamentGameProps) {
+export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
   const {
     connect,
     tournamentState,
@@ -26,9 +27,12 @@ export function TournamentGame({ tournamentId: _tournamentId, onBack }: Tourname
 
   const [blinds, setBlinds] = useState('1/2');
 
+  // 接続 → テーブルの game:state を要求
   useEffect(() => {
-    connect();
-  }, [connect]);
+    connect().then(() => {
+      wsService.requestTournamentState(tournamentId);
+    });
+  }, [connect, tournamentId]);
 
   // ブラインド同期
   useEffect(() => {
@@ -82,6 +86,7 @@ export function TournamentGame({ tournamentId: _tournamentId, onBack }: Tourname
       <OnlineGame
         blinds={blinds}
         onBack={handleBack}
+        skipMatchmaking
       />
 
       {/* トーナメントHUD（オーバーレイ） */}
