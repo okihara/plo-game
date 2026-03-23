@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
-import { maskName, verifyShareToken } from '../../shared/utils.js';
+import { maskName, MASKED_PLAYER_NAME, verifyShareToken } from '../../shared/utils.js';
 import { env } from '../../config/env.js';
 import { renderOgpImage } from './renderOgpImage.js';
 import { renderHandOgpImage, getPositionName } from './renderHandOgpImage.js';
@@ -117,7 +117,7 @@ export async function ogpRoutes(fastify: FastifyInstance) {
       const isRevealed = p.seatPosition === revealedSeat;
       const displayName = isRevealed
         ? (p.user?.displayName || rawName)
-        : maskName(rawName);
+        : MASKED_PLAYER_NAME;
 
       return {
         username: displayName,

@@ -1,6 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
-import { maskName, generateShareToken, verifyShareToken } from '../../shared/utils.js';
+import { maskName, MASKED_PLAYER_NAME, generateShareToken, verifyShareToken } from '../../shared/utils.js';
 import { env } from '../../config/env.js';
 
 // 公開用ハンド詳細API（認証不要、シェアリンク用）
@@ -49,7 +49,7 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
         const isRevealed = p.seatPosition === revealedSeat;
         const username = isRevealed
           ? (p.user?.displayName || rawName)
-          : maskName(rawName);
+          : MASKED_PLAYER_NAME;
         return {
           username,
           avatarUrl: isRevealed ? (p.user?.avatarUrl ?? null) : null,

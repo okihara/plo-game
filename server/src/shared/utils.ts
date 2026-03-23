@@ -1,7 +1,10 @@
 import crypto from 'crypto';
 
+/** 完全マスク（公開ページ・シェア用） */
+export const MASKED_PLAYER_NAME = '********';
+
 /**
- * プレイヤー名をマスクする（先頭2文字と最後の1文字を公開、間を * に置換）
+ * プレイヤー名を部分マスクする（ランキング・ゲーム本編用）
  * 例: "Alice" → "Al**e", "Bob" → "B*b", "Jo" → "Jo", "A" → "A"
  */
 export function maskName(name: string): string {
