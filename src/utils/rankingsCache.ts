@@ -10,13 +10,16 @@ interface CacheEntry {
 
 const cache = new Map<string, CacheEntry>();
 
-export async function fetchRankings(period: string): Promise<RankingEntry[]> {
-  const cached = cache.get(period);
+export async function fetchRankings(period: string, weekOffset = 0): Promise<RankingEntry[]> {
+  const cacheKey = `${period}:${weekOffset}`;
+  const cached = cache.get(cacheKey);
   if (cached && Date.now() < cached.expiresAt) {
     return cached.data;
   }
 
-  const res = await fetch(`${API_BASE}/api/stats/rankings?period=${period}`, {
+  const params = new URLSearchParams({ period });
+  if (weekOffset > 0) params.set('weekOffset', String(weekOffset));
+  const res = await fetch(`${API_BASE}/api/stats/rankings?${params}`, {
     credentials: 'include',
   });
   if (!res.ok) return [];
@@ -24,6 +27,6 @@ export async function fetchRankings(period: string): Promise<RankingEntry[]> {
   const json = await res.json();
   const data: RankingEntry[] = json?.rankings ?? [];
 
-  cache.set(period, { data, expiresAt: Date.now() + CACHE_TTL_MS });
+  cache.set(cacheKey, { data, expiresAt: Date.now() + CACHE_TTL_MS });
   return data;
 }

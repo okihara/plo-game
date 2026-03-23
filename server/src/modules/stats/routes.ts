@@ -95,11 +95,12 @@ export async function statsRoutes(fastify: FastifyInstance) {
 
   // ランキング（全プレイヤー）— period: all | weekly | daily
   fastify.get('/rankings', async (request: FastifyRequest) => {
-    const { period = 'all' } = request.query as { period?: string };
+    const { period = 'all', weekOffset: weekOffsetStr } = request.query as { period?: string; weekOffset?: string };
+    const weekOffset = weekOffsetStr ? Math.max(0, Math.min(12, parseInt(weekOffsetStr, 10) || 0)) : 0;
     const MIN_HANDS = 10;
 
     // キャッシュチェック（60秒TTL）
-    const cacheKey = `rankings:${period}`;
+    const cacheKey = `rankings:${period}:${weekOffset}`;
     const cached = rankingsCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
       return cached.data;
@@ -153,6 +154,8 @@ export async function statsRoutes(fastify: FastifyInstance) {
         todayReset.setUTCDate(todayReset.getUTCDate() - 1);
       }
 
+      let endDate: Date | null = null;
+
       if (period === 'daily') {
         startDate.setTime(todayReset.getTime());
       } else {
@@ -163,6 +166,13 @@ export async function statsRoutes(fastify: FastifyInstance) {
         const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         startDate.setTime(todayReset.getTime());
         startDate.setUTCDate(startDate.getUTCDate() - daysFromMonday);
+
+        // weekOffset: 過去の週へオフセット
+        if (weekOffset > 0) {
+          startDate.setUTCDate(startDate.getUTCDate() - 7 * weekOffset);
+          endDate = new Date(startDate);
+          endDate.setUTCDate(endDate.getUTCDate() + 7);
+        }
       }
 
       const rows = await prisma.$queryRaw<Array<{
@@ -193,6 +203,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         JOIN "User" u ON hp."userId" = u."id"
         WHERE hp."userId" IS NOT NULL
           AND hh."createdAt" >= ${startDate}
+          ${endDate ? Prisma.sql`AND hh."createdAt" < ${endDate}` : Prisma.empty}
         GROUP BY hp."userId", u."username", u."displayName", u."avatarUrl", u."nameMasked", u."useTwitterAvatar", u."provider"
         HAVING COUNT(*) >= ${MIN_HANDS}
       `);
@@ -209,6 +220,48 @@ export async function statsRoutes(fastify: FastifyInstance) {
         })),
       };
     }
+
+    rankingsCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+    return result;
+  });
+
+  // 直近の週間ランキング1位（チャンピオン）一覧
+  fastify.get('/weekly-champions', async (request: FastifyRequest) => {
+    const { limit: limitStr } = request.query as { limit?: string };
+    const limit = Math.max(1, Math.min(50, parseInt(limitStr || '3', 10) || 3));
+    const cacheKey = `weekly-champions:${limit}`;
+    const cached = rankingsCache.get(cacheKey);
+    if (cached && Date.now() < cached.expiresAt) {
+      return cached.data;
+    }
+
+    const badges = await prisma.badge.findMany({
+      where: { type: 'weekly_rank_1' },
+      orderBy: { awardedAt: 'desc' },
+      take: limit,
+      include: {
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            avatarUrl: true,
+            nameMasked: true,
+          },
+        },
+      },
+    });
+
+    const result = {
+      champions: badges.map(b => ({
+        userId: b.user.id,
+        username: b.user.displayName
+          ? b.user.displayName
+          : (b.user.nameMasked ? maskName(b.user.username) : b.user.username),
+        avatarUrl: b.user.avatarUrl ?? null,
+        awardedAt: b.awardedAt.toISOString(),
+      })),
+    };
 
     rankingsCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
     return result;
