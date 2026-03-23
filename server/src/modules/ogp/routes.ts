@@ -1,6 +1,7 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
-import { maskName } from '../../shared/utils.js';
+import { maskName, MASKED_PLAYER_NAME, verifyShareToken } from '../../shared/utils.js';
+import { env } from '../../config/env.js';
 import { renderOgpImage } from './renderOgpImage.js';
 import { renderHandOgpImage, getPositionName } from './renderHandOgpImage.js';
 
@@ -84,6 +85,8 @@ export async function ogpRoutes(fastify: FastifyInstance) {
   // OGP画像生成: GET /api/ogp/hand/:handId
   fastify.get('/hand/:handId', async (request: FastifyRequest, reply) => {
     const { handId } = request.params as { handId: string };
+    const token = (request.query as Record<string, string>).t || '';
+    const revealedSeat = verifyShareToken(handId, token, env.JWT_SECRET);
 
     const hand = await prisma.handHistory.findUnique({
       where: { id: handId },
@@ -111,11 +114,10 @@ export async function ogpRoutes(fastify: FastifyInstance) {
 
     const players = hand.players.map(p => {
       const rawName = p.username || `Seat ${p.seatPosition + 1}`;
-      const displayName = p.user?.displayName
-        ? p.user.displayName
-        : p.user?.nameMasked
-          ? maskName(rawName)
-          : rawName;
+      const isRevealed = p.seatPosition === revealedSeat;
+      const displayName = isRevealed
+        ? (p.user?.displayName || rawName)
+        : MASKED_PLAYER_NAME;
 
       return {
         username: displayName,

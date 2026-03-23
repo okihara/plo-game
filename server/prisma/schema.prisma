@@ -97,6 +97,7 @@ model HandHistoryPlayer {
   seatPosition  Int
   holeCards     String[] // Array of card strings
   finalHand     String?  // e.g., "Full House, Aces full of Kings"
+  startChips    Int      @default(0) // Chips at hand start (before blinds)
   profit        Int      // Can be negative for losses
   allInEVProfit Int?     // EV-based profit for all-in runouts (null = not all-in hand)
 

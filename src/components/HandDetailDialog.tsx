@@ -5,12 +5,15 @@ import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
+import { ProfilePopup } from './ProfilePopup';
+import { usePlayerLabels } from '../hooks/usePlayerLabels';
 
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 export interface HandDetailPlayer {
+  userId?: string | null;
   username: string;
   avatarUrl: string | null;
   seatPosition: number;
@@ -41,6 +44,7 @@ export interface HandDetail {
   dealerPosition: number;
   createdAt: string;
   players: HandDetailPlayer[];
+  shareToken?: string;
 }
 
 function parseCard(s: string): Card {
@@ -245,12 +249,13 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
   );
 }
 
-function PlayerRow({ player, position, communityCards, displayName, anonymousAvatar }: {
+function PlayerRow({ player, position, communityCards, displayName, anonymousAvatar, onTap }: {
   player: HandDetailPlayer;
   position: string | null;
   communityCards: string[];
   displayName: string;
   anonymousAvatar: boolean;
+  onTap?: () => void;
 }) {
   const handName = player.finalHand
     || (player.holeCards.length === 4 && communityCards.length >= 3
@@ -266,7 +271,8 @@ function PlayerRow({ player, position, communityCards, displayName, anonymousAva
         player.isCurrentUser
           ? 'bg-forest/5 border-forest/20'
           : 'bg-cream-100 border-cream-300'
-      }`}
+      } ${onTap ? 'cursor-pointer active:bg-cream-200/60' : ''}`}
+      onClick={onTap}
     >
       <div className="flex items-center gap-[1.5cqw] w-[30cqw] shrink-0">
         {position ? <PositionBadge position={position} /> : <span className="w-[7cqw] shrink-0" />}
@@ -412,9 +418,13 @@ function ResultSection({
 export function HandDetailDialog({
   hand,
   onClose,
+  initialHideOpponentNames,
+  isPublicPage,
 }: {
   hand: HandDetail;
   onClose: () => void;
+  initialHideOpponentNames?: boolean;
+  isPublicPage?: boolean;
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
   const normalizedHand = useMemo(() => ({
@@ -431,13 +441,16 @@ export function HandDetailDialog({
     });
   }, [hand.players, hand.dealerPosition]);
 
-  const [hideOpponentNames, setHideOpponentNames] = useState(false);
+  const [hideOpponentNames, setHideOpponentNames] = useState(initialHideOpponentNames ?? false);
+  const [profilePlayer, setProfilePlayer] = useState<HandDetailPlayer | null>(null);
+  const { getLabel, setLabel, removeLabel } = usePlayerLabels();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
 
-  const shareUrl = `${window.location.origin}/hand/${hand.id}`;
+  const tokenSuffix = !hideOpponentNames && hand.shareToken ? `?t=${encodeURIComponent(hand.shareToken)}` : '';
+  const shareUrl = `${window.location.origin}/hand/${hand.id}${tokenSuffix}`;
   const me = hand.players.find(p => p.isCurrentUser);
   const myProfit = me?.profit ?? 0;
 
@@ -464,7 +477,7 @@ export function HandDetailDialog({
     setImageLoading(true);
     try {
       // OGP画像をfetch → img要素でデコード → canvasでPNG Blobに変換
-      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}`);
+      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}${tokenSuffix}`);
       if (!res.ok) throw new Error('Failed to fetch image');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
@@ -502,7 +515,10 @@ export function HandDetailDialog({
   const [psCopied, setPsCopied] = useState(false);
 
   const handleCopyPokerStars = async () => {
-    const text = toPokerStarsText(hand);
+    const maskedHand = hideOpponentNames
+      ? { ...hand, players: hand.players.map(p => ({ ...p, username: playerLabel(p, true) })) }
+      : hand;
+    const text = toPokerStarsText(maskedHand);
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -539,7 +555,7 @@ export function HandDetailDialog({
             );
           })()}
 
-          <div className="ml-auto flex items-center gap-[1.5cqw] shrink-0">
+          {!isPublicPage && <div className="ml-auto flex items-center gap-[1.5cqw] shrink-0">
             <button
               type="button"
               onClick={() => setHideOpponentNames(v => !v)}
@@ -611,7 +627,7 @@ export function HandDetailDialog({
               </>
             )}
             </div>
-          </div>
+          </div>}
         </div>
 
         <div className="p-[3cqw] pb-[4cqw] space-y-[3cqw] overflow-y-auto min-h-0 flex-1 overscroll-contain light-scrollbar">
@@ -632,6 +648,7 @@ export function HandDetailDialog({
                 communityCards={hand.communityCards}
                 displayName={playerLabel(p, hideOpponentNames)}
                 anonymousAvatar={hideOpponentNames && !p.isCurrentUser}
+                onTap={!isPublicPage && p.userId ? () => setProfilePlayer(p) : undefined}
               />
             ))}
           </div>
@@ -654,6 +671,19 @@ export function HandDetailDialog({
             閉じる
           </button>
         </div>
+
+        {profilePlayer && profilePlayer.userId && (
+          <ProfilePopup
+            name={profilePlayer.username}
+            avatarUrl={profilePlayer.avatarUrl}
+            userId={profilePlayer.userId}
+            isSelf={profilePlayer.isCurrentUser}
+            onClose={() => setProfilePlayer(null)}
+            label={getLabel(profilePlayer.userId)}
+            onLabelChange={setLabel}
+            onLabelRemove={removeLabel}
+          />
+        )}
     </div>
   );
 
