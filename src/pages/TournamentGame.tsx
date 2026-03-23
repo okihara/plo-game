@@ -1,9 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
-import { OnlineGame } from './OnlineGame';
+import { GameTable } from '../components/GameTable';
 import { TournamentHUD } from '../components/TournamentHUD';
 import { EliminationOverlay } from '../components/EliminationOverlay';
 import { TournamentResultOverlay } from '../components/TournamentResultOverlay';
 import { TableMoveOverlay } from '../components/TableMoveOverlay';
+import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useTournamentState } from '../hooks/useTournamentState';
 import { wsService } from '../services/websocket';
 
@@ -27,6 +28,20 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
 
   const [blinds, setBlinds] = useState('1/2');
 
+  const {
+    gameState,
+    mySeat,
+    myHoleCards,
+    lastActions,
+    isDealingCards,
+    newCommunityCardsCount,
+    actionTimeoutAt,
+    actionTimeoutMs,
+    showdownHandNames,
+    handleAction,
+    handleFastFold,
+  } = useOnlineGameState(blinds);
+
   // 接続 → テーブルの game:state を要求
   useEffect(() => {
     connect().then(() => {
@@ -44,7 +59,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
 
   const handleBack = useCallback(() => {
     if (elimination || completedData) {
-      // 結果画面表示中はロビーに戻す
       clearElimination();
       clearCompleted();
     }
@@ -80,23 +94,44 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     return <TableMoveOverlay />;
   }
 
+  // ゲーム状態が届くまで待機
+  if (!gameState) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-950">
+        <div className="text-center">
+          <div className="animate-spin w-10 h-10 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4" />
+          <p className="text-white/60 text-sm">テーブルに接続中...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="relative w-full h-full">
-      {/* メインゲーム画面（OnlineGame をそのまま利用） */}
-      <OnlineGame
-        blinds={blinds}
+      <GameTable
+        gameState={gameState}
+        mySeat={mySeat}
+        myHoleCards={myHoleCards}
+        lastActions={lastActions}
+        isDealingCards={isDealingCards}
+        newCommunityCardsCount={newCommunityCardsCount}
+        actionTimeoutAt={actionTimeoutAt}
+        actionTimeoutMs={actionTimeoutMs}
+        showdownHandNames={showdownHandNames}
+        handleAction={handleAction}
+        handleFastFold={handleFastFold}
         onBack={handleBack}
-        skipMatchmaking
-      />
-
-      {/* トーナメントHUD（オーバーレイ） */}
-      {tournamentState && (
-        <TournamentHUD
-          tournamentState={tournamentState}
-          isFinalTable={isFinalTable}
-          lastEliminated={lastEliminated}
-        />
-      )}
+        blindsLabel={blinds}
+      >
+        {/* トーナメントHUD（オーバーレイ） */}
+        {tournamentState && (
+          <TournamentHUD
+            tournamentState={tournamentState}
+            isFinalTable={isFinalTable}
+            lastEliminated={lastEliminated}
+          />
+        )}
+      </GameTable>
     </div>
   );
 }

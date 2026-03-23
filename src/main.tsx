@@ -1,7 +1,7 @@
 import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SimpleLobby } from './pages/SimpleLobby';
-import { OnlineGame } from './pages/OnlineGame';
+import { NormalGame } from './pages/NormalGame';
 import { TournamentLobby } from './pages/TournamentLobby';
 import { TournamentGame } from './pages/TournamentGame';
 import type { PrivateMode } from './hooks/useOnlineGameState';
@@ -79,11 +79,11 @@ function App() {
     page = <TournamentGame tournamentId={tId} onBack={goBackToLobby} />;
   } else if (currentPath.startsWith('/private/')) {
     const code = currentPath.replace('/private/', '');
-    page = <OnlineGame blinds="1/3" privateMode={{ type: 'join', inviteCode: code }} onBack={goBackToLobby} />;
+    page = <NormalGame blinds="1/3" privateMode={{ type: 'join', inviteCode: code }} onBack={goBackToLobby} />;
   } else if (privateMode) {
-    page = <OnlineGame blinds={blinds || '1/3'} isFastFold={false} privateMode={privateMode} onBack={goBackToLobby} />;
+    page = <NormalGame blinds={blinds || '1/3'} isFastFold={false} privateMode={privateMode} onBack={goBackToLobby} />;
   } else if (blinds) {
-    page = <OnlineGame blinds={blinds} isFastFold={isFastFold} variant={variant} onBack={goBackToLobby} />;
+    page = <NormalGame blinds={blinds} isFastFold={isFastFold} variant={variant} onBack={goBackToLobby} />;
   } else {
     page = (
       <SimpleLobby

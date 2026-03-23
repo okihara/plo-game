@@ -1,67 +1,92 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
-import {
-  PokerTable,
-  MyCards,
-  ActionPanel,
-  HandAnalysisOverlay,
-} from '../components';
-import { ProfilePopup } from '../components/ProfilePopup';
+import { PokerTable } from './PokerTable';
+import { MyCards } from './MyCards';
+import { ActionPanel } from './ActionPanel';
+import { HandAnalysisOverlay } from './HandAnalysisOverlay';
+import { ProfilePopup } from './ProfilePopup';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
-import { HandHistoryPanel } from '../components/HandHistoryPanel';
-
-import { ConnectingScreen } from '../components/ConnectingScreen';
-import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
-import { SearchingTableScreen } from '../components/SearchingTableScreen';
-import { BustedScreen } from '../components/BustedScreen';
-
+import { HandHistoryPanel } from './HandHistoryPanel';
+import { BustedScreen } from './BustedScreen';
 import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
+import type { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
+import type { Card, Action, GameState } from '../logic/types';
 
 const NOTICE_DISPLAY_MS = 3000;
 
-interface OnlineGameProps {
-  blinds: string;
-  isFastFold?: boolean;
-  privateMode?: PrivateMode;
-  variant?: string;
+const variantDisplayName: Record<string, string> = {
+  plo: 'PLO',
+  limit_holdem: 'FLH',
+  stud: 'Stud',
+  razz: 'Razz',
+  'limit_2-7_triple_draw': '2-7 TD',
+  'no_limit_2-7_single_draw': 'NL 2-7 SD',
+  omaha_hilo: 'FLO8',
+  stud_hilo: 'Stud Hi-Lo',
+};
+
+export interface GameTableProps {
+  // ゲーム状態（non-null を要求）
+  gameState: GameState;
+  mySeat: number | null;
+  myHoleCards: Card[];
+  lastActions: Map<number, LastAction>;
+  isDealingCards: boolean;
+  newCommunityCardsCount: number;
+  actionTimeoutAt: ActionTimeoutAt | null;
+  actionTimeoutMs: number | null;
+  showdownHandNames: Map<number, string>;
+
+  // アクション
+  handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
+  handleFastFold?: () => void;
   onBack: () => void;
-  /** トーナメント用: true ならマッチメイキングに参加しない（既にテーブル着席済み） */
-  skipMatchmaking?: boolean;
+
+  // 表示設定
+  blindsLabel: string;
+  isFastFold?: boolean;
+
+  // キャッシュゲーム固有（省略可）
+  maintenanceStatus?: { isActive: boolean; message: string } | null;
+  announcementStatus?: { isActive: boolean; message: string } | null;
+  bustedMessage?: string | null;
+  privateTableInfo?: { inviteCode: string } | null;
+  isChangingTable?: boolean;
+  isWaitingForPlayers?: boolean;
+  seatedPlayerCount?: number;
+
+  // 外から差し込むオーバーレイ（TournamentHUD等）
+  children?: React.ReactNode;
 }
 
-export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, skipMatchmaking }: OnlineGameProps) {
-  const {
-    isConnecting,
-    connectionError,
-    isDisplaced,
-    gameState,
-    mySeat,
-    myHoleCards,
-    lastActions,
-    isDealingCards,
-    newCommunityCardsCount,
-    isChangingTable,
-    isWaitingForPlayers,
-    seatedPlayerCount,
-    actionTimeoutAt,
-    actionTimeoutMs,
-    showdownHandNames,
-    maintenanceStatus,
-    announcementStatus,
-    bustedMessage,
-    privateTableInfo,
-    connect,
-    disconnect,
-    joinMatchmaking,
-    handleAction,
-    handleFastFold,
-  } = useOnlineGameState(blinds, isFastFold, privateMode, variant);
-
+export function GameTable({
+  gameState,
+  mySeat,
+  myHoleCards,
+  lastActions,
+  isDealingCards,
+  newCommunityCardsCount,
+  actionTimeoutAt,
+  actionTimeoutMs,
+  showdownHandNames,
+  handleAction,
+  handleFastFold,
+  onBack,
+  blindsLabel,
+  isFastFold,
+  maintenanceStatus,
+  announcementStatus,
+  bustedMessage,
+  privateTableInfo,
+  isChangingTable,
+  isWaitingForPlayers,
+  seatedPlayerCount,
+  children,
+}: GameTableProps) {
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
   const { user } = useAuth();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
@@ -76,23 +101,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, s
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [variantNotice, setVariantNotice] = useState<string | null>(null);
-  const prevVariantRef = React.useRef<string | undefined>(undefined);
 
-  // バリアント変更通知（初回表示 + 変更時）
+  // バリアント変更通知（variant が変わったときだけ表示）
   useEffect(() => {
-    if (!gameState) return;
-    const currentVariant = gameState.variant;
-    if (prevVariantRef.current !== currentVariant) {
-      const name = variantDisplayName[currentVariant] || currentVariant;
-      setVariantNotice(`${name} ${blinds}`);
-      const timer = setTimeout(() => setVariantNotice(null), NOTICE_DISPLAY_MS);
-      prevVariantRef.current = currentVariant;
-      return () => clearTimeout(timer);
-    }
-  }, [gameState?.variant]);
+    const name = variantDisplayName[gameState.variant] || gameState.variant;
+    setVariantNotice(`${name} ${blindsLabel}`);
+    const timer = setTimeout(() => setVariantNotice(null), NOTICE_DISPLAY_MS);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState.variant]);
 
   // Draw: ストリート変更時にカード選択リセット
-  const currentStreet = gameState?.currentStreet;
+  const currentStreet = gameState.currentStreet;
   useEffect(() => {
     setSelectedCardIndices(new Set());
   }, [currentStreet]);
@@ -110,58 +130,18 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, s
   }, []);
 
   // Draw判定
-  const isDraw = gameState ? getVariantConfig(gameState.variant).family === 'draw' : false;
-  const isCurrentDrawStreet = gameState ? isDrawStreet(gameState.currentStreet) : false;
+  const isDraw = getVariantConfig(gameState.variant).family === 'draw';
+  const isCurrentDrawStreet = isDrawStreet(gameState.currentStreet);
 
-  // gameStateが変わったらbigBlindを設定
+  // bigBlind設定
   useEffect(() => {
-    if (gameState) {
-      setBigBlind(gameState.bigBlind);
-    }
+    setBigBlind(gameState.bigBlind);
   }, [gameState, setBigBlind]);
 
-  // 接続と参加（トーナメント時は useTournamentState が接続を管理するのでスキップ）
-  useEffect(() => {
-    if (skipMatchmaking) return;
-
-    connect().then(() => {
-      joinMatchmaking();
-    });
-
-    return () => {
-      disconnect();
-    };
-  }, [connect, disconnect, joinMatchmaking, skipMatchmaking]);
-
-  // バスト時にロビーへ戻す
-  useEffect(() => {
-    if (bustedMessage) {
-      const timer = setTimeout(() => {
-        onBack();
-      }, 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [bustedMessage, onBack]);
-
-  // ブラインド表示用
-  const blindsLabel = blinds;
-
-  // バリアント表示名
-  const variantDisplayName: Record<string, string> = {
-    plo: 'PLO',
-    limit_holdem: 'FLH',
-    stud: 'Stud',
-    razz: 'Razz',
-    'limit_2-7_triple_draw': '2-7 TD',
-    'no_limit_2-7_single_draw': 'NL 2-7 SD',
-    omaha_hilo: 'FLO8',
-    stud_hilo: 'Stud Hi-Lo',
-  };
-
-  const myPlayer = mySeat !== null && gameState ? gameState.players[mySeat] : null;
+  const myPlayer = mySeat !== null ? gameState.players[mySeat] : null;
+  const myPlayerIdx = mySeat ?? 0;
 
   const myCurrentHandName = useMemo(() => {
-    if (!gameState) return undefined;
     const variantConfig = getVariantConfig(gameState.variant);
     if (variantConfig.family === 'stud') {
       if (myHoleCards.length < 5) {
@@ -195,66 +175,8 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, s
       return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
     }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
-  }, [myHoleCards, gameState?.communityCards, gameState?.variant]);
+  }, [myHoleCards, gameState.communityCards, gameState.variant]);
 
-  if (isConnecting && !skipMatchmaking) {
-    return <ConnectingScreen blindsLabel={blindsLabel} onCancel={onBack} />;
-  }
-
-  // 別タブで接続された
-  if (isDisplaced) {
-    return (
-      <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/90">
-        <div className="text-center px-[8%]">
-          <p className="text-white font-bold mb-4" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-            別のタブで接続されました
-          </p>
-          <p className="text-white/70 mb-6" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-            このタブでの接続は切断されました
-          </p>
-          <button
-            onClick={onBack}
-            className="px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
-            style={{ fontSize: 'min(2vh, 3.5vw)' }}
-          >
-            ロビーに戻る
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // 接続エラー
-  if (connectionError) {
-    return (
-      <ConnectionErrorScreen
-        error={connectionError}
-        onBack={onBack}
-      />
-    );
-  }
-
-  // テーブル待機中
-  if (!gameState) {
-    if (bustedMessage) {
-      return <BustedScreen message={bustedMessage} />;
-    }
-    // トーナメント: ゲーム状態が届くまで待機（検索画面ではなくシンプルなローディング）
-    if (skipMatchmaking) {
-      return (
-        <div className="flex items-center justify-center h-full bg-gray-950">
-          <div className="text-center">
-            <div className="animate-spin w-10 h-10 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4" />
-            <p className="text-white/60 text-sm">テーブルに接続中...</p>
-          </div>
-        </div>
-      );
-    }
-    return <SearchingTableScreen blindsLabel={blindsLabel} onCancel={onBack} />;
-  }
-
-  // ゲーム画面
-  const myPlayerIdx = mySeat ?? 0;
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
   const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
 
@@ -297,7 +219,7 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, s
             {/* バリアント + ブラインド（中央） */}
             <div className="flex-1 flex justify-center">
               <span className="bg-black/70 rounded-full px-[3cqw] py-[0.5cqw] text-white/90 text-[5cqw] font-medium tracking-wide">
-                {gameState ? variantDisplayName[gameState.variant] || gameState.variant : ''} {blindsLabel}
+                {variantDisplayName[gameState.variant] || gameState.variant} {blindsLabel}
               </span>
             </div>
 
@@ -520,6 +442,9 @@ export function OnlineGame({ blinds, isFastFold, privateMode, variant, onBack, s
               </div>
             </div>
           )}
+
+          {/* 外部オーバーレイ（TournamentHUD等） */}
+          {children}
     </>
   );
 }
