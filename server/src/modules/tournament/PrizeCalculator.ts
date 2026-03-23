@@ -21,7 +21,9 @@ export class PrizeCalculator {
     prizePool: number,
     customPercentages?: number[]
   ): PrizeEntry[] {
-    const percentages = customPercentages ?? PrizeCalculator.getDefaultPercentages(totalPlayers);
+    const percentages = customPercentages?.length
+      ? customPercentages
+      : PrizeCalculator.getDefaultPercentages(totalPlayers);
 
     return percentages.map((pct, i) => ({
       position: i + 1,
@@ -61,7 +63,9 @@ export class PrizeCalculator {
    * 入賞圏内かどうか
    */
   static isInTheMoney(position: number, totalPlayers: number, customPercentages?: number[]): boolean {
-    const percentages = customPercentages ?? PrizeCalculator.getDefaultPercentages(totalPlayers);
+    const percentages = customPercentages?.length
+      ? customPercentages
+      : PrizeCalculator.getDefaultPercentages(totalPlayers);
     return position <= percentages.length;
   }
 }

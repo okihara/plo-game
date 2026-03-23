@@ -139,7 +139,7 @@ export function useTournamentState() {
   }, []);
 
   useEffect(() => {
-    wsService.setListeners({
+    wsService.addListeners('tournament', {
       onConnected: () => setIsConnected(true),
       onDisconnected: () => setIsConnected(false),
 
@@ -213,6 +213,7 @@ export function useTournamentState() {
     });
 
     return () => {
+      wsService.removeListeners('tournament');
       if (eliminatedTimerRef.current) clearTimeout(eliminatedTimerRef.current);
     };
   }, []);

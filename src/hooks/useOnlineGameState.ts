@@ -314,7 +314,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   }, [clientState]);
 
   useEffect(() => {
-    wsService.setListeners({
+    wsService.addListeners('game', {
       onConnected: () => {
         setIsConnected(true);
         setConnectionError(null);
@@ -492,6 +492,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     });
 
     return () => {
+      wsService.removeListeners('game');
       clearAllActionMarkers();
       if (dealingTimerRef.current) {
         clearTimeout(dealingTimerRef.current);

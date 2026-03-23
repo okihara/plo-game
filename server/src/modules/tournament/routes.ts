@@ -1,8 +1,20 @@
-import { FastifyInstance } from 'fastify';
+import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
 import { TournamentManager } from './TournamentManager.js';
 import { createTournamentFromConfig } from './socket.js';
 import { prisma } from '../../config/database.js';
+import { env } from '../../config/env.js';
 import { TournamentConfig } from './types.js';
+
+/** 管理エンドポイント認証（ADMIN_SECRET ベース） */
+async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
+  const secret = env.ADMIN_SECRET;
+  if (!secret) return; // 未設定時はスキップ（開発環境用）
+
+  const querySecret = (request.query as Record<string, string>).secret;
+  if (querySecret !== secret) {
+    return reply.status(403).send({ error: 'Forbidden' });
+  }
+}
 
 /**
  * トーナメント REST API ルート
@@ -11,12 +23,12 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
   return async function (fastify: FastifyInstance) {
     const { tournamentManager } = deps;
 
-    // トーナメント一覧
+    // トーナメント一覧（公開）
     fastify.get('/api/tournaments', async () => {
       return { tournaments: tournamentManager.getActiveTournaments() };
     });
 
-    // トーナメント詳細
+    // トーナメント詳細（公開）
     fastify.get<{ Params: { id: string } }>('/api/tournaments/:id', async (request, reply) => {
       const tournament = tournamentManager.getTournament(request.params.id);
       if (!tournament) {
@@ -26,7 +38,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     });
 
     // トーナメント作成（管理者用）
-    fastify.post<{ Body: Partial<TournamentConfig> }>('/api/tournaments', async (request) => {
+    fastify.post<{ Body: Partial<TournamentConfig> }>('/api/tournaments', { preHandler: requireAdmin }, async (request) => {
       const tournamentId = createTournamentFromConfig(tournamentManager, request.body);
       const tournament = tournamentManager.getTournament(tournamentId)!;
 
@@ -53,7 +65,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     });
 
     // トーナメント開始（管理者用）
-    fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/start', async (request, reply) => {
+    fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/start', { preHandler: requireAdmin }, async (request, reply) => {
       const tournament = tournamentManager.getTournament(request.params.id);
       if (!tournament) {
         return reply.status(404).send({ error: 'Tournament not found' });
@@ -74,7 +86,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     });
 
     // トーナメントキャンセル（管理者用）
-    fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/cancel', async (request, reply) => {
+    fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/cancel', { preHandler: requireAdmin }, async (request, reply) => {
       const tournament = tournamentManager.getTournament(request.params.id);
       if (!tournament) {
         return reply.status(404).send({ error: 'Tournament not found' });

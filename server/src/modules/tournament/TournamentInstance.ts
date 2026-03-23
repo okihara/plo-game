@@ -619,11 +619,15 @@ export class TournamentInstance {
     // 残りプレイヤー数に応じたフェーズ遷移
     if (remaining <= 1) {
       this.completeTournament();
-    } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
-      this.formFinalTable();
     } else if (remaining === 2) {
       this.status = 'heads_up';
-      this.broadcastTournamentState();
+      if (this.tables.size > 1) {
+        this.formFinalTable();
+      } else {
+        this.broadcastTournamentState();
+      }
+    } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
+      this.formFinalTable();
     } else {
       // テーブルバランスチェック
       this.checkAndExecuteBalance();

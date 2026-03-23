@@ -17,47 +17,64 @@ const wsLog = (event: string, ...args: unknown[]) => {
 
 type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 
+/** リスナーオブジェクトの型定義 */
+export type WsListeners = {
+  onConnected?: (playerId: string) => void;
+  onDisconnected?: (reason: string) => void;
+  onError?: (message: string) => void;
+  onTableJoined?: (tableId: string, seat: number) => void;
+  onTableLeft?: () => void;
+  onGameState?: (state: ClientGameState) => void;
+  onHoleCards?: (cards: Card[]) => void;
+  onActionTaken?: (data: { playerId: string; action: Action; amount: number; drawCount?: number }) => void;
+  onShowdown?: (data: {
+    winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
+    players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
+  }) => void;
+  onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
+  onTableChanged?: (tableId: string, seat: number) => void;
+  onBusted?: (message: string) => void;
+  onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
+  onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
+  onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
+  onDisplaced?: () => void;
+  // Tournament events
+  onTournamentList?: (data: { tournaments: any[] }) => void;
+  onTournamentRegistered?: (data: { tournamentId: string }) => void;
+  onTournamentUnregistered?: (data: { tournamentId: string }) => void;
+  onTournamentState?: (state: any) => void;
+  onTournamentTableAssigned?: (data: { tableId: string; tournamentId: string }) => void;
+  onTournamentTableMove?: (data: { fromTableId: string; toTableId: string; reason: string }) => void;
+  onTournamentBlindChange?: (data: { level: any; nextLevel: any | null; nextLevelAt: number }) => void;
+  onTournamentPlayerEliminated?: (data: { odId: string; odName: string; position: number; playersRemaining: number }) => void;
+  onTournamentEliminated?: (data: { position: number; totalPlayers: number; prizeAmount: number }) => void;
+  onTournamentFinalTable?: (data: { tableId: string }) => void;
+  onTournamentCompleted?: (data: { results: any[]; totalPlayers: number; prizePool: number }) => void;
+  onTournamentError?: (data: { message: string }) => void;
+  onTournamentCancelled?: (data: { tournamentId: string }) => void;
+};
+
 class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
   private connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
 
-  // Event listeners
-  private listeners: {
-    onConnected?: (playerId: string) => void;
-    onDisconnected?: (reason: string) => void;
-    onError?: (message: string) => void;
-    onTableJoined?: (tableId: string, seat: number) => void;
-    onTableLeft?: () => void;
-    onGameState?: (state: ClientGameState) => void;
-    onHoleCards?: (cards: Card[]) => void;
-    onActionTaken?: (data: { playerId: string; action: Action; amount: number; drawCount?: number }) => void;
-    onShowdown?: (data: {
-      winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
-      players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
-    }) => void;
-    onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
-    onTableChanged?: (tableId: string, seat: number) => void;
-    onBusted?: (message: string) => void;
-    onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
-    onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
-    onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
-    onDisplaced?: () => void;
-    // Tournament events
-    onTournamentList?: (data: { tournaments: any[] }) => void;
-    onTournamentRegistered?: (data: { tournamentId: string }) => void;
-    onTournamentUnregistered?: (data: { tournamentId: string }) => void;
-    onTournamentState?: (state: any) => void;
-    onTournamentTableAssigned?: (data: { tableId: string; tournamentId: string }) => void;
-    onTournamentTableMove?: (data: { fromTableId: string; toTableId: string; reason: string }) => void;
-    onTournamentBlindChange?: (data: { level: any; nextLevel: any | null; nextLevelAt: number }) => void;
-    onTournamentPlayerEliminated?: (data: { odId: string; odName: string; position: number; playersRemaining: number }) => void;
-    onTournamentEliminated?: (data: { position: number; totalPlayers: number; prizeAmount: number }) => void;
-    onTournamentFinalTable?: (data: { tableId: string }) => void;
-    onTournamentCompleted?: (data: { results: any[]; totalPlayers: number; prizePool: number }) => void;
-    onTournamentError?: (data: { message: string }) => void;
-    onTournamentCancelled?: (data: { tournamentId: string }) => void;
-  } = {};
+  /**
+   * 複数コンポーネントが共存できるサブスクライバーマップ
+   * key: サブスクライバーID（"game", "tournament" 等）
+   * value: そのサブスクライバーのリスナーオブジェクト
+   */
+  private subscribers: Map<string, WsListeners> = new Map();
+
+  /** 全サブスクライバーの指定イベントハンドラを呼び出す */
+  private emit<K extends keyof WsListeners>(event: K, ...args: Parameters<NonNullable<WsListeners[K]>>): void {
+    for (const listeners of this.subscribers.values()) {
+      const handler = listeners[event];
+      if (handler) {
+        (handler as (...a: any[]) => void)(...args);
+      }
+    }
+  }
 
   connect(): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -101,14 +118,14 @@ class WebSocketService {
       this.socket.on('connection:established', ({ playerId }) => {
         wsLog('connection:established', { playerId });
         this.playerId = playerId;
-        this.listeners.onConnected?.(playerId);
+        this.emit('onConnected', playerId);
         settle();
         resolve(playerId);
       });
 
       this.socket.on('connect_error', (err) => {
         wsLog('connect_error', err.message);
-        this.listeners.onError?.(err.message);
+        this.emit('onError', err.message);
         if (!settled) {
           settle();
           reject(new Error(err.message));
@@ -117,12 +134,12 @@ class WebSocketService {
 
       this.socket.on('disconnect', (reason) => {
         wsLog('disconnect', reason);
-        this.listeners.onDisconnected?.(reason);
+        this.emit('onDisconnected', reason);
       });
 
       this.socket.on('connection:displaced', ({ reason }) => {
         wsLog('connection:displaced', { reason });
-        this.listeners.onDisplaced?.();
+        this.emit('onDisplaced');
         // サーバーからの強制切断（io server disconnect）では自動再接続されないが、
         // 念のためsocket参照をクリーンアップ
         this.socket?.disconnect();
@@ -133,125 +150,125 @@ class WebSocketService {
       // Table events
       this.socket.on('table:joined', ({ tableId, seat }) => {
         wsLog('table:joined', { tableId, seat });
-        this.listeners.onTableJoined?.(tableId, seat);
+        this.emit('onTableJoined', tableId, seat);
       });
 
       this.socket.on('table:left', () => {
         wsLog('table:left');
-        this.listeners.onTableLeft?.();
+        this.emit('onTableLeft');
       });
 
       this.socket.on('table:error', ({ message }) => {
         wsLog('table:error', { message });
-        this.listeners.onError?.(message);
+        this.emit('onError', message);
       });
 
       this.socket.on('table:change', ({ tableId, seat }) => {
         wsLog('table:change', { tableId, seat });
-        this.listeners.onTableChanged?.(tableId, seat);
+        this.emit('onTableChanged', tableId, seat);
       });
 
       this.socket.on('table:busted', ({ message }) => {
         wsLog('table:busted', { message });
-        this.listeners.onBusted?.(message);
+        this.emit('onBusted', message);
       });
 
       // Game events
       this.socket.on('game:state', ({ state }) => {
         wsLog('game:state', state);
-        this.listeners.onGameState?.(state);
+        this.emit('onGameState', state);
       });
 
       this.socket.on('game:hole_cards', ({ cards }) => {
         wsLog('game:hole_cards', { cards });
-        this.listeners.onHoleCards?.(cards);
+        this.emit('onHoleCards', cards);
       });
 
       this.socket.on('game:action_taken', (data) => {
         wsLog('game:action_taken', data);
-        this.listeners.onActionTaken?.(data);
+        this.emit('onActionTaken', data);
       });
 
       this.socket.on('game:showdown', ({ winners, players }) => {
         wsLog('game:showdown', { winners, players });
-        this.listeners.onShowdown?.({ winners, players });
+        this.emit('onShowdown', { winners, players });
       });
 
       this.socket.on('game:hand_complete', ({ winners }) => {
         wsLog('game:hand_complete', { winners });
-        this.listeners.onHandComplete?.(winners);
+        this.emit('onHandComplete', winners);
       });
 
       // Maintenance events
       this.socket.on('maintenance:status', (data) => {
         wsLog('maintenance:status', data);
-        this.listeners.onMaintenanceStatus?.(data);
+        this.emit('onMaintenanceStatus', data);
       });
 
       // Announcement events
       this.socket.on('announcement:status', (data) => {
         wsLog('announcement:status', data);
-        this.listeners.onAnnouncementStatus?.(data);
+        this.emit('onAnnouncementStatus', data);
       });
 
       // Private table events
       this.socket.on('private:created', (data) => {
         wsLog('private:created', data);
-        this.listeners.onPrivateCreated?.(data);
+        this.emit('onPrivateCreated', data);
       });
 
       // Tournament events
       (this.socket as any).on('tournament:list', (data: any) => {
         wsLog('tournament:list', data);
-        this.listeners.onTournamentList?.(data);
+        this.emit('onTournamentList', data);
       });
       (this.socket as any).on('tournament:registered', (data: any) => {
         wsLog('tournament:registered', data);
-        this.listeners.onTournamentRegistered?.(data);
+        this.emit('onTournamentRegistered', data);
       });
       (this.socket as any).on('tournament:unregistered', (data: any) => {
         wsLog('tournament:unregistered', data);
-        this.listeners.onTournamentUnregistered?.(data);
+        this.emit('onTournamentUnregistered', data);
       });
       (this.socket as any).on('tournament:state', (data: any) => {
         wsLog('tournament:state', data);
-        this.listeners.onTournamentState?.(data);
+        this.emit('onTournamentState', data);
       });
       (this.socket as any).on('tournament:table_assigned', (data: any) => {
         wsLog('tournament:table_assigned', data);
-        this.listeners.onTournamentTableAssigned?.(data);
+        this.emit('onTournamentTableAssigned', data);
       });
       (this.socket as any).on('tournament:table_move', (data: any) => {
         wsLog('tournament:table_move', data);
-        this.listeners.onTournamentTableMove?.(data);
+        this.emit('onTournamentTableMove', data);
       });
       (this.socket as any).on('tournament:blind_change', (data: any) => {
         wsLog('tournament:blind_change', data);
-        this.listeners.onTournamentBlindChange?.(data);
+        this.emit('onTournamentBlindChange', data);
       });
       (this.socket as any).on('tournament:player_eliminated', (data: any) => {
         wsLog('tournament:player_eliminated', data);
-        this.listeners.onTournamentPlayerEliminated?.(data);
+        this.emit('onTournamentPlayerEliminated', data);
       });
       (this.socket as any).on('tournament:eliminated', (data: any) => {
         wsLog('tournament:eliminated', data);
-        this.listeners.onTournamentEliminated?.(data);
+        this.emit('onTournamentEliminated', data);
       });
       (this.socket as any).on('tournament:final_table', (data: any) => {
         wsLog('tournament:final_table', data);
-        this.listeners.onTournamentFinalTable?.(data);
+        this.emit('onTournamentFinalTable', data);
       });
       (this.socket as any).on('tournament:completed', (data: any) => {
         wsLog('tournament:completed', data);
-        this.listeners.onTournamentCompleted?.(data);
+        this.emit('onTournamentCompleted', data);
       });
       (this.socket as any).on('tournament:error', (data: any) => {
         wsLog('tournament:error', data);
-        this.listeners.onTournamentError?.(data);
+        this.emit('onTournamentError', data);
       });
       (this.socket as any).on('tournament:cancelled', (data: any) => {
         wsLog('tournament:cancelled', data);
-        this.listeners.onTournamentCancelled?.(data);
+        this.emit('onTournamentCancelled', data);
       });
 
       // Timeout for initial connection
@@ -283,9 +300,29 @@ class WebSocketService {
     return this.playerId;
   }
 
-  // Set event listeners
-  setListeners(listeners: typeof this.listeners): void {
-    this.listeners = { ...this.listeners, ...listeners };
+  /**
+   * リスナーを登録する（複数コンポーネントが共存可能）
+   * @param key サブスクライバーID（"game", "tournament" 等）
+   * @param listeners イベントリスナーオブジェクト
+   */
+  addListeners(key: string, listeners: WsListeners): void {
+    this.subscribers.set(key, listeners);
+  }
+
+  /**
+   * リスナーを解除する
+   * @param key 登録時に使ったサブスクライバーID
+   */
+  removeListeners(key: string): void {
+    this.subscribers.delete(key);
+  }
+
+  /**
+   * @deprecated addListeners/removeListeners を使用してください
+   */
+  setListeners(listeners: WsListeners): void {
+    // 後方互換: 'default' キーで登録
+    this.subscribers.set('default', listeners);
   }
 
   // Table actions
