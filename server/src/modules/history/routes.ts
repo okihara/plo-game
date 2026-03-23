@@ -140,6 +140,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       players: ph.handHistory.players.map(p => {
         const rawName = p.username || `Seat ${p.seatPosition + 1}`;
         return {
+        userId: p.userId,
         username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
         avatarUrl: p.user?.avatarUrl ?? null,
         seatPosition: p.seatPosition,
@@ -205,6 +206,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       players: hand.players.map(p => {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
         return {
+          userId: p.userId,
           username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
           avatarUrl: p.user?.avatarUrl ?? null,
           seatPosition: p.seatPosition,

@@ -5,12 +5,15 @@ import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
+import { ProfilePopup } from './ProfilePopup';
+import { usePlayerLabels } from '../hooks/usePlayerLabels';
 
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 export interface HandDetailPlayer {
+  userId?: string | null;
   username: string;
   avatarUrl: string | null;
   seatPosition: number;
@@ -246,12 +249,13 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
   );
 }
 
-function PlayerRow({ player, position, communityCards, displayName, anonymousAvatar }: {
+function PlayerRow({ player, position, communityCards, displayName, anonymousAvatar, onTap }: {
   player: HandDetailPlayer;
   position: string | null;
   communityCards: string[];
   displayName: string;
   anonymousAvatar: boolean;
+  onTap?: () => void;
 }) {
   const handName = player.finalHand
     || (player.holeCards.length === 4 && communityCards.length >= 3
@@ -267,7 +271,8 @@ function PlayerRow({ player, position, communityCards, displayName, anonymousAva
         player.isCurrentUser
           ? 'bg-forest/5 border-forest/20'
           : 'bg-cream-100 border-cream-300'
-      }`}
+      } ${onTap ? 'cursor-pointer active:bg-cream-200/60' : ''}`}
+      onClick={onTap}
     >
       <div className="flex items-center gap-[1.5cqw] w-[30cqw] shrink-0">
         {position ? <PositionBadge position={position} /> : <span className="w-[7cqw] shrink-0" />}
@@ -437,6 +442,8 @@ export function HandDetailDialog({
   }, [hand.players, hand.dealerPosition]);
 
   const [hideOpponentNames, setHideOpponentNames] = useState(initialHideOpponentNames ?? false);
+  const [profilePlayer, setProfilePlayer] = useState<HandDetailPlayer | null>(null);
+  const { getLabel, setLabel, removeLabel } = usePlayerLabels();
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [copied, setCopied] = useState(false);
   const [imageCopied, setImageCopied] = useState(false);
@@ -641,6 +648,7 @@ export function HandDetailDialog({
                 communityCards={hand.communityCards}
                 displayName={playerLabel(p, hideOpponentNames)}
                 anonymousAvatar={hideOpponentNames && !p.isCurrentUser}
+                onTap={!isPublicPage && p.userId ? () => setProfilePlayer(p) : undefined}
               />
             ))}
           </div>
@@ -663,6 +671,19 @@ export function HandDetailDialog({
             閉じる
           </button>
         </div>
+
+        {profilePlayer && profilePlayer.userId && (
+          <ProfilePopup
+            name={profilePlayer.username}
+            avatarUrl={profilePlayer.avatarUrl}
+            userId={profilePlayer.userId}
+            isSelf={profilePlayer.isCurrentUser}
+            onClose={() => setProfilePlayer(null)}
+            label={getLabel(profilePlayer.userId)}
+            onLabelChange={setLabel}
+            onLabelRemove={removeLabel}
+          />
+        )}
     </div>
   );
 
