@@ -1,7 +1,4 @@
 import { useEffect, useState } from 'react';
-import { fetchRankings } from '../utils/rankingsCache';
-import { formatProfit } from './RankingPopup';
-import type { RankingEntry } from './RankingPopup';
 
 interface Champion {
   userId: string;
@@ -9,8 +6,6 @@ interface Champion {
   avatarUrl: string | null;
   awardedAt: string;
 }
-
-const MEDALS = ['🥇', '🥈', '🥉'];
 
 /** バッジ付与日から、その週の月曜〜日曜の範囲を表示 */
 function getWeekLabel(awardedAt: string): string {
@@ -22,27 +17,6 @@ function getWeekLabel(awardedAt: string): string {
 
   const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
   return `${fmt(monday)} - ${fmt(sunday)}`;
-}
-
-/** weekOffset から対象週の月曜〜日曜の範囲ラベルを生成 */
-function getWeekRangeLabel(weekOffset: number): string {
-  const now = new Date();
-  const day = now.getDay();
-  const diffToMonday = day === 0 ? 6 : day - 1;
-  const monday = new Date(now);
-  monday.setDate(monday.getDate() - diffToMonday - 7 * weekOffset);
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
-  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
-  return `${fmt(monday)} ~ ${fmt(sunday)}`;
-}
-
-/** プルダウン用の週リスト（今週 + 過去11週 = 計12週） */
-function buildWeekOptions(): { value: number; label: string }[] {
-  return Array.from({ length: 12 }, (_, i) => ({
-    value: i,
-    label: i === 0 ? `今週 (${getWeekRangeLabel(0)})` : getWeekRangeLabel(i),
-  }));
 }
 
 export function WeeklyChampions() {
@@ -98,18 +72,17 @@ export function WeeklyChampions() {
 }
 
 function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
-  const [weekOffset, setWeekOffset] = useState(0);
-  const [rankings, setRankings] = useState<RankingEntry[]>([]);
+  const [allChampions, setAllChampions] = useState<Champion[]>([]);
   const [loading, setLoading] = useState(true);
-  const weekOptions = buildWeekOptions();
 
   useEffect(() => {
-    setLoading(true);
-    fetchRankings('weekly', weekOffset)
-      .then(setRankings)
-      .catch(() => setRankings([]))
+    const apiBase = import.meta.env.VITE_SERVER_URL || '';
+    fetch(`${apiBase}/api/stats/weekly-champions?limit=50`)
+      .then(res => res.ok ? res.json() : Promise.reject())
+      .then(data => setAllChampions(data.champions ?? []))
+      .catch(() => {})
       .finally(() => setLoading(false));
-  }, [weekOffset]);
+  }, []);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -118,10 +91,6 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
-
-  const sorted = [...rankings]
-    .sort((a, b) => b.totalAllInEVProfit - a.totalAllInEVProfit)
-    .slice(0, 10);
 
   return (
     <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
@@ -132,8 +101,8 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
       >
         {/* Header */}
         <div className="px-[4cqw] pt-[4cqw] pb-[2cqw] border-b border-cream-200">
-          <div className="flex items-center justify-between mb-[2cqw]">
-            <h2 className="text-[4cqw] font-bold text-cream-900">週間ランキング</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="text-[4cqw] font-bold text-cream-900">歴代チャンピオン</h2>
             <button
               onClick={onClose}
               className="text-[5cqw] text-cream-400 hover:text-cream-700 leading-none"
@@ -141,15 +110,6 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
               &times;
             </button>
           </div>
-          <select
-            value={weekOffset}
-            onChange={e => setWeekOffset(Number(e.target.value))}
-            className="w-full px-[3cqw] py-[2cqw] text-[3cqw] border border-cream-300 rounded-[2cqw] bg-cream-50 text-cream-900"
-          >
-            {weekOptions.map(opt => (
-              <option key={opt.value} value={opt.value}>{opt.label}</option>
-            ))}
-          </select>
         </div>
 
         {/* Body */}
@@ -158,34 +118,24 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
             <div className="flex justify-center py-[6cqw]">
               <div className="w-[6cqw] h-[6cqw] border-[0.5cqw] border-cream-300 border-t-cream-600 rounded-full animate-spin" />
             </div>
-          ) : sorted.length === 0 ? (
+          ) : allChampions.length === 0 ? (
             <p className="text-center text-cream-500 text-[3cqw] py-[6cqw]">データがありません</p>
           ) : (
-            <div className="space-y-[2cqw]">
-              {sorted.map((entry, i) => {
-                const profit = entry.totalAllInEVProfit;
-                return (
-                  <div key={entry.userId} className="flex items-center gap-[2cqw]">
-                    <span className="text-[3.5cqw] w-[5cqw] text-center shrink-0">
-                      {i < 3 ? MEDALS[i] : <span className="text-[2.8cqw] font-bold text-cream-500">{i + 1}</span>}
-                    </span>
-                    <div className="w-[6cqw] h-[6cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
-                      <img
-                        src={entry.avatarUrl || '/images/icons/anonymous.svg'}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col min-w-0 flex-1">
-                      <span className="text-[3cqw] text-cream-800 truncate">{entry.username}</span>
-                      <span className="text-[2.2cqw] text-cream-500">{entry.handsPlayed} hands</span>
-                    </div>
-                    <span className={`text-[3cqw] font-bold shrink-0 ${profit >= 0 ? 'text-forest' : 'text-[#C0392B]'}`}>
-                      {formatProfit(profit)}
-                    </span>
+            <div className="space-y-[2.5cqw]">
+              {allChampions.map((c, i) => (
+                <div key={`${c.userId}-${i}`} className="flex items-center gap-[2.5cqw]">
+                  <span className="text-[2.5cqw] font-bold text-cream-800 shrink-0 w-[14cqw] text-right">{getWeekLabel(c.awardedAt)}</span>
+                  <span className="text-[4cqw] shrink-0">🥇</span>
+                  <div className="w-[7cqw] h-[7cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
+                    <img
+                      src={c.avatarUrl || '/images/icons/anonymous.svg'}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                );
-              })}
+                  <span className="text-[3cqw] font-bold text-cream-900 truncate min-w-0 flex-1">{c.username}</span>
+                </div>
+              ))}
             </div>
           )}
         </div>

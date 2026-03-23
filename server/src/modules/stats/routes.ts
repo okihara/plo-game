@@ -226,8 +226,10 @@ export async function statsRoutes(fastify: FastifyInstance) {
   });
 
   // 直近の週間ランキング1位（チャンピオン）一覧
-  fastify.get('/weekly-champions', async (_request: FastifyRequest) => {
-    const cacheKey = 'weekly-champions';
+  fastify.get('/weekly-champions', async (request: FastifyRequest) => {
+    const { limit: limitStr } = request.query as { limit?: string };
+    const limit = Math.max(1, Math.min(50, parseInt(limitStr || '3', 10) || 3));
+    const cacheKey = `weekly-champions:${limit}`;
     const cached = rankingsCache.get(cacheKey);
     if (cached && Date.now() < cached.expiresAt) {
       return cached.data;
@@ -236,7 +238,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
     const badges = await prisma.badge.findMany({
       where: { type: 'weekly_rank_1' },
       orderBy: { awardedAt: 'desc' },
-      take: 3,
+      take: limit,
       include: {
         user: {
           select: {
