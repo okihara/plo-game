@@ -1,27 +1,20 @@
 import { Socket } from 'socket.io';
 
-// --- Tournament Status ---
+// Re-export shared types (client/server 共通)
+export type {
+  TournamentStatus,
+  BlindLevel,
+  ClientTournamentState,
+  TournamentLobbyInfo,
+  TournamentResult,
+  TournamentEliminationInfo,
+  TournamentPlayerEliminatedData,
+  TournamentCompletedData,
+} from '@plo/shared';
 
-export type TournamentStatus =
-  | 'registering'
-  | 'starting'
-  | 'running'
-  | 'final_table'
-  | 'heads_up'
-  | 'completed'
-  | 'cancelled';
+import type { BlindLevel } from '@plo/shared';
 
-// --- Blind Level ---
-
-export interface BlindLevel {
-  level: number;
-  smallBlind: number;
-  bigBlind: number;
-  ante: number;            // 将来対応（当面は0）
-  durationMinutes: number;
-}
-
-// --- Tournament Config ---
+// --- Tournament Config (server only) ---
 
 export interface TournamentConfig {
   id: string;
@@ -42,7 +35,7 @@ export interface TournamentConfig {
   reentryDeadlineLevel: number;
 }
 
-// --- Tournament Player ---
+// --- Tournament Player (server only) ---
 
 export interface TournamentPlayer {
   odId: string;
@@ -62,45 +55,7 @@ export interface TournamentPlayer {
   nameMasked: boolean;
 }
 
-// --- Client-facing States ---
-
-export interface ClientTournamentState {
-  tournamentId: string;
-  name: string;
-  status: TournamentStatus;
-  buyIn: number;
-  startingChips: number;
-  prizePool: number;
-  totalPlayers: number;
-  playersRemaining: number;
-  currentBlindLevel: BlindLevel;
-  nextBlindLevel: BlindLevel | null;
-  nextLevelAt: number;           // UNIXタイムスタンプ (ms)
-  myChips: number | null;
-  myTableId: string | null;
-  averageStack: number;
-  largestStack: number;
-  smallestStack: number;
-  payoutStructure: { position: number; amount: number }[];
-  isLateRegistrationOpen: boolean;
-  isFinalTable: boolean;
-}
-
-export interface TournamentLobbyInfo {
-  id: string;
-  name: string;
-  status: TournamentStatus;
-  buyIn: number;
-  startingChips: number;
-  registeredPlayers: number;
-  maxPlayers: number;
-  currentBlindLevel: number;
-  prizePool: number;
-  scheduledStartTime?: string; // ISO string
-  isLateRegistrationOpen: boolean;
-}
-
-// --- Player Move ---
+// --- Player Move (server only) ---
 
 export interface PendingMove {
   odId: string;
@@ -108,21 +63,11 @@ export interface PendingMove {
   toTableId: string;
 }
 
-// --- Table Balance Result ---
+// --- Table Balance Result (server only) ---
 
 export interface BalanceAction {
   type: 'move' | 'break';
   odId: string;
   fromTableId: string;
   toTableId: string;
-}
-
-// --- Tournament Result (completeTournament用) ---
-
-export interface TournamentResult {
-  odId: string;
-  odName: string;
-  position: number;
-  prize: number;
-  reentries: number;
 }

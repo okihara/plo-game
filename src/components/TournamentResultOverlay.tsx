@@ -1,5 +1,5 @@
 import { Trophy } from 'lucide-react';
-import type { TournamentResult } from '../hooks/useTournamentState';
+import type { TournamentResult } from '@plo/shared';
 
 interface TournamentResultOverlayProps {
   results: TournamentResult[];

@@ -94,22 +94,23 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
 
       tournament.cancel();
 
-      // バイイン返還処理
-      const registrations = await prisma.tournamentRegistration.findMany({
-        where: { tournamentId: request.params.id },
-      });
-
-      for (const reg of registrations) {
-        await prisma.bankroll.update({
-          where: { userId: reg.userId },
-          data: { balance: { increment: tournament.config.buyIn * (1 + reg.reentryCount) } },
+      // バイイン返還 + ステータス更新をトランザクションで一括処理
+      await prisma.$transaction(async (tx) => {
+        const registrations = await tx.tournamentRegistration.findMany({
+          where: { tournamentId: request.params.id },
         });
-      }
 
-      // DB更新
-      await prisma.tournament.update({
-        where: { id: request.params.id },
-        data: { status: 'CANCELLED', completedAt: new Date() },
+        for (const reg of registrations) {
+          await tx.bankroll.update({
+            where: { userId: reg.userId },
+            data: { balance: { increment: tournament.config.buyIn * (1 + reg.reentryCount) } },
+          });
+        }
+
+        await tx.tournament.update({
+          where: { id: request.params.id },
+          data: { status: 'CANCELLED', completedAt: new Date() },
+        });
       });
 
       return { success: true };

@@ -1,9 +1,51 @@
 import { nanoid } from 'nanoid';
+import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
 import { TournamentConfig } from './types.js';
 import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_LATE_REGISTRATION_LEVELS, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { prisma } from '../../config/database.js';
+
+type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
+
+/**
+ * バイイン関連のDB操作（課金/返金）とメモリ操作を安全に連携するヘルパー。
+ *
+ * 1. dbOps でDB変更（トランザクション内）
+ * 2. memoryOp でメモリ変更（DB成功後）
+ * 3. memoryOp 失敗時は compensate でDBを巻き戻す
+ */
+async function withDbAndMemory(opts: {
+  dbOps: (tx: PrismaTx) => Promise<void>;
+  memoryOp: () => { success: boolean; error?: string };
+  compensate: (tx: PrismaTx) => Promise<void>;
+  label: string;
+  odId: string;
+}): Promise<{ success: boolean; error?: string }> {
+  const { dbOps, memoryOp, compensate, label, odId } = opts;
+
+  // 1. DB操作
+  try {
+    await prisma.$transaction(dbOps);
+  } catch (err) {
+    console.error(`[Tournament] ${label} DB error for ${odId}:`, err);
+    return { success: false, error: 'データベースエラーが発生しました' };
+  }
+
+  // 2. メモリ操作
+  const result = memoryOp();
+  if (!result.success) {
+    // 3. 補償トランザクション
+    try {
+      await prisma.$transaction(compensate);
+    } catch (err) {
+      console.error(`[Tournament] ${label} rollback error for ${odId}:`, err);
+    }
+    return result;
+  }
+
+  return { success: true };
+}
 
 /**
  * 個別のソケットにトーナメントイベントハンドラを登録する
@@ -39,58 +81,45 @@ export function registerTournamentHandlers(
       return;
     }
 
-    // DB操作をトランザクションで実行（失敗時はロールバック）
-    try {
-      await prisma.$transaction(async (tx) => {
+    const buyIn = tournament.config.buyIn;
+    const result = await withDbAndMemory({
+      label: 'Register',
+      odId,
+      dbOps: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },
-          data: { balance: { decrement: tournament.config.buyIn } },
+          data: { balance: { decrement: buyIn } },
         });
         await tx.transaction.create({
-          data: {
-            userId: odId,
-            type: 'TOURNAMENT_BUY_IN',
-            amount: -tournament.config.buyIn,
-          },
+          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
         });
         await tx.tournamentRegistration.upsert({
           where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
           create: { tournamentId: data.tournamentId, userId: odId },
           update: {},
         });
-      });
-    } catch (err) {
-      console.error(`[Tournament] Registration DB error for ${odId}:`, err);
-      socket.emit('tournament:error', { message: 'データベースエラーが発生しました' });
-      return;
-    }
-
-    // DB成功後にメモリ登録（DB失敗時はメモリ汚染しない）
-    const result = tournament.registerPlayer(odId, user.username, socket, {
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl,
-      nameMasked: user.nameMasked,
-    });
-
-    if (!result.success) {
-      // メモリ登録失敗時はDB操作をロールバック
-      await prisma.$transaction(async (tx) => {
+      },
+      memoryOp: () => tournament.registerPlayer(odId, user.username, socket, {
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        nameMasked: user.nameMasked,
+      }),
+      compensate: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },
-          data: { balance: { increment: tournament.config.buyIn } },
+          data: { balance: { increment: buyIn } },
         });
         await tx.transaction.create({
-          data: {
-            userId: odId,
-            type: 'TOURNAMENT_BUY_IN',
-            amount: tournament.config.buyIn,
-          },
+          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: buyIn },
         });
         await tx.tournamentRegistration.deleteMany({
           where: { tournamentId: data.tournamentId, userId: odId },
         });
-      });
-      socket.emit('tournament:error', { message: result.error });
+      },
+    });
+
+    if (!result.success) {
+      socket.emit('tournament:error', { message: result.error ?? '登録に失敗しました' });
       return;
     }
 
@@ -116,55 +145,41 @@ export function registerTournamentHandlers(
       return;
     }
 
-    // DB操作を先に実行（失敗時はメモリを汚染しない）
-    try {
-      await prisma.$transaction(async (tx) => {
+    const buyIn = tournament.config.buyIn;
+    const result = await withDbAndMemory({
+      label: 'Unregister',
+      odId,
+      dbOps: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },
-          data: { balance: { increment: tournament.config.buyIn } },
+          data: { balance: { increment: buyIn } },
         });
         await tx.transaction.create({
-          data: {
-            userId: odId,
-            type: 'TOURNAMENT_BUY_IN',
-            amount: tournament.config.buyIn,
-          },
+          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: buyIn },
         });
         await tx.tournamentRegistration.deleteMany({
           where: { tournamentId: data.tournamentId, userId: odId },
         });
-      });
-    } catch (err) {
-      console.error(`[Tournament] Unregister DB error for ${odId}:`, err);
-      socket.emit('tournament:error', { message: 'データベースエラーが発生しました' });
-      return;
-    }
-
-    // DB成功後にメモリ登録解除
-    const result = tournament.unregisterPlayer(odId);
-    if (!result.success) {
-      // メモリ側で失敗した場合はDBをロールバック
-      await prisma.$transaction(async (tx) => {
+      },
+      memoryOp: () => tournament.unregisterPlayer(odId),
+      compensate: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },
-          data: { balance: { decrement: tournament.config.buyIn } },
+          data: { balance: { decrement: buyIn } },
         });
         await tx.transaction.create({
-          data: {
-            userId: odId,
-            type: 'TOURNAMENT_BUY_IN',
-            amount: -tournament.config.buyIn,
-          },
+          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
         });
         await tx.tournamentRegistration.upsert({
           where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
           create: { tournamentId: data.tournamentId, userId: odId },
           update: {},
         });
-      }).catch(err => {
-        console.error(`[Tournament] Unregister rollback error for ${odId}:`, err);
-      });
-      socket.emit('tournament:error', { message: result.error });
+      },
+    });
+
+    if (!result.success) {
+      socket.emit('tournament:error', { message: result.error ?? '登録解除に失敗しました' });
       return;
     }
 
@@ -187,53 +202,41 @@ export function registerTournamentHandlers(
       return;
     }
 
-    // DB操作をトランザクションで実行
-    try {
-      await prisma.$transaction(async (tx) => {
+    const buyIn = tournament.config.buyIn;
+    const result = await withDbAndMemory({
+      label: 'Reentry',
+      odId,
+      dbOps: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },
-          data: { balance: { decrement: tournament.config.buyIn } },
+          data: { balance: { decrement: buyIn } },
         });
         await tx.transaction.create({
-          data: {
-            userId: odId,
-            type: 'TOURNAMENT_BUY_IN',
-            amount: -tournament.config.buyIn,
-          },
+          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
         });
         await tx.tournamentRegistration.update({
           where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
           data: { reentryCount: { increment: 1 } },
         });
-      });
-    } catch (err) {
-      console.error(`[Tournament] Reentry DB error for ${odId}:`, err);
-      socket.emit('tournament:error', { message: 'データベースエラーが発生しました' });
-      return;
-    }
-
-    // DB成功後にメモリ上のリエントリー処理
-    const result = tournament.reenterPlayer(odId, socket);
-    if (!result.success) {
-      // ロールバック
-      await prisma.$transaction(async (tx) => {
+      },
+      memoryOp: () => tournament.reenterPlayer(odId, socket),
+      compensate: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },
-          data: { balance: { increment: tournament.config.buyIn } },
+          data: { balance: { increment: buyIn } },
         });
         await tx.transaction.create({
-          data: {
-            userId: odId,
-            type: 'TOURNAMENT_BUY_IN',
-            amount: tournament.config.buyIn,
-          },
+          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: buyIn },
         });
         await tx.tournamentRegistration.update({
           where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
           data: { reentryCount: { decrement: 1 } },
         });
-      });
-      socket.emit('tournament:error', { message: result.error });
+      },
+    });
+
+    if (!result.success) {
+      socket.emit('tournament:error', { message: result.error ?? 'リエントリーに失敗しました' });
       return;
     }
   });

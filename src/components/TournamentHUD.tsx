@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Users } from 'lucide-react';
-import type { TournamentState, PlayerEliminatedData } from '../hooks/useTournamentState';
+import type { ClientTournamentState, TournamentPlayerEliminatedData } from '@plo/shared';
 
 interface TournamentHUDProps {
-  tournamentState: TournamentState;
+  tournamentState: ClientTournamentState;
   isFinalTable: boolean;
-  lastEliminated: PlayerEliminatedData | null;
+  lastEliminated: TournamentPlayerEliminatedData | null;
 }
 
 function formatChips(amount: number): string {

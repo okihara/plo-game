@@ -1,91 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { wsService } from '../services/websocket';
+import type {
+  TournamentLobbyInfo,
+  ClientTournamentState,
+  TournamentEliminationInfo,
+  TournamentCompletedData,
+  TournamentPlayerEliminatedData,
+} from '@plo/shared';
 
-export interface TournamentLobbyInfo {
-  id: string;
-  name: string;
-  status: string;
-  buyIn: number;
-  startingChips: number;
-  registeredPlayers: number;
-  maxPlayers: number;
-  currentBlindLevel: number;
-  prizePool: number;
-  scheduledStartTime?: string;
-  isLateRegistrationOpen: boolean;
-}
-
-export interface BlindLevel {
-  level: number;
-  smallBlind: number;
-  bigBlind: number;
-  ante: number;
-  durationMinutes: number;
-}
-
-export interface TournamentState {
-  tournamentId: string;
-  name: string;
-  status: string;
-  buyIn: number;
-  startingChips: number;
-  prizePool: number;
-  totalPlayers: number;
-  playersRemaining: number;
-  currentBlindLevel: BlindLevel;
-  nextBlindLevel: BlindLevel | null;
-  nextLevelAt: number;
-  myChips: number | null;
-  myTableId: string | null;
-  averageStack: number;
-  largestStack: number;
-  smallestStack: number;
-  payoutStructure: { position: number; amount: number }[];
-  isLateRegistrationOpen: boolean;
-  isFinalTable: boolean;
-}
-
-export interface EliminationInfo {
-  position: number;
-  totalPlayers: number;
-  prizeAmount: number;
-}
-
-export interface TournamentResult {
-  odId: string;
-  odName: string;
-  position: number;
-  prize: number;
-  reentries: number;
-}
-
-export interface TournamentCompletedData {
-  results: TournamentResult[];
-  totalPlayers: number;
-  prizePool: number;
-}
-
-export interface PlayerEliminatedData {
-  odId: string;
-  odName: string;
-  position: number;
-  playersRemaining: number;
-}
+// Re-export shared types for components that import from this hook
+export type { TournamentLobbyInfo, ClientTournamentState, TournamentCompletedData, TournamentPlayerEliminatedData } from '@plo/shared';
 
 export function useTournamentState() {
   const [tournaments, setTournaments] = useState<TournamentLobbyInfo[]>([]);
-  const [tournamentState, setTournamentState] = useState<TournamentState | null>(null);
+  const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [registeredTournamentId, setRegisteredTournamentId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
   // UI overlay states
-  const [elimination, setElimination] = useState<EliminationInfo | null>(null);
+  const [elimination, setElimination] = useState<TournamentEliminationInfo | null>(null);
   const [completedData, setCompletedData] = useState<TournamentCompletedData | null>(null);
   const [isChangingTable, setIsChangingTable] = useState(false);
   const [isFinalTable, setIsFinalTable] = useState(false);
-  const [lastEliminated, setLastEliminated] = useState<PlayerEliminatedData | null>(null);
+  const [lastEliminated, setLastEliminated] = useState<TournamentPlayerEliminatedData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const eliminatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);

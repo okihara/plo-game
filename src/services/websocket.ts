@@ -3,6 +3,12 @@ import type {
   ClientToServerEvents,
   ServerToClientEvents,
   ClientGameState,
+  ClientTournamentState,
+  TournamentLobbyInfo,
+  TournamentEliminationInfo,
+  TournamentPlayerEliminatedData,
+  TournamentCompletedData,
+  BlindLevel,
 } from '@plo/shared';
 import type { Card, Action } from '../logic/types';
 
@@ -39,17 +45,17 @@ export type WsListeners = {
   onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   onDisplaced?: () => void;
   // Tournament events
-  onTournamentList?: (data: { tournaments: any[] }) => void;
+  onTournamentList?: (data: { tournaments: TournamentLobbyInfo[] }) => void;
   onTournamentRegistered?: (data: { tournamentId: string }) => void;
   onTournamentUnregistered?: (data: { tournamentId: string }) => void;
-  onTournamentState?: (state: any) => void;
+  onTournamentState?: (state: ClientTournamentState) => void;
   onTournamentTableAssigned?: (data: { tableId: string; tournamentId: string }) => void;
   onTournamentTableMove?: (data: { fromTableId: string; toTableId: string; reason: string }) => void;
-  onTournamentBlindChange?: (data: { level: any; nextLevel: any | null; nextLevelAt: number }) => void;
-  onTournamentPlayerEliminated?: (data: { odId: string; odName: string; position: number; playersRemaining: number }) => void;
-  onTournamentEliminated?: (data: { position: number; totalPlayers: number; prizeAmount: number }) => void;
+  onTournamentBlindChange?: (data: { level: BlindLevel; nextLevel: BlindLevel | null; nextLevelAt: number }) => void;
+  onTournamentPlayerEliminated?: (data: TournamentPlayerEliminatedData) => void;
+  onTournamentEliminated?: (data: TournamentEliminationInfo) => void;
   onTournamentFinalTable?: (data: { tableId: string }) => void;
-  onTournamentCompleted?: (data: { results: any[]; totalPlayers: number; prizePool: number }) => void;
+  onTournamentCompleted?: (data: TournamentCompletedData) => void;
   onTournamentError?: (data: { message: string }) => void;
   onTournamentCancelled?: (data: { tournamentId: string }) => void;
 };
@@ -218,55 +224,55 @@ class WebSocketService {
       });
 
       // Tournament events
-      (this.socket as any).on('tournament:list', (data: any) => {
+      this.socket.on('tournament:list', (data) => {
         wsLog('tournament:list', data);
         this.emit('onTournamentList', data);
       });
-      (this.socket as any).on('tournament:registered', (data: any) => {
+      this.socket.on('tournament:registered', (data) => {
         wsLog('tournament:registered', data);
         this.emit('onTournamentRegistered', data);
       });
-      (this.socket as any).on('tournament:unregistered', (data: any) => {
+      this.socket.on('tournament:unregistered', (data) => {
         wsLog('tournament:unregistered', data);
         this.emit('onTournamentUnregistered', data);
       });
-      (this.socket as any).on('tournament:state', (data: any) => {
+      this.socket.on('tournament:state', (data) => {
         wsLog('tournament:state', data);
         this.emit('onTournamentState', data);
       });
-      (this.socket as any).on('tournament:table_assigned', (data: any) => {
+      this.socket.on('tournament:table_assigned', (data) => {
         wsLog('tournament:table_assigned', data);
         this.emit('onTournamentTableAssigned', data);
       });
-      (this.socket as any).on('tournament:table_move', (data: any) => {
+      this.socket.on('tournament:table_move', (data) => {
         wsLog('tournament:table_move', data);
         this.emit('onTournamentTableMove', data);
       });
-      (this.socket as any).on('tournament:blind_change', (data: any) => {
+      this.socket.on('tournament:blind_change', (data) => {
         wsLog('tournament:blind_change', data);
         this.emit('onTournamentBlindChange', data);
       });
-      (this.socket as any).on('tournament:player_eliminated', (data: any) => {
+      this.socket.on('tournament:player_eliminated', (data) => {
         wsLog('tournament:player_eliminated', data);
         this.emit('onTournamentPlayerEliminated', data);
       });
-      (this.socket as any).on('tournament:eliminated', (data: any) => {
+      this.socket.on('tournament:eliminated', (data) => {
         wsLog('tournament:eliminated', data);
         this.emit('onTournamentEliminated', data);
       });
-      (this.socket as any).on('tournament:final_table', (data: any) => {
+      this.socket.on('tournament:final_table', (data) => {
         wsLog('tournament:final_table', data);
         this.emit('onTournamentFinalTable', data);
       });
-      (this.socket as any).on('tournament:completed', (data: any) => {
+      this.socket.on('tournament:completed', (data) => {
         wsLog('tournament:completed', data);
         this.emit('onTournamentCompleted', data);
       });
-      (this.socket as any).on('tournament:error', (data: any) => {
+      this.socket.on('tournament:error', (data) => {
         wsLog('tournament:error', data);
         this.emit('onTournamentError', data);
       });
-      (this.socket as any).on('tournament:cancelled', (data: any) => {
+      this.socket.on('tournament:cancelled', (data) => {
         wsLog('tournament:cancelled', data);
         this.emit('onTournamentCancelled', data);
       });
@@ -336,7 +342,7 @@ class WebSocketService {
   }
 
   sendFastFold(): void {
-    (this.socket as any)?.emit('game:fast_fold');
+    this.socket?.emit('game:fast_fold');
   }
 
   // Matchmaking pool
@@ -359,19 +365,19 @@ class WebSocketService {
 
   // Tournament actions
   listTournaments(): void {
-    (this.socket as any)?.emit('tournament:list');
+    this.socket?.emit('tournament:list');
   }
 
   registerTournament(tournamentId: string): void {
-    (this.socket as any)?.emit('tournament:register', { tournamentId });
+    this.socket?.emit('tournament:register', { tournamentId });
   }
 
   unregisterTournament(tournamentId: string): void {
-    (this.socket as any)?.emit('tournament:unregister', { tournamentId });
+    this.socket?.emit('tournament:unregister', { tournamentId });
   }
 
   reenterTournament(tournamentId: string): void {
-    (this.socket as any)?.emit('tournament:reenter', { tournamentId });
+    this.socket?.emit('tournament:reenter', { tournamentId });
   }
 
 }

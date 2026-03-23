@@ -661,13 +661,8 @@ export class TournamentInstance {
         player.finishPosition = remaining + 1 + i;
       }
 
-      // 賞金チェック
-      const prize = PrizeCalculator.getPrizeForPosition(
-        player.finishPosition,
-        this.getTotalEntries(),
-        this.prizePool,
-        this.config.payoutPercentage
-      );
+      // 賞金チェック（既に計算済みの this.prizes を参照）
+      const prize = this.getPrizeForPosition(player.finishPosition);
 
       // 個人通知
       bust.socket?.emit('tournament:eliminated', {
@@ -947,7 +942,7 @@ export class TournamentInstance {
       winner.status = 'eliminated'; // 全員が最終的にeliminated
     }
 
-    // 結果を構築
+    // 結果を構築（既に計算済みの this.prizes を参照）
     const results = Array.from(this.players.values())
       .filter(p => p.finishPosition !== null)
       .sort((a, b) => a.finishPosition! - b.finishPosition!)
@@ -955,12 +950,7 @@ export class TournamentInstance {
         odId: p.odId,
         odName: p.odName,
         position: p.finishPosition!,
-        prize: PrizeCalculator.getPrizeForPosition(
-          p.finishPosition!,
-          this.getTotalEntries(),
-          this.prizePool,
-          this.config.payoutPercentage
-        ),
+        prize: this.getPrizeForPosition(p.finishPosition!),
         reentries: p.reentryCount,
       }));
 
@@ -1004,6 +994,12 @@ export class TournamentInstance {
       total += 1 + p.reentryCount;
     }
     return total;
+  }
+
+  /** this.prizes から順位に対応する賞金額を取得（0-indexed position） */
+  private getPrizeForPosition(position: number): number {
+    const entry = this.prizes.find(p => p.position === position);
+    return entry?.amount ?? 0;
   }
 
   private broadcastTournamentState(): void {
