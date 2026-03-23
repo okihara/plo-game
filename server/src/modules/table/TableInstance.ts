@@ -932,12 +932,15 @@ export class TableInstance {
       }
     }
 
+    this._isHandInProgress = false;
+
     // チップ精算コールバック（トーナメント等での外部同期用）
+    // NOTE: isHandInProgress を先に false にしてからコールバックを呼ぶ。
+    // トーナメントの scheduleFormFinalTable / checkAndExecuteBalance が
+    // このテーブルを「ハンド中」と誤判定しないようにするため。
     if (this.lifecycleCallbacks.onHandSettled && settledChips.length > 0) {
       this.lifecycleCallbacks.onHandSettled(settledChips);
     }
-
-    this._isHandInProgress = false;
 
     this.pendingStartHand = true;
 
