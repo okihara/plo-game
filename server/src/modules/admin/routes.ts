@@ -1,6 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import { Server } from 'socket.io';
 import { TableManager } from '../table/TableManager.js';
+import { TournamentManager } from '../tournament/TournamentManager.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
@@ -10,6 +11,7 @@ import { announcementService } from '../announcement/AnnouncementService.js';
 interface AdminDependencies {
   io: Server;
   tableManager: TableManager;
+  tournamentManager: TournamentManager;
 }
 
 interface TableStats {
@@ -68,6 +70,10 @@ interface ServerStats {
     external: number;
     rss: number;
   };
+  tournaments: {
+    total: number;
+    details: TournamentStats[];
+  };
   maintenance: {
     isActive: boolean;
     message: string;
@@ -79,10 +85,23 @@ interface ServerStats {
   };
 }
 
+interface TournamentStats {
+  id: string;
+  name: string;
+  status: string;
+  buyIn: number;
+  playersRemaining: number;
+  totalPlayers: number;
+  prizePool: number;
+  currentBlindLevel: { smallBlind: number; bigBlind: number } | null;
+  tableCount: number;
+  tables: TableStats[];
+}
+
 const startTime = Date.now();
 
 export function adminRoutes(deps: AdminDependencies) {
-  const { io, tableManager } = deps;
+  const { io, tableManager, tournamentManager } = deps;
 
   return async function (fastify: FastifyInstance) {
     // 管理エンドポイント認証: ADMIN_SECRET が設定されている場合、?secret= パラメータで認証
@@ -132,6 +151,47 @@ export function adminRoutes(deps: AdminDependencies) {
       const fastFoldTables = tableDetails.filter(t => t.isFastFold);
       const activeHands = tableDetails.filter(t => t.isHandInProgress).length;
 
+      // トーナメント情報
+      const activeTournaments = tournamentManager.getActiveTournaments();
+      const tournamentDetails: TournamentStats[] = activeTournaments.map(lobby => {
+        const tournament = tournamentManager.getTournament(lobby.id);
+        const tTables: TableStats[] = [];
+        if (tournament) {
+          for (const table of tournament.getTables()) {
+            const gameState = table.getClientGameState();
+            const debugState = table.getDebugState();
+            tTables.push({
+              id: table.id,
+              blinds: table.blinds,
+              variant: table.variant ?? 'plo',
+              isFastFold: false,
+              playerCount: table.getAdminSeats().filter((s): s is NonNullable<typeof s> => s !== null).length,
+              maxPlayers: 6,
+              isHandInProgress: gameState?.isHandInProgress ?? false,
+              currentStreet: gameState?.currentStreet ?? null,
+              pot: gameState?.pot ?? 0,
+              players: table.getAdminSeats().filter((s): s is NonNullable<typeof s> => s !== null),
+              gamePhase: debugState.gamePhase,
+              pendingAction: debugState.pendingAction,
+              recentMessages: debugState.messageLog.slice(-10),
+            });
+          }
+        }
+        const currentLevel = tournament?.getClientState()?.currentBlindLevel ?? null;
+        return {
+          id: lobby.id,
+          name: lobby.name,
+          status: lobby.status,
+          buyIn: lobby.buyIn,
+          playersRemaining: tournament?.getPlayersRemaining() ?? 0,
+          totalPlayers: lobby.registeredPlayers,
+          prizePool: lobby.prizePool,
+          currentBlindLevel: currentLevel ? { smallBlind: currentLevel.smallBlind, bigBlind: currentLevel.bigBlind } : null,
+          tableCount: tournament?.getTableCount() ?? 0,
+          tables: tTables,
+        };
+      });
+
       // Database check
       let dbConnected = false;
       let userCount = 0;
@@ -162,6 +222,10 @@ export function adminRoutes(deps: AdminDependencies) {
         database: {
           connected: dbConnected,
           userCount,
+        },
+        tournaments: {
+          total: tournamentDetails.length,
+          details: tournamentDetails,
         },
         memory: {
           heapUsed: memUsage.heapUsed,

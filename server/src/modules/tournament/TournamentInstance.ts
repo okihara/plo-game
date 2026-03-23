@@ -74,6 +74,11 @@ export class TournamentInstance {
     return this.tables.size;
   }
 
+  /** 全テーブルをイテレート（管理ダッシュボード用） */
+  public getTables(): IterableIterator<TableInstance> {
+    return this.tables.values();
+  }
+
   public getPlayer(odId: string): TournamentPlayer | undefined {
     return this.players.get(odId);
   }

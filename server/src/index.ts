@@ -239,8 +239,8 @@ const start = async () => {
       }
     });
 
-    // Register admin routes (needs io, tableManager)
-    await fastify.register(adminRoutes({ io, tableManager }));
+    // Register admin routes (needs io, tableManager, tournamentManager)
+    await fastify.register(adminRoutes({ io, tableManager, tournamentManager }));
     await fastify.register(lobbyRoutes({ tableManager }));
     await fastify.register(tournamentRoutes({ tournamentManager }));
     await fastify.register(maintenanceRoutes());
