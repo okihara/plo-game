@@ -13,14 +13,14 @@ export function HandDetailPage({ handId, onBack }: HandDetailPageProps) {
   const [hand, setHand] = useState<HandDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const maskFromUrl = new URLSearchParams(window.location.search).get('mask') === '1';
+  const tokenFromUrl = new URLSearchParams(window.location.search).get('t') || '';
 
   useEffect(() => {
     setLoading(true);
     setError(null);
 
-    const maskSuffix = maskFromUrl ? '?mask=1' : '';
-    fetch(`${API_BASE}/api/hand/${handId}${maskSuffix}`)
+    const tokenSuffix = tokenFromUrl ? `?t=${encodeURIComponent(tokenFromUrl)}` : '';
+    fetch(`${API_BASE}/api/hand/${handId}${tokenSuffix}`)
       .then(res => {
         if (!res.ok) throw new Error(res.status === 404 ? 'ハンドが見つかりません' : 'エラーが発生しました');
         return res.json();
@@ -52,5 +52,5 @@ export function HandDetailPage({ handId, onBack }: HandDetailPageProps) {
     );
   }
 
-  return <HandDetailDialog hand={hand} onClose={onBack} initialHideOpponentNames={maskFromUrl} />;
+  return <HandDetailDialog hand={hand} onClose={onBack} initialHideOpponentNames={!tokenFromUrl} />;
 }

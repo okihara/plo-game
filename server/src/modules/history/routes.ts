@@ -1,12 +1,14 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
-import { maskName } from '../../shared/utils.js';
+import { maskName, generateShareToken, verifyShareToken } from '../../shared/utils.js';
+import { env } from '../../config/env.js';
 
 // 公開用ハンド詳細API（認証不要、シェアリンク用）
 export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
   fastify.get('/:handId', async (request: FastifyRequest, reply) => {
     const { handId } = request.params as { handId: string };
-    const forceMask = (request.query as Record<string, string>).mask === '1';
+    const token = (request.query as Record<string, string>).t || '';
+    const revealedSeat = verifyShareToken(handId, token, env.JWT_SECRET);
 
     const hand = await prisma.handHistory.findUnique({
       where: { id: handId },
@@ -44,12 +46,13 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
       createdAt: hand.createdAt,
       players: hand.players.map(p => {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
-        const username = forceMask
-          ? maskName(rawName)
-          : p.user?.displayName ? p.user.displayName : (p.user?.nameMasked ? maskName(rawName) : rawName);
+        const isRevealed = p.seatPosition === revealedSeat;
+        const username = isRevealed
+          ? (p.user?.displayName || rawName)
+          : maskName(rawName);
         return {
           username,
-          avatarUrl: forceMask ? null : (p.user?.avatarUrl ?? null),
+          avatarUrl: isRevealed ? (p.user?.avatarUrl ?? null) : null,
           seatPosition: p.seatPosition,
           holeCards: p.holeCards,
           finalHand: p.finalHand,
@@ -176,6 +179,12 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       return reply.code(404).send({ error: 'Hand not found' });
     }
 
+    // シェアした人のシート番号を特定してトークン生成
+    const myPlayer = hand.players.find(p => p.userId === userId);
+    const shareToken = myPlayer != null
+      ? generateShareToken(hand.id, myPlayer.seatPosition, env.JWT_SECRET)
+      : undefined;
+
     return {
       id: hand.id,
       handNumber: hand.handNumber,
@@ -187,6 +196,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       actions: hand.actions,
       dealerPosition: hand.dealerPosition,
       createdAt: hand.createdAt,
+      shareToken,
       players: hand.players.map(p => {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
         return {

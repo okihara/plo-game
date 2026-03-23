@@ -41,6 +41,7 @@ export interface HandDetail {
   dealerPosition: number;
   createdAt: string;
   players: HandDetailPlayer[];
+  shareToken?: string;
 }
 
 function parseCard(s: string): Card {
@@ -439,7 +440,8 @@ export function HandDetailDialog({
   const [imageCopied, setImageCopied] = useState(false);
   const [imageLoading, setImageLoading] = useState(false);
 
-  const shareUrl = `${window.location.origin}/hand/${hand.id}${hideOpponentNames ? '?mask=1' : ''}`;
+  const tokenSuffix = !hideOpponentNames && hand.shareToken ? `?t=${encodeURIComponent(hand.shareToken)}` : '';
+  const shareUrl = `${window.location.origin}/hand/${hand.id}${tokenSuffix}`;
   const me = hand.players.find(p => p.isCurrentUser);
   const myProfit = me?.profit ?? 0;
 
@@ -466,7 +468,7 @@ export function HandDetailDialog({
     setImageLoading(true);
     try {
       // OGP画像をfetch → img要素でデコード → canvasでPNG Blobに変換
-      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}${hideOpponentNames ? '?mask=1' : ''}`);
+      const res = await fetch(`${API_BASE}/api/ogp/hand/${hand.id}${tokenSuffix}`);
       if (!res.ok) throw new Error('Failed to fetch image');
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);

@@ -152,11 +152,11 @@ if (env.NODE_ENV === 'production') {
     const handMatch = request.url.match(/^\/hand\/([^/?#]+)/);
     if (handMatch && CRAWLER_UA.test(request.headers['user-agent'] || '')) {
       const handId = handMatch[1];
-      const maskParam = (request.query as Record<string, string>).mask === '1';
-      const maskSuffix = maskParam ? '?mask=1' : '';
+      const tokenParam = (request.query as Record<string, string>).t || '';
+      const tokenSuffix = tokenParam ? `?t=${encodeURIComponent(tokenParam)}` : '';
       const baseUrl = env.CLIENT_URL;
-      const ogpImageUrl = `${baseUrl}/api/ogp/hand/${handId}${maskSuffix}`;
-      const pageUrl = `${baseUrl}/hand/${handId}${maskSuffix}`;
+      const ogpImageUrl = `${baseUrl}/api/ogp/hand/${handId}${tokenSuffix}`;
+      const pageUrl = `${baseUrl}/hand/${handId}${tokenSuffix}`;
 
       let title = 'Baby PLO - ハンド履歴';
       let description = 'Baby PLO でのハンド詳細を見る';
