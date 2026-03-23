@@ -116,3 +116,13 @@ export interface BalanceAction {
   fromTableId: string;
   toTableId: string;
 }
+
+// --- Tournament Result (completeTournament用) ---
+
+export interface TournamentResult {
+  odId: string;
+  odName: string;
+  position: number;
+  prize: number;
+  reentries: number;
+}

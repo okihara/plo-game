@@ -11,6 +11,7 @@ import {
   ClientTournamentState,
   BlindLevel,
   PendingMove,
+  TournamentResult,
 } from './types.js';
 import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
 
@@ -29,12 +30,13 @@ export class TournamentInstance {
   private prizePool: number = 0;
   private prizes: PrizeEntry[] = [];
   private pendingMoves: PendingMove[] = [];
+  private pendingBusts: { odId: string; socket: Socket | null; chipsAtHandStart: number }[] = [];
   private disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
   private readonly io: Server;
   private readonly roomName: string;
 
-  // 外部通知用コールバック
-  public onTournamentComplete?: (tournamentId: string) => void;
+  // 外部通知用コールバック（結果データ付き）
+  public onTournamentComplete?: (tournamentId: string, results: TournamentResult[]) => void;
 
   constructor(io: Server, config: TournamentConfig) {
     this.io = io;
@@ -571,17 +573,22 @@ export class TournamentInstance {
   // Private: Callbacks from TableInstance
   // ============================================
 
+  /**
+   * TableInstance からのバスト通知。
+   * ハンド中に複数人がバストする可能性があるため、ここでは蓄積のみ。
+   * 実際の順位確定・フェーズ遷移は onHandSettled で一括処理する。
+   */
   private onPlayerBusted(odId: string, _seatIndex: number, socket: Socket | null): void {
     const player = this.players.get(odId);
     if (!player) return;
 
-    const remaining = this.getPlayersRemaining() - 1; // この人を引いた残り
+    // ハンド開始時のチップ（同時バストの順位決定に使用）
+    const chipsAtHandStart = player.chips;
+
+    // ステータスを即座に eliminated に変更（getPlayersRemaining に反映）
     player.status = 'eliminated';
     player.chips = 0;
-    player.finishPosition = remaining + 1;
     player.eliminatedAt = new Date();
-    player.tableId = null;
-    player.seatIndex = null;
 
     // テーブルトラッキングから削除
     for (const [tableId, playerSet] of this.tablePlayerMap) {
@@ -590,50 +597,16 @@ export class TournamentInstance {
         break;
       }
     }
+    player.tableId = null;
+    player.seatIndex = null;
 
-    // 賞金チェック
-    const prize = PrizeCalculator.getPrizeForPosition(
-      player.finishPosition,
-      this.getTotalEntries(),
-      this.prizePool,
-      this.config.payoutPercentage
-    );
-
-    // 個人通知
-    socket?.emit('tournament:eliminated', {
-      position: player.finishPosition,
-      totalPlayers: this.getTotalEntries(),
-      prizeAmount: prize,
-    });
-
-    // 全体通知
-    this.io.to(this.roomName).emit('tournament:player_eliminated', {
-      odId,
-      odName: player.odName,
-      position: player.finishPosition,
-      playersRemaining: remaining,
-    });
-
-    console.log(`[Tournament ${this.id}] Player ${odId} eliminated at position ${player.finishPosition}, ${remaining} remaining`);
-
-    // 残りプレイヤー数に応じたフェーズ遷移
-    if (remaining <= 1) {
-      this.completeTournament();
-    } else if (remaining === 2) {
-      this.status = 'heads_up';
-      if (this.tables.size > 1) {
-        this.formFinalTable();
-      } else {
-        this.broadcastTournamentState();
-      }
-    } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
-      this.formFinalTable();
-    } else {
-      // テーブルバランスチェック
-      this.checkAndExecuteBalance();
-    }
+    // バスト情報を蓄積（onHandSettled で一括順位計算）
+    this.pendingBusts.push({ odId, socket, chipsAtHandStart });
   }
 
+  /**
+   * ハンド完了時: チップ同期 → バストプレイヤーの順位一括確定 → フェーズ遷移
+   */
   private onHandSettled(seatChips: { odId: string; seatIndex: number; chips: number }[]): void {
     // トーナメントプレイヤーのチップを同期
     for (const { odId, chips } of seatChips) {
@@ -643,8 +616,100 @@ export class TournamentInstance {
       }
     }
 
+    // バストプレイヤーの順位を一括確定
+    if (this.pendingBusts.length > 0) {
+      this.finalizeBustedPlayers();
+    }
+
+    // ペンディングのファイナルテーブル形成
+    if (this.pendingFinalTable) {
+      this.scheduleFormFinalTable();
+    }
+
     // ペンディング移動の実行
     this.executePendingMoves();
+  }
+
+  /**
+   * 蓄積されたバストプレイヤーの順位を一括確定する。
+   * 同一ハンドでバストした場合、ハンド開始時チップの多い方が上位。
+   */
+  private finalizeBustedPlayers(): void {
+    const busts = [...this.pendingBusts];
+    this.pendingBusts = [];
+
+    if (busts.length === 0) return;
+
+    const remaining = this.getPlayersRemaining();
+
+    // 同時バストはチップ降順ソート（チップが多い方が上位 = 小さいposition）
+    busts.sort((a, b) => b.chipsAtHandStart - a.chipsAtHandStart);
+
+    // 全員同じ順位ベース: remaining + 1
+    // 例: 4人残り中2人バスト → 順位は 3位(チップ多), 4位(チップ少)
+    // ただしチップ同額なら同順位
+    for (let i = 0; i < busts.length; i++) {
+      const bust = busts[i];
+      const player = this.players.get(bust.odId);
+      if (!player) continue;
+
+      // 同チップの前のプレイヤーと同順位にする
+      if (i > 0 && bust.chipsAtHandStart === busts[i - 1].chipsAtHandStart) {
+        const prevPlayer = this.players.get(busts[i - 1].odId);
+        player.finishPosition = prevPlayer?.finishPosition ?? remaining + 1 + i;
+      } else {
+        player.finishPosition = remaining + 1 + i;
+      }
+
+      // 賞金チェック
+      const prize = PrizeCalculator.getPrizeForPosition(
+        player.finishPosition,
+        this.getTotalEntries(),
+        this.prizePool,
+        this.config.payoutPercentage
+      );
+
+      // 個人通知
+      bust.socket?.emit('tournament:eliminated', {
+        position: player.finishPosition,
+        totalPlayers: this.getTotalEntries(),
+        prizeAmount: prize,
+      });
+
+      // 全体通知
+      this.io.to(this.roomName).emit('tournament:player_eliminated', {
+        odId: bust.odId,
+        odName: player.odName,
+        position: player.finishPosition,
+        playersRemaining: remaining,
+      });
+
+      console.log(`[Tournament ${this.id}] Player ${bust.odId} eliminated at position ${player.finishPosition}, ${remaining} remaining`);
+    }
+
+    // フェーズ遷移（onHandSettled から呼ばれるので finalizeHand 完了後）
+    this.handlePhaseTransition(remaining);
+  }
+
+  /**
+   * 残りプレイヤー数に応じたフェーズ遷移
+   * onHandSettled 経由で呼ばれるため、TableInstance の finalizeHand 完了後に実行される
+   */
+  private handlePhaseTransition(remaining: number): void {
+    if (remaining <= 1) {
+      this.completeTournament();
+    } else if (remaining === 2) {
+      this.status = 'heads_up';
+      if (this.tables.size > 1) {
+        this.scheduleFormFinalTable();
+      } else {
+        this.broadcastTournamentState();
+      }
+    } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
+      this.scheduleFormFinalTable();
+    } else {
+      this.checkAndExecuteBalance();
+    }
   }
 
   // ============================================
@@ -781,7 +846,24 @@ export class TournamentInstance {
   // Private: Final Table & Completion
   // ============================================
 
+  private pendingFinalTable = false;
+
+  /**
+   * ファイナルテーブル形成をスケジュール。
+   * ハンド中のテーブルがあれば onHandSettled で再試行する。
+   */
+  private scheduleFormFinalTable(): void {
+    const anyHandInProgress = Array.from(this.tables.values()).some(t => t.isHandInProgress);
+    if (anyHandInProgress) {
+      this.pendingFinalTable = true;
+      console.log(`[Tournament ${this.id}] Final table formation deferred (hands in progress)`);
+      return;
+    }
+    this.formFinalTable();
+  }
+
   private formFinalTable(): void {
+    this.pendingFinalTable = false;
     this.status = 'final_table';
 
     const remaining = this.getPlayersRemaining();
@@ -906,7 +988,7 @@ export class TournamentInstance {
     }
     this.disconnectTimers.clear();
 
-    this.onTournamentComplete?.(this.id);
+    this.onTournamentComplete?.(this.id, results);
 
     console.log(`[Tournament ${this.id}] Tournament completed! Winner: ${winner?.odName}`);
   }

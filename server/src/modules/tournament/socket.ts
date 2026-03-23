@@ -106,13 +106,17 @@ export function registerTournamentHandlers(
       return;
     }
 
-    const result = tournament.unregisterPlayer(odId);
-    if (!result.success) {
-      socket.emit('tournament:error', { message: result.error });
+    // 登録解除可能かチェック（メモリ操作はまだしない）
+    if (tournament.getStatus() !== 'registering') {
+      socket.emit('tournament:error', { message: 'トーナメント開始後は登録解除できません' });
+      return;
+    }
+    if (!tournament.getPlayer(odId)) {
+      socket.emit('tournament:error', { message: '登録されていません' });
       return;
     }
 
-    // バイイン返還（トランザクション）
+    // DB操作を先に実行（失敗時はメモリを汚染しない）
     try {
       await prisma.$transaction(async (tx) => {
         await tx.bankroll.update({
@@ -132,7 +136,36 @@ export function registerTournamentHandlers(
       });
     } catch (err) {
       console.error(`[Tournament] Unregister DB error for ${odId}:`, err);
-      // メモリ上の登録解除は完了しているためエラー通知のみ
+      socket.emit('tournament:error', { message: 'データベースエラーが発生しました' });
+      return;
+    }
+
+    // DB成功後にメモリ登録解除
+    const result = tournament.unregisterPlayer(odId);
+    if (!result.success) {
+      // メモリ側で失敗した場合はDBをロールバック
+      await prisma.$transaction(async (tx) => {
+        await tx.bankroll.update({
+          where: { userId: odId },
+          data: { balance: { decrement: tournament.config.buyIn } },
+        });
+        await tx.transaction.create({
+          data: {
+            userId: odId,
+            type: 'TOURNAMENT_BUY_IN',
+            amount: -tournament.config.buyIn,
+          },
+        });
+        await tx.tournamentRegistration.upsert({
+          where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
+          create: { tournamentId: data.tournamentId, userId: odId },
+          update: {},
+        });
+      }).catch(err => {
+        console.error(`[Tournament] Unregister rollback error for ${odId}:`, err);
+      });
+      socket.emit('tournament:error', { message: result.error });
+      return;
     }
 
     tournamentManager.removePlayerFromTracking(odId);

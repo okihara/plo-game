@@ -1,6 +1,7 @@
 import { Server } from 'socket.io';
 import { TournamentInstance } from './TournamentInstance.js';
-import { TournamentConfig, TournamentLobbyInfo } from './types.js';
+import { TournamentConfig, TournamentLobbyInfo, TournamentResult } from './types.js';
+import { prisma } from '../../config/database.js';
 
 /**
  * 全トーナメントのレジストリ
@@ -10,9 +11,13 @@ export class TournamentManager {
   private tournaments: Map<string, TournamentInstance> = new Map();
   private playerTournaments: Map<string, string> = new Map(); // odId → tournamentId
   private readonly io: Server;
+  private cleanupTimer: NodeJS.Timeout | null = null;
 
   constructor(io: Server) {
     this.io = io;
+
+    // 定期的に完了済みトーナメントをクリーンアップ（10分ごと）
+    this.cleanupTimer = setInterval(() => this.cleanupCompleted(), 10 * 60 * 1000);
   }
 
   /**
@@ -21,17 +26,74 @@ export class TournamentManager {
   createTournament(config: TournamentConfig): TournamentInstance {
     const tournament = new TournamentInstance(this.io, config);
 
-    tournament.onTournamentComplete = (tournamentId) => {
-      // トーナメント完了時にプレイヤートラッキングをクリア
+    tournament.onTournamentComplete = (tournamentId, results) => {
+      // プレイヤートラッキングをクリア
       for (const [odId, tId] of this.playerTournaments) {
         if (tId === tournamentId) {
           this.playerTournaments.delete(odId);
         }
       }
+
+      // 賞金支払い・結果DB保存（fire-and-forget）
+      this.persistTournamentResults(tournamentId, results).catch(err => {
+        console.error(`[TournamentManager] Failed to persist results for ${tournamentId}:`, err);
+      });
     };
 
     this.tournaments.set(config.id, tournament);
     return tournament;
+  }
+
+  /**
+   * トーナメント完了時のDB操作: 賞金支払い + 結果保存 + ステータス更新
+   */
+  private async persistTournamentResults(tournamentId: string, results: TournamentResult[]): Promise<void> {
+    await prisma.$transaction(async (tx) => {
+      // 1. 入賞者への賞金支払い
+      for (const result of results) {
+        if (result.prize > 0) {
+          await tx.bankroll.update({
+            where: { userId: result.odId },
+            data: { balance: { increment: result.prize } },
+          });
+          await tx.transaction.create({
+            data: {
+              userId: result.odId,
+              type: 'TOURNAMENT_PRIZE',
+              amount: result.prize,
+            },
+          });
+        }
+
+        // 2. 結果レコード保存
+        await tx.tournamentResult.upsert({
+          where: { tournamentId_userId: { tournamentId, userId: result.odId } },
+          create: {
+            tournamentId,
+            userId: result.odId,
+            position: result.position,
+            prize: result.prize,
+            reentries: result.reentries,
+          },
+          update: {
+            position: result.position,
+            prize: result.prize,
+            reentries: result.reentries,
+          },
+        });
+      }
+
+      // 3. トーナメントステータス更新
+      await tx.tournament.update({
+        where: { id: tournamentId },
+        data: {
+          status: 'COMPLETED',
+          completedAt: new Date(),
+        },
+      });
+    });
+
+    console.log(`[TournamentManager] Results persisted for tournament ${tournamentId}: ${results.length} entries`);
   }
 
   /**
@@ -92,6 +154,16 @@ export class TournamentManager {
       if (status === 'completed' || status === 'cancelled') {
         this.tournaments.delete(id);
       }
+    }
+  }
+
+  /**
+   * マネージャーの停止（サーバーシャットダウン時）
+   */
+  destroy(): void {
+    if (this.cleanupTimer) {
+      clearInterval(this.cleanupTimer);
+      this.cleanupTimer = null;
     }
   }
 }

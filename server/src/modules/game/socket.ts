@@ -53,6 +53,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     }
     activeConnections.set(odId, socket);
 
+    // トーナメント参加中なら再接続処理
+    const tournamentId = tournamentManager.getPlayerTournament(odId);
+    if (tournamentId) {
+      const tournament = tournamentManager.getTournament(tournamentId);
+      tournament?.handleReconnect(odId, socket);
+    }
+
     socket.emit('connection:established', { playerId: odId });
 
     if (maintenanceService.isMaintenanceActive()) {

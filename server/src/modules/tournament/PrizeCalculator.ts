@@ -25,11 +25,20 @@ export class PrizeCalculator {
       ? customPercentages
       : PrizeCalculator.getDefaultPercentages(totalPlayers);
 
-    return percentages.map((pct, i) => ({
+    const entries = percentages.map((pct, i) => ({
       position: i + 1,
       percentage: pct,
       amount: Math.floor(prizePool * pct / 100),
     }));
+
+    // 端数の余りを1位に加算して全額配分を保証
+    const totalDistributed = entries.reduce((sum, e) => sum + e.amount, 0);
+    const remainder = prizePool - totalDistributed;
+    if (remainder > 0 && entries.length > 0) {
+      entries[0].amount += remainder;
+    }
+
+    return entries;
   }
 
   /**
