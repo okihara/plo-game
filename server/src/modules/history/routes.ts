@@ -20,6 +20,7 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
             seatPosition: true,
             holeCards: true,
             finalHand: true,
+            startChips: true,
             profit: true,
             user: {
               select: { username: true, displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
@@ -56,6 +57,7 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
           seatPosition: p.seatPosition,
           holeCards: p.holeCards,
           finalHand: p.finalHand,
+          startChips: p.startChips,
           profit: p.profit,
           isCurrentUser: false,
         };
@@ -109,6 +111,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
                   seatPosition: true,
                   holeCards: true,
                   finalHand: true,
+                  startChips: true,
                   profit: true,
                   user: {
                     select: { displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
@@ -142,6 +145,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
         seatPosition: p.seatPosition,
         holeCards: p.holeCards,
         finalHand: p.finalHand,
+        startChips: p.startChips,
         profit: p.profit,
         isCurrentUser: p.userId === userId,
       };
@@ -166,6 +170,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
             seatPosition: true,
             holeCards: true,
             finalHand: true,
+            startChips: true,
             profit: true,
             user: {
               select: { username: true, displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
@@ -205,6 +210,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
           seatPosition: p.seatPosition,
           holeCards: p.holeCards,
           finalHand: p.finalHand,
+          startChips: p.startChips,
           profit: p.profit,
           isCurrentUser: p.userId === userId,
         };

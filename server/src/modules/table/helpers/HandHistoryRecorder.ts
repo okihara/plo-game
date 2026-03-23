@@ -152,6 +152,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             seatPosition: seatIndex,
             holeCards: serializeCards(player.holeCards),
             finalHand,
+            startChips: startChip,
             profit,
             allInEVProfit,
           };
