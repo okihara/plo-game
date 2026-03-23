@@ -24,6 +24,12 @@ export interface TableLifecycleCallbacks {
    * - トーナメント: チップをトーナメントエントリに同期
    */
   onHandSettled?: (seatChips: { odId: string; seatIndex: number; chips: number }[]) => void;
+
+  /**
+   * バスト処理完了後のコールバック（onPlayerBusted ループ完了後に1回呼ばれる）
+   * - トーナメント: pendingBusts の一括順位確定・フェーズ遷移を実行
+   */
+  onBustsProcessed?: () => void;
 }
 
 export interface SeatInfo {

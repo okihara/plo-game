@@ -972,6 +972,11 @@ export class TableInstance {
         }
       }
     }
+    // バスト処理完了コールバック（トーナメント: 順位確定・フェーズ遷移）
+    if (this.lifecycleCallbacks.onBustsProcessed) {
+      this.lifecycleCallbacks.onBustsProcessed();
+    }
+
     this.pendingStartHand = false;
 
     // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）

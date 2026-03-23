@@ -481,6 +481,11 @@ export class TournamentInstance {
       onHandSettled: (seatChips) => {
         this.onHandSettled(seatChips);
       },
+      onBustsProcessed: () => {
+        if (this.pendingBusts.length > 0) {
+          this.finalizeBustedPlayers();
+        }
+      },
     };
 
     const table = new TableInstance(this.io, blindsStr, false, {
