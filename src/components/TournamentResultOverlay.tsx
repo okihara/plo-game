@@ -1,16 +1,12 @@
 import { Trophy } from 'lucide-react';
 import type { TournamentResult } from '@plo/shared';
+import { formatChips } from '../utils/formatChips';
 
 interface TournamentResultOverlayProps {
   results: TournamentResult[];
   totalPlayers: number;
   prizePool: number;
   onClose: () => void;
-}
-
-function formatChips(amount: number): string {
-  if (amount >= 1000) return `${(amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1)}K`;
-  return String(amount);
 }
 
 function getMedal(position: number): string {

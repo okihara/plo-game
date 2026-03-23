@@ -247,22 +247,11 @@ export class TournamentInstance {
         const player = this.players.get(odId)!;
         player.status = 'playing';
 
-        const seatIndex = table.seatPlayer(
-          odId,
-          player.odName,
-          player.socket!,
-          player.chips,
-          player.avatarUrl,
-          undefined,
-          { skipJoinedEmit: false },
-          player.nameMasked,
-          player.displayName
-        );
-
-        if (seatIndex !== null) {
-          player.tableId = table.id;
-          player.seatIndex = seatIndex;
-          this.trackPlayerAtTable(odId, table.id);
+        const seatIndex = this.seatPlayerAtTable(player, table, player.chips, { skipJoinedEmit: false });
+        if (seatIndex === null) {
+          // 着席失敗: ステータスをロールバック
+          player.status = 'registered';
+          console.error(`[Tournament ${this.id}] Failed to seat ${odId} during start`);
         }
       }
     }
@@ -290,23 +279,7 @@ export class TournamentInstance {
     this.status = 'cancelled';
     this.blindScheduler.stop();
 
-    // 全テーブルのプレイヤーを離席
-    for (const table of this.tables.values()) {
-      for (const player of this.players.values()) {
-        if (player.tableId === table.id) {
-          table.unseatPlayer(player.odId);
-        }
-      }
-    }
-
-    this.tables.clear();
-    this.tablePlayerMap.clear();
-
-    // 切断タイマーをクリア
-    for (const timer of this.disconnectTimers.values()) {
-      clearTimeout(timer);
-    }
-    this.disconnectTimers.clear();
+    this.cleanupTablesAndTimers();
 
     this.io.to(this.roomName).emit('tournament:cancelled', { tournamentId: this.id });
     this.broadcastTournamentState();
@@ -510,6 +483,46 @@ export class TournamentInstance {
     return table;
   }
 
+  /**
+   * プレイヤーをテーブルに着席させる共通ヘルパー。
+   * 成功時は tableId/seatIndex/tracking を更新し seatIndex を返す。
+   * 失敗時は null を返し、player の状態は変更しない。
+   */
+  private seatPlayerAtTable(
+    player: TournamentPlayer,
+    table: TableInstance,
+    chips: number,
+    options?: { skipJoinedEmit?: boolean }
+  ): number | null {
+    if (!player.socket) {
+      console.warn(`[Tournament ${this.id}] Cannot seat player ${player.odId}: no socket`);
+      return null;
+    }
+
+    const seatIndex = table.seatPlayer(
+      player.odId,
+      player.odName,
+      player.socket,
+      chips,
+      player.avatarUrl,
+      undefined,
+      options,
+      player.nameMasked,
+      player.displayName
+    );
+
+    if (seatIndex === null) {
+      console.warn(`[Tournament ${this.id}] Failed to seat player ${player.odId} at table ${table.id}`);
+      return null;
+    }
+
+    player.tableId = table.id;
+    player.seatIndex = seatIndex;
+    player.chips = chips;
+    this.trackPlayerAtTable(player.odId, table.id);
+    return seatIndex;
+  }
+
   private trackPlayerAtTable(odId: string, tableId: string): void {
     this.tablePlayerMap.get(tableId)?.add(odId);
   }
@@ -542,23 +555,9 @@ export class TournamentInstance {
       bestTable = this.createTournamentTable();
     }
 
-    const seatIndex = bestTable.seatPlayer(
-      player.odId,
-      player.odName,
-      player.socket!,
-      player.chips,
-      player.avatarUrl,
-      undefined,
-      undefined,
-      player.nameMasked,
-      player.displayName
-    );
+    const seatIndex = this.seatPlayerAtTable(player, bestTable, player.chips);
 
     if (seatIndex !== null) {
-      player.tableId = bestTable.id;
-      player.seatIndex = seatIndex;
-      this.trackPlayerAtTable(player.odId, bestTable.id);
-
       player.socket?.emit('tournament:table_assigned', {
         tableId: bestTable.id,
         tournamentId: this.id,
@@ -808,30 +807,19 @@ export class TournamentInstance {
     this.untrackPlayerFromTable(odId, fromTableId);
 
     // 新テーブルに着席
-    const seatIndex = toTable.seatPlayer(
-      odId,
-      player.odName,
-      player.socket,
-      chips,
-      player.avatarUrl,
-      undefined,
-      undefined,
-      player.nameMasked,
-      player.displayName
-    );
+    const seatIndex = this.seatPlayerAtTable(player, toTable, chips);
 
     if (seatIndex !== null) {
-      player.tableId = toTableId;
-      player.seatIndex = seatIndex;
-      player.chips = chips;
-      this.trackPlayerAtTable(odId, toTableId);
-
       player.socket.emit('tournament:table_assigned', {
         tableId: toTableId,
         tournamentId: this.id,
       });
 
       toTable.triggerMaybeStartHand();
+    } else {
+      // 着席失敗: 元テーブルに戻す
+      console.error(`[Tournament ${this.id}] Failed to move ${odId} to ${toTableId}, seating back at ${fromTableId}`);
+      this.seatPlayerAtTable(player, fromTable, chips);
     }
 
     console.log(`[Tournament ${this.id}] Moved player ${odId} from ${fromTableId} to ${toTableId}`);
@@ -886,26 +874,7 @@ export class TournamentInstance {
           oldTable.unseatPlayer(player.odId);
           this.untrackPlayerFromTable(player.odId, player.tableId);
 
-          if (player.socket) {
-            const seatIndex = finalTable.seatPlayer(
-              player.odId,
-              player.odName,
-              player.socket,
-              chips,
-              player.avatarUrl,
-              undefined,
-              undefined,
-              player.nameMasked,
-              player.displayName
-            );
-
-            if (seatIndex !== null) {
-              player.tableId = finalTable.id;
-              player.seatIndex = seatIndex;
-              player.chips = chips;
-              this.trackPlayerAtTable(player.odId, finalTable.id);
-            }
-          }
+          this.seatPlayerAtTable(player, finalTable, chips);
         }
       }
     }
@@ -961,7 +930,19 @@ export class TournamentInstance {
       prizePool: this.prizePool,
     });
 
-    // テーブルをクリーンアップ
+    this.cleanupTablesAndTimers();
+
+    this.onTournamentComplete?.(this.id, results);
+
+    console.log(`[Tournament ${this.id}] Tournament completed! Winner: ${winner?.odName}`);
+  }
+
+  // ============================================
+  // Private: Helpers
+  // ============================================
+
+  /** テーブルの全プレイヤーを離席させ、テーブルと切断タイマーをクリアする */
+  private cleanupTablesAndTimers(): void {
     for (const table of this.tables.values()) {
       for (const player of this.players.values()) {
         if (player.tableId === table.id) {
@@ -972,20 +953,11 @@ export class TournamentInstance {
     this.tables.clear();
     this.tablePlayerMap.clear();
 
-    // 切断タイマーをクリア
     for (const timer of this.disconnectTimers.values()) {
       clearTimeout(timer);
     }
     this.disconnectTimers.clear();
-
-    this.onTournamentComplete?.(this.id, results);
-
-    console.log(`[Tournament ${this.id}] Tournament completed! Winner: ${winner?.odName}`);
   }
-
-  // ============================================
-  // Private: Helpers
-  // ============================================
 
   private getTotalEntries(): number {
     // リエントリー分も含めた総エントリー数

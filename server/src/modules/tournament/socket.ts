@@ -28,6 +28,10 @@ async function withDbAndMemory(opts: {
   try {
     await prisma.$transaction(dbOps);
   } catch (err) {
+    // 残高不足は想定内エラー — ユーザー向けメッセージで返す
+    if (err instanceof Error && err.message === 'INSUFFICIENT_BALANCE') {
+      return { success: false, error: 'チップが不足しています' };
+    }
     console.error(`[Tournament] ${label} DB error for ${odId}:`, err);
     return { success: false, error: 'データベースエラーが発生しました' };
   }
@@ -71,25 +75,30 @@ export function registerTournamentHandlers(
       return;
     }
 
-    // ユーザー情報 + 残高チェック
+    const buyIn = tournament.config.buyIn;
+
+    // ユーザー情報を取得（残高チェックはトランザクション内で行う）
     const user = await prisma.user.findUnique({
       where: { id: odId },
-      include: { bankroll: true },
+      select: { username: true, displayName: true, avatarUrl: true, nameMasked: true },
     });
-    if (!user?.bankroll || user.bankroll.balance < tournament.config.buyIn) {
-      socket.emit('tournament:error', { message: 'チップが不足しています' });
+    if (!user) {
+      socket.emit('tournament:error', { message: 'ユーザーが見つかりません' });
       return;
     }
 
-    const buyIn = tournament.config.buyIn;
     const result = await withDbAndMemory({
       label: 'Register',
       odId,
       dbOps: async (tx) => {
-        await tx.bankroll.update({
-          where: { userId: odId },
+        // 残高チェックをトランザクション内で行いレースコンディションを防止
+        const updated = await tx.bankroll.updateMany({
+          where: { userId: odId, balance: { gte: buyIn } },
           data: { balance: { decrement: buyIn } },
         });
+        if (updated.count === 0) {
+          throw new Error('INSUFFICIENT_BALANCE');
+        }
         await tx.transaction.create({
           data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
         });
@@ -195,22 +204,19 @@ export function registerTournamentHandlers(
       return;
     }
 
-    // 残高チェック
-    const bankroll = await prisma.bankroll.findUnique({ where: { userId: odId } });
-    if (!bankroll || bankroll.balance < tournament.config.buyIn) {
-      socket.emit('tournament:error', { message: 'チップが不足しています' });
-      return;
-    }
-
     const buyIn = tournament.config.buyIn;
     const result = await withDbAndMemory({
       label: 'Reentry',
       odId,
       dbOps: async (tx) => {
-        await tx.bankroll.update({
-          where: { userId: odId },
+        // 残高チェックをトランザクション内で行いレースコンディションを防止
+        const updated = await tx.bankroll.updateMany({
+          where: { userId: odId, balance: { gte: buyIn } },
           data: { balance: { decrement: buyIn } },
         });
+        if (updated.count === 0) {
+          throw new Error('INSUFFICIENT_BALANCE');
+        }
         await tx.transaction.create({
           data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
         });

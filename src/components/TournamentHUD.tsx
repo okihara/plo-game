@@ -1,17 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Users } from 'lucide-react';
 import type { ClientTournamentState, TournamentPlayerEliminatedData } from '@plo/shared';
+import { formatChips } from '../utils/formatChips';
 
 interface TournamentHUDProps {
   tournamentState: ClientTournamentState;
   isFinalTable: boolean;
   lastEliminated: TournamentPlayerEliminatedData | null;
-}
-
-function formatChips(amount: number): string {
-  if (amount >= 1000000) return `${(amount / 1000000).toFixed(1)}M`;
-  if (amount >= 1000) return `${(amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1)}K`;
-  return String(amount);
 }
 
 function useCountdown(targetMs: number): string {

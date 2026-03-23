@@ -1,19 +1,11 @@
 import { Trophy } from 'lucide-react';
+import { formatChips } from '../utils/formatChips';
 
 interface EliminationOverlayProps {
   position: number;
   totalPlayers: number;
   prizeAmount: number;
   onClose: () => void;
-}
-
-function formatChips(amount: number): string {
-  if (amount >= 1000) return `${(amount / 1000).toFixed(amount % 1000 === 0 ? 0 : 1)}K`;
-  return String(amount);
-}
-
-function getOrdinal(n: number): string {
-  return `${n}位`;
 }
 
 export function EliminationOverlay({ position, totalPlayers, prizeAmount, onClose }: EliminationOverlayProps) {
@@ -47,7 +39,7 @@ export function EliminationOverlay({ position, totalPlayers, prizeAmount, onClos
 
         {/* Position */}
         <div className="text-4xl font-black mb-1">
-          {getOrdinal(position)}
+          {position}位
         </div>
         <div className="text-gray-400 text-sm mb-6">
           {totalPlayers}人中

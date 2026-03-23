@@ -98,6 +98,38 @@ function registerNPlayers(
   return { odIds, sockets };
 }
 
+/**
+ * コールバック経由でバスト→ハンド完了をシミュレートするヘルパー。
+ * TournamentInstance の private メソッド (onPlayerBusted / onHandSettled) を
+ * テストから直接呼び出すことで、TableInstance を介さずにコアロジックを検証する。
+ */
+function simulateBust(
+  tournament: TournamentInstance,
+  odId: string,
+  chipsAtHandStart: number
+): void {
+  const player = tournament.getPlayer(odId);
+  if (player) {
+    // onPlayerBusted 呼び出し前にチップを設定（実際はハンド開始時の値）
+    player.chips = chipsAtHandStart;
+  }
+  const socket = player?.socket ?? null;
+  (tournament as any).onPlayerBusted(odId, 0, socket);
+}
+
+function simulateHandSettled(
+  tournament: TournamentInstance,
+  seatChips: { odId: string; seatIndex: number; chips: number }[]
+): void {
+  // 実際の finalizeHand では _isHandInProgress = false が先に設定される。
+  // テストでは手動で全テーブルのハンド中フラグをクリアしてから onHandSettled を呼ぶ。
+  const tables = (tournament as any).tables as Map<string, any>;
+  for (const table of tables.values()) {
+    table._isHandInProgress = false;
+  }
+  (tournament as any).onHandSettled(seatChips);
+}
+
 // ============================================
 // テスト
 // ============================================
@@ -212,7 +244,7 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // C. 切断/再接続テスト (レビュー #1)
+  // C. 切断/再接続テスト
   // ============================================
 
   describe('切断/再接続', () => {
@@ -248,11 +280,9 @@ describe('TournamentInstance', () => {
       tournament.start();
 
       tournament.handleDisconnect('player_0');
-      // すぐに再接続
       const newSocket = createMockSocket('new_sock');
       tournament.handleReconnect('player_0', newSocket);
 
-      // 2分経過してもプレイヤーは影響を受けない
       vi.advanceTimersByTime(3 * 60 * 1000);
       const player = tournament.getPlayer('player_0');
       expect(player?.status).toBe('playing');
@@ -287,12 +317,15 @@ describe('TournamentInstance', () => {
 
     it('eliminated プレイヤーは再接続できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
+      const { sockets } = registerNPlayers(tournament, 3);
       tournament.start();
 
-      // 手動でeliminatedに変更（実際はonPlayerBusted経由）
-      const player = tournament.getPlayer('player_0');
-      if (player) player.status = 'eliminated';
+      // コールバック経由でeliminatedにする
+      simulateBust(tournament, 'player_0', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2500 },
+      ]);
 
       const newSocket = createMockSocket();
       const result = tournament.handleReconnect('player_0', newSocket);
@@ -301,147 +334,413 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // D. プレイヤーバスト・順位計算テスト (レビュー #3)
+  // D. プレイヤーバスト・順位計算テスト
   // ============================================
 
-  describe('プレイヤーバスト順位計算', () => {
-    it('バストしたプレイヤーに正しい順位が割り当てられる', () => {
-      const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 4);
-      tournament.start();
-
-      // 最初のバスト: 残り4→3、順位4
-      // 内部的にonPlayerBusted をテストするため、直接コールバック相当をシミュレート
-      // ここでは getPlayersRemaining() の挙動を検証
-      expect(tournament.getPlayersRemaining()).toBe(4);
-    });
-
-    /**
-     * BUG #3: 同一ハンドで複数プレイヤーがバストした場合
-     * 現在の実装では getPlayersRemaining() - 1 で順位を算出するが、
-     * 先にバスト処理されたプレイヤーの status が 'eliminated' に変わるため、
-     * 後続のバストプレイヤーの順位が不正にズレる。
-     *
-     * 例: 4人中2人が同時バスト
-     *   - 1人目バスト: remaining=4-1=3 → 順位4 (正しい)
-     *   - 2人目バスト: remaining=3-1=2 → 順位3 (本来は4であるべき)
-     *
-     * ポーカー標準ルール: 同一ハンドでバストした場合、
-     * 開始時チップの多い方が上位（ここではテスト不可だが方針として記録）
-     */
-    it('同一ハンドで複数バストした場合の順位が正しい（現状バグ）', () => {
+  describe('バスト順位計算', () => {
+    it('1人バスト: 正しい順位が付与される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
       const { sockets } = registerNPlayers(tournament, 4);
       tournament.start();
 
-      // onPlayerBustedを直接呼ぶためにテーブルのコールバックを取得
-      // TournamentInstanceのprivateメソッドをテストするため、
-      // テーブルから直接コールバック経由でバスト処理をトリガーする
-      const tables = Array.from({ length: tournament.getTableCount() }, (_, i) => {
-        // テーブルを見つける
-        for (const player of [tournament.getPlayer('player_0'), tournament.getPlayer('player_1'),
-                               tournament.getPlayer('player_2'), tournament.getPlayer('player_3')]) {
-          if (player?.tableId) {
-            return tournament.getTable(player.tableId);
-          }
-        }
-        return undefined;
-      }).filter(Boolean);
-
-      // 同時バスト前の残りプレイヤー数
       expect(tournament.getPlayersRemaining()).toBe(4);
 
-      // 現状の実装では、同一ハンドで2人バストすると:
-      // 1人目: remaining = 4, position = 4 → status='eliminated'
-      // 2人目: remaining = 3 (1人目がeliminated), position = 3
-      // → 本来は両方 position = 3 であるべき（同時バスト）
+      // player_3 がバスト（チップ300でハンド開始→バスト）
+      simulateBust(tournament, 'player_3', 300);
+      // ハンド完了（残り3人のチップ情報）
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+      ]);
 
-      // このテストは修正後に具体的に検証する
-      // 現時点ではバストプレイヤーの追跡が正しく機能するか確認
-      expect(tournament.getPlayersRemaining()).toBe(4); // まだ誰もバストしていない
+      expect(tournament.getPlayersRemaining()).toBe(3);
+      const busted = tournament.getPlayer('player_3');
+      expect(busted?.status).toBe('eliminated');
+      expect(busted?.finishPosition).toBe(4); // 4人中4位
+    });
+
+    it('連続バスト: 順位が正しくインクリメントされる', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 4);
+      tournament.start();
+
+      // 1人目バスト: 4人→3人、順位4位
+      simulateBust(tournament, 'player_3', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+      ]);
+
+      expect(tournament.getPlayer('player_3')?.finishPosition).toBe(4);
+
+      // 2人目バスト: 3人→2人、順位3位
+      simulateBust(tournament, 'player_2', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 3000 },
+      ]);
+
+      expect(tournament.getPlayer('player_2')?.finishPosition).toBe(3);
+    });
+
+    it('同一ハンドで2人バスト: チップ多い方が上位', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 4);
+      tournament.start();
+
+      // 2人同時バスト: player_2(チップ500) と player_3(チップ300)
+      simulateBust(tournament, 'player_2', 500);
+      simulateBust(tournament, 'player_3', 300);
+
+      // ハンド完了
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 3000 },
+      ]);
+
+      expect(tournament.getPlayersRemaining()).toBe(2);
+      // player_2 はチップ多い（500）→ 3位
+      expect(tournament.getPlayer('player_2')?.finishPosition).toBe(3);
+      // player_3 はチップ少ない（300）→ 4位
+      expect(tournament.getPlayer('player_3')?.finishPosition).toBe(4);
+    });
+
+    it('同一ハンドで同チップバスト: 同順位が付与される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 4);
+      tournament.start();
+
+      // 同チップ（400）で2人同時バスト
+      simulateBust(tournament, 'player_2', 400);
+      simulateBust(tournament, 'player_3', 400);
+
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 3000 },
+      ]);
+
+      // 同チップなので同順位
+      expect(tournament.getPlayer('player_2')?.finishPosition).toBe(3);
+      expect(tournament.getPlayer('player_3')?.finishPosition).toBe(3);
+    });
+
+    it('バスト通知が個人・全体に送信される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { sockets } = registerNPlayers(tournament, 3);
+      tournament.start();
+
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      // 個人通知 (tournament:eliminated)
+      expect(sockets[2].emit).toHaveBeenCalledWith(
+        'tournament:eliminated',
+        expect.objectContaining({
+          position: 3,
+          totalPlayers: 3,
+        })
+      );
+
+      // 全体通知 (tournament:player_eliminated)
+      const roomEmit = (io.to as ReturnType<typeof vi.fn>).mock.results[0]?.value?.emit;
+      const eliminatedCalls = roomEmit.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'tournament:player_eliminated'
+      );
+      expect(eliminatedCalls.length).toBeGreaterThan(0);
+    });
+
+    it('onHandSettled でプレイヤーチップが同期される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 3);
+      tournament.start();
+
+      // バストなしでハンド完了
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2000 },
+        { odId: 'player_1', seatIndex: 1, chips: 1000 },
+        { odId: 'player_2', seatIndex: 2, chips: 1500 },
+      ]);
+
+      expect(tournament.getPlayer('player_0')?.chips).toBe(2000);
+      expect(tournament.getPlayer('player_1')?.chips).toBe(1000);
+      expect(tournament.getPlayer('player_2')?.chips).toBe(1500);
     });
   });
 
   // ============================================
-  // E. ファイナルテーブル形成テスト (レビュー #4)
+  // E. フェーズ遷移テスト
+  // ============================================
+
+  describe('フェーズ遷移', () => {
+    it('残り1人でトーナメント完了 (completed)', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const onComplete = vi.fn();
+      tournament.onTournamentComplete = onComplete;
+      registerNPlayers(tournament, 3);
+      tournament.start();
+
+      // 2人バスト → 残り1人
+      simulateBust(tournament, 'player_1', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_2', seatIndex: 2, chips: 1500 },
+      ]);
+
+      simulateBust(tournament, 'player_2', 1500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 4500 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('completed');
+      expect(onComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('残り2人でheads_upに遷移', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 3);
+      tournament.start();
+
+      // 1人バスト → 残り2人
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('heads_up');
+    });
+
+    it('残りプレイヤーが多い場合はrunningのまま', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 5);
+      tournament.start();
+
+      // 1人バスト → 残り4人（playersPerTable=6 なのでfinal_tableにはならない）
+      simulateBust(tournament, 'player_4', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 1500 },
+        { odId: 'player_3', seatIndex: 3, chips: 2000 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('running');
+    });
+
+    it('多テーブルで残りプレイヤーがplayersPerTable以下になるとfinal_tableへ遷移', () => {
+      // 10人 → 2テーブル（5+5）
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      registerNPlayers(tournament, 10);
+      tournament.start();
+
+      expect(tournament.getTableCount()).toBe(2);
+
+      // 4人バスト → 残り6人 → playersPerTable(6)以下でfinal_table形成
+      simulateBust(tournament, 'player_6', 300);
+      simulateBust(tournament, 'player_7', 300);
+      simulateBust(tournament, 'player_8', 300);
+      simulateBust(tournament, 'player_9', 300);
+
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2500 },
+        { odId: 'player_3', seatIndex: 3, chips: 3500 },
+        { odId: 'player_4', seatIndex: 4, chips: 2000 },
+        { odId: 'player_5', seatIndex: 5, chips: 2000 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('final_table');
+    });
+  });
+
+  // ============================================
+  // F. トーナメント完了テスト
+  // ============================================
+
+  describe('トーナメント完了', () => {
+    it('優勝者に1位が割り当てられる', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const onComplete = vi.fn();
+      tournament.onTournamentComplete = onComplete;
+      registerNPlayers(tournament, 3);
+      tournament.start();
+
+      // player_1 バスト（3位）
+      simulateBust(tournament, 'player_1', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_2', seatIndex: 2, chips: 1500 },
+      ]);
+
+      // player_2 バスト（2位）→ player_0 が優勝
+      simulateBust(tournament, 'player_2', 1500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 4500 },
+      ]);
+
+      expect(tournament.getStatus()).toBe('completed');
+      expect(tournament.getPlayer('player_0')?.finishPosition).toBe(1);
+      expect(tournament.getPlayer('player_1')?.finishPosition).toBe(3);
+      expect(tournament.getPlayer('player_2')?.finishPosition).toBe(2);
+    });
+
+    it('onTournamentComplete に結果配列が渡される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const onComplete = vi.fn();
+      tournament.onTournamentComplete = onComplete;
+      registerNPlayers(tournament, 2);
+      tournament.start();
+
+      simulateBust(tournament, 'player_1', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+      ]);
+
+      expect(onComplete).toHaveBeenCalledWith(
+        'test-tournament',
+        expect.arrayContaining([
+          expect.objectContaining({ odId: 'player_0', position: 1 }),
+          expect.objectContaining({ odId: 'player_1', position: 2 }),
+        ])
+      );
+    });
+
+    it('完了時にtournament:completedイベントが送信される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 2);
+      tournament.start();
+
+      simulateBust(tournament, 'player_1', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+      ]);
+
+      const roomEmit = (io.to as ReturnType<typeof vi.fn>).mock.results[0]?.value?.emit;
+      const completedCalls = roomEmit.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'tournament:completed'
+      );
+      expect(completedCalls.length).toBeGreaterThan(0);
+      expect(completedCalls[0][1]).toEqual(expect.objectContaining({
+        totalPlayers: 2,
+        prizePool: 200,
+      }));
+    });
+
+    it('完了後にテーブルがクリアされる', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      registerNPlayers(tournament, 2);
+      tournament.start();
+
+      expect(tournament.getTableCount()).toBeGreaterThan(0);
+
+      simulateBust(tournament, 'player_1', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+      ]);
+
+      expect(tournament.getTableCount()).toBe(0);
+    });
+  });
+
+  // ============================================
+  // G. ファイナルテーブル形成テスト
   // ============================================
 
   describe('ファイナルテーブル形成', () => {
-    it('テーブルが1つのみの場合はformFinalTableでテーブル移動しない', () => {
+    it('テーブルが1つのみの場合はテーブル移動しない', () => {
       const tournament = new TournamentInstance(io, createTestConfig({ playersPerTable: 6 }));
       registerNPlayers(tournament, 4);
       tournament.start();
 
-      // 4人なら1テーブル
       expect(tournament.getTableCount()).toBe(1);
       expect(tournament.getStatus()).toBe('running');
     });
 
-    it('多テーブルで開始し、残りプレイヤーが定員以下になったらfinal_tableへ遷移', () => {
-      // 10人 → 2テーブル（5+5）
+    it('多テーブルで開始される', () => {
       const tournament = new TournamentInstance(io, createTestConfig({
         playersPerTable: 6,
-        minPlayers: 2
+        minPlayers: 2,
       }));
       registerNPlayers(tournament, 10);
       tournament.start();
 
       expect(tournament.getTableCount()).toBe(2);
     });
+
+    it('ファイナルテーブル形成後は1テーブルになる', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      registerNPlayers(tournament, 10);
+      tournament.start();
+
+      // 4人バスト → 残り6人
+      for (let i = 6; i < 10; i++) {
+        simulateBust(tournament, `player_${i}`, 300);
+      }
+
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2500 },
+        { odId: 'player_3', seatIndex: 3, chips: 3500 },
+        { odId: 'player_4', seatIndex: 4, chips: 2000 },
+        { odId: 'player_5', seatIndex: 5, chips: 2000 },
+      ]);
+
+      expect(tournament.getTableCount()).toBe(1);
+      expect(tournament.getStatus()).toBe('final_table');
+
+      // 全残りプレイヤーが同じテーブルにいる
+      const tableIds = new Set<string>();
+      for (let i = 0; i < 6; i++) {
+        const player = tournament.getPlayer(`player_${i}`);
+        if (player?.tableId) tableIds.add(player.tableId);
+      }
+      expect(tableIds.size).toBe(1);
+    });
+
+    it('ファイナルテーブル通知が送信される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      registerNPlayers(tournament, 10);
+      tournament.start();
+
+      for (let i = 6; i < 10; i++) {
+        simulateBust(tournament, `player_${i}`, 300);
+      }
+
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2500 },
+        { odId: 'player_3', seatIndex: 3, chips: 3500 },
+        { odId: 'player_4', seatIndex: 4, chips: 2000 },
+        { odId: 'player_5', seatIndex: 5, chips: 2000 },
+      ]);
+
+      const roomEmit = (io.to as ReturnType<typeof vi.fn>).mock.results[0]?.value?.emit;
+      const ftCalls = roomEmit.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'tournament:final_table'
+      );
+      expect(ftCalls.length).toBeGreaterThan(0);
+    });
   });
 
   // ============================================
-  // F. トーナメント完了テスト (レビュー #2)
-  // ============================================
-
-  describe('トーナメント完了', () => {
-    it('完了時に onTournamentComplete コールバックが呼ばれる', () => {
-      const tournament = new TournamentInstance(io, createTestConfig());
-      const onComplete = vi.fn();
-      tournament.onTournamentComplete = onComplete;
-
-      registerNPlayers(tournament, 3);
-      tournament.start();
-
-      // 直接completeTournamentを呼べないので、残り1人になる状況を作る
-      // プレイヤーを手動でeliminatedに設定
-      const p1 = tournament.getPlayer('player_1');
-      const p2 = tournament.getPlayer('player_2');
-      if (p1) {
-        p1.status = 'eliminated';
-        p1.finishPosition = 3;
-      }
-      if (p2) {
-        p2.status = 'eliminated';
-        p2.finishPosition = 2;
-      }
-
-      // getPlayersRemaining()が1を返す状態
-      expect(tournament.getPlayersRemaining()).toBe(1);
-    });
-
-    /**
-     * BUG #2: completeTournament() で以下が欠落:
-     * - 賞金のバンクロールへの加算
-     * - TournamentResult の DB 保存
-     * - Tournament ステータスの DB 更新
-     *
-     * このテストは修正後に追加する:
-     * - onTournamentComplete コールバック内で DB 操作が行われること
-     * - 入賞者の賞金が正しく計算されること
-     */
-    it('completeTournamentで優勝者が確定する（完了テスト用）', () => {
-      const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 2);
-      tournament.start();
-
-      // 2人のうち1人をeliminatedにして完了を確認
-      expect(tournament.getStatus()).toBe('running');
-    });
-  });
-
-  // ============================================
-  // G. リエントリーテスト
+  // H. リエントリーテスト
   // ============================================
 
   describe('リエントリー', () => {
@@ -478,14 +777,26 @@ describe('TournamentInstance', () => {
       registerNPlayers(tournament, 3);
       tournament.start();
 
-      const player = tournament.getPlayer('player_0');
-      if (player) {
-        player.status = 'eliminated';
-        player.reentryCount = 1; // 既に1回リエントリー済み
-      }
+      // コールバック経由でeliminated状態にする
+      simulateBust(tournament, 'player_0', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_1', seatIndex: 1, chips: 2500 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+      ]);
 
-      const socket = createMockSocket();
-      const result = tournament.reenterPlayer('player_0', socket);
+      // 1回目リエントリー
+      const socket1 = createMockSocket();
+      tournament.reenterPlayer('player_0', socket1);
+
+      // 再度バスト → リエントリー2回目
+      simulateBust(tournament, 'player_0', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_1', seatIndex: 1, chips: 3500 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+      ]);
+
+      const socket2 = createMockSocket();
+      const result = tournament.reenterPlayer('player_0', socket2);
       expect(result.success).toBe(false);
       expect(result.error).toContain('上限');
     });
@@ -499,11 +810,13 @@ describe('TournamentInstance', () => {
       tournament.start();
 
       const poolBefore = tournament.getPrizePool();
-      const player = tournament.getPlayer('player_0');
-      if (player) {
-        player.status = 'eliminated';
-        player.chips = 0;
-      }
+
+      // コールバック経由でeliminated状態にする
+      simulateBust(tournament, 'player_0', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_1', seatIndex: 1, chips: 2500 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+      ]);
 
       const socket = createMockSocket();
       const result = tournament.reenterPlayer('player_0', socket);
@@ -518,7 +831,7 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // H. 遅刻登録テスト
+  // I. 遅刻登録テスト
   // ============================================
 
   describe('遅刻登録', () => {
@@ -556,7 +869,7 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // I. クライアント状態テスト
+  // J. クライアント状態テスト
   // ============================================
 
   describe('getClientState', () => {
@@ -592,7 +905,7 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // J. キャンセルテスト
+  // K. キャンセルテスト
   // ============================================
 
   describe('キャンセル', () => {
@@ -625,7 +938,7 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // K. getLobbyInfo テスト
+  // L. getLobbyInfo テスト
   // ============================================
 
   describe('getLobbyInfo', () => {
