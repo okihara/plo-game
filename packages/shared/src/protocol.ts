@@ -4,7 +4,6 @@ import type { Action, Card } from './types';
 import type {
   BlindLevel,
   ClientTournamentState,
-  TournamentLobbyInfo,
   TournamentEliminationInfo,
   TournamentPlayerEliminatedData,
   TournamentCompletedData,
@@ -29,7 +28,6 @@ export interface ClientToServerEvents {
   'private:join': (data: { inviteCode: string }) => void;
 
   // Tournament
-  'tournament:list': () => void;
   'tournament:register': (data: { tournamentId: string }) => void;
   'tournament:unregister': (data: { tournamentId: string }) => void;
   'tournament:reenter': (data: { tournamentId: string }) => void;
@@ -74,7 +72,6 @@ export interface ServerToClientEvents {
   'private:created': (data: { tableId: string; inviteCode: string }) => void;
 
   // Tournament
-  'tournament:list': (data: { tournaments: TournamentLobbyInfo[] }) => void;
   'tournament:registered': (data: { tournamentId: string }) => void;
   'tournament:unregistered': (data: { tournamentId: string }) => void;
   'tournament:state': (state: ClientTournamentState) => void;

@@ -29,11 +29,10 @@ function statusLabel(status: string): { text: string; color: string } {
 export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyProps) {
   const { user } = useAuth();
   const {
-    isConnected,
-    isConnecting,
     connect,
     tournaments,
     refreshList,
+    isListLoading,
     isRegistered,
     registeredTournamentId,
     register,
@@ -43,17 +42,15 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
 
   const [registering, setRegistering] = useState<string | null>(null);
 
-  // 接続 + 一覧取得
+  // 一覧は REST（WebSocket は登録・ゲーム用に遅延接続）
   useEffect(() => {
-    connect().then(() => refreshList());
-  }, [connect, refreshList]);
+    void refreshList();
+  }, [refreshList]);
 
-  // 定期更新
   useEffect(() => {
-    if (!isConnected) return;
-    const interval = setInterval(refreshList, 5000);
+    const interval = setInterval(() => void refreshList(), 5000);
     return () => clearInterval(interval);
-  }, [isConnected, refreshList]);
+  }, [refreshList]);
 
   // 登録完了 → ゲーム画面へ遷移
   useEffect(() => {
@@ -62,14 +59,24 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
     }
   }, [isRegistered, registeredTournamentId]);
 
-  const handleRegister = (tournamentId: string) => {
+  const handleRegister = async (tournamentId: string) => {
     if (!user) return;
     setRegistering(tournamentId);
-    register(tournamentId);
+    try {
+      await connect();
+      register(tournamentId);
+    } catch {
+      setRegistering(null);
+    }
   };
 
-  const handleUnregister = (tournamentId: string) => {
-    unregister(tournamentId);
+  const handleUnregister = async (tournamentId: string) => {
+    try {
+      await connect();
+      unregister(tournamentId);
+    } catch {
+      /* 接続失敗時は unregister も送れない */
+    }
   };
 
   const handleEnter = (tournamentId: string) => {
@@ -95,15 +102,15 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
       )}
 
       {/* Loading */}
-      {isConnecting && (
+      {isListLoading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
-          <span className="ml-2 text-gray-400">接続中...</span>
+          <span className="ml-2 text-gray-400">読み込み中...</span>
         </div>
       )}
 
       {/* Tournament List */}
-      {!isConnecting && (
+      {!isListLoading && (
         <div className="px-4 py-4 space-y-3">
           {tournaments.length === 0 && (
             <div className="text-center py-16 text-gray-500">

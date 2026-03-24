@@ -11,8 +11,12 @@ import type {
 // Re-export shared types for components that import from this hook
 export type { TournamentLobbyInfo, ClientTournamentState, TournamentCompletedData, TournamentPlayerEliminatedData } from '@plo/shared';
 
+const API_BASE = import.meta.env.VITE_SERVER_URL || '';
+
 export function useTournamentState() {
   const [tournaments, setTournaments] = useState<TournamentLobbyInfo[]>([]);
+  const [isListLoading, setIsListLoading] = useState(true);
+  const initialListFetchedRef = useRef(false);
   const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
   const [isRegistered, setIsRegistered] = useState(false);
   const [registeredTournamentId, setRegisteredTournamentId] = useState<string | null>(null);
@@ -53,8 +57,22 @@ export function useTournamentState() {
     setRegisteredTournamentId(null);
   }, []);
 
-  const refreshList = useCallback(() => {
-    wsService.listTournaments();
+  const refreshList = useCallback(async () => {
+    const isFirst = !initialListFetchedRef.current;
+    if (isFirst) setIsListLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/tournaments`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as { tournaments?: TournamentLobbyInfo[] };
+      setTournaments(data.tournaments ?? []);
+    } catch {
+      if (isFirst) setTournaments([]);
+    } finally {
+      if (isFirst) {
+        setIsListLoading(false);
+        initialListFetchedRef.current = true;
+      }
+    }
   }, []);
 
   const register = useCallback((tournamentId: string) => {
@@ -82,23 +100,18 @@ export function useTournamentState() {
       onConnected: () => setIsConnected(true),
       onDisconnected: () => setIsConnected(false),
 
-      onTournamentList: (data) => {
-        setTournaments(data.tournaments);
-      },
-
       onTournamentRegistered: (data) => {
         setIsRegistered(true);
         setRegisteredTournamentId(data.tournamentId);
         setError(null);
-        // リスト更新
-        wsService.listTournaments();
+        void refreshList();
       },
 
       onTournamentUnregistered: () => {
         setIsRegistered(false);
         setRegisteredTournamentId(null);
         setTournamentState(null);
-        wsService.listTournaments();
+        void refreshList();
       },
 
       onTournamentState: (state) => {
@@ -160,7 +173,7 @@ export function useTournamentState() {
       wsService.removeListeners('tournament');
       if (eliminatedTimerRef.current) clearTimeout(eliminatedTimerRef.current);
     };
-  }, []);
+  }, [refreshList]);
 
   return {
     // Connection
@@ -172,6 +185,7 @@ export function useTournamentState() {
     // Tournament list
     tournaments,
     refreshList,
+    isListLoading,
 
     // Registration
     isRegistered,

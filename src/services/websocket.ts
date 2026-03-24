@@ -4,7 +4,6 @@ import type {
   ServerToClientEvents,
   ClientGameState,
   ClientTournamentState,
-  TournamentLobbyInfo,
   TournamentEliminationInfo,
   TournamentPlayerEliminatedData,
   TournamentCompletedData,
@@ -45,7 +44,6 @@ export type WsListeners = {
   onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   onDisplaced?: () => void;
   // Tournament events
-  onTournamentList?: (data: { tournaments: TournamentLobbyInfo[] }) => void;
   onTournamentRegistered?: (data: { tournamentId: string }) => void;
   onTournamentUnregistered?: (data: { tournamentId: string }) => void;
   onTournamentState?: (state: ClientTournamentState) => void;
@@ -224,10 +222,6 @@ class WebSocketService {
       });
 
       // Tournament events
-      this.socket.on('tournament:list', (data) => {
-        wsLog('tournament:list', data);
-        this.emit('onTournamentList', data);
-      });
       this.socket.on('tournament:registered', (data) => {
         wsLog('tournament:registered', data);
         this.emit('onTournamentRegistered', data);
@@ -364,10 +358,6 @@ class WebSocketService {
   }
 
   // Tournament actions
-  listTournaments(): void {
-    this.socket?.emit('tournament:list');
-  }
-
   registerTournament(tournamentId: string): void {
     this.socket?.emit('tournament:register', { tournamentId });
   }

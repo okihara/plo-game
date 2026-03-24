@@ -61,12 +61,6 @@ export function registerTournamentHandlers(
 ): void {
   const odId = socket.odId!;
 
-  // トーナメント一覧取得
-  socket.on('tournament:list', () => {
-    const tournaments = tournamentManager.getActiveTournaments();
-    socket.emit('tournament:list', { tournaments });
-  });
-
   // トーナメントテーブルの状態を再送信（ページ遷移でゲーム画面に入った時用）
   socket.on('tournament:request_state', (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);

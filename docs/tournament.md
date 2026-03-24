@@ -67,7 +67,7 @@ flowchart LR
   game -->|戻る| lobby
 ```
 
-- **一覧**: `TournamentLobby` で `tournament:list` または REST `GET /api/tournaments` でアクティブなトーナメントを表示。
+- **一覧**: `TournamentLobby` は REST `GET /api/tournaments` でアクティブなトーナメントを表示（ポーリング）。
 - **登録**: `tournament:register`。バイインは Prisma の `bankroll` から控除され、`tournamentRegistration` が作成される（[server/src/modules/tournament/socket.ts](../server/src/modules/tournament/socket.ts) の `withDbAndMemory`）。
 - **登録解除**: `tournament:unregister`（**開始前**の `registering` のみ）。
 - **遅刻登録**: 開催後も `isLateRegistrationOpen()` が真なら `lateRegister` が走り、テーブル着席まで行われる。
@@ -120,7 +120,6 @@ flowchart LR
 
 | イベント | ペイロード | 説明 |
 |----------|------------|------|
-| `tournament:list` | なし | アクティブ一覧要求 |
 | `tournament:register` | `{ tournamentId }` | 参加登録（バイイン控除） |
 | `tournament:unregister` | `{ tournamentId }` | 登録解除（開始前のみ） |
 | `tournament:reenter` | `{ tournamentId }` | リエントリー |
@@ -130,7 +129,6 @@ flowchart LR
 
 | イベント | ペイロード | 説明 |
 |----------|------------|------|
-| `tournament:list` | `{ tournaments }` | 一覧応答 |
 | `tournament:registered` | `{ tournamentId }` | 登録成功 |
 | `tournament:unregistered` | `{ tournamentId }` | 解除成功 |
 | `tournament:state` | `ClientTournamentState` | 状態更新 |
