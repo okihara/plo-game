@@ -68,46 +68,51 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
   // 排除された場合
   if (elimination && !completedData) {
     return (
-      <EliminationOverlay
-        position={elimination.position}
-        totalPlayers={elimination.totalPlayers}
-        prizeAmount={elimination.prizeAmount}
-        onClose={handleBack}
-      />
+      <div className="relative h-full w-full min-h-0">
+        <EliminationOverlay
+          position={elimination.position}
+          totalPlayers={elimination.totalPlayers}
+          prizeAmount={elimination.prizeAmount}
+          onClose={handleBack}
+        />
+      </div>
     );
   }
 
-  // トーナメント完了
   if (completedData) {
     return (
-      <TournamentResultOverlay
-        results={completedData.results}
-        totalPlayers={completedData.totalPlayers}
-        prizePool={completedData.prizePool}
-        onClose={handleBack}
-      />
+      <div className="relative h-full w-full min-h-0">
+        <TournamentResultOverlay
+          results={completedData.results}
+          totalPlayers={completedData.totalPlayers}
+          prizePool={completedData.prizePool}
+          onClose={handleBack}
+        />
+      </div>
     );
   }
 
-  // テーブル移動中
   if (isChangingTable) {
-    return <TableMoveOverlay />;
+    return (
+      <div className="relative h-full w-full min-h-0">
+        <TableMoveOverlay />
+      </div>
+    );
   }
 
-  // ゲーム状態が届くまで待機
   if (!gameState) {
     return (
-      <div className="flex items-center justify-center h-full bg-gray-950">
-        <div className="text-center">
-          <div className="animate-spin w-10 h-10 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4" />
-          <p className="text-white/60 text-sm">テーブルに接続中...</p>
+      <div className="flex items-center justify-center h-full w-full min-h-0 bg-gray-950">
+        <div className="text-center px-[4cqw]">
+          <div className="animate-spin w-[10cqw] h-[10cqw] mx-auto mb-[4cqw] rounded-full border-[1cqw] border-white/30 border-t-white" />
+          <p className="text-white/60 text-[3cqw]">テーブルに接続中...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full min-h-0">
       <GameTable
         gameState={gameState}
         mySeat={mySeat}
