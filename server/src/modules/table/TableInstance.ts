@@ -663,6 +663,14 @@ export class TableInstance {
       return;
     }
 
+    // currentPlayer がオールインの場合はスキップして次へ進む
+    // （ブラインド投入でオールインになったケースなど）
+    const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+    if (currentPlayer && currentPlayer.isAllIn) {
+      this.advanceToNextPlayer();
+      return;
+    }
+
     // Pending early fold: 手番が回ってきたプレイヤーの保留フォールドを処理
     // handleAction → applyAction('fold') で正規のフォールド処理を行う
     // handleAction 内で requestNextAction が再帰的に呼ばれ、連続する pending fold も処理される
