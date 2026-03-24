@@ -93,6 +93,19 @@ export function registerTournamentHandlers(
       return;
     }
 
+    // 既に登録済みなら再接続として処理（切断復帰フロー）
+    const existingPlayer = tournament.getPlayer(odId);
+    if (existingPlayer) {
+      if (existingPlayer.status === 'eliminated') {
+        socket.emit('tournament:error', { message: 'このトーナメントでは既に敗退しています' });
+        return;
+      }
+      tournament.handleReconnect(odId, socket);
+      tournamentManager.setPlayerTournament(odId, data.tournamentId);
+      socket.emit('tournament:registered', { tournamentId: data.tournamentId });
+      return;
+    }
+
     const buyIn = tournament.config.buyIn;
 
     // ユーザー情報を取得（残高チェックはトランザクション内で行う）
