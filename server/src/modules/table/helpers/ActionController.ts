@@ -27,7 +27,13 @@ export class ActionController {
   private pendingAction: PendingAction | null = null;
   private actionGeneration = 0;
 
-  constructor(private broadcast: BroadcastService, private variantAdapter: VariantAdapter) {}
+  private rakePercent: number;
+  private rakeCapBB: number;
+
+  constructor(private broadcast: BroadcastService, private variantAdapter: VariantAdapter, options?: { rakePercent?: number; rakeCapBB?: number }) {
+    this.rakePercent = options?.rakePercent ?? TABLE_CONSTANTS.RAKE_PERCENT;
+    this.rakeCapBB = options?.rakeCapBB ?? TABLE_CONSTANTS.RAKE_CAP_BB;
+  }
 
   getPendingAction(): PendingAction | null {
     return this.pendingAction;
@@ -98,7 +104,7 @@ export class ActionController {
     const willAdvanceStreet = this.variantAdapter.wouldAdvanceStreet(gameState, seatIndex, action, amount, discardIndices);
 
     // アクション適用
-    const newState = this.variantAdapter.applyAction(gameState, seatIndex, action, amount, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB, discardIndices);
+    const newState = this.variantAdapter.applyAction(gameState, seatIndex, action, amount, this.rakePercent, this.rakeCapBB, discardIndices);
 
     // アクションをブロードキャスト（ストリート変更情報付き）
     this.broadcast.emitToRoom('game:action_taken', {
@@ -128,7 +134,7 @@ export class ActionController {
 
     // 1人以下なら勝者決定
     if (activePlayers.length <= 1) {
-      const newState = this.variantAdapter.determineWinner(gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
+      const newState = this.variantAdapter.determineWinner(gameState, this.rakePercent, this.rakeCapBB);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 
@@ -149,7 +155,7 @@ export class ActionController {
 
     // 全員アクション不可なら勝者決定
     if (attempts >= TABLE_CONSTANTS.MAX_PLAYERS) {
-      const newState = this.variantAdapter.determineWinner(gameState, TABLE_CONSTANTS.RAKE_PERCENT, TABLE_CONSTANTS.RAKE_CAP_BB);
+      const newState = this.variantAdapter.determineWinner(gameState, this.rakePercent, this.rakeCapBB);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }
 

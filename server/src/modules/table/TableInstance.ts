@@ -99,7 +99,8 @@ export class TableInstance {
     this.playerManager = new PlayerManager();
     this.broadcast = new BroadcastService(io, roomName);
     this.variantAdapter = new VariantAdapter(this.variant);
-    this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+    const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
+    this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
@@ -567,7 +568,8 @@ export class TableInstance {
 
       const newVariant = this.horseVariants[this.horseCurrentIndex];
       this.variantAdapter = new VariantAdapter(newVariant);
-      this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+      const rakeOpts = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
+      this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOpts);
 
     }
 
