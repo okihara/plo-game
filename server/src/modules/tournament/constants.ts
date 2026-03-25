@@ -35,7 +35,7 @@ export const DEFAULT_BUY_IN = 100;
 export const DEFAULT_MIN_PLAYERS = 6;
 
 // 最大参加者数（9テーブル × 6人）
-export const DEFAULT_MAX_PLAYERS = 54;
+export const DEFAULT_MAX_PLAYERS = 540;
 
 // 遅刻登録可能レベル
 export const DEFAULT_LATE_REGISTRATION_LEVELS = 4;

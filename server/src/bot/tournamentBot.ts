@@ -7,20 +7,30 @@ const NO_DELAY = process.env.NO_DELAY === 'true';
 const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'Bot Tournament';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
 const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '1500', 10);
-const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.50'); // 分（デフォルト45秒）
+const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.20'); // 分（デフォルト45秒）
 
 // テスト用高速ブラインドスケジュール（50/100 スタート）
 const FAST_BLIND_SCHEDULE = [
-  { level: 1,  smallBlind: 50,   bigBlind: 100,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 2,  smallBlind: 75,   bigBlind: 150,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 3,  smallBlind: 100,  bigBlind: 200,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 4,  smallBlind: 150,  bigBlind: 300,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 5,  smallBlind: 200,  bigBlind: 400,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 6,  smallBlind: 300,  bigBlind: 600,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 7,  smallBlind: 400,  bigBlind: 800,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 8,  smallBlind: 500,  bigBlind: 1000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 9,  smallBlind: 750,  bigBlind: 1500, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 10, smallBlind: 1000, bigBlind: 2000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 1,  smallBlind: 50,    bigBlind: 100,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 2,  smallBlind: 75,    bigBlind: 150,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 3,  smallBlind: 100,   bigBlind: 200,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 4,  smallBlind: 150,   bigBlind: 300,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 5,  smallBlind: 200,   bigBlind: 400,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 6,  smallBlind: 300,   bigBlind: 600,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 7,  smallBlind: 400,   bigBlind: 800,   ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 8,  smallBlind: 500,   bigBlind: 1000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 9,  smallBlind: 750,   bigBlind: 1500,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 10, smallBlind: 1000,  bigBlind: 2000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 11, smallBlind: 1500,  bigBlind: 3000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 12, smallBlind: 2000,  bigBlind: 4000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 13, smallBlind: 2500,  bigBlind: 5000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 14, smallBlind: 3000,  bigBlind: 6000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 15, smallBlind: 4000,  bigBlind: 8000,  ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 16, smallBlind: 5000,  bigBlind: 10000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 17, smallBlind: 7500,  bigBlind: 15000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 18, smallBlind: 10000, bigBlind: 20000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 19, smallBlind: 15000, bigBlind: 30000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 20, smallBlind: 20000, bigBlind: 40000, ante: 0, durationMinutes: BLIND_DURATION },
 ];
 
 async function main(): Promise<void> {
