@@ -17,12 +17,12 @@ function formatTime(isoString?: string): string {
 
 function statusLabel(status: string): { text: string; color: string } {
   switch (status) {
-    case 'registering': return { text: '登録受付中', color: 'bg-green-500' };
-    case 'starting': return { text: '開始準備中', color: 'bg-yellow-500' };
-    case 'running': return { text: '進行中', color: 'bg-blue-500' };
-    case 'final_table': return { text: 'ファイナルテーブル', color: 'bg-purple-500' };
-    case 'heads_up': return { text: 'ヘッズアップ', color: 'bg-red-500' };
-    default: return { text: status, color: 'bg-gray-500' };
+    case 'registering': return { text: '登録受付中', color: 'bg-forest' };
+    case 'starting': return { text: '開始準備中', color: 'bg-cream-600' };
+    case 'running': return { text: '進行中', color: 'bg-forest-light' };
+    case 'final_table': return { text: 'ファイナルテーブル', color: 'bg-forest-dark' };
+    case 'heads_up': return { text: 'ヘッズアップ', color: 'bg-cream-800' };
+    default: return { text: status, color: 'bg-cream-500' };
   }
 }
 
@@ -87,21 +87,21 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
   };
 
   return (
-    <div className="h-full w-full bg-gray-950 text-white flex flex-col min-h-0 overflow-hidden">
-      <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-gray-800">
+    <div className="h-full w-full light-bg text-cream-900 flex flex-col min-h-0 overflow-hidden">
+      <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-300">
         <button
           type="button"
           onClick={onBack}
-          className="p-[1.5cqw] rounded-[2cqw] hover:bg-gray-800 transition-colors"
+          className="p-[1.5cqw] rounded-[2cqw] hover:bg-cream-200 transition-colors"
         >
           <ChevronLeft className="w-[5cqw] h-[5cqw]" />
         </button>
-        <Trophy className="w-[5cqw] h-[5cqw] text-yellow-400 shrink-0" />
+        <Trophy className="w-[5cqw] h-[5cqw] text-forest shrink-0" />
         <h1 className="text-[4.5cqw] font-bold">トーナメント</h1>
       </div>
 
       {error && (
-        <div className="shrink-0 mx-[4cqw] mt-[3cqw] px-[3cqw] py-[2cqw] bg-red-900/50 border border-red-700 rounded-[2cqw] text-[2.8cqw] text-red-300">
+        <div className="shrink-0 mx-[4cqw] mt-[3cqw] px-[3cqw] py-[2cqw] bg-cream-50 border border-cream-400 rounded-[2cqw] text-[2.8cqw] text-cream-800">
           {error}
         </div>
       )}
@@ -109,15 +109,15 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
       <div className="flex-1 min-h-0 overflow-y-auto">
         {isListLoading && (
           <div className="flex items-center justify-center py-[20cqw]">
-            <Loader2 className="w-[6cqw] h-[6cqw] animate-spin text-gray-400 shrink-0" />
-            <span className="ml-[2cqw] text-[3cqw] text-gray-400">読み込み中...</span>
+            <Loader2 className="w-[6cqw] h-[6cqw] animate-spin text-cream-500 shrink-0" />
+            <span className="ml-[2cqw] text-[3cqw] text-cream-500">読み込み中...</span>
           </div>
         )}
 
         {!isListLoading && (
           <div className="px-[4cqw] py-[4cqw] space-y-[3cqw] pb-[6cqw]">
             {tournaments.length === 0 && (
-              <div className="text-center py-[16cqw] text-[3cqw] text-gray-500">
+              <div className="text-center py-[16cqw] text-[3cqw] text-cream-500">
                 <Trophy className="w-[12cqw] h-[12cqw] mx-auto mb-[3cqw] opacity-30" />
                 <p>開催中のトーナメントはありません</p>
               </div>
@@ -163,10 +163,10 @@ function TournamentCard({
   const isRunning = t.status !== 'registering';
 
   return (
-    <div className="bg-gray-900 rounded-[2.5cqw] border border-gray-800 overflow-hidden">
+    <div className="bg-white rounded-[2.5cqw] border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] overflow-hidden">
       <div className="px-[4cqw] py-[3cqw] flex items-center justify-between gap-[2cqw]">
         <div className="flex items-center gap-[2cqw] min-w-0">
-          <Trophy className="w-[4cqw] h-[4cqw] text-yellow-400 shrink-0" />
+          <Trophy className="w-[4cqw] h-[4cqw] text-forest shrink-0" />
           <span className="font-bold text-[3.5cqw] truncate">{t.name}</span>
         </div>
         <span className={`shrink-0 px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium text-white ${status.color}`}>
@@ -175,31 +175,31 @@ function TournamentCard({
       </div>
 
       <div className="px-[4cqw] pb-[3cqw] grid grid-cols-2 gap-y-[1.5cqw] text-[3cqw]">
-        <div className="text-gray-400 flex items-center gap-[1.5cqw]">
+        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <span>Buy-in</span>
         </div>
         <div className="text-right font-medium">{formatChips(t.buyIn)}</div>
 
-        <div className="text-gray-400 flex items-center gap-[1.5cqw]">
+        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <span>初期チップ</span>
         </div>
         <div className="text-right font-medium">{formatChips(t.startingChips)}</div>
 
-        <div className="text-gray-400 flex items-center gap-[1.5cqw]">
+        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <Users className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
           <span>参加者</span>
         </div>
         <div className="text-right font-medium">{t.registeredPlayers} / {t.maxPlayers}</div>
 
-        <div className="text-gray-400 flex items-center gap-[1.5cqw]">
+        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <Trophy className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
           <span>賞金プール</span>
         </div>
-        <div className="text-right font-medium text-yellow-400">{formatChips(t.prizePool)}</div>
+        <div className="text-right font-medium text-forest font-bold">{formatChips(t.prizePool)}</div>
 
         {t.scheduledStartTime && (
           <>
-            <div className="text-gray-400 flex items-center gap-[1.5cqw]">
+            <div className="text-cream-600 flex items-center gap-[1.5cqw]">
               <Clock className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
               <span>開始時刻</span>
             </div>
@@ -209,19 +209,19 @@ function TournamentCard({
 
         {isRunning && (
           <>
-            <div className="text-gray-400">ブラインドLv</div>
+            <div className="text-cream-600">ブラインドLv</div>
             <div className="text-right font-medium">Lv.{t.currentBlindLevel}</div>
           </>
         )}
 
         {t.isLateRegistrationOpen && (
-          <div className="col-span-2 text-[2.5cqw] text-green-400 mt-[1cqw]">遅刻登録可能</div>
+          <div className="col-span-2 text-[2.5cqw] text-forest mt-[1cqw]">遅刻登録可能</div>
         )}
       </div>
 
       <div className="px-[4cqw] pb-[4cqw]">
         {!isLoggedIn ? (
-          <div className="text-center text-[3cqw] text-gray-500 py-[2cqw]">
+          <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
             ログインすると参加できます
           </div>
         ) : isRegistered ? (
@@ -229,7 +229,7 @@ function TournamentCard({
             <button
               type="button"
               onClick={onEnter}
-              className="flex-1 py-[2.5cqw] bg-green-600 hover:bg-green-500 rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+              className="flex-1 py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
             >
               テーブルに入る
             </button>
@@ -237,7 +237,7 @@ function TournamentCard({
               <button
                 type="button"
                 onClick={onUnregister}
-                className="px-[4cqw] py-[2.5cqw] bg-gray-700 hover:bg-gray-600 rounded-[2cqw] text-[3cqw] transition-colors shrink-0"
+                className="px-[4cqw] py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-800 rounded-[2cqw] text-[3cqw] transition-colors shrink-0"
               >
                 取消
               </button>
@@ -248,7 +248,7 @@ function TournamentCard({
             type="button"
             onClick={onRegister}
             disabled={isRegistering}
-            className="w-full py-[2.5cqw] bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-700 disabled:text-gray-500 rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
+            className="w-full py-[2.5cqw] bg-forest hover:bg-forest-light disabled:bg-cream-300 disabled:text-cream-500 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
           >
             {isRegistering ? (
               <>
@@ -263,7 +263,7 @@ function TournamentCard({
           <button
             type="button"
             onClick={onEnter}
-            className="w-full py-[2.5cqw] bg-gray-700 hover:bg-gray-600 rounded-[2cqw] text-[3cqw] transition-colors"
+            className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-800 rounded-[2cqw] text-[3cqw] transition-colors"
           >
             観戦する
           </button>

@@ -134,15 +134,15 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
             </div>
           </div>
           {maintenance?.isActive && (
-            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-red-50 border border-red-300 rounded-[2cqw] text-[2.5cqw] text-red-700 leading-relaxed">
-              <p className="font-bold text-[3cqw] text-red-800 text-center">メンテナンス中</p>
+            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-cream-50 border border-cream-400 rounded-[2cqw] text-[2.5cqw] text-cream-800 leading-relaxed">
+              <p className="font-bold text-[3cqw] text-[#C0392B] text-center">メンテナンス中</p>
               {maintenance.message && (
                 <p className="mt-[1cqw] text-center">{maintenance.message}</p>
               )}
             </div>
           )}
           {announcement?.isActive && !maintenance?.isActive && (
-            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-blue-50 border border-blue-300 rounded-[2cqw] text-[2.5cqw] text-blue-700 leading-relaxed">
+            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-cream-50 border border-forest/20 rounded-[2cqw] text-[2.5cqw] text-cream-800 leading-relaxed">
               <p className="mt-[0.5cqw] text-center whitespace-pre-line">{announcement.message}</p>
             </div>
           )}
@@ -239,7 +239,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
           {onTournaments && (
             <button
               onClick={onTournaments}
-              className="w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-purple-500 to-purple-600 border-purple-700/30 shadow-[0_4px_12px_rgba(147,51,234,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(147,51,234,0.45)] active:scale-[0.97] text-white font-bold text-[3.5cqw] flex items-center justify-center gap-[2cqw]"
+              className="w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-cream-100 to-cream-200 border-forest/30 shadow-[0_4px_12px_rgba(45,90,61,0.12),inset_0_1px_0_rgba(255,255,255,0.5)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.2),inset_0_1px_0_rgba(255,255,255,0.5)] active:scale-[0.97] text-forest font-bold text-[3.5cqw] flex items-center justify-center gap-[2cqw]"
             >
               <span>🏆</span>
               トーナメント
@@ -257,8 +257,8 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
                     table.enabled && !maintenance?.isActive && user
-                      ? 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 shadow-[0_4px_12px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(245,158,11,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 opacity-50 cursor-not-allowed'
+                      ? 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 shadow-[0_4px_12px_rgba(45,90,61,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
+                      : 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
