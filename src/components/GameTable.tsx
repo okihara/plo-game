@@ -216,12 +216,8 @@ export function GameTable({
               <History className="w-[5cqw] h-[5cqw]" />
             </button>
 
-            {/* バリアント + ブラインド（中央） */}
-            <div className="flex-1 flex justify-center">
-              <span className="bg-black/70 rounded-full px-[3cqw] py-[0.5cqw] text-white/90 text-[5cqw] font-medium tracking-wide">
-                {variantDisplayName[gameState.variant] || gameState.variant} {blindsLabel}
-              </span>
-            </div>
+            {/* スペーサー */}
+            <div className="flex-1" />
 
             {/* サウンドトグル */}
             <button
@@ -289,6 +285,12 @@ export function GameTable({
               )}
             </div>
           </div>
+      {/* バリアント + ブラインド（中央上部） */}
+      <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+        <span className="bg-cream-200 rounded-b-[3cqw] px-[3cqw] py-[0.5cqw] text-black text-[3.3cqw] font-medium tracking-wide whitespace-nowrap w-[40cqw] h-[7cqw] text-center inline-flex items-end justify-center">
+          {variantDisplayName[gameState.variant] || gameState.variant} {blindsLabel}
+        </span>
+      </div>
       {/* 招待コードボタン（プライベートテーブル） */}
       {privateTableInfo && (
         <div className="absolute top-[9%] right-[4%] z-[160]">

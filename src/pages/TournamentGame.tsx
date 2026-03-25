@@ -132,7 +132,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         {tournamentState && (
           <TournamentHUD
             tournamentState={tournamentState}
-            isFinalTable={isFinalTable}
             lastEliminated={lastEliminated}
           />
         )}
