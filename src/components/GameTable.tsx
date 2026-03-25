@@ -283,7 +283,7 @@ export function GameTable({
                   </button>
                 </div>
               )}
-            </div>
+            </div> 
           </div>
       {/* バリアント + ブラインド（中央上部） */}
       <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
@@ -335,7 +335,7 @@ export function GameTable({
           {/* バリアント変更通知（テーブル中央） */}
           {variantNotice && (
             <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
-              <div className="bg-black text-white font-bold w-[70cqw] h-[60cqw] flex items-center justify-center rounded-[2cqw] text-[8cqw] animate-fade-in whitespace-nowrap">
+              <div className="bg-cream-200 text-gray-800 font-bold w-[70cqw] h-[32cqw] flex items-center justify-center rounded-[2cqw] text-[8cqw] animate-fade-in whitespace-nowrap">
                 {variantNotice}
               </div>
             </div>
