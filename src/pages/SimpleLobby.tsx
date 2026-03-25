@@ -247,7 +247,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
           )}
 
           {/* Tables - Fast Fold */}
-          <div className="space-y-[2.5cqw]">
+          <div className="mt-[2.5cqw] space-y-[2.5cqw]">
             {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
               const count = playerCounts[`${table.blinds}-ff`] ?? 0;
               return (
