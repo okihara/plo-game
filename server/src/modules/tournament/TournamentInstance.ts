@@ -13,6 +13,7 @@ import {
   PendingMove,
   TournamentResult,
 } from './types.js';
+import { maskName } from '../../shared/utils.js';
 import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
 
 /**
@@ -687,9 +688,13 @@ export class TournamentInstance {
       });
 
       // 全体通知
+      const eliminatedDisplayName = player.displayName
+        ?? (player.nameMasked ? maskName(player.odName) : player.odName);
+
       this.io.to(this.roomName).emit('tournament:player_eliminated', {
         odId: bust.odId,
         odName: player.odName,
+        displayName: eliminatedDisplayName,
         position: player.finishPosition,
         playersRemaining: remaining,
       });

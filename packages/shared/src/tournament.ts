@@ -84,6 +84,7 @@ export interface TournamentEliminationInfo {
 export interface TournamentPlayerEliminatedData {
   odId: string;
   odName: string;
+  displayName: string | null;
   position: number;
   playersRemaining: number;
 }

@@ -35,10 +35,10 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
   return (
     <>
       {/* トーナメント情報 — 設定ボタンの下 */}
-      <div className="absolute top-[8%] right-[-2%] z-30 pointer-events-none">
+      <div className="absolute top-[8%] right-[-6%] z-30 pointer-events-none">
         <div className="bg-cream-200 rounded-[2cqw] px-[3cqw] py-[1.5cqw] text-[3.1cqw] leading-snug shadow-md w-[30cqw]">
           <div className="text-gray-800">
-            PLAYERS:{ts.playersRemaining}/{ts.totalPlayers}
+            {ts.playersRemaining}/{ts.totalPlayers}E
           </div>
           <div className="text-gray-800">
             Lv.{bl.level}{ts.nextBlindLevel ? ` - ${countdown}` : ''}
@@ -47,11 +47,10 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
       </div>
 
       {lastEliminated && (
-        <div className="absolute top-[14cqw] left-1/2 -translate-x-1/2 z-30 animate-fade-in pointer-events-none">
-          <div className="bg-red-900/80 backdrop-blur-sm text-white text-[2.8cqw] px-[3cqw] py-[1.5cqw] rounded-[2cqw] max-w-[92cqw] text-center leading-snug">
-            <span className="font-bold">{lastEliminated.odName}</span>
-            <span className="text-red-300"> が {lastEliminated.position}位で脱落</span>
-            <span className="text-gray-300 ml-[2cqw]">残り{lastEliminated.playersRemaining}人</span>
+        <div className="absolute top-[14cqw] left-[2cqw] z-30 animate-fade-in pointer-events-none">
+          <div className="bg-red-900/80 backdrop-blur-sm text-white text-[2.8cqw] px-[3cqw] py-[1.5cqw] rounded-[2cqw] leading-snug">
+            <div><span className="font-bold">{lastEliminated.displayName ?? lastEliminated.odName}</span><span className="text-red-300"> が {lastEliminated.position}位で脱落</span></div>
+            <div className="text-gray-300">残り{lastEliminated.playersRemaining}人</div>
           </div>
         </div>
       )}
