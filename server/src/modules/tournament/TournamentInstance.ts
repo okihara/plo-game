@@ -697,6 +697,9 @@ export class TournamentInstance {
       console.log(`[Tournament ${this.id}] Player ${bust.odId} eliminated at position ${player.finishPosition}, ${remaining} remaining`);
     }
 
+    // 脱落によるプレイヤー数変動を即座に反映
+    this.broadcastTournamentState();
+
     // フェーズ遷移（onHandSettled から呼ばれるので finalizeHand 完了後）
     this.handlePhaseTransition(remaining);
   }

@@ -38,10 +38,10 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
       <div className="absolute top-[8%] right-[-2%] z-30 pointer-events-none">
         <div className="bg-cream-200 rounded-[2cqw] px-[3cqw] py-[1.5cqw] text-[3.1cqw] leading-snug shadow-md w-[30cqw]">
           <div className="text-gray-800">
-            {ts.playersRemaining}/{ts.totalPlayers}E
+            PLAYERS:{ts.playersRemaining}/{ts.totalPlayers}
           </div>
           <div className="text-gray-800">
-            Lv.{bl.level}{ts.nextBlindLevel ? ` Next ${countdown}` : ''}
+            Lv.{bl.level}{ts.nextBlindLevel ? ` - ${countdown}` : ''}
           </div>
         </div>
       </div>
