@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
@@ -59,6 +59,9 @@ export interface GameTableProps {
   isWaitingForPlayers?: boolean;
   seatedPlayerCount?: number;
 
+  // 外から差し込む通知テキスト（テーブル中央に一定時間表示）
+  notice?: string | null;
+
   // 外から差し込むオーバーレイ（TournamentHUD等）
   children?: React.ReactNode;
 }
@@ -85,6 +88,7 @@ export function GameTable({
   isChangingTable,
   isWaitingForPlayers,
   seatedPlayerCount,
+  notice: externalNotice,
   children,
 }: GameTableProps) {
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
@@ -100,16 +104,26 @@ export function GameTable({
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
-  const [variantNotice, setVariantNotice] = useState<string | null>(null);
+  const [centerNotice, setCenterNotice] = useState<string | null>(null);
+  const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // バリアント変更通知（variant が変わったときだけ表示）
+  const showCenterNotice = useCallback((text: string) => {
+    if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
+    setCenterNotice(text);
+    noticeTimerRef.current = setTimeout(() => setCenterNotice(null), NOTICE_DISPLAY_MS);
+  }, []);
+
+  // バリアント変更通知
   useEffect(() => {
     const name = variantDisplayName[gameState.variant] || gameState.variant;
-    setVariantNotice(`${name} ${blindsLabel}`);
-    const timer = setTimeout(() => setVariantNotice(null), NOTICE_DISPLAY_MS);
-    return () => clearTimeout(timer);
+    showCenterNotice(`${name} ${blindsLabel}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.variant]);
+
+  // 外部からの通知
+  useEffect(() => {
+    if (externalNotice) showCenterNotice(externalNotice);
+  }, [externalNotice, showCenterNotice]);
 
   // Draw: ストリート変更時にカード選択リセット
   const currentStreet = gameState.currentStreet;
@@ -333,10 +347,10 @@ export function GameTable({
       )}
 
           {/* バリアント変更通知（テーブル中央） */}
-          {variantNotice && (
+          {centerNotice && (
             <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
-              <div className="bg-cream-200 text-gray-800 font-bold w-[70cqw] h-[32cqw] flex items-center justify-center rounded-[2cqw] text-[8cqw] animate-fade-in whitespace-nowrap">
-                {variantNotice}
+              <div className="bg-cream-200/80 text-gray-800 font-bold w-[70cqw] min-h-[32cqw] py-[4cqw] flex items-center justify-center rounded-[2cqw] text-[6cqw] animate-fade-in whitespace-pre-line text-center leading-[1.4]">
+                {centerNotice}
               </div>
             </div>
           )}

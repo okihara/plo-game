@@ -22,6 +22,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     isChangingTable,
     isFinalTable,
     lastEliminated,
+    blindChangeNotice,
     clearElimination,
     clearCompleted,
   } = useTournamentState();
@@ -127,6 +128,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         handleFastFold={handleFastFold}
         onBack={handleBack}
         blindsLabel={blinds}
+        notice={blindChangeNotice}
       >
         {/* トーナメントHUD（オーバーレイ） */}
         {tournamentState && (

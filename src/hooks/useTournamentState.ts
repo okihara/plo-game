@@ -29,9 +29,11 @@ export function useTournamentState() {
   const [isChangingTable, setIsChangingTable] = useState(false);
   const [isFinalTable, setIsFinalTable] = useState(false);
   const [lastEliminated, setLastEliminated] = useState<TournamentPlayerEliminatedData | null>(null);
+  const [blindChangeNotice, setBlindChangeNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const eliminatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const blindNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(async () => {
     if (wsService.isConnected()) {
@@ -133,8 +135,12 @@ export function useTournamentState() {
         setTimeout(() => setIsChangingTable(false), 1500);
       },
 
-      onTournamentBlindChange: (_data) => {
-        // tournamentState の更新で反映される
+      onTournamentBlindChange: (data) => {
+        // テーブル中央に通知
+        const msg = `ブラインドアップ\n${data.level.smallBlind} / ${data.level.bigBlind}\n次のハンドから適用`;
+        if (blindNoticeTimerRef.current) clearTimeout(blindNoticeTimerRef.current);
+        setBlindChangeNotice(msg);
+        blindNoticeTimerRef.current = setTimeout(() => setBlindChangeNotice(null), 5000);
       },
 
       onTournamentPlayerEliminated: (data) => {
@@ -203,6 +209,7 @@ export function useTournamentState() {
     isChangingTable,
     isFinalTable,
     lastEliminated,
+    blindChangeNotice,
     error,
 
     // Actions
