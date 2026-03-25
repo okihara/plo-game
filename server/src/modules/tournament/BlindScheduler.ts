@@ -123,9 +123,8 @@ export class BlindScheduler {
     const current = this.schedule[this.currentIndex];
     const next = this.getNextLevel();
 
-    onLevelUp(current, next);
-
-    // 次のレベルをスケジュール
+    // scheduleNext を先に呼び、levelStartedAt を更新してから broadcast する
     this.scheduleNext(onLevelUp);
+    onLevelUp(current, next);
   }
 }
