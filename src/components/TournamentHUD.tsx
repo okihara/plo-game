@@ -35,7 +35,7 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
   return (
     <>
       {/* トーナメント情報 — 設定ボタンの下 */}
-      <div className="absolute top-[8%] right-[-6%] z-30 pointer-events-none">
+      <div className="absolute top-[14cqw] right-[-6%] z-30 pointer-events-none">
         <div className="bg-cream-200 rounded-[2cqw] px-[3cqw] py-[1.5cqw] text-[3.1cqw] leading-snug shadow-md w-[30cqw]">
           <div className="text-gray-800">
             {ts.playersRemaining}/{ts.totalPlayers}E
