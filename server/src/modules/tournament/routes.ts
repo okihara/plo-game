@@ -59,6 +59,62 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       return tournament.getClientState();
     });
 
+    // トーナメント参加登録（認証必須、DB操作のみ）
+    // テーブル着席はソケット接続時（tournament:request_state）に行う
+    fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/register', async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { userId } = request.user as { userId: string };
+      const tournamentId = request.params.id;
+      const tournament = tournamentManager.getTournament(tournamentId);
+      if (!tournament) {
+        return reply.status(404).send({ error: 'トーナメントが見つかりません' });
+      }
+
+      if (!tournament.isRegistrationOpen()) {
+        return reply.status(400).send({ error: 'トーナメントの登録受付は終了しています' });
+      }
+
+      // 既に登録済みならスキップ
+      const existing = await prisma.tournamentRegistration.findUnique({
+        where: { tournamentId_userId: { tournamentId, userId } },
+      });
+      if (existing) {
+        return { success: true, tournamentId };
+      }
+
+      const buyIn = tournament.config.buyIn;
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          const updated = await tx.bankroll.updateMany({
+            where: { userId, balance: { gte: buyIn } },
+            data: { balance: { decrement: buyIn } },
+          });
+          if (updated.count === 0) {
+            throw new Error('INSUFFICIENT_BALANCE');
+          }
+          await tx.transaction.create({
+            data: { userId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
+          });
+          await tx.tournamentRegistration.create({
+            data: { tournamentId, userId },
+          });
+        });
+      } catch (err) {
+        const message = err instanceof Error && err.message === 'INSUFFICIENT_BALANCE'
+          ? '残高が不足しています'
+          : '登録に失敗しました';
+        return reply.status(400).send({ error: message });
+      }
+
+      return { success: true, tournamentId };
+    });
+
     // トーナメント作成（管理者用）
     fastify.post<{ Body: Partial<TournamentConfig> }>('/api/tournaments', { preHandler: requireAdmin }, async (request) => {
       const tournamentId = createTournamentFromConfig(tournamentManager, request.body);

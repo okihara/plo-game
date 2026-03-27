@@ -29,7 +29,6 @@ function statusLabel(status: string): { text: string; color: string } {
 export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyProps) {
   const { user } = useAuth();
   const {
-    connect,
     tournaments,
     refreshList,
     isListLoading,
@@ -39,11 +38,6 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
   } = useTournamentState();
 
   const [registering, setRegistering] = useState<string | null>(null);
-
-  // マウント時にWebSocket接続 → サーバーが参加中トーナメントを検知してtournament:stateを送信
-  useEffect(() => {
-    void connect();
-  }, [connect]);
 
   useEffect(() => {
     void refreshList();
@@ -63,10 +57,8 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
   const handleRegister = async (tournamentId: string) => {
     if (!user) return;
     setRegistering(tournamentId);
-    try {
-      await connect();
-      register(tournamentId);
-    } catch {
+    const result = await register(tournamentId);
+    if (!result.success) {
       setRegistering(null);
     }
   };

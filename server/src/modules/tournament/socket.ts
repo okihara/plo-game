@@ -62,16 +62,42 @@ export function registerTournamentHandlers(
   const odId = socket.odId!;
 
   // トーナメントテーブルの状態を再送信（ページ遷移でゲーム画面に入った時用）
-  socket.on('tournament:request_state', (data: { tournamentId: string }) => {
+  // DB登録済みだがメモリ未着席のプレイヤーは自動的にenterPlayerで着席させる
+  socket.on('tournament:request_state', async (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);
     if (!tournament) return;
 
-    const player = tournament.getPlayer(odId);
-    if (!player) return;
+    let player = tournament.getPlayer(odId);
 
-    // ソケット更新（ページ遷移でリスナーが変わるため）
-    player.socket = socket;
-    socket.join(`tournament:${data.tournamentId}`);
+    // DB登録済みだがメモリ未着席 → enterPlayerで着席
+    if (!player) {
+      const reg = await prisma.tournamentRegistration.findUnique({
+        where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
+      });
+      if (!reg) return;
+
+      const user = await prisma.user.findUnique({
+        where: { id: odId },
+        select: { username: true, displayName: true, avatarUrl: true, nameMasked: true },
+      });
+      if (!user) return;
+
+      const result = tournament.enterPlayer(odId, user.username, socket, {
+        displayName: user.displayName,
+        avatarUrl: user.avatarUrl,
+        nameMasked: user.nameMasked,
+      });
+      if (!result.success) {
+        socket.emit('tournament:error', { message: result.error ?? '参加に失敗しました' });
+        return;
+      }
+      tournamentManager.setPlayerTournament(odId, data.tournamentId);
+      player = tournament.getPlayer(odId)!;
+    } else {
+      // 既存プレイヤー: ソケット更新（ページ遷移でリスナーが変わるため）
+      player.socket = socket;
+      socket.join(`tournament:${data.tournamentId}`);
+    }
 
     // トーナメント状態を送信
     socket.emit('tournament:state', tournament.getClientState(odId));

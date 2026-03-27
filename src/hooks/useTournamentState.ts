@@ -80,8 +80,21 @@ export function useTournamentState() {
     }
   }, []);
 
-  const register = useCallback((tournamentId: string) => {
-    wsService.registerTournament(tournamentId);
+  const register = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/tournaments/${tournamentId}/register`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string; tournamentId?: string };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error ?? '登録に失敗しました' };
+      }
+      setRegisteredTournamentId(tournamentId);
+      return { success: true };
+    } catch {
+      return { success: false, error: '通信エラーが発生しました' };
+    }
   }, []);
 
   const reenter = useCallback((tournamentId: string) => {
