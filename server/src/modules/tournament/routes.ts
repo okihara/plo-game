@@ -3,7 +3,7 @@ import { TournamentManager } from './TournamentManager.js';
 import { createTournamentFromConfig } from './socket.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
-import { TournamentConfig } from './types.js';
+import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
 async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -25,7 +25,38 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
 
     // トーナメント一覧（公開、認証済みなら参加中トーナメントIDも返す）
     fastify.get('/api/tournaments', async (request) => {
-      const tournaments = tournamentManager.getActiveTournaments();
+      // メモリ上のアクティブトーナメント
+      const activeTournaments = tournamentManager.getActiveTournaments();
+      const activeIds = new Set(activeTournaments.map(t => t.id));
+
+      // DBから終了済みトーナメントを取得（新しい順、最大20件）
+      const dbCompleted = await prisma.tournament.findMany({
+        where: {
+          status: { in: ['COMPLETED', 'CANCELLED'] },
+          id: { notIn: [...activeIds] },
+        },
+        include: { _count: { select: { registrations: true } } },
+        orderBy: { completedAt: 'desc' },
+        take: 20,
+      });
+
+      const completedTournaments: TournamentLobbyInfo[] = dbCompleted.map(t => ({
+        id: t.id,
+        name: t.name,
+        status: t.status.toLowerCase() as TournamentStatus,
+        buyIn: t.buyIn,
+        startingChips: t.startingChips,
+        registeredPlayers: t._count.registrations,
+        maxPlayers: t.maxPlayers,
+        currentBlindLevel: 0,
+        prizePool: t.prizePool,
+        scheduledStartTime: t.scheduledStartTime?.toISOString(),
+        startedAt: t.startedAt?.toISOString(),
+        isRegistrationOpen: false,
+      }));
+
+      // アクティブ → 終了済み の順（新しい順）
+      const tournaments = [...activeTournaments, ...completedTournaments];
 
       // オプショナル認証: ログイン済みならDB参加記録を返す
       let myTournamentId: string | null = null;
@@ -33,7 +64,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         await request.jwtVerify();
         const { userId } = request.user as { userId: string };
         // 進行中トーナメントへの参加記録を検索
-        const activeTournamentIds = tournaments
+        const activeTournamentIds = activeTournaments
           .filter(t => t.status !== 'completed' && t.status !== 'cancelled')
           .map(t => t.id);
         if (activeTournamentIds.length > 0) {

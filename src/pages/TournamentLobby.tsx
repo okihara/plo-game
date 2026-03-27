@@ -22,6 +22,8 @@ function statusLabel(status: string): { text: string; color: string } {
     case 'running': return { text: '進行中', color: 'bg-forest-light' };
     case 'final_table': return { text: 'ファイナルテーブル', color: 'bg-forest-dark' };
     case 'heads_up': return { text: 'ヘッズアップ', color: 'bg-cream-800' };
+    case 'completed': return { text: '終了', color: 'bg-cream-400' };
+    case 'cancelled': return { text: 'キャンセル', color: 'bg-cream-400' };
     default: return { text: status, color: 'bg-cream-500' };
   }
 }
@@ -95,7 +97,7 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
             {tournaments.length === 0 && (
               <div className="text-center py-[16cqw] text-[3cqw] text-cream-500">
                 <Trophy className="w-[12cqw] h-[12cqw] mx-auto mb-[3cqw] opacity-30" />
-                <p>開催中のトーナメントはありません</p>
+                <p>トーナメントはありません</p>
               </div>
             )}
 
@@ -133,7 +135,8 @@ function TournamentCard({
   onEnter: () => void;
 }) {
   const status = statusLabel(t.status);
-  const isRunning = t.status !== 'waiting';
+  const isRunning = t.status !== 'waiting' && t.status !== 'completed' && t.status !== 'cancelled';
+  const isFinished = t.status === 'completed' || t.status === 'cancelled';
 
   return (
     <div className="bg-white rounded-[2.5cqw] border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] overflow-hidden">
@@ -170,13 +173,13 @@ function TournamentCard({
         </div>
         <div className="text-right font-medium text-forest font-bold">{formatChips(t.prizePool)}</div>
 
-        {t.scheduledStartTime && (
+        {(t.scheduledStartTime || t.startedAt) && (
           <>
             <div className="text-cream-600 flex items-center gap-[1.5cqw]">
               <Clock className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
               <span>開始時刻</span>
             </div>
-            <div className="text-right font-medium">{formatTime(t.scheduledStartTime)}</div>
+            <div className="text-right font-medium">{formatTime(t.startedAt ?? t.scheduledStartTime)}</div>
           </>
         )}
 
@@ -193,7 +196,15 @@ function TournamentCard({
       </div>
 
       <div className="px-[4cqw] pb-[4cqw]">
-        {!isLoggedIn ? (
+        {isFinished ? (
+          <button
+            type="button"
+            onClick={onEnter}
+            className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors"
+          >
+            結果を見る
+          </button>
+        ) : !isLoggedIn ? (
           <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
             ログインすると参加できます
           </div>

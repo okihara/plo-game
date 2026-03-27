@@ -58,6 +58,7 @@ export interface TournamentLobbyInfo {
   currentBlindLevel: number;
   prizePool: number;
   scheduledStartTime?: string; // ISO string
+  startedAt?: string;          // ISO string
   isRegistrationOpen: boolean;
 }
 
