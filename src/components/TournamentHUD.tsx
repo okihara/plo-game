@@ -48,7 +48,7 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
       {lastEliminated && (
         <div className="absolute top-[14cqw] left-[2cqw] z-30 animate-fade-in pointer-events-none">
           <div className="bg-red-900/80 backdrop-blur-sm text-white text-[2.8cqw] px-[3cqw] py-[1.5cqw] rounded-[2cqw] leading-snug">
-            <div><span className="font-bold">{lastEliminated.displayName ?? lastEliminated.odName}</span><span className="text-red-300"> が {lastEliminated.position}位で脱落</span></div>
+            <div><span className="font-bold">{lastEliminated.displayName ?? lastEliminated.odName}</span><span className="text-red-300"> が {lastEliminated.position}位で離脱</span></div>
             <div className="text-gray-300">残り{lastEliminated.playersRemaining}人</div>
           </div>
         </div>
