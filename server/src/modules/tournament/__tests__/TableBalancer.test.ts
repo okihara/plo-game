@@ -102,7 +102,7 @@ describe('TableBalancer', () => {
       expect(actions[0].toTableId).toBe('t2');
     });
 
-    it('全テーブルがハンド中なら破壊しない', () => {
+    it('破壊対象卓がハンド中ならアクションは返さない', () => {
       const actions = TableBalancer.checkBalance(
         [
           { tableId: 't1', playerCount: 5, isHandInProgress: true },
@@ -145,7 +145,7 @@ describe('TableBalancer', () => {
       expect(actions).toEqual([]);
     });
 
-    it('バランシング対象テーブルがハンド中なら移動しない', () => {
+    it('人数最大卓がハンド中なら均等化移動はしない', () => {
       const actions = TableBalancer.checkBalance(
         [
           { tableId: 't1', playerCount: 5, isHandInProgress: true },

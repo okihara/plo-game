@@ -403,7 +403,9 @@ export class TournamentInstance {
     // 空きのあるテーブルに着席
     this.seatPlayerAtAvailableTable(player);
 
+    // トーナメント状態を送信
     this.broadcastTournamentState();
+
     return { success: true };
   }
 
@@ -642,7 +644,10 @@ export class TournamentInstance {
       this.scheduleFormFinalTable();
     }
 
-    // ペンディング移動の実行
+    // バランスを再チェック
+    this.checkAndExecuteBalance();
+
+    // ペンディング移動の実行 → バランスチェック（executePendingMoves 内で実行）
     this.executePendingMoves();
   }
 
@@ -801,15 +806,11 @@ export class TournamentInstance {
     this.pendingMoves = [];
 
     for (const move of moves) {
-      // 移動先テーブルがまだ存在するか確認
-      if (this.tables.has(move.toTableId)) {
+      // 移動先テーブルがまだ存在し、プレイヤーがまだ移動元にいるか確認
+      const fromTable = this.tables.get(move.fromTableId);
+      if (this.tables.has(move.toTableId) && fromTable?.getPlayerChips(move.odId) !== null) {
         this.movePlayer(move.odId, move.fromTableId, move.toTableId);
       }
-    }
-
-    // 移動後にバランスを再チェック
-    if (moves.length > 0) {
-      this.checkAndExecuteBalance();
     }
   }
 
