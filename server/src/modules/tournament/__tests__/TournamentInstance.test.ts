@@ -91,7 +91,7 @@ function registerNPlayers(
   for (let i = 0; i < n; i++) {
     const odId = `player_${i}`;
     const socket = createMockSocket();
-    tournament.registerPlayer(odId, `Player ${i}`, socket);
+    tournament.enterPlayer(odId, `Player ${i}`, socket);
     odIds.push(odId);
     sockets.push(socket);
   }
@@ -155,7 +155,7 @@ describe('TournamentInstance', () => {
     it('プレイヤーを登録できる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
       const socket = createMockSocket();
-      const result = tournament.registerPlayer('p1', 'Player 1', socket);
+      const result = tournament.enterPlayer('p1', 'Player 1', socket);
 
       expect(result.success).toBe(true);
       expect(tournament.getPlayerCount()).toBe(1);
@@ -165,8 +165,8 @@ describe('TournamentInstance', () => {
     it('同一プレイヤーの二重登録を防ぐ', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
       const socket = createMockSocket();
-      tournament.registerPlayer('p1', 'Player 1', socket);
-      const result = tournament.registerPlayer('p1', 'Player 1', socket);
+      tournament.enterPlayer('p1', 'Player 1', socket);
+      const result = tournament.enterPlayer('p1', 'Player 1', socket);
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('既に登録済み');
@@ -174,9 +174,9 @@ describe('TournamentInstance', () => {
 
     it('定員に達すると登録できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig({ maxPlayers: 2 }));
-      tournament.registerPlayer('p1', 'P1', createMockSocket());
-      tournament.registerPlayer('p2', 'P2', createMockSocket());
-      const result = tournament.registerPlayer('p3', 'P3', createMockSocket());
+      tournament.enterPlayer('p1', 'P1', createMockSocket());
+      tournament.enterPlayer('p2', 'P2', createMockSocket());
+      const result = tournament.enterPlayer('p3', 'P3', createMockSocket());
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('定員');
@@ -184,7 +184,7 @@ describe('TournamentInstance', () => {
 
     it('登録解除でプライズプールが減る', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      tournament.registerPlayer('p1', 'P1', createMockSocket());
+      tournament.enterPlayer('p1', 'P1', createMockSocket());
       expect(tournament.getPrizePool()).toBe(100);
 
       tournament.unregisterPlayer('p1');
@@ -830,8 +830,15 @@ describe('TournamentInstance', () => {
       registerNPlayers(tournament, 3);
       tournament.start();
 
+      // eliminated状態にしてからリエントリー試行
+      simulateBust(tournament, 'player_0', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_1', seatIndex: 1, chips: 2500 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+      ]);
+
       const socket = createMockSocket();
-      const result = tournament.reenterPlayer('player_0', socket);
+      const result = tournament.enterPlayer('player_0', 'Player 0', socket);
       expect(result.success).toBe(false);
       expect(result.error).toContain('リエントリー不可');
     });
@@ -845,7 +852,7 @@ describe('TournamentInstance', () => {
       tournament.start();
 
       const socket = createMockSocket();
-      const result = tournament.reenterPlayer('player_0', socket);
+      const result = tournament.enterPlayer('player_0', 'Player 0', socket);
       expect(result.success).toBe(false);
       expect(result.error).toContain('プレイ中');
     });
@@ -867,7 +874,7 @@ describe('TournamentInstance', () => {
 
       // 1回目リエントリー
       const socket1 = createMockSocket();
-      tournament.reenterPlayer('player_0', socket1);
+      tournament.enterPlayer('player_0', 'Player 0', socket1);
 
       // 再度バスト → リエントリー2回目
       simulateBust(tournament, 'player_0', 500);
@@ -877,7 +884,7 @@ describe('TournamentInstance', () => {
       ]);
 
       const socket2 = createMockSocket();
-      const result = tournament.reenterPlayer('player_0', socket2);
+      const result = tournament.enterPlayer('player_0', 'Player 0', socket2);
       expect(result.success).toBe(false);
       expect(result.error).toContain('上限');
     });
@@ -900,7 +907,7 @@ describe('TournamentInstance', () => {
       ]);
 
       const socket = createMockSocket();
-      const result = tournament.reenterPlayer('player_0', socket);
+      const result = tournament.enterPlayer('player_0', 'Player 0', socket);
 
       expect(result.success).toBe(true);
       expect(tournament.getPrizePool()).toBe(poolBefore + 100);
@@ -926,7 +933,7 @@ describe('TournamentInstance', () => {
       expect(tournament.isLateRegistrationOpen()).toBe(true);
 
       const socket = createMockSocket();
-      const result = tournament.lateRegister('late_player', 'Late Player', socket);
+      const result = tournament.enterPlayer('late_player', 'Late Player', socket);
       expect(result.success).toBe(true);
       expect(tournament.getPlayerCount()).toBe(4);
     });
@@ -944,7 +951,7 @@ describe('TournamentInstance', () => {
       expect(tournament.isLateRegistrationOpen()).toBe(false);
 
       const socket = createMockSocket();
-      const result = tournament.lateRegister('late_player', 'Late Player', socket);
+      const result = tournament.enterPlayer('late_player', 'Late Player', socket);
       expect(result.success).toBe(false);
     });
   });

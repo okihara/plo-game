@@ -140,15 +140,7 @@ export function registerTournamentHandlers(
         });
       },
       memoryOp: () => {
-        // running 中なら遅刻登録（テーブル着席込み）、それ以外は通常登録
-        if (tournament.isLateRegistrationOpen()) {
-          return tournament.lateRegister(odId, user.username, socket, {
-            displayName: user.displayName,
-            avatarUrl: user.avatarUrl,
-            nameMasked: user.nameMasked,
-          });
-        }
-        return tournament.registerPlayer(odId, user.username, socket, {
+        return tournament.enterPlayer(odId, user.username, socket, {
           displayName: user.displayName,
           avatarUrl: user.avatarUrl,
           nameMasked: user.nameMasked,
@@ -266,7 +258,10 @@ export function registerTournamentHandlers(
           data: { reentryCount: { increment: 1 } },
         });
       },
-      memoryOp: () => tournament.reenterPlayer(odId, socket),
+      memoryOp: () => {
+        const player = tournament.getPlayer(odId);
+        return tournament.enterPlayer(odId, player?.odName ?? odId, socket);
+      },
       compensate: async (tx) => {
         await tx.bankroll.update({
           where: { userId: odId },

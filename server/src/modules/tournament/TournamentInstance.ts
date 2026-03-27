@@ -93,9 +93,13 @@ export class TournamentInstance {
   // ============================================
 
   /**
-   * トーナメントに参加登録
+   * トーナメントに参加（新規登録・遅刻登録・リエントリーを統合）
+   *
+   * - 新規: registering中 → 登録のみ（開始時にテーブル着席）
+   * - 新規: running中（遅刻登録期間内） → 登録＋即テーブル着席
+   * - リエントリー: eliminated状態 → チップリセット＋テーブル着席
    */
-  public registerPlayer(
+  public enterPlayer(
     odId: string,
     odName: string,
     socket: Socket,
@@ -106,16 +110,20 @@ export class TournamentInstance {
       nameMasked?: boolean;
     }
   ): { success: boolean; error?: string } {
+    const existingPlayer = this.players.get(odId);
+
+    // --- リエントリー ---
+    if (existingPlayer) {
+      return this.handleReentry(existingPlayer, socket);
+    }
+
+    // --- 新規参加 ---
     if (this.status !== 'registering' && !this.isLateRegistrationOpen()) {
       return { success: false, error: 'トーナメントの登録受付は終了しています' };
     }
 
     if (this.players.size >= this.config.maxPlayers) {
       return { success: false, error: '定員に達しています' };
-    }
-
-    if (this.players.has(odId)) {
-      return { success: false, error: '既に登録済みです' };
     }
 
     const player: TournamentPlayer = {
@@ -142,48 +150,41 @@ export class TournamentInstance {
     // トーナメントルームに参加
     socket.join(this.roomName);
 
-    // 登録通知
-    this.broadcastTournamentState();
+    // running中なら即座にテーブル着席（遅刻登録）
+    if (this.isLateRegistrationOpen()) {
+      player.status = 'playing';
 
-    return { success: true };
-  }
+      // 賞金構造を再計算
+      this.prizes = PrizeCalculator.calculate(
+        this.getTotalEntries(),
+        this.prizePool,
+        this.config.payoutPercentage
+      );
 
-  /**
-   * 登録解除
-   */
-  public unregisterPlayer(odId: string): { success: boolean; error?: string } {
-    if (this.status !== 'registering') {
-      return { success: false, error: 'トーナメント開始後は登録解除できません' };
+      this.seatPlayerAtAvailableTable(player);
     }
-
-    const player = this.players.get(odId);
-    if (!player) {
-      return { success: false, error: '登録されていません' };
-    }
-
-    player.socket?.leave(this.roomName);
-    this.players.delete(odId);
-    this.prizePool -= this.config.buyIn;
 
     this.broadcastTournamentState();
     return { success: true };
   }
 
   /**
-   * リエントリー
+   * リエントリー処理（enterPlayerから呼ばれる内部メソッド）
    */
-  public reenterPlayer(odId: string, socket: Socket): { success: boolean; error?: string } {
-    if (!this.config.allowReentry) {
-      return { success: false, error: 'リエントリー不可のトーナメントです' };
-    }
-
-    const player = this.players.get(odId);
-    if (!player) {
-      return { success: false, error: 'トーナメントに参加していません' };
+  private handleReentry(
+    player: TournamentPlayer,
+    socket: Socket
+  ): { success: boolean; error?: string } {
+    if (player.status === 'registered') {
+      return { success: false, error: '既に登録済みです' };
     }
 
     if (player.status !== 'eliminated') {
       return { success: false, error: 'プレイ中のためリエントリーできません' };
+    }
+
+    if (!this.config.allowReentry) {
+      return { success: false, error: 'リエントリー不可のトーナメントです' };
     }
 
     if (player.reentryCount >= this.config.maxReentries) {
@@ -207,6 +208,27 @@ export class TournamentInstance {
 
     // 空きのあるテーブルに着席
     this.seatPlayerAtAvailableTable(player);
+
+    this.broadcastTournamentState();
+    return { success: true };
+  }
+
+  /**
+   * 登録解除
+   */
+  public unregisterPlayer(odId: string): { success: boolean; error?: string } {
+    if (this.status !== 'registering') {
+      return { success: false, error: 'トーナメント開始後は登録解除できません' };
+    }
+
+    const player = this.players.get(odId);
+    if (!player) {
+      return { success: false, error: '登録されていません' };
+    }
+
+    player.socket?.leave(this.roomName);
+    this.players.delete(odId);
+    this.prizePool -= this.config.buyIn;
 
     this.broadcastTournamentState();
     return { success: true };
@@ -358,55 +380,10 @@ export class TournamentInstance {
     return true;
   }
 
-  // ============================================
-  // Late Registration
-  // ============================================
-
   public isLateRegistrationOpen(): boolean {
     if (this.status !== 'running') return false;
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
     return currentLevel <= this.config.lateRegistrationLevels;
-  }
-
-  /**
-   * 遅刻登録（トーナメント開始後の参加）
-   */
-  public lateRegister(
-    odId: string,
-    odName: string,
-    socket: Socket,
-    options?: {
-      displayName?: string | null;
-      avatarId?: number;
-      avatarUrl?: string | null;
-      nameMasked?: boolean;
-    }
-  ): { success: boolean; error?: string } {
-    if (!this.isLateRegistrationOpen()) {
-      return { success: false, error: '遅刻登録期間は終了しています' };
-    }
-
-    // まず通常の登録処理
-    const result = this.registerPlayer(odId, odName, socket, options);
-    if (!result.success) return result;
-
-    const player = this.players.get(odId)!;
-    player.status = 'playing';
-
-    // 賞金プール更新（registerPlayerで加算済み）
-    this.prizes = PrizeCalculator.calculate(
-      this.getTotalEntries(),
-      this.prizePool,
-      this.config.payoutPercentage
-    );
-
-    // 空きのあるテーブルに着席
-    this.seatPlayerAtAvailableTable(player);
-
-    // トーナメント状態を送信
-    this.broadcastTournamentState();
-
-    return { success: true };
   }
 
   // ============================================
