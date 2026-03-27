@@ -41,7 +41,14 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             where: { userId, tournamentId: { in: activeTournamentIds } },
             select: { tournamentId: true },
           });
-          myTournamentId = reg?.tournamentId ?? null;
+          if (reg) {
+            // メモリ上のプレイヤー状態を確認（eliminatedなら表示しない）
+            const t = tournamentManager.getTournament(reg.tournamentId);
+            const player = t?.getPlayer(userId);
+            if (!player || player.status !== 'eliminated') {
+              myTournamentId = reg.tournamentId;
+            }
+          }
         }
       } catch {
         // 未認証 — myTournamentId は null のまま
