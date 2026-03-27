@@ -3,7 +3,6 @@ import type { ClientTournamentState, TournamentPlayerEliminatedData } from '@plo
 
 interface TournamentHUDProps {
   tournamentState: ClientTournamentState;
-  isFinalTable: boolean;
   lastEliminated: TournamentPlayerEliminatedData | null;
 }
 

@@ -20,7 +20,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     elimination,
     completedData,
     isChangingTable,
-    isFinalTable,
     lastEliminated,
     blindChangeNotice,
     clearElimination,
