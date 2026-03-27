@@ -18,7 +18,6 @@ export function useTournamentState() {
   const [isListLoading, setIsListLoading] = useState(true);
   const initialListFetchedRef = useRef(false);
   const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
-  const [isRegistered, setIsRegistered] = useState(false);
   const [registeredTournamentId, setRegisteredTournamentId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -55,7 +54,6 @@ export function useTournamentState() {
     wsService.disconnect();
     setIsConnected(false);
     setTournamentState(null);
-    setIsRegistered(false);
     setRegisteredTournamentId(null);
   }, []);
 
@@ -63,10 +61,15 @@ export function useTournamentState() {
     const isFirst = !initialListFetchedRef.current;
     if (isFirst) setIsListLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/tournaments`);
+      const res = await fetch(`${API_BASE}/api/tournaments`, { credentials: 'include' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = (await res.json()) as { tournaments?: TournamentLobbyInfo[] };
+      const data = (await res.json()) as {
+        tournaments?: TournamentLobbyInfo[];
+        myTournamentId?: string | null;
+      };
       setTournaments(data.tournaments ?? []);
+      // DB参加記録に基づいて参加状態を更新
+      setRegisteredTournamentId(data.myTournamentId ?? null);
     } catch {
       if (isFirst) setTournaments([]);
     } finally {
@@ -99,7 +102,6 @@ export function useTournamentState() {
       onDisconnected: () => setIsConnected(false),
 
       onTournamentRegistered: (data) => {
-        setIsRegistered(true);
         setRegisteredTournamentId(data.tournamentId);
         setError(null);
         void refreshList();
@@ -107,9 +109,8 @@ export function useTournamentState() {
 
       onTournamentState: (state) => {
         setTournamentState(state);
-        // 再接続時: tournament:state が来た = このトーナメントに登録済み
+        // 再接続時: tournament:state が来た = このトーナメントに参加中
         if (state.tournamentId) {
-          setIsRegistered(true);
           setRegisteredTournamentId(state.tournamentId);
         }
       },
@@ -141,6 +142,7 @@ export function useTournamentState() {
 
       onTournamentEliminated: (data) => {
         setElimination(data);
+        setRegisteredTournamentId(null);
       },
 
       onTournamentFinalTable: () => {
@@ -149,6 +151,7 @@ export function useTournamentState() {
 
       onTournamentCompleted: (data) => {
         setCompletedData(data);
+        setRegisteredTournamentId(null);
       },
 
       onTournamentError: (data) => {
@@ -158,7 +161,6 @@ export function useTournamentState() {
 
       onTournamentCancelled: () => {
         setTournamentState(null);
-        setIsRegistered(false);
         setRegisteredTournamentId(null);
         setError('トーナメントがキャンセルされました');
       },
@@ -183,7 +185,6 @@ export function useTournamentState() {
     isListLoading,
 
     // Registration
-    isRegistered,
     registeredTournamentId,
     register,
     reenter,

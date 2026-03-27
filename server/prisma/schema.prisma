@@ -188,8 +188,7 @@ model MaintenanceMode {
 // --- Tournament ---
 
 enum TournamentStatus {
-  REGISTERING
-  STARTING
+  WAITING
   RUNNING
   FINAL_TABLE
   HEADS_UP
@@ -200,14 +199,14 @@ enum TournamentStatus {
 model Tournament {
   id                     String           @id @default(cuid())
   name                   String
-  status                 TournamentStatus @default(REGISTERING)
+  status                 TournamentStatus @default(WAITING)
   buyIn                  Int
   startingChips          Int
   minPlayers             Int              @default(6)
   maxPlayers             Int              @default(54)
   blindSchedule          Json             // BlindLevel[]
   prizePool              Int              @default(0)
-  lateRegistrationLevels Int              @default(4)
+  registrationLevels     Int              @default(4)
   payoutPercentage       Json             @default("[50, 30, 20]")
   allowReentry           Boolean          @default(false)
   maxReentries           Int              @default(0)

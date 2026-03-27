@@ -23,9 +23,31 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
   return async function (fastify: FastifyInstance) {
     const { tournamentManager } = deps;
 
-    // トーナメント一覧（公開）
-    fastify.get('/api/tournaments', async () => {
-      return { tournaments: tournamentManager.getActiveTournaments() };
+    // トーナメント一覧（公開、認証済みなら参加中トーナメントIDも返す）
+    fastify.get('/api/tournaments', async (request) => {
+      const tournaments = tournamentManager.getActiveTournaments();
+
+      // オプショナル認証: ログイン済みならDB参加記録を返す
+      let myTournamentId: string | null = null;
+      try {
+        await request.jwtVerify();
+        const { userId } = request.user as { userId: string };
+        // 進行中トーナメントへの参加記録を検索
+        const activeTournamentIds = tournaments
+          .filter(t => t.status !== 'completed' && t.status !== 'cancelled')
+          .map(t => t.id);
+        if (activeTournamentIds.length > 0) {
+          const reg = await prisma.tournamentRegistration.findFirst({
+            where: { userId, tournamentId: { in: activeTournamentIds } },
+            select: { tournamentId: true },
+          });
+          myTournamentId = reg?.tournamentId ?? null;
+        }
+      } catch {
+        // 未認証 — myTournamentId は null のまま
+      }
+
+      return { tournaments, myTournamentId };
     });
 
     // トーナメント詳細（公開）
@@ -52,7 +74,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           minPlayers: tournament.config.minPlayers,
           maxPlayers: tournament.config.maxPlayers,
           blindSchedule: JSON.parse(JSON.stringify(tournament.config.blindSchedule)),
-          lateRegistrationLevels: tournament.config.registrationLevels,
+          registrationLevels: tournament.config.registrationLevels,
           payoutPercentage: JSON.parse(JSON.stringify(tournament.config.payoutPercentage)),
           allowReentry: tournament.config.allowReentry,
           maxReentries: tournament.config.maxReentries,

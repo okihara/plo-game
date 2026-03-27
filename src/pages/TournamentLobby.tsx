@@ -33,7 +33,6 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
     tournaments,
     refreshList,
     isListLoading,
-    isRegistered,
     registeredTournamentId,
     register,
     error,
@@ -56,10 +55,10 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
   }, [refreshList]);
 
   useEffect(() => {
-    if (isRegistered && registeredTournamentId) {
+    if (registeredTournamentId) {
       setRegistering(null);
     }
-  }, [isRegistered, registeredTournamentId]);
+  }, [registeredTournamentId]);
 
   const handleRegister = async (tournamentId: string) => {
     if (!user) return;
