@@ -6,6 +6,7 @@ interface TournamentResultOverlayProps {
   results: TournamentResult[];
   totalPlayers: number;
   prizePool: number;
+  tournamentName?: string;
   onClose: () => void;
 }
 
@@ -16,13 +17,13 @@ function getMedal(position: number): string {
   return `${position}`;
 }
 
-export function TournamentResultOverlay({ results, totalPlayers, prizePool, onClose }: TournamentResultOverlayProps) {
+export function TournamentResultOverlay({ results, totalPlayers, prizePool, tournamentName, onClose }: TournamentResultOverlayProps) {
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-[4cqw]">
       <div className="bg-white rounded-[3cqw] border border-cream-300 shadow-[0_8px_40px_rgba(139,126,106,0.2)] p-[6cqw] w-full max-w-[92cqw]">
         <div className="text-center mb-[5cqw]">
           <Trophy className="w-[10cqw] h-[10cqw] text-forest mx-auto mb-[2cqw]" />
-          <h2 className="text-[4.5cqw] font-bold text-cream-900">トーナメント結果</h2>
+          <h2 className="text-[4.5cqw] font-bold text-cream-900">{tournamentName ?? 'トーナメント結果'}</h2>
           <p className="text-[3cqw] text-cream-600 mt-[1cqw]">
             {totalPlayers}人参加 / 賞金プール {formatChips(prizePool)}
           </p>

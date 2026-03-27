@@ -58,12 +58,42 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     });
 
     // トーナメント詳細（公開）
+    // メモリにあれば進行中状態を返し、なければDBから取得（終了済み含む）
     fastify.get<{ Params: { id: string } }>('/api/tournaments/:id', async (request, reply) => {
       const tournament = tournamentManager.getTournament(request.params.id);
-      if (!tournament) {
+      if (tournament) {
+        return tournament.getClientState();
+      }
+
+      // DBから取得（終了済みトーナメント対応）
+      const dbTournament = await prisma.tournament.findUnique({
+        where: { id: request.params.id },
+        include: {
+          results: {
+            include: { user: { select: { username: true, displayName: true } } },
+            orderBy: { position: 'asc' },
+          },
+          _count: { select: { registrations: true } },
+        },
+      });
+      if (!dbTournament) {
         return reply.status(404).send({ error: 'Tournament not found' });
       }
-      return tournament.getClientState();
+
+      return {
+        tournamentId: dbTournament.id,
+        name: dbTournament.name,
+        status: dbTournament.status.toLowerCase(),
+        totalPlayers: dbTournament._count.registrations,
+        prizePool: dbTournament.prizePool,
+        results: dbTournament.results.map(r => ({
+          odId: r.userId,
+          odName: r.user.displayName || r.user.username,
+          position: r.position,
+          prize: r.prize,
+          reentries: r.reentries,
+        })),
+      };
     });
 
     // トーナメント参加登録（認証必須、DB操作のみ）

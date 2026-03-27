@@ -6,7 +6,10 @@ import { TournamentResultOverlay } from '../components/TournamentResultOverlay';
 import { TableMoveOverlay } from '../components/TableMoveOverlay';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useTournamentState } from '../hooks/useTournamentState';
+import type { TournamentCompletedData } from '../hooks/useTournamentState';
 import { wsService } from '../services/websocket';
+
+const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 interface TournamentGameProps {
   tournamentId: string;
@@ -27,6 +30,9 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
   } = useTournamentState();
 
   const [blinds, setBlinds] = useState('1/2');
+  // 終了済みトーナメントの結果（API取得）
+  const [finishedData, setFinishedData] = useState<TournamentCompletedData | null>(null);
+  const [finishedName, setFinishedName] = useState<string | null>(null);
 
   const {
     gameState,
@@ -43,11 +49,35 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     isWaitingForPlayers,
   } = useOnlineGameState(blinds);
 
-  // 接続 → テーブルの game:state を要求
+  // まずAPIでトーナメント状態を確認。終了済みなら結果を表示、進行中ならソケット接続
   useEffect(() => {
-    connect().then(() => {
-      wsService.requestTournamentState(tournamentId);
-    });
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/tournaments/${tournamentId}`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (cancelled) return;
+
+        if (data.status === 'completed' && data.results?.length > 0) {
+          setFinishedData({
+            results: data.results,
+            totalPlayers: data.totalPlayers,
+            prizePool: data.prizePool,
+          });
+          setFinishedName(data.name ?? null);
+          return;
+        }
+      } catch {
+        // APIエラー時はソケット接続にフォールバック
+      }
+      if (cancelled) return;
+      // 進行中 → ソケット接続
+      connect().then(() => {
+        wsService.requestTournamentState(tournamentId);
+      });
+    })();
+    return () => { cancelled = true; };
   }, [connect, tournamentId]);
 
   // ブラインド同期
@@ -81,13 +111,16 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     );
   }
 
-  if (completedData) {
+  // 完了データ（リアルタイム or API取得）
+  const resultsData = completedData ?? finishedData;
+  if (resultsData) {
     return (
       <div className="relative h-full w-full min-h-0">
         <TournamentResultOverlay
-          results={completedData.results}
-          totalPlayers={completedData.totalPlayers}
-          prizePool={completedData.prizePool}
+          results={resultsData.results}
+          totalPlayers={resultsData.totalPlayers}
+          prizePool={resultsData.prizePool}
+          tournamentName={tournamentState?.name ?? finishedName ?? undefined}
           onClose={handleBack}
         />
       </div>
