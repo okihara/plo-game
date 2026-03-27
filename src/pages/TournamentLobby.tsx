@@ -17,7 +17,7 @@ function formatTime(isoString?: string): string {
 
 function statusLabel(status: string): { text: string; color: string } {
   switch (status) {
-    case 'registering': return { text: '登録受付中', color: 'bg-forest' };
+    case 'waiting': return { text: '開始待ち', color: 'bg-forest' };
     case 'starting': return { text: '開始準備中', color: 'bg-cream-600' };
     case 'running': return { text: '進行中', color: 'bg-forest-light' };
     case 'final_table': return { text: 'ファイナルテーブル', color: 'bg-forest-dark' };
@@ -36,7 +36,6 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
     isRegistered,
     registeredTournamentId,
     register,
-    unregister,
     error,
   } = useTournamentState();
 
@@ -70,15 +69,6 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
       register(tournamentId);
     } catch {
       setRegistering(null);
-    }
-  };
-
-  const handleUnregister = async (tournamentId: string) => {
-    try {
-      await connect();
-      unregister(tournamentId);
-    } catch {
-      /* 接続失敗時は unregister も送れない */
     }
   };
 
@@ -131,7 +121,6 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
                 isRegistering={registering === t.id}
                 isLoggedIn={!!user}
                 onRegister={() => handleRegister(t.id)}
-                onUnregister={() => handleUnregister(t.id)}
                 onEnter={() => handleEnter(t.id)}
               />
             ))}
@@ -148,7 +137,6 @@ function TournamentCard({
   isRegistering,
   isLoggedIn,
   onRegister,
-  onUnregister,
   onEnter,
 }: {
   tournament: TournamentLobbyInfo;
@@ -156,11 +144,10 @@ function TournamentCard({
   isRegistering: boolean;
   isLoggedIn: boolean;
   onRegister: () => void;
-  onUnregister: () => void;
   onEnter: () => void;
 }) {
   const status = statusLabel(t.status);
-  const isRunning = t.status !== 'registering';
+  const isRunning = t.status !== 'waiting';
 
   return (
     <div className="bg-white rounded-[2.5cqw] border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] overflow-hidden">
@@ -214,7 +201,7 @@ function TournamentCard({
           </>
         )}
 
-        {t.isLateRegistrationOpen && (
+        {t.isRegistrationOpen && (
           <div className="col-span-2 text-[2.5cqw] text-forest mt-[1cqw]">遅刻登録可能</div>
         )}
       </div>
@@ -225,25 +212,14 @@ function TournamentCard({
             ログインすると参加できます
           </div>
         ) : isRegistered ? (
-          <div className="flex gap-[2cqw]">
-            <button
-              type="button"
-              onClick={onEnter}
-              className="flex-1 py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
-            >
-              テーブルに入る
-            </button>
-            {!isRunning && (
-              <button
-                type="button"
-                onClick={onUnregister}
-                className="px-[4cqw] py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-800 rounded-[2cqw] text-[3cqw] transition-colors shrink-0"
-              >
-                取消
-              </button>
-            )}
-          </div>
-        ) : t.status === 'registering' || t.isLateRegistrationOpen ? (
+          <button
+            type="button"
+            onClick={onEnter}
+            className="w-full py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+          >
+            テーブルに入る
+          </button>
+        ) : t.isRegistrationOpen ? (
           <button
             type="button"
             onClick={onRegister}

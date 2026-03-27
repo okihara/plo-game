@@ -48,7 +48,7 @@ function createTestConfig(id: string): TournamentConfig {
     maxPlayers: 18,
     playersPerTable: 6,
     blindSchedule: testBlindSchedule,
-    lateRegistrationLevels: 2,
+    registrationLevels: 2,
     payoutPercentage: [],
     startCondition: 'manual',
     allowReentry: false,

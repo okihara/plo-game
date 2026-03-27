@@ -81,10 +81,6 @@ export function useTournamentState() {
     wsService.registerTournament(tournamentId);
   }, []);
 
-  const unregister = useCallback((tournamentId: string) => {
-    wsService.unregisterTournament(tournamentId);
-  }, []);
-
   const reenter = useCallback((tournamentId: string) => {
     wsService.reenterTournament(tournamentId);
   }, []);
@@ -106,13 +102,6 @@ export function useTournamentState() {
         setIsRegistered(true);
         setRegisteredTournamentId(data.tournamentId);
         setError(null);
-        void refreshList();
-      },
-
-      onTournamentUnregistered: () => {
-        setIsRegistered(false);
-        setRegisteredTournamentId(null);
-        setTournamentState(null);
         void refreshList();
       },
 
@@ -197,7 +186,6 @@ export function useTournamentState() {
     isRegistered,
     registeredTournamentId,
     register,
-    unregister,
     reenter,
 
     // Tournament state

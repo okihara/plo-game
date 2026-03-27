@@ -49,7 +49,7 @@ function createTestConfig(overrides?: Partial<TournamentConfig>): TournamentConf
     maxPlayers: 18,
     playersPerTable: 6,
     blindSchedule: testBlindSchedule,
-    lateRegistrationLevels: 2,
+    registrationLevels: 2,
     payoutPercentage: [],
     startCondition: 'manual',
     allowReentry: false,
@@ -82,10 +82,15 @@ function createMockSocket(id?: string): Socket {
   return socket;
 }
 
-function registerNPlayers(
+/**
+ * トーナメントを開始してからN人のプレイヤーを参加させるヘルパー。
+ * 事前登録は廃止されたため、start() → enterPlayer() の順で呼ぶ。
+ */
+function startAndEnterNPlayers(
   tournament: TournamentInstance,
   n: number
 ): { odIds: string[]; sockets: Socket[] } {
+  tournament.start();
   const odIds: string[] = [];
   const sockets: Socket[] = [];
   for (let i = 0; i < n; i++) {
@@ -148,57 +153,52 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // A. 登録テスト
+  // A. 参加テスト
   // ============================================
 
-  describe('登録', () => {
-    it('プレイヤーを登録できる', () => {
+  describe('参加', () => {
+    it('running中にプレイヤーが参加できる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
+      tournament.start();
       const socket = createMockSocket();
       const result = tournament.enterPlayer('p1', 'Player 1', socket);
 
       expect(result.success).toBe(true);
       expect(tournament.getPlayerCount()).toBe(1);
       expect(tournament.getPrizePool()).toBe(100);
+      expect(tournament.getPlayer('p1')?.status).toBe('playing');
+      expect(tournament.getPlayer('p1')?.tableId).not.toBeNull();
     });
 
-    it('同一プレイヤーの二重登録を防ぐ', () => {
+    it('waiting中は参加できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
+      const socket = createMockSocket();
+      const result = tournament.enterPlayer('p1', 'Player 1', socket);
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('登録受付は終了');
+    });
+
+    it('同一プレイヤーの二重参加を防ぐ', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      tournament.start();
       const socket = createMockSocket();
       tournament.enterPlayer('p1', 'Player 1', socket);
       const result = tournament.enterPlayer('p1', 'Player 1', socket);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('既に登録済み');
+      expect(result.error).toContain('プレイ中');
     });
 
-    it('定員に達すると登録できない', () => {
+    it('定員に達すると参加できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig({ maxPlayers: 2 }));
+      tournament.start();
       tournament.enterPlayer('p1', 'P1', createMockSocket());
       tournament.enterPlayer('p2', 'P2', createMockSocket());
       const result = tournament.enterPlayer('p3', 'P3', createMockSocket());
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('定員');
-    });
-
-    it('登録解除でプライズプールが減る', () => {
-      const tournament = new TournamentInstance(io, createTestConfig());
-      tournament.enterPlayer('p1', 'P1', createMockSocket());
-      expect(tournament.getPrizePool()).toBe(100);
-
-      tournament.unregisterPlayer('p1');
-      expect(tournament.getPrizePool()).toBe(0);
-      expect(tournament.getPlayerCount()).toBe(0);
-    });
-
-    it('トーナメント開始後は登録解除できない', () => {
-      const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
-
-      const result = tournament.unregisterPlayer('player_0');
-      expect(result.success).toBe(false);
     });
   });
 
@@ -207,25 +207,29 @@ describe('TournamentInstance', () => {
   // ============================================
 
   describe('開始', () => {
-    it('最低人数未満で開始できない', () => {
-      const tournament = new TournamentInstance(io, createTestConfig({ minPlayers: 3 }));
-      registerNPlayers(tournament, 2);
-      const result = tournament.start();
-
-      expect(result.success).toBe(false);
-      expect(result.error).toContain('最低');
-    });
-
-    it('開始するとテーブルが作成されプレイヤーが着席する', () => {
+    it('開始するとrunning状態になる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 4);
       const result = tournament.start();
 
       expect(result.success).toBe(true);
       expect(tournament.getStatus()).toBe('running');
+    });
+
+    it('既に開始済みのトーナメントは再開始できない', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      tournament.start();
+      const result = tournament.start();
+
+      expect(result.success).toBe(false);
+    });
+
+    it('開始後にプレイヤーが参加するとテーブルが作成される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      startAndEnterNPlayers(tournament, 4);
+
       expect(tournament.getTableCount()).toBeGreaterThanOrEqual(1);
 
-      // 全プレイヤーがplaying状態
+      // 全プレイヤーがplaying状態でテーブルに着席済み
       for (let i = 0; i < 4; i++) {
         const player = tournament.getPlayer(`player_${i}`);
         expect(player?.status).toBe('playing');
@@ -235,8 +239,7 @@ describe('TournamentInstance', () => {
 
     it('既に開始済みのトーナメントは再開始できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       const result = tournament.start();
       expect(result.success).toBe(false);
@@ -250,8 +253,7 @@ describe('TournamentInstance', () => {
   describe('切断/再接続', () => {
     it('切断でプレイヤーがdisconnected状態になる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.handleDisconnect('player_0');
       const player = tournament.getPlayer('player_0');
@@ -261,8 +263,7 @@ describe('TournamentInstance', () => {
 
     it('再接続でplaying状態に復帰する', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.handleDisconnect('player_0');
       const newSocket = createMockSocket('new_sock');
@@ -276,8 +277,7 @@ describe('TournamentInstance', () => {
 
     it('再接続で切断タイマーがクリアされる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.handleDisconnect('player_0');
       const newSocket = createMockSocket('new_sock');
@@ -290,8 +290,7 @@ describe('TournamentInstance', () => {
 
     it('再接続でトーナメントルームに再参加する', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.handleDisconnect('player_0');
       const newSocket = createMockSocket('new_sock');
@@ -302,8 +301,7 @@ describe('TournamentInstance', () => {
 
     it('再接続でtournament:stateが送信される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.handleDisconnect('player_0');
       const newSocket = createMockSocket('new_sock');
@@ -317,8 +315,7 @@ describe('TournamentInstance', () => {
 
     it('eliminated プレイヤーは再接続できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      const { sockets } = registerNPlayers(tournament, 3);
-      tournament.start();
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
 
       // コールバック経由でeliminatedにする
       simulateBust(tournament, 'player_0', 500);
@@ -340,8 +337,7 @@ describe('TournamentInstance', () => {
   describe('バスト順位計算', () => {
     it('1人バスト: 正しい順位が付与される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      const { sockets } = registerNPlayers(tournament, 4);
-      tournament.start();
+      const { sockets } = startAndEnterNPlayers(tournament, 4);
 
       expect(tournament.getPlayersRemaining()).toBe(4);
 
@@ -362,8 +358,7 @@ describe('TournamentInstance', () => {
 
     it('連続バスト: 順位が正しくインクリメントされる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 4);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 4);
 
       // 1人目バスト: 4人→3人、順位4位
       simulateBust(tournament, 'player_3', 300);
@@ -387,8 +382,7 @@ describe('TournamentInstance', () => {
 
     it('同一ハンドで2人バスト: チップ多い方が上位', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 4);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 4);
 
       // 2人同時バスト: player_2(チップ500) と player_3(チップ300)
       simulateBust(tournament, 'player_2', 500);
@@ -409,8 +403,7 @@ describe('TournamentInstance', () => {
 
     it('同一ハンドで同チップバスト: 同順位が付与される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 4);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 4);
 
       // 同チップ（400）で2人同時バスト
       simulateBust(tournament, 'player_2', 400);
@@ -428,8 +421,7 @@ describe('TournamentInstance', () => {
 
     it('バスト通知が個人・全体に送信される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      const { sockets } = registerNPlayers(tournament, 3);
-      tournament.start();
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
 
       simulateBust(tournament, 'player_2', 300);
       simulateHandSettled(tournament, [
@@ -456,8 +448,7 @@ describe('TournamentInstance', () => {
 
     it('onHandSettled でプレイヤーチップが同期される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // バストなしでハンド完了
       simulateHandSettled(tournament, [
@@ -481,8 +472,7 @@ describe('TournamentInstance', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
       const onComplete = vi.fn();
       tournament.onTournamentComplete = onComplete;
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // 2人バスト → 残り1人
       simulateBust(tournament, 'player_1', 500);
@@ -502,8 +492,7 @@ describe('TournamentInstance', () => {
 
     it('残り2人でheads_upに遷移', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // 1人バスト → 残り2人
       simulateBust(tournament, 'player_2', 300);
@@ -517,8 +506,7 @@ describe('TournamentInstance', () => {
 
     it('残りプレイヤーが多い場合はrunningのまま', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 5);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 5);
 
       // 1人バスト → 残り4人（playersPerTable=6 なのでfinal_tableにはならない）
       simulateBust(tournament, 'player_4', 300);
@@ -538,8 +526,7 @@ describe('TournamentInstance', () => {
         playersPerTable: 6,
         minPlayers: 2,
       }));
-      registerNPlayers(tournament, 10);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 10);
 
       expect(tournament.getTableCount()).toBe(2);
 
@@ -571,8 +558,7 @@ describe('TournamentInstance', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
       const onComplete = vi.fn();
       tournament.onTournamentComplete = onComplete;
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // player_1 バスト（3位）
       simulateBust(tournament, 'player_1', 500);
@@ -597,8 +583,7 @@ describe('TournamentInstance', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
       const onComplete = vi.fn();
       tournament.onTournamentComplete = onComplete;
-      registerNPlayers(tournament, 2);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 2);
 
       simulateBust(tournament, 'player_1', 500);
       simulateHandSettled(tournament, [
@@ -616,8 +601,7 @@ describe('TournamentInstance', () => {
 
     it('完了時にtournament:completedイベントが送信される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 2);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 2);
 
       simulateBust(tournament, 'player_1', 500);
       simulateHandSettled(tournament, [
@@ -637,8 +621,7 @@ describe('TournamentInstance', () => {
 
     it('完了後にテーブルがクリアされる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 2);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 2);
 
       expect(tournament.getTableCount()).toBeGreaterThan(0);
 
@@ -658,8 +641,7 @@ describe('TournamentInstance', () => {
   describe('ファイナルテーブル形成', () => {
     it('テーブルが1つのみの場合はテーブル移動しない', () => {
       const tournament = new TournamentInstance(io, createTestConfig({ playersPerTable: 6 }));
-      registerNPlayers(tournament, 4);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 4);
 
       expect(tournament.getTableCount()).toBe(1);
       expect(tournament.getStatus()).toBe('running');
@@ -670,8 +652,7 @@ describe('TournamentInstance', () => {
         playersPerTable: 6,
         minPlayers: 2,
       }));
-      registerNPlayers(tournament, 10);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 10);
 
       expect(tournament.getTableCount()).toBe(2);
     });
@@ -681,8 +662,7 @@ describe('TournamentInstance', () => {
         playersPerTable: 6,
         minPlayers: 2,
       }));
-      registerNPlayers(tournament, 10);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 10);
 
       // 4人バスト → 残り6人
       for (let i = 6; i < 10; i++) {
@@ -715,8 +695,7 @@ describe('TournamentInstance', () => {
         playersPerTable: 6,
         minPlayers: 2,
       }));
-      registerNPlayers(tournament, 10);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 10);
 
       for (let i = 6; i < 10; i++) {
         simulateBust(tournament, `player_${i}`, 300);
@@ -746,8 +725,7 @@ describe('TournamentInstance', () => {
   describe('ヘッズアップでのハンド開始', () => {
     it('ヘッズアップ（残り2人）でminPlayersToStartが2に設定される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // 1人バスト → 残り2人 → heads_up
       simulateBust(tournament, 'player_2', 300);
@@ -769,8 +747,7 @@ describe('TournamentInstance', () => {
         playersPerTable: 6,
         minPlayers: 2,
       }));
-      registerNPlayers(tournament, 10);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 10);
 
       expect(tournament.getTableCount()).toBe(2);
 
@@ -796,8 +773,7 @@ describe('TournamentInstance', () => {
         playersPerTable: 6,
         minPlayers: 2,
       }));
-      registerNPlayers(tournament, 10);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 10);
 
       // 5人バスト → 残り5人 → final_table
       for (let i = 5; i < 10; i++) {
@@ -827,8 +803,7 @@ describe('TournamentInstance', () => {
   describe('リエントリー', () => {
     it('リエントリー不可のトーナメントでは失敗する', () => {
       const tournament = new TournamentInstance(io, createTestConfig({ allowReentry: false }));
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // eliminated状態にしてからリエントリー試行
       simulateBust(tournament, 'player_0', 500);
@@ -848,8 +823,7 @@ describe('TournamentInstance', () => {
         allowReentry: true,
         maxReentries: 1,
       }));
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       const socket = createMockSocket();
       const result = tournament.enterPlayer('player_0', 'Player 0', socket);
@@ -862,8 +836,7 @@ describe('TournamentInstance', () => {
         allowReentry: true,
         maxReentries: 1,
       }));
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // コールバック経由でeliminated状態にする
       simulateBust(tournament, 'player_0', 500);
@@ -894,8 +867,7 @@ describe('TournamentInstance', () => {
         allowReentry: true,
         maxReentries: 2,
       }));
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       const poolBefore = tournament.getPrizePool();
 
@@ -919,18 +891,17 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
-  // I. 遅刻登録テスト
+  // I. 登録期間テスト
   // ============================================
 
-  describe('遅刻登録', () => {
-    it('running状態で遅刻登録レベル内なら登録できる', () => {
+  describe('登録期間', () => {
+    it('running状態で登録レベル内なら参加できる', () => {
       const tournament = new TournamentInstance(io, createTestConfig({
-        lateRegistrationLevels: 2,
+        registrationLevels: 2,
       }));
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
-      expect(tournament.isLateRegistrationOpen()).toBe(true);
+      expect(tournament.isRegistrationOpen()).toBe(true);
 
       const socket = createMockSocket();
       const result = tournament.enterPlayer('late_player', 'Late Player', socket);
@@ -938,17 +909,16 @@ describe('TournamentInstance', () => {
       expect(tournament.getPlayerCount()).toBe(4);
     });
 
-    it('遅刻登録期間を過ぎると登録できない', () => {
+    it('登録期間を過ぎると参加できない', () => {
       const tournament = new TournamentInstance(io, createTestConfig({
-        lateRegistrationLevels: 1,
+        registrationLevels: 1,
       }));
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       // レベル2へ進める（遅刻登録レベル=1を超える）
       vi.advanceTimersByTime(5 * 60 * 1000);
 
-      expect(tournament.isLateRegistrationOpen()).toBe(false);
+      expect(tournament.isRegistrationOpen()).toBe(false);
 
       const socket = createMockSocket();
       const result = tournament.enterPlayer('late_player', 'Late Player', socket);
@@ -963,8 +933,7 @@ describe('TournamentInstance', () => {
   describe('getClientState', () => {
     it('正しいクライアント状態を返す', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       const state = tournament.getClientState('player_0');
 
@@ -983,8 +952,7 @@ describe('TournamentInstance', () => {
 
     it('未登録プレイヤーの場合 myChips は null', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       const state = tournament.getClientState('unknown_player');
       expect(state.myChips).toBeNull();
@@ -999,8 +967,7 @@ describe('TournamentInstance', () => {
   describe('キャンセル', () => {
     it('キャンセルで全プレイヤーが離席しテーブルがクリアされる', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.cancel();
 
@@ -1010,8 +977,7 @@ describe('TournamentInstance', () => {
 
     it('キャンセルでtournament:cancelledイベントが送信される', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
-      tournament.start();
+      startAndEnterNPlayers(tournament, 3);
 
       tournament.cancel();
 
@@ -1032,12 +998,12 @@ describe('TournamentInstance', () => {
   describe('getLobbyInfo', () => {
     it('ロビー表示用情報を返す', () => {
       const tournament = new TournamentInstance(io, createTestConfig());
-      registerNPlayers(tournament, 3);
+      startAndEnterNPlayers(tournament, 3);
 
       const info = tournament.getLobbyInfo();
       expect(info.id).toBe('test-tournament');
       expect(info.name).toBe('Test Tournament');
-      expect(info.status).toBe('registering');
+      expect(info.status).toBe('running');
       expect(info.registeredPlayers).toBe(3);
       expect(info.maxPlayers).toBe(18);
       expect(info.prizePool).toBe(300);

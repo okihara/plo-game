@@ -25,7 +25,7 @@ export interface TournamentConfig {
   maxPlayers: number;
   playersPerTable: number;
   blindSchedule: BlindLevel[];
-  lateRegistrationLevels: number;
+  registrationLevels: number;
   payoutPercentage: number[];
   startCondition: 'manual' | 'player_count' | 'scheduled';
   scheduledStartTime?: Date;
@@ -47,7 +47,7 @@ export interface TournamentPlayer {
   chips: number;
   tableId: string | null;
   seatIndex: number | null;
-  status: 'registered' | 'playing' | 'eliminated' | 'disconnected';
+  status: 'playing' | 'eliminated' | 'disconnected';
   finishPosition: number | null;
   reentryCount: number;
   registeredAt: Date;

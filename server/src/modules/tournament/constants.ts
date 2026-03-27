@@ -37,8 +37,8 @@ export const DEFAULT_MIN_PLAYERS = 6;
 // 最大参加者数（9テーブル × 6人）
 export const DEFAULT_MAX_PLAYERS = 540;
 
-// 遅刻登録可能レベル
-export const DEFAULT_LATE_REGISTRATION_LEVELS = 4;
+// 登録可能レベル（開始からこのレベルまで参加可能）
+export const DEFAULT_REGISTRATION_LEVELS = 4;
 
 // プレイヤー数に応じた賞金配分
 export const PAYOUT_STRUCTURES: { maxPlayers: number; percentages: number[] }[] = [

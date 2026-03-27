@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
 import { TournamentConfig } from './types.js';
-import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_LATE_REGISTRATION_LEVELS, PLAYERS_PER_TABLE } from './constants.js';
+import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { prisma } from '../../config/database.js';
 
@@ -169,66 +169,6 @@ export function registerTournamentHandlers(
     socket.emit('tournament:registered', { tournamentId: data.tournamentId });
   });
 
-  // トーナメント登録解除
-  socket.on('tournament:unregister', async (data: { tournamentId: string }) => {
-    const tournament = tournamentManager.getTournament(data.tournamentId);
-    if (!tournament) {
-      socket.emit('tournament:error', { message: 'トーナメントが見つかりません' });
-      return;
-    }
-
-    // 登録解除可能かチェック（メモリ操作はまだしない）
-    if (tournament.getStatus() !== 'registering') {
-      socket.emit('tournament:error', { message: 'トーナメント開始後は登録解除できません' });
-      return;
-    }
-    if (!tournament.getPlayer(odId)) {
-      socket.emit('tournament:error', { message: '登録されていません' });
-      return;
-    }
-
-    const buyIn = tournament.config.buyIn;
-    const result = await withDbAndMemory({
-      label: 'Unregister',
-      odId,
-      dbOps: async (tx) => {
-        await tx.bankroll.update({
-          where: { userId: odId },
-          data: { balance: { increment: buyIn } },
-        });
-        await tx.transaction.create({
-          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: buyIn },
-        });
-        await tx.tournamentRegistration.deleteMany({
-          where: { tournamentId: data.tournamentId, userId: odId },
-        });
-      },
-      memoryOp: () => tournament.unregisterPlayer(odId),
-      compensate: async (tx) => {
-        await tx.bankroll.update({
-          where: { userId: odId },
-          data: { balance: { decrement: buyIn } },
-        });
-        await tx.transaction.create({
-          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
-        });
-        await tx.tournamentRegistration.upsert({
-          where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
-          create: { tournamentId: data.tournamentId, userId: odId },
-          update: {},
-        });
-      },
-    });
-
-    if (!result.success) {
-      socket.emit('tournament:error', { message: result.error ?? '登録解除に失敗しました' });
-      return;
-    }
-
-    tournamentManager.removePlayerFromTracking(odId);
-    socket.emit('tournament:unregistered', { tournamentId: data.tournamentId });
-  });
-
   // リエントリー
   socket.on('tournament:reenter', async (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);
@@ -305,7 +245,7 @@ export function createTournamentFromConfig(
     maxPlayers: options?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
     playersPerTable: options?.playersPerTable ?? PLAYERS_PER_TABLE,
     blindSchedule: options?.blindSchedule ?? DEFAULT_BLIND_SCHEDULE,
-    lateRegistrationLevels: options?.lateRegistrationLevels ?? DEFAULT_LATE_REGISTRATION_LEVELS,
+    registrationLevels: options?.registrationLevels ?? DEFAULT_REGISTRATION_LEVELS,
     payoutPercentage: options?.payoutPercentage ?? [],
     startCondition: options?.startCondition ?? 'manual',
     scheduledStartTime: options?.scheduledStartTime,

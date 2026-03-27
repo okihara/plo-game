@@ -23,7 +23,7 @@ import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.j
 export class TournamentInstance {
   public readonly id: string;
   public readonly config: TournamentConfig;
-  private status: TournamentStatus = 'registering';
+  private status: TournamentStatus = 'waiting';
   private players: Map<string, TournamentPlayer> = new Map();
   private tables: Map<string, TableInstance> = new Map();
   private tablePlayerMap: Map<string, Set<string>> = new Map(); // tableId → Set<odId>
@@ -93,10 +93,9 @@ export class TournamentInstance {
   // ============================================
 
   /**
-   * トーナメントに参加（新規登録・遅刻登録・リエントリーを統合）
+   * トーナメントに参加（新規参加・リエントリーを統合）
    *
-   * - 新規: registering中 → 登録のみ（開始時にテーブル着席）
-   * - 新規: running中（遅刻登録期間内） → 登録＋即テーブル着席
+   * - 新規: running中（登録期間内） → 即テーブル着席
    * - リエントリー: eliminated状態 → チップリセット＋テーブル着席
    */
   public enterPlayer(
@@ -118,7 +117,7 @@ export class TournamentInstance {
     }
 
     // --- 新規参加 ---
-    if (this.status !== 'registering' && !this.isLateRegistrationOpen()) {
+    if (!this.isRegistrationOpen()) {
       return { success: false, error: 'トーナメントの登録受付は終了しています' };
     }
 
@@ -136,7 +135,7 @@ export class TournamentInstance {
       chips: this.config.startingChips,
       tableId: null,
       seatIndex: null,
-      status: 'registered',
+      status: 'playing',
       finishPosition: null,
       reentryCount: 0,
       registeredAt: new Date(),
@@ -150,19 +149,15 @@ export class TournamentInstance {
     // トーナメントルームに参加
     socket.join(this.roomName);
 
-    // running中なら即座にテーブル着席（遅刻登録）
-    if (this.isLateRegistrationOpen()) {
-      player.status = 'playing';
+    // 賞金構造を再計算
+    this.prizes = PrizeCalculator.calculate(
+      this.getTotalEntries(),
+      this.prizePool,
+      this.config.payoutPercentage
+    );
 
-      // 賞金構造を再計算
-      this.prizes = PrizeCalculator.calculate(
-        this.getTotalEntries(),
-        this.prizePool,
-        this.config.payoutPercentage
-      );
-
-      this.seatPlayerAtAvailableTable(player);
-    }
+    // テーブルに着席
+    this.seatPlayerAtAvailableTable(player);
 
     this.broadcastTournamentState();
     return { success: true };
@@ -175,10 +170,6 @@ export class TournamentInstance {
     player: TournamentPlayer,
     socket: Socket
   ): { success: boolean; error?: string } {
-    if (player.status === 'registered') {
-      return { success: false, error: '既に登録済みです' };
-    }
-
     if (player.status !== 'eliminated') {
       return { success: false, error: 'プレイ中のためリエントリーできません' };
     }
@@ -213,27 +204,6 @@ export class TournamentInstance {
     return { success: true };
   }
 
-  /**
-   * 登録解除
-   */
-  public unregisterPlayer(odId: string): { success: boolean; error?: string } {
-    if (this.status !== 'registering') {
-      return { success: false, error: 'トーナメント開始後は登録解除できません' };
-    }
-
-    const player = this.players.get(odId);
-    if (!player) {
-      return { success: false, error: '登録されていません' };
-    }
-
-    player.socket?.leave(this.roomName);
-    this.players.delete(odId);
-    this.prizePool -= this.config.buyIn;
-
-    this.broadcastTournamentState();
-    return { success: true };
-  }
-
   // ============================================
   // Tournament Lifecycle
   // ============================================
@@ -242,46 +212,8 @@ export class TournamentInstance {
    * トーナメント開始
    */
   public start(): { success: boolean; error?: string } {
-    if (this.status !== 'registering') {
+    if (this.status !== 'waiting') {
       return { success: false, error: 'トーナメントは既に開始しています' };
-    }
-
-    const registeredPlayers = Array.from(this.players.values()).filter(
-      p => p.status === 'registered'
-    );
-
-    if (registeredPlayers.length < this.config.minPlayers) {
-      return { success: false, error: `最低${this.config.minPlayers}人必要です（現在${registeredPlayers.length}人）` };
-    }
-
-    this.status = 'starting';
-
-    // 賞金構造を計算
-    this.prizes = PrizeCalculator.calculate(
-      registeredPlayers.length,
-      this.prizePool,
-      this.config.payoutPercentage
-    );
-
-    // テーブル割り当て
-    const playerIds = registeredPlayers.map(p => p.odId);
-    const tableAssignments = TableBalancer.initialAssignment(playerIds, this.config.playersPerTable);
-
-    // 各テーブルを作成してプレイヤーを着席
-    for (const assignedPlayers of tableAssignments) {
-      const table = this.createTournamentTable();
-
-      for (const odId of assignedPlayers) {
-        const player = this.players.get(odId)!;
-        player.status = 'playing';
-
-        const seatIndex = this.seatPlayerAtTable(player, table, player.chips, { skipJoinedEmit: false });
-        if (seatIndex === null) {
-          // 着席失敗: ステータスをロールバック
-          player.status = 'registered';
-          console.error(`[Tournament ${this.id}] Failed to seat ${odId} during start`);
-        }
-      }
     }
 
     // ブラインドスケジュール開始
@@ -290,11 +222,6 @@ export class TournamentInstance {
     });
 
     this.status = 'running';
-
-    // 各テーブルでハンド開始
-    for (const table of this.tables.values()) {
-      table.triggerMaybeStartHand();
-    }
 
     this.broadcastTournamentState();
     return { success: true };
@@ -380,10 +307,10 @@ export class TournamentInstance {
     return true;
   }
 
-  public isLateRegistrationOpen(): boolean {
+  public isRegistrationOpen(): boolean {
     if (this.status !== 'running') return false;
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
-    return currentLevel <= this.config.lateRegistrationLevels;
+    return currentLevel <= this.config.registrationLevels;
   }
 
   // ============================================
@@ -424,7 +351,7 @@ export class TournamentInstance {
       largestStack,
       smallestStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
-      isLateRegistrationOpen: this.isLateRegistrationOpen(),
+      isRegistrationOpen: this.isRegistrationOpen(),
       isFinalTable: this.status === 'final_table' || (this.tables.size === 1 && remaining <= PLAYERS_PER_TABLE),
     };
   }
@@ -441,7 +368,7 @@ export class TournamentInstance {
       currentBlindLevel: this.blindScheduler.getCurrentLevel().level,
       prizePool: this.prizePool,
       scheduledStartTime: this.config.scheduledStartTime?.toISOString(),
-      isLateRegistrationOpen: this.isLateRegistrationOpen(),
+      isRegistrationOpen: this.isRegistrationOpen(),
     };
   }
 

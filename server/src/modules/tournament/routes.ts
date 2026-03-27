@@ -52,7 +52,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           minPlayers: tournament.config.minPlayers,
           maxPlayers: tournament.config.maxPlayers,
           blindSchedule: JSON.parse(JSON.stringify(tournament.config.blindSchedule)),
-          lateRegistrationLevels: tournament.config.lateRegistrationLevels,
+          lateRegistrationLevels: tournament.config.registrationLevels,
           payoutPercentage: JSON.parse(JSON.stringify(tournament.config.payoutPercentage)),
           allowReentry: tournament.config.allowReentry,
           maxReentries: tournament.config.maxReentries,

@@ -3,7 +3,7 @@
 // --- Tournament Status ---
 
 export type TournamentStatus =
-  | 'registering'
+  | 'waiting'
   | 'starting'
   | 'running'
   | 'final_table'
@@ -41,7 +41,7 @@ export interface ClientTournamentState {
   largestStack: number;
   smallestStack: number;
   payoutStructure: { position: number; amount: number }[];
-  isLateRegistrationOpen: boolean;
+  isRegistrationOpen: boolean;
   isFinalTable: boolean;
 }
 
@@ -58,7 +58,7 @@ export interface TournamentLobbyInfo {
   currentBlindLevel: number;
   prizePool: number;
   scheduledStartTime?: string; // ISO string
-  isLateRegistrationOpen: boolean;
+  isRegistrationOpen: boolean;
 }
 
 // --- Tournament Result ---
