@@ -848,7 +848,7 @@ export class TableInstance {
       // ターン→リバーは1.5倍のディレイ
       const nextStage = stages[currentStageIndex];
       const delay = nextStage?.street === 'river'
-        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.5
+        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
         : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
       this.runOutTimer = setTimeout(revealNextStage, delay);
     };
