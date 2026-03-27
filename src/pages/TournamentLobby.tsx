@@ -44,11 +44,6 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
   }, [refreshList]);
 
   useEffect(() => {
-    const interval = setInterval(() => void refreshList(), 5000);
-    return () => clearInterval(interval);
-  }, [refreshList]);
-
-  useEffect(() => {
     if (registeredTournamentId) {
       setRegistering(null);
     }
