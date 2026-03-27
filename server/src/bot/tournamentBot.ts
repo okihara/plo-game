@@ -68,8 +68,22 @@ async function main(): Promise<void> {
   const { tournamentId } = await createRes.json() as { tournamentId: string };
   console.log(`Tournament created: ${tournamentId}`);
 
-  // 2. ボット接続＆登録
-  console.log(`\n[Step 2] Connecting ${BOT_COUNT} bots...`);
+  // 2. トーナメント開始（running状態にしないとプレイヤーが参加できない）
+  console.log('\n[Step 2] Starting tournament...');
+  const startRes = await fetch(`${SERVER_URL}/api/tournaments/${tournamentId}/start`, {
+    method: 'POST',
+  });
+
+  if (!startRes.ok) {
+    const err = await startRes.text();
+    console.error(`Failed to start: ${err}`);
+    process.exit(1);
+  }
+
+  console.log('Tournament started!');
+
+  // 3. ボット接続＆参加
+  console.log(`\n[Step 3] Connecting ${BOT_COUNT} bots...`);
   const manager = new TournamentBotManager({
     serverUrl: SERVER_URL,
     botCount: BOT_COUNT,
@@ -78,24 +92,7 @@ async function main(): Promise<void> {
   });
 
   await manager.connectAndRegister();
-
-  // 登録完了を少し待ってからスタート
-  await sleep(1000);
-
-  // 3. トーナメント開始
-  console.log('\n[Step 3] Starting tournament...');
-  const startRes = await fetch(`${SERVER_URL}/api/tournaments/${tournamentId}/start`, {
-    method: 'POST',
-  });
-
-  if (!startRes.ok) {
-    const err = await startRes.text();
-    console.error(`Failed to start: ${err}`);
-    await manager.disconnectAll();
-    process.exit(1);
-  }
-
-  console.log('Tournament started! Waiting for completion...\n');
+  console.log('All bots entered. Waiting for completion...\n');
 
   // 4. 完了を待つ
   const startTime = Date.now();
@@ -108,10 +105,6 @@ async function main(): Promise<void> {
   await manager.disconnectAll();
   console.log('Done!');
   process.exit(0);
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
 }
 
 // Graceful shutdown
