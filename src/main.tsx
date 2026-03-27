@@ -6,6 +6,7 @@ import { TournamentLobby } from './pages/TournamentLobby';
 import { TournamentGame } from './pages/TournamentGame';
 import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
+import { EliminationDebug } from './pages/EliminationDebug';
 import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
@@ -43,6 +44,7 @@ function App() {
     return <PlayerDebug />;
   }
 
+
   const isGameScreen = (!!blinds || !!privateMode || !!tournamentId || currentPath.startsWith('/private/') || currentPath.startsWith('/tournament/'));
   const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
 
@@ -57,7 +59,9 @@ function App() {
   };
 
   let page;
-  if (currentPath.startsWith('/hand/')) {
+  if (currentPath === '/debug/elimination') {
+    page = <EliminationDebug />;
+  } else if (currentPath.startsWith('/hand/')) {
     const handId = currentPath.replace('/hand/', '');
     page = <HandDetailPage handId={handId} onBack={goBackToLobby} />;
   } else if (currentPath.startsWith('/player/')) {

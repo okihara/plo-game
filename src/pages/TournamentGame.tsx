@@ -40,6 +40,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     showdownHandNames,
     handleAction,
     handleFastFold,
+    isWaitingForPlayers,
   } = useOnlineGameState(blinds);
 
   // 接続 → テーブルの game:state を要求
@@ -73,6 +74,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
           position={elimination.position}
           totalPlayers={elimination.totalPlayers}
           prizeAmount={elimination.prizeAmount}
+          tournamentName={tournamentState?.name}
           onClose={handleBack}
         />
       </div>
@@ -125,6 +127,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         showdownHandNames={showdownHandNames}
         handleAction={handleAction}
         handleFastFold={handleFastFold}
+        isWaitingForPlayers={isWaitingForPlayers}
         onBack={handleBack}
         blindsLabel={blinds}
         notice={blindChangeNotice}
