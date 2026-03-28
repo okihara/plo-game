@@ -141,6 +141,7 @@ function TournamentCard({
   const status = statusLabel(t.status);
   const isRunning = t.status !== 'waiting' && t.status !== 'completed' && t.status !== 'cancelled';
   const isFinished = t.status === 'completed' || t.status === 'cancelled';
+  const isWaitingForStart = t.status === 'waiting' && t.scheduledStartTime && new Date(t.scheduledStartTime) > new Date();
 
   return (
     <div className="bg-white rounded-[2.5cqw] border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] overflow-hidden">
@@ -208,6 +209,10 @@ function TournamentCard({
           >
             結果を見る
           </button>
+        ) : isWaitingForStart ? (
+          <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
+            開始時刻をお待ちください
+          </div>
         ) : !isLoggedIn ? (
           <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
             ログインすると参加できます

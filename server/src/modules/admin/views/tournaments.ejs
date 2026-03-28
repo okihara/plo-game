@@ -75,6 +75,17 @@
     }
     .result-msg.success { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
     .result-msg.error { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+    .time-preset {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .time-preset:hover { background: #475569; }
   </style>
 </head>
 <body>
@@ -117,6 +128,16 @@
         <div class="form-group" id="scheduledTimeGroup" style="display:none">
           <label>開始時刻</label>
           <input type="datetime-local" id="scheduledStartTime">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+            <button type="button" class="time-preset" onclick="setTimeOffset(5)">5分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(10)">10分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(15)">15分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(30)">30分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(60)">1時間後</button>
+            <button type="button" class="time-preset" onclick="setTimeToday(20,0)">今日 20:00</button>
+            <button type="button" class="time-preset" onclick="setTimeToday(21,0)">今日 21:00</button>
+            <button type="button" class="time-preset" onclick="setTimeToday(22,0)">今日 22:00</button>
+          </div>
         </div>
         <div class="form-group" id="requiredCountGroup" style="display:none">
           <label>必要人数</label>
@@ -171,6 +192,20 @@
     });
 
     function formatChips(c) { return '$' + c.toLocaleString(); }
+
+    function toLocalDatetime(d) {
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+    function setTimeOffset(min) {
+      var d = new Date(Date.now() + min * 60000);
+      document.getElementById('scheduledStartTime').value = toLocalDatetime(d);
+    }
+    function setTimeToday(h, m) {
+      var d = new Date();
+      d.setHours(h, m, 0, 0);
+      if (d < new Date()) d.setDate(d.getDate() + 1); // 過ぎていたら翌日
+      document.getElementById('scheduledStartTime').value = toLocalDatetime(d);
+    }
 
     async function createTournament() {
       var body = {

@@ -52,7 +52,15 @@ export class TournamentInstance {
   // ============================================
 
   public getStatus(): TournamentStatus {
-    return this.status;
+    // completed/cancelled は確定済み
+    if (this.status === 'completed' || this.status === 'cancelled') return this.status;
+    // final_table, heads_up はゲーム中に設定される
+    if (this.status === 'final_table' || this.status === 'heads_up') return this.status;
+    // waiting/running は開始時刻から動的判定
+    if (!this.blindScheduler.isStarted() && !this.isScheduledTimePassed()) {
+      return 'waiting';
+    }
+    return 'running';
   }
 
   public getPlayerCount(): number {
@@ -117,6 +125,16 @@ export class TournamentInstance {
     }
 
     // --- 新規参加 ---
+    if (this.getStatus() === 'waiting') {
+      return { success: false, error: 'トーナメントはまだ開始されていません' };
+    }
+
+    // BlindScheduler 未開始なら開始（予定時刻を過ぎて最初のプレイヤーが来た時）
+    if (!this.blindScheduler.isStarted()) {
+      console.log(`[Tournament ${this.id}] Auto-starting (first player entered after scheduled time)`);
+      this.start();
+    }
+
     if (!this.isRegistrationOpen()) {
       return { success: false, error: 'トーナメントの登録受付は終了しています' };
     }
@@ -212,12 +230,18 @@ export class TournamentInstance {
    * トーナメント開始
    */
   public start(): { success: boolean; error?: string } {
-    if (this.status !== 'waiting') {
+    if (this.blindScheduler.isStarted()) {
       return { success: false, error: 'トーナメントは既に開始しています' };
     }
 
-    // ブラインドスケジュール開始
-    this.blindScheduler.start((newLevel, nextLevel) => {
+    // 予定開始時刻があればそこを基準に、なければ現在時刻で開始
+    const startTime = this.config.scheduledStartTime
+      ? (this.config.scheduledStartTime instanceof Date
+        ? this.config.scheduledStartTime
+        : new Date(this.config.scheduledStartTime as unknown as string))
+      : new Date();
+
+    this.blindScheduler.startFrom(startTime, (newLevel, nextLevel) => {
       this.onBlindLevelUp(newLevel, nextLevel);
     });
 
@@ -311,6 +335,17 @@ export class TournamentInstance {
     if (this.status !== 'running') return false;
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
     return currentLevel <= this.config.registrationLevels;
+  }
+
+  /**
+   * 予定開始時刻を過ぎているか
+   */
+  public isScheduledTimePassed(): boolean {
+    if (!this.config.scheduledStartTime) return true; // 時刻未指定は即開始可能
+    const scheduled = this.config.scheduledStartTime instanceof Date
+      ? this.config.scheduledStartTime.getTime()
+      : new Date(this.config.scheduledStartTime as unknown as string).getTime();
+    return Date.now() >= scheduled;
   }
 
   // ============================================

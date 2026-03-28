@@ -32,39 +32,41 @@ describe('BlindScheduler', () => {
     expect(scheduler.getNextLevel()).toEqual(testSchedule[1]);
   });
 
-  it('タイマー経過でレベルアップコールバックが呼ばれる', () => {
+  it('経過時間でレベルアップし、コールバックが呼ばれる', () => {
     const scheduler = new BlindScheduler(testSchedule);
     const onLevelUp = vi.fn();
 
     scheduler.start(onLevelUp);
 
-    // 5分経過 → レベル2へ
+    // 5分経過 → getCurrentLevel 呼び出しでレベル2検知
     vi.advanceTimersByTime(5 * 60 * 1000);
+    expect(scheduler.getCurrentLevel()).toEqual(testSchedule[1]);
     expect(onLevelUp).toHaveBeenCalledTimes(1);
     expect(onLevelUp).toHaveBeenCalledWith(testSchedule[1], testSchedule[2]);
-    expect(scheduler.getCurrentLevel()).toEqual(testSchedule[1]);
   });
 
-  it('最終レベルに達するとタイマーが停止する', () => {
+  it('最終レベルに達しても安定して動作する', () => {
     const scheduler = new BlindScheduler(testSchedule);
     const onLevelUp = vi.fn();
 
     scheduler.start(onLevelUp);
 
-    // レベル2へ
+    // レベル2、レベル3へ
     vi.advanceTimersByTime(5 * 60 * 1000);
-    // レベル3へ（最終）
+    scheduler.getCurrentLevel(); // レベル2検知
     vi.advanceTimersByTime(5 * 60 * 1000);
+    scheduler.getCurrentLevel(); // レベル3検知
     expect(onLevelUp).toHaveBeenCalledTimes(2);
     expect(scheduler.getCurrentLevel()).toEqual(testSchedule[2]);
     expect(scheduler.getNextLevel()).toBeNull();
 
     // さらに時間が経ってもコールバックは呼ばれない
     vi.advanceTimersByTime(10 * 60 * 1000);
+    scheduler.getCurrentLevel();
     expect(onLevelUp).toHaveBeenCalledTimes(2);
   });
 
-  it('stop でタイマーが停止する', () => {
+  it('stop 後はレベルが進まない', () => {
     const scheduler = new BlindScheduler(testSchedule);
     const onLevelUp = vi.fn();
 
@@ -72,31 +74,21 @@ describe('BlindScheduler', () => {
     scheduler.stop();
 
     vi.advanceTimersByTime(10 * 60 * 1000);
+    // stop後はstartedAtが0なので常にインデックス0
+    expect(scheduler.getCurrentLevel()).toEqual(testSchedule[0]);
     expect(onLevelUp).not.toHaveBeenCalled();
   });
 
-  it('pause/resume で残り時間が正確に保持される', () => {
+  it('startFrom で過去の開始時刻から正しいレベルを算出する', () => {
     const scheduler = new BlindScheduler(testSchedule);
     const onLevelUp = vi.fn();
 
-    scheduler.start(onLevelUp);
+    // 7分前に開始 → レベル2（5分でレベル2、残り2分）
+    const startedAt = Date.now() - 7 * 60 * 1000;
+    scheduler.startFrom(startedAt, onLevelUp);
 
-    // 3分経過 → pause（残り2分）
-    vi.advanceTimersByTime(3 * 60 * 1000);
-    scheduler.pause();
-    expect(onLevelUp).not.toHaveBeenCalled();
-
-    // pauseの間は時間が進まない
-    vi.advanceTimersByTime(10 * 60 * 1000);
-    expect(onLevelUp).not.toHaveBeenCalled();
-
-    // resume → 残り2分後にレベルアップ
-    scheduler.resume(onLevelUp);
-    vi.advanceTimersByTime(1 * 60 * 1000); // 1分 → まだ
-    expect(onLevelUp).not.toHaveBeenCalled();
-
-    vi.advanceTimersByTime(1 * 60 * 1000); // さらに1分 → レベルアップ
-    expect(onLevelUp).toHaveBeenCalledTimes(1);
+    expect(scheduler.getCurrentLevel()).toEqual(testSchedule[1]);
+    expect(scheduler.getCurrentLevelIndex()).toBe(1);
   });
 
   it('getNextLevelAt が正しいタイムスタンプを返す', () => {

@@ -170,13 +170,14 @@ describe('TournamentInstance', () => {
       expect(tournament.getPlayer('p1')?.tableId).not.toBeNull();
     });
 
-    it('waiting中は参加できない', () => {
-      const tournament = new TournamentInstance(io, createTestConfig());
+    it('開始時刻前は参加できない', () => {
+      const futureTime = new Date(Date.now() + 60 * 60 * 1000); // 1時間後
+      const tournament = new TournamentInstance(io, createTestConfig({ scheduledStartTime: futureTime }));
       const socket = createMockSocket();
       const result = tournament.enterPlayer('p1', 'Player 1', socket);
 
       expect(result.success).toBe(false);
-      expect(result.error).toContain('登録受付は終了');
+      expect(result.error).toContain('まだ開始されていません');
     });
 
     it('同一プレイヤーの二重参加を防ぐ', () => {

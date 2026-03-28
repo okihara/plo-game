@@ -1,16 +1,14 @@
 import { BlindLevel } from './types.js';
 
 /**
- * タイマーベースのブラインドレベル管理
- * 各レベルの durationMinutes 経過後にコールバックを発火する
+ * 経過時間ベースのブラインドレベル管理
+ * startedAt からの経過時間でレベルを算出する（タイマー不要）
  */
 export class BlindScheduler {
   private schedule: BlindLevel[];
-  private currentIndex: number = 0;
-  private timer: NodeJS.Timeout | null = null;
-  private levelStartedAt: number = 0; // ms timestamp
-  private pausedRemainingMs: number = 0;
-  private isPaused: boolean = false;
+  private startedAt: number = 0; // ms timestamp (0 = 未開始)
+  private lastNotifiedIndex: number = -1;
+  private onLevelUp: ((current: BlindLevel, next: BlindLevel | null) => void) | null = null;
 
   constructor(schedule: BlindLevel[]) {
     if (schedule.length === 0) {
@@ -20,111 +18,112 @@ export class BlindScheduler {
   }
 
   /**
-   * ブラインドスケジュールを開始
-   * @param onLevelUp レベル変更時のコールバック（新レベル, 次レベル）
+   * 開始時刻を設定（ブラインド計算の基準点）
    */
   start(onLevelUp: (current: BlindLevel, next: BlindLevel | null) => void): void {
-    this.currentIndex = 0;
-    this.scheduleNext(onLevelUp);
+    this.startedAt = Date.now();
+    this.lastNotifiedIndex = 0;
+    this.onLevelUp = onLevelUp;
+  }
+
+  /**
+   * 特定の開始時刻からブラインドを計算する（再接続・遅れて参加時用）
+   */
+  startFrom(startedAt: number | Date, onLevelUp: (current: BlindLevel, next: BlindLevel | null) => void): void {
+    this.startedAt = typeof startedAt === 'number' ? startedAt : startedAt.getTime();
+    this.lastNotifiedIndex = this.computeCurrentIndex();
+    this.onLevelUp = onLevelUp;
   }
 
   /**
    * スケジュールを停止
    */
   stop(): void {
-    if (this.timer) {
-      clearTimeout(this.timer);
-      this.timer = null;
-    }
-    this.isPaused = false;
-    this.pausedRemainingMs = 0;
-  }
-
-  /**
-   * 一時停止
-   */
-  pause(): void {
-    if (this.isPaused || !this.timer) return;
-    clearTimeout(this.timer);
-    this.timer = null;
-    this.isPaused = true;
-    const elapsed = Date.now() - this.levelStartedAt;
-    const totalMs = this.schedule[this.currentIndex].durationMinutes * 60 * 1000;
-    this.pausedRemainingMs = Math.max(0, totalMs - elapsed);
-  }
-
-  /**
-   * 再開
-   */
-  resume(onLevelUp: (current: BlindLevel, next: BlindLevel | null) => void): void {
-    if (!this.isPaused) return;
-    this.isPaused = false;
-    this.levelStartedAt = Date.now() - (this.getCurrentLevelDurationMs() - this.pausedRemainingMs);
-
-    this.timer = setTimeout(() => {
-      this.advanceLevel(onLevelUp);
-    }, this.pausedRemainingMs);
+    this.startedAt = 0;
+    this.onLevelUp = null;
   }
 
   /**
    * 現在のブラインドレベルを取得
+   * ブラインド変更を検知したら onLevelUp を呼ぶ
    */
   getCurrentLevel(): BlindLevel {
-    return this.schedule[this.currentIndex];
+    const idx = this.computeCurrentIndex();
+    this.checkAndNotify(idx);
+    return this.schedule[idx];
   }
 
   /**
    * 次のブラインドレベルを取得（最終レベルならnull）
    */
   getNextLevel(): BlindLevel | null {
-    if (this.currentIndex + 1 >= this.schedule.length) return null;
-    return this.schedule[this.currentIndex + 1];
+    const idx = this.computeCurrentIndex();
+    if (idx + 1 >= this.schedule.length) return null;
+    return this.schedule[idx + 1];
   }
 
   /**
    * 現在のレベルインデックスを取得
    */
   getCurrentLevelIndex(): number {
-    return this.currentIndex;
+    return this.computeCurrentIndex();
   }
 
   /**
    * 次のレベル変更までのUNIXタイムスタンプ（ms）を取得
    */
   getNextLevelAt(): number {
-    if (this.isPaused) {
-      return Date.now() + this.pausedRemainingMs;
+    const idx = this.computeCurrentIndex();
+    if (idx + 1 >= this.schedule.length) {
+      return Date.now() + 999_999_999; // 最終レベル
     }
-    return this.levelStartedAt + this.getCurrentLevelDurationMs();
+    return this.getLevelStartAt(idx + 1);
   }
 
-  private getCurrentLevelDurationMs(): number {
-    return this.schedule[this.currentIndex].durationMinutes * 60 * 1000;
+  isStarted(): boolean {
+    return this.startedAt > 0;
   }
 
-  private scheduleNext(onLevelUp: (current: BlindLevel, next: BlindLevel | null) => void): void {
-    this.levelStartedAt = Date.now();
-    const durationMs = this.getCurrentLevelDurationMs();
-
-    this.timer = setTimeout(() => {
-      this.advanceLevel(onLevelUp);
-    }, durationMs);
+  getStartedAt(): number {
+    return this.startedAt;
   }
 
-  private advanceLevel(onLevelUp: (current: BlindLevel, next: BlindLevel | null) => void): void {
-    this.timer = null;
+  // --- private ---
 
-    if (this.currentIndex + 1 >= this.schedule.length) {
-      // 最終レベル: 最後のブラインドで継続（タイマーは停止）
-      return;
+  /**
+   * 経過時間から現在のレベルインデックスを算出
+   */
+  private computeCurrentIndex(): number {
+    if (this.startedAt === 0) return 0;
+    const elapsed = Date.now() - this.startedAt;
+    let accumulated = 0;
+    for (let i = 0; i < this.schedule.length; i++) {
+      accumulated += this.schedule[i].durationMinutes * 60_000;
+      if (elapsed < accumulated) return i;
     }
+    return this.schedule.length - 1; // 最終レベルで固定
+  }
 
-    this.currentIndex++;
-    const current = this.schedule[this.currentIndex];
-    const next = this.getNextLevel();
+  /**
+   * 指定レベルの開始タイムスタンプを算出
+   */
+  private getLevelStartAt(levelIndex: number): number {
+    let accumulated = 0;
+    for (let i = 0; i < levelIndex && i < this.schedule.length; i++) {
+      accumulated += this.schedule[i].durationMinutes * 60_000;
+    }
+    return this.startedAt + accumulated;
+  }
 
-    // scheduleNext を先に呼び、levelStartedAt を更新してから broadcast する
-    this.scheduleNext(onLevelUp);
-    onLevelUp(current, next);
+  /**
+   * レベル変更を検知して通知
+   */
+  private checkAndNotify(currentIndex: number): void {
+    if (currentIndex > this.lastNotifiedIndex && this.onLevelUp) {
+      this.lastNotifiedIndex = currentIndex;
+      const current = this.schedule[currentIndex];
+      const next = currentIndex + 1 < this.schedule.length ? this.schedule[currentIndex + 1] : null;
+      this.onLevelUp(current, next);
+    }
   }
 }

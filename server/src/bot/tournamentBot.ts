@@ -6,8 +6,8 @@ const BOT_COUNT = parseInt(process.env.BOT_COUNT || '9', 10);
 const NO_DELAY = process.env.NO_DELAY === 'true';
 const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'BabyPLO Daily Turbo';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
-const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '1500', 10);
-const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.20'); // 分（デフォルト45秒）
+const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '30000', 10);
+const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.15'); // 15秒
 
 // テスト用高速ブラインドスケジュール（50/100 スタート）
 const FAST_BLIND_SCHEDULE = [

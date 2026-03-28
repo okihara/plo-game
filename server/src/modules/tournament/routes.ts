@@ -51,12 +51,20 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         currentBlindLevel: 0,
         prizePool: t.prizePool,
         scheduledStartTime: t.scheduledStartTime?.toISOString(),
-        startedAt: t.startedAt?.toISOString(),
+        startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
         isRegistrationOpen: false,
       }));
 
-      // アクティブ → 終了済み の順（新しい順）
-      const tournaments = [...activeTournaments, ...completedTournaments];
+      // アクティブ（waiting含む）を先頭、その後に終了済みを開始時刻降順
+      const finishedStatuses = new Set(['completed', 'cancelled']);
+      const active = activeTournaments.filter(t => !finishedStatuses.has(t.status));
+      const finished = [...activeTournaments.filter(t => finishedStatuses.has(t.status)), ...completedTournaments];
+      finished.sort((a, b) => {
+        const timeA = a.startedAt ?? a.scheduledStartTime ?? '';
+        const timeB = b.startedAt ?? b.scheduledStartTime ?? '';
+        return timeB.localeCompare(timeA);
+      });
+      const tournaments = [...active, ...finished];
 
       // オプショナル認証: ログイン済みならDB参加記録を返す
       let myTournamentId: string | null = null;

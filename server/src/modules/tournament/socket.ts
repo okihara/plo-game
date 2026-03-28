@@ -82,6 +82,7 @@ export function registerTournamentHandlers(
       });
       if (!user) return;
 
+      const statusBefore = tournament.getStatus();
       const result = tournament.enterPlayer(odId, user.username, socket, {
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
@@ -92,6 +93,15 @@ export function registerTournamentHandlers(
         return;
       }
       tournamentManager.setPlayerTournament(odId, data.tournamentId);
+
+      // enterPlayer 内で自動開始された場合のDB更新
+      if (statusBefore === 'waiting' && tournament.getStatus() === 'running') {
+        prisma.tournament.update({
+          where: { id: data.tournamentId },
+          data: { status: 'RUNNING', startedAt: new Date() },
+        }).catch(err => console.error('[Tournament] Failed to update DB on auto-start:', err));
+      }
+
       player = tournament.getPlayer(odId)!;
     } else {
       // 既存プレイヤー: ソケット更新（ページ遷移でリスナーが変わるため）
