@@ -215,7 +215,7 @@ export function GameTable({
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-10 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
+          <div className={`absolute top-0 left-0 right-0 ${showSettingsMenu ? 'z-[200]' : 'z-10'} h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]`}>
             <button
               onClick={onBack}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
