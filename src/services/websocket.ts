@@ -44,7 +44,6 @@ export type WsListeners = {
   onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   onDisplaced?: () => void;
   // Tournament events
-  onTournamentRegistered?: (data: { tournamentId: string }) => void;
   onTournamentUnregistered?: (data: { tournamentId: string }) => void;
   onTournamentState?: (state: ClientTournamentState) => void;
   onTournamentTableAssigned?: (data: { tableId: string; tournamentId: string }) => void;
@@ -222,10 +221,6 @@ class WebSocketService {
       });
 
       // Tournament events
-      this.socket.on('tournament:registered', (data) => {
-        wsLog('tournament:registered', data);
-        this.emit('onTournamentRegistered', data);
-      });
       this.socket.on('tournament:unregistered', (data) => {
         wsLog('tournament:unregistered', data);
         this.emit('onTournamentUnregistered', data);
@@ -358,10 +353,6 @@ class WebSocketService {
   }
 
   // Tournament actions
-  registerTournament(tournamentId: string): void {
-    this.socket?.emit('tournament:register', { tournamentId });
-  }
-
   unregisterTournament(tournamentId: string): void {
     this.socket?.emit('tournament:unregister', { tournamentId });
   }

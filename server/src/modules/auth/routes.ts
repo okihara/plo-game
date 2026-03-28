@@ -385,6 +385,50 @@ export async function authRoutes(fastify: FastifyInstance) {
       .send({ success: true });
   });
 
+  // Bot login: Bot用のJWT発行（人間と同じ認証フローに乗せるため）
+  fastify.post('/bot-login', async (request, reply) => {
+    const { botName, botSecret } = request.body as { botName: string; botSecret?: string };
+
+    // 本番環境ではBOT_SECRETで認証（未設定なら拒否）
+    if (env.NODE_ENV === 'production') {
+      const expectedSecret = process.env.BOT_SECRET;
+      if (!expectedSecret || botSecret !== expectedSecret) {
+        return reply.status(403).send({ error: 'Invalid bot secret' });
+      }
+    }
+
+    if (!botName) {
+      return reply.status(400).send({ error: 'botName is required' });
+    }
+
+    const providerId = botName;
+    let user = await prisma.user.findUnique({
+      where: { provider_providerId: { provider: 'bot', providerId } },
+    });
+
+    if (!user) {
+      let username = botName;
+      let suffix = 1;
+      while (await prisma.user.findUnique({ where: { username } })) {
+        username = `${botName}${suffix}`;
+        suffix++;
+      }
+      user = await prisma.user.create({
+        data: {
+          email: `${botName.toLowerCase().replace(/[^a-z0-9]/g, '_')}@bot.local`,
+          username,
+          provider: 'bot',
+          providerId,
+          bankroll: { create: { balance: 10000 } },
+        },
+      });
+    }
+
+    const jwt = fastify.jwt.sign({ userId: user.id }, { expiresIn: '7d' });
+
+    reply.send({ success: true, token: jwt, user: { id: user.id, username: user.username } });
+  });
+
   // Dev: Quick login for testing (only in development)
   if (env.NODE_ENV === 'development') {
     fastify.post('/dev-login', async (request, reply) => {

@@ -37,6 +37,7 @@ export interface BotConfig {
   tournamentMode?: boolean; // true: トーナメントモード（ランダム切断・再マッチメイキング無効）
   onTournamentEliminated?: (bot: BotClient, position: number) => void;
   onTournamentCompleted?: (bot: BotClient) => void;
+  botSecret?: string; // 本番環境でのBot認証シークレット
 }
 
 // デフォルト: 2% の確率で切断（約50ハンドに1回）
@@ -64,6 +65,7 @@ export class BotClient {
   private pendingFastFoldCheck = false; // ホールカード受信後のファストフォールド判定待ち
   private _isMaintenanceActive = false; // サーバーがメンテナンス中か
   private tournamentId: string | null = null; // 参加中のトーナメントID
+  private authToken: string | null = null; // REST API用JWTトークン
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -74,14 +76,31 @@ export class BotClient {
   }
 
   async connect(): Promise<void> {
+    // 1. REST API でログイン → JWT取得（人間と同じ認証フロー）
+    const loginRes = await fetch(`${this.config.serverUrl}/api/auth/bot-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        botName: this.config.name,
+        ...(this.config.botSecret ? { botSecret: this.config.botSecret } : {}),
+      }),
+    });
+    if (!loginRes.ok) {
+      const body = await loginRes.json().catch(() => ({}));
+      throw new Error(`Bot login failed: ${(body as any).error ?? loginRes.statusText}`);
+    }
+    const loginData = await loginRes.json() as { token: string; user: { id: string; username: string } };
+    this.authToken = loginData.token;
+    this.playerId = loginData.user.id;
+    console.log(`[${this.config.name}] Logged in as ${this.playerId} (${loginData.user.username})`);
+
+    // 2. JWT付きでWebSocket接続（人間と同じ方法）
     return new Promise((resolve, reject) => {
       this.socket = io(this.config.serverUrl, {
         transports: ['websocket'],
         autoConnect: true,
         auth: {
-          isBot: true,
-          botName: this.config.name,
-          botAvatar: this.config.avatarUrl,
+          token: this.authToken,
         },
       });
 
@@ -92,8 +111,7 @@ export class BotClient {
       });
 
       this.socket.on('connection:established', (data: { playerId: string }) => {
-        this.playerId = data.playerId;
-        console.log(`[${this.config.name}] Authenticated as ${this.playerId}`);
+        console.log(`[${this.config.name}] Authenticated as ${data.playerId}`);
         this.startStuckCheck();
         resolve();
       });
@@ -249,11 +267,6 @@ export class BotClient {
       });
 
       // --- トーナメントイベント ---
-
-      this.socket.on('tournament:registered', (data: { tournamentId: string }) => {
-        this.tournamentId = data.tournamentId;
-        console.log(`[${this.config.name}] Tournament registered: ${data.tournamentId}`);
-      });
 
       this.socket.on('tournament:table_assigned', (data: { tableId: string }) => {
         // tableId 記録。seatNumber は table:joined で設定される
@@ -640,12 +653,29 @@ export class BotClient {
   }
 
   async joinTournament(tournamentId: string): Promise<void> {
-    if (!this.socket || !this.isConnected) {
-      throw new Error('Not connected to server');
+    if (!this.socket || !this.isConnected || !this.authToken) {
+      throw new Error('Not connected to server or no auth token');
     }
 
     console.log(`[${this.config.name}] Registering for tournament ${tournamentId}`);
-    this.socket.emit('tournament:register', { tournamentId });
+
+    // REST API で参加登録（人間と同じフロー）
+    const res = await fetch(`${this.config.serverUrl}/api/tournaments/${tournamentId}/register`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${this.authToken}`,
+      },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(`Tournament register failed: ${(body as any).error ?? res.statusText}`);
+    }
+
+    this.tournamentId = tournamentId;
+
+    // ゲーム画面遷移と同じフロー: テーブル着席＋状態取得
+    this.socket.emit('tournament:request_state', { tournamentId });
   }
 
   getTournamentId(): string | null {

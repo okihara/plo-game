@@ -114,12 +114,6 @@ export function useTournamentState() {
       onConnected: () => setIsConnected(true),
       onDisconnected: () => setIsConnected(false),
 
-      onTournamentRegistered: (data) => {
-        setRegisteredTournamentId(data.tournamentId);
-        setError(null);
-        void refreshList();
-      },
-
       onTournamentState: (state) => {
         setTournamentState(state);
         // 再接続時: tournament:state が来た = このトーナメントに参加中
