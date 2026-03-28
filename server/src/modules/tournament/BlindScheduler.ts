@@ -44,13 +44,19 @@ export class BlindScheduler {
   }
 
   /**
-   * 現在のブラインドレベルを取得
-   * ブラインド変更を検知したら onLevelUp を呼ぶ
+   * 現在のブラインドレベルを取得（副作用なし）
    */
   getCurrentLevel(): BlindLevel {
     const idx = this.computeCurrentIndex();
-    this.checkAndNotify(idx);
     return this.schedule[idx];
+  }
+
+  /**
+   * レベル変更を検知して onLevelUp を呼ぶ（明示的に呼ぶ）
+   */
+  tick(): void {
+    const idx = this.computeCurrentIndex();
+    this.checkAndNotify(idx);
   }
 
   /**

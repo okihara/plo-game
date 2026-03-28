@@ -570,6 +570,9 @@ export class TournamentInstance {
    * ハンド完了時: チップ同期 → バストプレイヤーの順位一括確定 → フェーズ遷移
    */
   private onHandSettled(seatChips: { odId: string; seatIndex: number; chips: number }[]): void {
+    // ハンド間でブラインドレベル変更を検知
+    this.blindScheduler.tick();
+
     // トーナメントプレイヤーのチップを同期
     for (const { odId, chips } of seatChips) {
       const player = this.players.get(odId);

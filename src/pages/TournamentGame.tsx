@@ -72,13 +72,12 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     return () => { cancelled = true; };
   }, [connect, tournamentId]);
 
-  // ブラインド同期
+  // ブラインド同期: game:state（ハンド開始時）のブラインドを反映
   useEffect(() => {
-    if (tournamentState?.currentBlindLevel) {
-      const { smallBlind, bigBlind } = tournamentState.currentBlindLevel;
-      setBlinds(`${smallBlind}/${bigBlind}`);
+    if (gameState && gameState.smallBlind > 0) {
+      setBlinds(`${gameState.smallBlind}/${gameState.bigBlind}`);
     }
-  }, [tournamentState?.currentBlindLevel]);
+  }, [gameState?.smallBlind, gameState?.bigBlind]);
 
   const handleBack = useCallback(() => {
     if (elimination || completedData) {

@@ -38,8 +38,9 @@ describe('BlindScheduler', () => {
 
     scheduler.start(onLevelUp);
 
-    // 5分経過 → getCurrentLevel 呼び出しでレベル2検知
+    // 5分経過 → tick() でレベル2検知
     vi.advanceTimersByTime(5 * 60 * 1000);
+    scheduler.tick();
     expect(scheduler.getCurrentLevel()).toEqual(testSchedule[1]);
     expect(onLevelUp).toHaveBeenCalledTimes(1);
     expect(onLevelUp).toHaveBeenCalledWith(testSchedule[1], testSchedule[2]);
@@ -53,16 +54,16 @@ describe('BlindScheduler', () => {
 
     // レベル2、レベル3へ
     vi.advanceTimersByTime(5 * 60 * 1000);
-    scheduler.getCurrentLevel(); // レベル2検知
+    scheduler.tick(); // レベル2検知
     vi.advanceTimersByTime(5 * 60 * 1000);
-    scheduler.getCurrentLevel(); // レベル3検知
+    scheduler.tick(); // レベル3検知
     expect(onLevelUp).toHaveBeenCalledTimes(2);
     expect(scheduler.getCurrentLevel()).toEqual(testSchedule[2]);
     expect(scheduler.getNextLevel()).toBeNull();
 
     // さらに時間が経ってもコールバックは呼ばれない
     vi.advanceTimersByTime(10 * 60 * 1000);
-    scheduler.getCurrentLevel();
+    scheduler.tick();
     expect(onLevelUp).toHaveBeenCalledTimes(2);
   });
 
