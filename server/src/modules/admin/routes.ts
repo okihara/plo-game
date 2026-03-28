@@ -519,6 +519,10 @@ export function adminRoutes(deps: AdminDependencies) {
     fastify.get('/admin/hands', async (request, reply) => {
       return reply.view('hands.ejs', {});
     });
+
+    fastify.get('/admin/tournaments', async (request, reply) => {
+      return reply.view('tournaments.ejs', {});
+    });
   };
 }
 

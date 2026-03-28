@@ -367,7 +367,11 @@ export class TournamentInstance {
       maxPlayers: this.config.maxPlayers,
       currentBlindLevel: this.blindScheduler.getCurrentLevel().level,
       prizePool: this.prizePool,
-      scheduledStartTime: this.config.scheduledStartTime?.toISOString(),
+      scheduledStartTime: this.config.scheduledStartTime
+        ? (this.config.scheduledStartTime instanceof Date
+          ? this.config.scheduledStartTime.toISOString()
+          : String(this.config.scheduledStartTime))
+        : undefined,
       isRegistrationOpen: this.isRegistrationOpen(),
     };
   }
