@@ -135,7 +135,7 @@ export function Player({
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-12cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
-          <span className="text-[7cqw] font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_0_4px_rgba(255,200,0,0.6)]">
+          <span className="text-[7cqw] font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 bg-clip-text text-transparent [filter:drop-shadow(0_0_4px_rgba(255,200,0,0.6))_drop-shadow(0_1px_2px_rgba(0,0,0,0.8))_drop-shadow(0_0_6px_rgba(0,0,0,0.5))]">
             WIN +{formatChips(winAmount)}
           </span>
         </div>
