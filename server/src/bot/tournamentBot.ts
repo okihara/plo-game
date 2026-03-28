@@ -8,6 +8,8 @@ const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'BabyPLO Daily Turbo';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
 const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '30000', 10);
 const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.15'); // 15秒
+const TOURNAMENT_ID = process.env.TOURNAMENT_ID || ''; // 既存トーナメントに参加する場合
+const JOIN_ACTIVE = process.env.JOIN_ACTIVE === 'true'; // 進行中のトーナメントを自動検索して参加
 
 // テスト用高速ブラインドスケジュール（50/100 スタート）
 const FAST_BLIND_SCHEDULE = [
@@ -43,44 +45,67 @@ async function main(): Promise<void> {
   console.log(`Chips:       ${STARTING_CHIPS}`);
   console.log(`Blind dur:   ${BLIND_DURATION}min`);
   console.log(`No delay:    ${NO_DELAY}`);
+  if (TOURNAMENT_ID) console.log(`Join ID:     ${TOURNAMENT_ID}`);
   console.log('=================================');
 
-  // 1. トーナメント作成
-  console.log('\n[Step 1] Creating tournament...');
-  const createRes = await fetch(`${SERVER_URL}/api/tournaments`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      name: TOURNAMENT_NAME,
-      buyIn: BUY_IN,
-      startingChips: STARTING_CHIPS,
-      minPlayers: 2,
-      maxPlayers: Math.max(BOT_COUNT + 2, 18),
-      blindSchedule: FAST_BLIND_SCHEDULE,
-    }),
-  });
+  let tournamentId: string;
 
-  if (!createRes.ok) {
-    const err = await createRes.text();
-    throw new Error(`Failed to create tournament: ${err}`);
+  if (TOURNAMENT_ID) {
+    // 指定IDのトーナメントに参加
+    tournamentId = TOURNAMENT_ID;
+    console.log(`\n[Step 1] Joining existing tournament: ${tournamentId}`);
+  } else if (JOIN_ACTIVE) {
+    // 進行中 or 開始待ちのトーナメントを検索
+    console.log('\n[Step 1] Finding active tournament...');
+    const listRes = await fetch(`${SERVER_URL}/api/tournaments`);
+    if (!listRes.ok) throw new Error('Failed to fetch tournament list');
+    const { tournaments } = await listRes.json() as { tournaments: { id: string; name: string; status: string }[] };
+    const target = tournaments.find(t => t.status === 'running' || t.status === 'waiting');
+    if (!target) {
+      console.error('No active tournament found');
+      process.exit(1);
+    }
+    tournamentId = target.id;
+    console.log(`Found: ${target.name} (${target.status}) → ${tournamentId}`);
+  } else {
+    // 新規トーナメント作成
+    console.log('\n[Step 1] Creating tournament...');
+    const createRes = await fetch(`${SERVER_URL}/api/tournaments`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        name: TOURNAMENT_NAME,
+        buyIn: BUY_IN,
+        startingChips: STARTING_CHIPS,
+        minPlayers: 2,
+        maxPlayers: Math.max(BOT_COUNT + 2, 18),
+        blindSchedule: FAST_BLIND_SCHEDULE,
+      }),
+    });
+
+    if (!createRes.ok) {
+      const err = await createRes.text();
+      throw new Error(`Failed to create tournament: ${err}`);
+    }
+
+    const data = await createRes.json() as { tournamentId: string };
+    tournamentId = data.tournamentId;
+    console.log(`Tournament created: ${tournamentId}`);
+
+    // トーナメント開始
+    console.log('\n[Step 2] Starting tournament...');
+    const startRes = await fetch(`${SERVER_URL}/api/tournaments/${tournamentId}/start`, {
+      method: 'POST',
+    });
+
+    if (!startRes.ok) {
+      const err = await startRes.text();
+      console.error(`Failed to start: ${err}`);
+      process.exit(1);
+    }
+
+    console.log('Tournament started!');
   }
-
-  const { tournamentId } = await createRes.json() as { tournamentId: string };
-  console.log(`Tournament created: ${tournamentId}`);
-
-  // 2. トーナメント開始（running状態にしないとプレイヤーが参加できない）
-  console.log('\n[Step 2] Starting tournament...');
-  const startRes = await fetch(`${SERVER_URL}/api/tournaments/${tournamentId}/start`, {
-    method: 'POST',
-  });
-
-  if (!startRes.ok) {
-    const err = await startRes.text();
-    console.error(`Failed to start: ${err}`);
-    process.exit(1);
-  }
-
-  console.log('Tournament started!');
 
   // 3. ボット接続＆参加
   console.log(`\n[Step 3] Connecting ${BOT_COUNT} bots...`);

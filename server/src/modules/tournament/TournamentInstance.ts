@@ -332,7 +332,8 @@ export class TournamentInstance {
   }
 
   public isRegistrationOpen(): boolean {
-    if (this.status !== 'running') return false;
+    const status = this.getStatus();
+    if (status !== 'running') return false;
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
     return currentLevel <= this.config.registrationLevels;
   }

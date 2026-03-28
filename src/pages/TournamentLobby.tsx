@@ -196,7 +196,7 @@ function TournamentCard({
         )}
 
         {t.isRegistrationOpen && (
-          <div className="col-span-2 text-[2.5cqw] text-forest mt-[1cqw]">遅刻登録可能</div>
+          <div className="col-span-2 text-[2.5cqw] text-forest mt-[1cqw]">参加可能</div>
         )}
       </div>
 
