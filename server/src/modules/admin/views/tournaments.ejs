@@ -103,19 +103,19 @@
         </div>
         <div class="form-group">
           <label>Buy-in</label>
-          <input type="number" id="buyIn" value="100" min="0">
+          <input type="number" id="buyIn" value="<%= defaults.buyIn %>" min="0">
         </div>
         <div class="form-group">
           <label>初期チップ</label>
-          <input type="number" id="startingChips" value="1500" min="100">
+          <input type="number" id="startingChips" value="<%= defaults.startingChips %>" min="100">
         </div>
         <div class="form-group">
           <label>最大参加者</label>
-          <input type="number" id="maxPlayers" value="54" min="2">
+          <input type="number" id="maxPlayers" value="<%= defaults.maxPlayers %>" min="2">
         </div>
         <div class="form-group">
           <label>最小参加者</label>
-          <input type="number" id="minPlayers" value="6" min="2">
+          <input type="number" id="minPlayers" value="<%= defaults.minPlayers %>" min="2">
         </div>
         <div class="form-group">
           <label>開始条件</label>
@@ -146,7 +146,7 @@
         </div>
         <div class="form-group">
           <label>遅刻登録レベル</label>
-          <input type="number" id="registrationLevels" value="4" min="0">
+          <input type="number" id="registrationLevels" value="<%= defaults.registrationLevels %>" min="0">
           <span class="hint">このレベルまで参加登録可能</span>
         </div>
         <div class="form-group">

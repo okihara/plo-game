@@ -7,6 +7,21 @@ import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
+import {
+  DEFAULT_BUY_IN,
+  DEFAULT_STARTING_CHIPS,
+  DEFAULT_MAX_PLAYERS,
+  DEFAULT_MIN_PLAYERS,
+  DEFAULT_REGISTRATION_LEVELS,
+} from '../tournament/constants.js';
+
+const tournamentDefaults = {
+  buyIn: DEFAULT_BUY_IN,
+  startingChips: DEFAULT_STARTING_CHIPS,
+  maxPlayers: DEFAULT_MAX_PLAYERS,
+  minPlayers: DEFAULT_MIN_PLAYERS,
+  registrationLevels: DEFAULT_REGISTRATION_LEVELS,
+};
 
 interface AdminDependencies {
   io: Server;
@@ -521,7 +536,7 @@ export function adminRoutes(deps: AdminDependencies) {
     });
 
     fastify.get('/admin/tournaments', async (request, reply) => {
-      return reply.view('tournaments.ejs', {});
+      return reply.view('tournaments.ejs', { defaults: tournamentDefaults });
     });
   };
 }
