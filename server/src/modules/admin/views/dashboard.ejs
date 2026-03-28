@@ -97,6 +97,22 @@
       font-weight: 600;
       font-size: 10px;
     }
+    .admin-btn {
+      padding: 1px 5px;
+      border: 1px solid #475569;
+      border-radius: 3px;
+      background: transparent;
+      color: #94a3b8;
+      cursor: pointer;
+      font-size: 9px;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .admin-btn:hover { background: #475569; color: #f8fafc; }
+    .admin-btn.danger { border-color: #ef4444; color: #ef4444; }
+    .admin-btn.danger:hover { background: #ef4444; color: white; }
+    .admin-btn.warn { border-color: #f59e0b; color: #f59e0b; }
+    .admin-btn.warn:hover { background: #f59e0b; color: white; }
     .refresh-bar {
       display: flex;
       align-items: center;
@@ -340,7 +356,9 @@
 
         var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
         if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
-        row1 += '<span class="p-name">' + p.odName + '</span></div>';
+        row1 += '<span class="p-name">' + p.odName + '</span>';
+        row1 += '<button class="admin-btn danger" onclick="kickPlayer(\'' + p.odId + '\',\'' + t.id + '\')" title="キック">✕</button>';
+        row1 += '</div>';
         var row2 = '<div class="p-row"><span class="p-money">' + formatChips(p.chips) + '</span>';
         if (p.currentBet > 0) row2 += '<span class="p-bet">Bet ' + formatChips(p.currentBet) + '</span>';
         row2 += '</div>';
@@ -359,7 +377,8 @@
           return '<span class="action-option">' + l + '</span>';
         }).join(' ');
         return '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
-          '<span class="pa-timer">' + remaining + 's</span>' + acts;
+          '<span class="pa-timer">' + remaining + 's</span>' + acts +
+          '<button class="admin-btn warn" onclick="forceAction(\'' + t.id + '\')" title="強制フォールド">fold</button>';
       }
       return '<span style="color:#64748b;font-size:10px">— 待機中</span>';
     }
@@ -452,6 +471,43 @@
         });
         fetchStats();
       } catch (e) { alert('Failed: ' + e.message); }
+    }
+
+    async function kickPlayer(odId, tableId) {
+      if (!confirm(odId.slice(0,8) + '... をキックしますか？')) return;
+      try {
+        var res = await fetch(apiUrl('/api/admin/kick'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ odId: odId }),
+        });
+        var data = await res.json();
+        if (!data.success) {
+          // キャッシュゲームテーブルにいなければトーナメントキックを試行
+          var res2 = await fetch(apiUrl('/api/admin/tournament/kick'), {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ odId: odId }),
+          });
+          var data2 = await res2.json();
+          if (!data2.success) alert('キック失敗: ' + (data2.error || data.error));
+        }
+        fetchStats();
+      } catch (e) { alert('エラー: ' + e.message); }
+    }
+
+    async function forceAction(tableId) {
+      if (!confirm('手番プレイヤーを強制フォールドしますか？')) return;
+      try {
+        var res = await fetch(apiUrl('/api/admin/force-action'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tableId: tableId }),
+        });
+        var data = await res.json();
+        if (!data.success) alert('強制フォールド失敗: ' + data.error);
+        fetchStats();
+      } catch (e) { alert('エラー: ' + e.message); }
     }
 
     var intervalId = null;
