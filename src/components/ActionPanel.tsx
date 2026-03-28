@@ -58,7 +58,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const minRaise = raiseOrBet?.minAmount ?? allinInfo?.minAmount ?? 0;
   const maxRaise = raiseOrBet?.maxAmount ?? allinInfo?.maxAmount ?? myPlayer.chips;
   const isFixedLimit = getVariantConfig(state.variant).betting === 'fixed_limit';
-  const isShortStack = !!allinInfo && !raiseOrBet && !checkInfo;
+  const isShortStack = !!allinInfo && !raiseOrBet && !checkInfo && toCall >= myPlayer.chips;
 
   // ファストフォールド: ターン前でもフォールド可能
   const isBB = myPlayer.position === 'BB';
