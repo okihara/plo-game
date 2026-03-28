@@ -444,6 +444,58 @@ describe('TableInstance - タイムアウト', () => {
 });
 
 // ============================================
+// D2. ブラインド投入オールイン時の進行テスト
+// ============================================
+
+describe('TableInstance - ブラインド投入でオールインになった場合', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('ブラインド投入でオールインになったプレイヤーにはアクションが要求されない', () => {
+    // ヘッズアップ: ブラインド 1000/2000 で片方が 500 チップ → ブラインド投入でオールイン
+    // ゲームエンジンが currentPlayerIndex をオールインプレイヤーに設定した場合、
+    // requestNextAction がスキップして進行不能にならないことを検証
+    const io = createMockIO();
+    const table = new TableInstance(io, '1000/2000', false);
+    table.setMinPlayersToStart(2);
+
+    const socket1 = createMockSocket();
+    const socket2 = createMockSocket();
+    // BigStack を先に着席 → seat 0 (BB になる)
+    // ShortStack を後に着席 → seat 1 (BTN/SB になる) → SB投入でオールイン
+    table.seatPlayer('player_big', 'BigStack', socket1, 10000);
+    table.seatPlayer('player_short', 'ShortStack', socket2, 500);
+    table.triggerMaybeStartHand();
+
+    const state = table.getClientGameState();
+    expect(state.isHandInProgress).toBe(true);
+
+    // SB(BTN) がショートスタックでオールインになっていることを確認
+    const sbSeat = state.dealerSeat;
+    const sbPlayer = state.players.find(p => p && p.seatNumber === sbSeat);
+    expect(sbPlayer).toBeDefined();
+    expect(sbPlayer!.isAllIn).toBe(true);
+
+    // 手番プレイヤーがオールインプレイヤーではないこと
+    // バグ: ゲームエンジンが currentPlayerIndex を SB（オールイン）に設定し、
+    // requestNextAction がスキップしないため validActions が空で進行不能になる
+    if (state.currentPlayerSeat !== null) {
+      const currentPlayer = state.players.find(p => p && p.seatNumber === state.currentPlayerSeat);
+      expect(currentPlayer?.isAllIn).not.toBe(true);
+      const validActions = table.getValidActionsForSeat(state.currentPlayerSeat);
+      expect(validActions.length).toBeGreaterThan(0);
+    }
+  });
+});
+
+// ============================================
 // E. FastFold テスト
 // ============================================
 

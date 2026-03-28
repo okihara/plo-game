@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <%- include('_head', { title: 'トーナメント管理' }) %>
+  <style>
+    .nav { margin-bottom: 10px; }
+    .form-card {
+      background: #1e293b;
+      border-radius: 8px;
+      padding: 16px;
+      border: 1px solid #334155;
+      margin-bottom: 12px;
+    }
+    .form-card h2 { font-size: 14px; color: #f8fafc; margin-bottom: 12px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 4px; }
+    .form-group.full { grid-column: 1 / -1; }
+    .form-group label { font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px; }
+    .form-group input, .form-group select, .form-group textarea {
+      background: #0f172a;
+      color: #e2e8f0;
+      border: 1px solid #334155;
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 13px;
+      font-family: inherit;
+    }
+    .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+      outline: none;
+      border-color: #60a5fa;
+    }
+    .form-group textarea { resize: vertical; font-family: monospace; font-size: 11px; }
+    .form-group .hint { font-size: 10px; color: #64748b; }
+    .btn {
+      padding: 8px 20px;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: opacity 0.2s;
+    }
+    .btn:hover { opacity: 0.85; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-create { background: #22c55e; }
+    .btn-start { background: #3b82f6; }
+    .btn-cancel { background: #ef4444; }
+    .btn-row { display: flex; gap: 8px; margin-top: 12px; }
+    .t-list { margin-top: 16px; }
+    .t-item {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 8px;
+    }
+    .t-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .t-name { font-weight: 600; font-size: 14px; }
+    .t-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; font-size: 12px; }
+    .t-info-item { display: flex; justify-content: space-between; background: #0f172a; padding: 4px 8px; border-radius: 4px; }
+    .t-info-label { color: #94a3b8; }
+    .t-info-value { font-weight: 600; }
+    .t-actions { display: flex; gap: 6px; margin-top: 8px; }
+    .t-actions .btn { padding: 4px 12px; font-size: 11px; }
+    .result-msg {
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      margin-top: 8px;
+    }
+    .result-msg.success { background: #14532d; color: #86efac; border: 1px solid #22c55e; }
+    .result-msg.error { background: #450a0a; color: #fca5a5; border: 1px solid #ef4444; }
+    .time-preset {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      border-radius: 4px;
+      padding: 3px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .time-preset:hover { background: #475569; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <%- include('_nav', { current: 'tournaments' }) %>
+    <h1>🏆 トーナメント管理</h1>
+
+    <!-- 作成フォーム -->
+    <div class="form-card">
+      <h2>新規トーナメント作成</h2>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>トーナメント名</label>
+          <input type="text" id="name" value="BabyPLO Daily" placeholder="Tournament name">
+        </div>
+        <div class="form-group">
+          <label>Buy-in</label>
+          <input type="number" id="buyIn" value="<%= defaults.buyIn %>" min="0">
+        </div>
+        <div class="form-group">
+          <label>初期チップ</label>
+          <input type="number" id="startingChips" value="<%= defaults.startingChips %>" min="100">
+        </div>
+        <div class="form-group">
+          <label>最大参加者</label>
+          <input type="number" id="maxPlayers" value="<%= defaults.maxPlayers %>" min="2">
+        </div>
+        <div class="form-group">
+          <label>最小参加者</label>
+          <input type="number" id="minPlayers" value="<%= defaults.minPlayers %>" min="2">
+        </div>
+        <div class="form-group">
+          <label>開始条件</label>
+          <select id="startCondition">
+            <option value="manual">手動開始</option>
+            <option value="immediate">現時刻で開始</option>
+            <option value="scheduled">時刻指定</option>
+            <option value="player_count">人数到達</option>
+          </select>
+        </div>
+        <div class="form-group" id="scheduledTimeGroup" style="display:none">
+          <label>開始時刻</label>
+          <input type="datetime-local" id="scheduledStartTime">
+          <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
+            <button type="button" class="time-preset" onclick="setTimeOffset(5)">5分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(10)">10分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(15)">15分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(30)">30分後</button>
+            <button type="button" class="time-preset" onclick="setTimeOffset(60)">1時間後</button>
+            <button type="button" class="time-preset" onclick="setTimeToday(20,0)">今日 20:00</button>
+            <button type="button" class="time-preset" onclick="setTimeToday(21,0)">今日 21:00</button>
+            <button type="button" class="time-preset" onclick="setTimeToday(22,0)">今日 22:00</button>
+          </div>
+        </div>
+        <div class="form-group" id="requiredCountGroup" style="display:none">
+          <label>必要人数</label>
+          <input type="number" id="requiredPlayerCount" value="6" min="2">
+        </div>
+        <div class="form-group">
+          <label>遅刻登録レベル</label>
+          <input type="number" id="registrationLevels" value="<%= defaults.registrationLevels %>" min="0">
+          <span class="hint">このレベルまで参加登録可能</span>
+        </div>
+        <div class="form-group">
+          <label>リエントリー</label>
+          <select id="allowReentry">
+            <option value="false">なし</option>
+            <option value="true">あり</option>
+          </select>
+        </div>
+        <div class="form-group" id="reentryGroup" style="display:none">
+          <label>最大リエントリー回数</label>
+          <input type="number" id="maxReentries" value="1" min="1">
+        </div>
+        <div class="form-group" id="reentryDeadlineGroup" style="display:none">
+          <label>リエントリー期限レベル</label>
+          <input type="number" id="reentryDeadlineLevel" value="4" min="1">
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-create" onclick="createTournament()">作成</button>
+      </div>
+      <div id="createResult"></div>
+    </div>
+
+    <!-- 一覧 -->
+    <div class="t-list">
+      <h2 style="font-size:14px;margin-bottom:8px;">トーナメント一覧</h2>
+      <div id="tournamentList"><span style="color:#64748b">読み込み中...</span></div>
+    </div>
+  </div>
+
+  <script>
+    // 開始条件の切り替え
+    document.getElementById('startCondition').addEventListener('change', function() {
+      document.getElementById('scheduledTimeGroup').style.display = this.value === 'scheduled' ? '' : 'none';
+      document.getElementById('requiredCountGroup').style.display = this.value === 'player_count' ? '' : 'none';
+    });
+
+    // リエントリーの切り替え
+    document.getElementById('allowReentry').addEventListener('change', function() {
+      var show = this.value === 'true';
+      document.getElementById('reentryGroup').style.display = show ? '' : 'none';
+      document.getElementById('reentryDeadlineGroup').style.display = show ? '' : 'none';
+    });
+
+    function formatChips(c) { return '$' + c.toLocaleString(); }
+
+    function toLocalDatetime(d) {
+      return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+    }
+    function setTimeOffset(min) {
+      var d = new Date(Date.now() + min * 60000);
+      document.getElementById('scheduledStartTime').value = toLocalDatetime(d);
+    }
+    function setTimeToday(h, m) {
+      var d = new Date();
+      d.setHours(h, m, 0, 0);
+      if (d < new Date()) d.setDate(d.getDate() + 1); // 過ぎていたら翌日
+      document.getElementById('scheduledStartTime').value = toLocalDatetime(d);
+    }
+
+    async function createTournament() {
+      var body = {
+        name: document.getElementById('name').value,
+        buyIn: parseInt(document.getElementById('buyIn').value),
+        startingChips: parseInt(document.getElementById('startingChips').value),
+        maxPlayers: parseInt(document.getElementById('maxPlayers').value),
+        minPlayers: parseInt(document.getElementById('minPlayers').value),
+        startCondition: document.getElementById('startCondition').value,
+        registrationLevels: parseInt(document.getElementById('registrationLevels').value),
+        allowReentry: document.getElementById('allowReentry').value === 'true',
+      };
+
+      if (body.allowReentry) {
+        body.maxReentries = parseInt(document.getElementById('maxReentries').value);
+        body.reentryDeadlineLevel = parseInt(document.getElementById('reentryDeadlineLevel').value);
+      }
+
+      var startImmediately = body.startCondition === 'immediate';
+      if (startImmediately) {
+        body.startCondition = 'manual';
+      } else if (body.startCondition === 'scheduled') {
+        var dt = document.getElementById('scheduledStartTime').value;
+        if (dt) body.scheduledStartTime = new Date(dt).toISOString();
+      } else if (body.startCondition === 'player_count') {
+        body.requiredPlayerCount = parseInt(document.getElementById('requiredPlayerCount').value);
+      }
+
+      var el = document.getElementById('createResult');
+      try {
+        var res = await fetch(apiUrl('/api/tournaments'), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        var data = await res.json();
+        if (res.ok) {
+          if (startImmediately) {
+            var startRes = await fetch(apiUrl('/api/tournaments/' + data.tournamentId + '/start'), { method: 'POST' });
+            var startData = await startRes.json();
+            if (startRes.ok) {
+              el.innerHTML = '<div class="result-msg success">作成＆開始完了: ' + data.name + ' (ID: ' + data.tournamentId + ')</div>';
+            } else {
+              el.innerHTML = '<div class="result-msg error">作成完了、開始失敗: ' + (startData.error || startRes.status) + '</div>';
+            }
+          } else {
+            el.innerHTML = '<div class="result-msg success">作成完了: ' + data.name + ' (ID: ' + data.tournamentId + ')</div>';
+          }
+          refreshList();
+        } else {
+          el.innerHTML = '<div class="result-msg error">エラー: ' + (data.error || res.status) + '</div>';
+        }
+      } catch (e) {
+        el.innerHTML = '<div class="result-msg error">通信エラー: ' + e.message + '</div>';
+      }
+    }
+
+    async function startTournament(id) {
+      if (!confirm('トーナメントを開始しますか？')) return;
+      try {
+        var res = await fetch(apiUrl('/api/tournaments/' + id + '/start'), { method: 'POST' });
+        var data = await res.json();
+        if (!res.ok) alert('エラー: ' + (data.error || res.status));
+        refreshList();
+      } catch (e) { alert('通信エラー: ' + e.message); }
+    }
+
+    async function cancelTournament(id) {
+      if (!confirm('トーナメントをキャンセルしますか？バイインは返金されます。')) return;
+      try {
+        var res = await fetch(apiUrl('/api/tournaments/' + id + '/cancel'), { method: 'POST' });
+        var data = await res.json();
+        if (!res.ok) alert('エラー: ' + (data.error || res.status));
+        refreshList();
+      } catch (e) { alert('通信エラー: ' + e.message); }
+    }
+
+    async function refreshList() {
+      try {
+        var res = await fetch(apiUrl('/api/tournaments'));
+        var data = await res.json();
+        renderList(data.tournaments || []);
+      } catch (e) {
+        document.getElementById('tournamentList').innerHTML = '<span style="color:#ef4444">取得失敗</span>';
+      }
+    }
+
+    function renderList(tournaments) {
+      if (tournaments.length === 0) {
+        document.getElementById('tournamentList').innerHTML = '<span style="color:#64748b">トーナメントなし</span>';
+        return;
+      }
+
+      var statusLabels = { waiting:'開始待ち', starting:'開始中', running:'進行中', final_table:'FT', heads_up:'HU', completed:'完了', cancelled:'中止' };
+      var statusColors = { waiting:'#3b82f6', starting:'#f59e0b', running:'#22c55e', final_table:'#ef4444', heads_up:'#ef4444', completed:'#64748b', cancelled:'#64748b' };
+
+      var html = tournaments.map(function(t) {
+        var statusBadge = '<span class="badge" style="background:' + (statusColors[t.status]||'#64748b') + ';padding:2px 8px">' + (statusLabels[t.status]||t.status) + '</span>';
+
+        var infoItems = [
+          { label: 'Buy-in', value: formatChips(t.buyIn) },
+          { label: '初期チップ', value: formatChips(t.startingChips) },
+          { label: '参加者', value: t.registeredPlayers + '/' + t.maxPlayers },
+          { label: '賞金プール', value: formatChips(t.prizePool) },
+        ];
+        if (t.scheduledStartTime) {
+          infoItems.push({ label: '開始時刻', value: new Date(t.scheduledStartTime).toLocaleString('ja-JP') });
+        }
+        if (t.currentBlindLevel > 0) {
+          infoItems.push({ label: 'ブラインドLv', value: 'Lv.' + t.currentBlindLevel });
+        }
+
+        var infoHtml = infoItems.map(function(item) {
+          return '<div class="t-info-item"><span class="t-info-label">' + item.label + '</span><span class="t-info-value">' + item.value + '</span></div>';
+        }).join('');
+
+        var actions = '';
+        if (t.status === 'waiting') {
+          actions = '<button class="btn btn-start" onclick="startTournament(\'' + t.id + '\')">開始</button>' +
+                    '<button class="btn btn-cancel" onclick="cancelTournament(\'' + t.id + '\')">キャンセル</button>';
+        } else if (t.status === 'running' || t.status === 'final_table' || t.status === 'heads_up') {
+          actions = '<button class="btn btn-cancel" onclick="cancelTournament(\'' + t.id + '\')">中止</button>';
+        }
+
+        return '<div class="t-item">' +
+          '<div class="t-header">' +
+            '<span class="t-name">' + t.name + '</span>' +
+            statusBadge +
+          '</div>' +
+          '<div class="t-info">' + infoHtml + '</div>' +
+          (actions ? '<div class="t-actions">' + actions + '</div>' : '') +
+          '<div style="margin-top:4px;font-size:10px;color:#64748b">ID: ' + t.id + '</div>' +
+        '</div>';
+      }).join('');
+
+      document.getElementById('tournamentList').innerHTML = html;
+    }
+
+    refreshList();
+    setInterval(refreshList, 5000);
+  </script>
+</body>
+</html>

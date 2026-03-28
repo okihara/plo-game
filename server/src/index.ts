@@ -24,6 +24,7 @@ import { announcementService } from './modules/announcement/AnnouncementService.
 import { announcementRoutes } from './modules/announcement/routes.js';
 import { startRankingBadgeScheduler } from './modules/badges/rankingBadgeScheduler.js';
 import { ogpRoutes } from './modules/ogp/routes.js';
+import { tournamentRoutes } from './modules/tournament/routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -226,7 +227,7 @@ const start = async () => {
       pingTimeout: 5000,    // 5秒以内にpongがなければ切断と判断
     });
 
-    const { tableManager } = setupGameSocket(io, fastify);
+    const { tableManager, tournamentManager } = setupGameSocket(io, fastify);
 
     // Initialize services
     await maintenanceService.initialize(io);
@@ -238,9 +239,10 @@ const start = async () => {
       }
     });
 
-    // Register admin routes (needs io, tableManager)
-    await fastify.register(adminRoutes({ io, tableManager }));
+    // Register admin routes (needs io, tableManager, tournamentManager)
+    await fastify.register(adminRoutes({ io, tableManager, tournamentManager }));
     await fastify.register(lobbyRoutes({ tableManager }));
+    await fastify.register(tournamentRoutes({ tournamentManager }));
     await fastify.register(maintenanceRoutes());
     await fastify.register(announcementRoutes());
 

@@ -1,6 +1,13 @@
 // WebSocket event types shared between client and server
 
 import type { Action, Card } from './types';
+import type {
+  BlindLevel,
+  ClientTournamentState,
+  TournamentEliminationInfo,
+  TournamentPlayerEliminatedData,
+  TournamentCompletedData,
+} from './tournament';
 
 // ========== Client -> Server Events ==========
 
@@ -19,6 +26,12 @@ export interface ClientToServerEvents {
   // Private table
   'private:create': (data: { blinds: string }) => void;
   'private:join': (data: { inviteCode: string }) => void;
+
+  // Tournament
+  'tournament:register': (data: { tournamentId: string }) => void;
+  'tournament:unregister': (data: { tournamentId: string }) => void;
+  'tournament:reenter': (data: { tournamentId: string }) => void;
+  'tournament:request_state': (data: { tournamentId: string }) => void;
 }
 
 // ========== Server -> Client Events ==========
@@ -57,6 +70,20 @@ export interface ServerToClientEvents {
 
   // Private table
   'private:created': (data: { tableId: string; inviteCode: string }) => void;
+
+  // Tournament
+  'tournament:registered': (data: { tournamentId: string }) => void;
+  'tournament:unregistered': (data: { tournamentId: string }) => void;
+  'tournament:state': (state: ClientTournamentState) => void;
+  'tournament:table_assigned': (data: { tableId: string; tournamentId: string }) => void;
+  'tournament:table_move': (data: { fromTableId: string; toTableId: string; reason: string }) => void;
+  'tournament:blind_change': (data: { level: BlindLevel; nextLevel: BlindLevel | null; nextLevelAt: number }) => void;
+  'tournament:player_eliminated': (data: TournamentPlayerEliminatedData) => void;
+  'tournament:eliminated': (data: TournamentEliminationInfo) => void;
+  'tournament:final_table': (data: { tableId: string }) => void;
+  'tournament:completed': (data: TournamentCompletedData) => void;
+  'tournament:error': (data: { message: string }) => void;
+  'tournament:cancelled': (data: { tournamentId: string }) => void;
 }
 
 // ========== Shared Types ==========

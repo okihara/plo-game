@@ -1,5 +1,6 @@
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
+import { TournamentManager } from '../tournament/TournamentManager.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
@@ -34,9 +35,21 @@ export async function handleTableLeave(socket: AuthenticatedSocket, tableManager
 export async function handleGameAction(
   socket: AuthenticatedSocket,
   data: { action: Action; amount?: number; discardIndices?: number[] },
-  tableManager: TableManager
+  tableManager: TableManager,
+  tournamentManager?: TournamentManager
 ): Promise<void> {
-  const table = tableManager.getPlayerTable(socket.odId!);
+  // キャッシュゲームテーブルを先に探し、なければトーナメントテーブルを探す
+  let table = tableManager.getPlayerTable(socket.odId!);
+  if (!table && tournamentManager) {
+    const tournamentId = tournamentManager.getPlayerTournament(socket.odId!);
+    if (tournamentId) {
+      const tournament = tournamentManager.getTournament(tournamentId);
+      const player = tournament?.getPlayer(socket.odId!);
+      if (player?.tableId) {
+        table = tournament?.getTable(player.tableId);
+      }
+    }
+  }
   if (!table) {
     socket.emit('table:error', { message: 'Not seated at a table' });
     return;

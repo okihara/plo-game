@@ -7,7 +7,7 @@ import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
-export type BotState = 'disconnected' | 'matchmaking' | 'playing';
+export type BotState = 'disconnected' | 'matchmaking' | 'playing' | 'tournament_registered' | 'tournament_playing' | 'tournament_eliminated';
 
 export interface BotStatus {
   name: string;
@@ -21,7 +21,7 @@ export interface BotStatus {
   lastActionAt: number | null;
 }
 
-interface BotConfig {
+export interface BotConfig {
   serverUrl: string;
   name: string;
   avatarUrl: string | null;
@@ -33,6 +33,10 @@ interface BotConfig {
   maxHandsPerSession?: number; // セッション上限ハンド数（到達で自動離席）
   noDelay?: boolean; // true: 思考時間を0にする（テスト・デバッグ用）
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
+  // --- トーナメント用 ---
+  tournamentMode?: boolean; // true: トーナメントモード（ランダム切断・再マッチメイキング無効）
+  onTournamentEliminated?: (bot: BotClient, position: number) => void;
+  onTournamentCompleted?: (bot: BotClient) => void;
 }
 
 // デフォルト: 2% の確率で切断（約50ハンドに1回）
@@ -59,6 +63,7 @@ export class BotClient {
   private isThinking = false; // handleMyTurn の重複呼び出しを防ぐ
   private pendingFastFoldCheck = false; // ホールカード受信後のファストフォールド判定待ち
   private _isMaintenanceActive = false; // サーバーがメンテナンス中か
+  private tournamentId: string | null = null; // 参加中のトーナメントID
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -236,8 +241,51 @@ export class BotClient {
           return;
         }
 
+        // トーナメントモードではランダム切断しない
+        if (this.config.tournamentMode) return;
+
         // 一定確率で意図的に切断（人間らしさを演出）
         this.maybeDisconnectRandomly();
+      });
+
+      // --- トーナメントイベント ---
+
+      this.socket.on('tournament:registered', (data: { tournamentId: string }) => {
+        this.tournamentId = data.tournamentId;
+        console.log(`[${this.config.name}] Tournament registered: ${data.tournamentId}`);
+      });
+
+      this.socket.on('tournament:table_assigned', (data: { tableId: string }) => {
+        // tableId 記録。seatNumber は table:joined で設定される
+        console.log(`[${this.config.name}] Tournament table assigned: ${data.tableId}`);
+      });
+
+      this.socket.on('tournament:eliminated', (data: { position: number; totalPlayers: number; prizeAmount: number }) => {
+        console.log(`[${this.config.name}] Eliminated at position ${data.position}/${data.totalPlayers} (prize: ${data.prizeAmount})`);
+        this.tournamentId = null;
+        this.config.onTournamentEliminated?.(this, data.position);
+      });
+
+      this.socket.on('tournament:completed', () => {
+        console.log(`[${this.config.name}] Tournament completed`);
+        this.tournamentId = null;
+        this.config.onTournamentCompleted?.(this);
+      });
+
+      this.socket.on('tournament:table_move', (data: { fromTableId: string; toTableId: string }) => {
+        console.log(`[${this.config.name}] Table move: ${data.fromTableId} → ${data.toTableId}`);
+        // テーブル移動時に旧アクション状態をリセット
+        this.actionGeneration++; this.isThinking = false;
+        this.holeCards = [];
+        this.handActions = [];
+      });
+
+      this.socket.on('tournament:blind_change', (data: { level: { level: number; smallBlind: number; bigBlind: number } }) => {
+        console.log(`[${this.config.name}] Blind level up: Lv.${data.level.level} (${data.level.smallBlind}/${data.level.bigBlind})`);
+      });
+
+      this.socket.on('tournament:error', (data: { message: string }) => {
+        console.error(`[${this.config.name}] Tournament error: ${data.message}`);
       });
 
       // Timeout for connection
@@ -591,6 +639,19 @@ export class BotClient {
     this.socket.emit('matchmaking:join', { blinds, isFastFold, variant: v });
   }
 
+  async joinTournament(tournamentId: string): Promise<void> {
+    if (!this.socket || !this.isConnected) {
+      throw new Error('Not connected to server');
+    }
+
+    console.log(`[${this.config.name}] Registering for tournament ${tournamentId}`);
+    this.socket.emit('tournament:register', { tournamentId });
+  }
+
+  getTournamentId(): string | null {
+    return this.tournamentId;
+  }
+
   async joinPrivateTable(inviteCode: string): Promise<void> {
     if (!this.socket || !this.isConnected) {
       throw new Error('Not connected to server');
@@ -667,6 +728,8 @@ export class BotClient {
         this.lastInGameTime = Date.now();
         return;
       }
+      // トーナメントモードではスタック判定をスキップ（登録待ち時間がある）
+      if (this.config.tournamentMode) return;
       // ゲーム未参加が15秒以上続いたら再マッチメイキング
       const stuckDuration = Date.now() - this.lastInGameTime;
       if (stuckDuration > 15000) {
@@ -737,7 +800,11 @@ export class BotClient {
   getStatus(): BotStatus {
     let state: BotState = 'disconnected';
     if (this.isConnected) {
-      state = this.tableId ? 'playing' : 'matchmaking';
+      if (this.config.tournamentMode) {
+        state = this.tableId ? 'tournament_playing' : (this.tournamentId ? 'tournament_registered' : 'tournament_eliminated');
+      } else {
+        state = this.tableId ? 'playing' : 'matchmaking';
+      }
     }
     return {
       name: this.config.name,

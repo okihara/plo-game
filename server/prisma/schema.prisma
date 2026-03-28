@@ -29,6 +29,8 @@ model User {
   badges        Badge[]
   ownedLabels   PlayerLabel[]   @relation("LabelOwner")
   receivedLabels PlayerLabel[]  @relation("LabelTarget")
+  tournamentRegistrations TournamentRegistration[]
+  tournamentResults       TournamentResult[]
 
   @@unique([provider, providerId])
   @@index([email])
@@ -65,13 +67,14 @@ enum TransactionType {
   LOSS
   BUY_IN
   CASH_OUT
+  TOURNAMENT_BUY_IN
+  TOURNAMENT_PRIZE
 }
 
 model HandHistory {
   id             String   @id @default(cuid())
   tableId        String
-  /// キャッシュゲームは null。トーナメント実装時に設定
-  tournamentId   String?
+  tournamentId   String?  // NULL = cash game
   handNumber     Int
   blinds         String   // e.g., "10/20"
   communityCards String[] // Array of card strings
@@ -180,4 +183,75 @@ model MaintenanceMode {
   message     String    @default("")
   activatedAt DateTime?
   updatedAt   DateTime  @updatedAt
+}
+
+// --- Tournament ---
+
+enum TournamentStatus {
+  WAITING
+  RUNNING
+  FINAL_TABLE
+  HEADS_UP
+  COMPLETED
+  CANCELLED
+}
+
+model Tournament {
+  id                     String           @id @default(cuid())
+  name                   String
+  status                 TournamentStatus @default(WAITING)
+  buyIn                  Int
+  startingChips          Int
+  minPlayers             Int              @default(6)
+  maxPlayers             Int              @default(54)
+  blindSchedule          Json             // BlindLevel[]
+  prizePool              Int              @default(0)
+  registrationLevels     Int              @default(4)
+  payoutPercentage       Json             @default("[50, 30, 20]")
+  allowReentry           Boolean          @default(false)
+  maxReentries           Int              @default(0)
+  reentryDeadlineLevel   Int              @default(4)
+  scheduledStartTime     DateTime?
+  startedAt              DateTime?
+  completedAt            DateTime?
+  createdAt              DateTime         @default(now())
+
+  registrations TournamentRegistration[]
+  results       TournamentResult[]
+
+  @@index([status])
+  @@index([scheduledStartTime])
+  @@index([createdAt])
+}
+
+model TournamentRegistration {
+  id           String   @id @default(cuid())
+  tournamentId String
+  userId       String
+  registeredAt DateTime @default(now())
+  reentryCount Int      @default(0)
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+  @@index([userId])
+  @@index([tournamentId])
+}
+
+model TournamentResult {
+  id           String   @id @default(cuid())
+  tournamentId String
+  userId       String
+  position     Int
+  prize        Int      @default(0)
+  reentries    Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([tournamentId, userId])
+  @@index([userId])
+  @@index([tournamentId])
 }

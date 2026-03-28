@@ -99,7 +99,8 @@ export class TableInstance {
     this.playerManager = new PlayerManager();
     this.broadcast = new BroadcastService(io, roomName);
     this.variantAdapter = new VariantAdapter(this.variant);
-    this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+    const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
+    this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
@@ -395,6 +396,52 @@ export class TableInstance {
   }
 
   /**
+   * 切断プレイヤーの再接続: ソケットを更新し、状態を再送信する
+   * トーナメントの切断復帰で使用
+   */
+  public reconnectPlayer(odId: string, socket: Socket): boolean {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return false;
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    if (!seat) return false;
+
+    // ソケット更新
+    seat.socket = socket;
+    socket.join(this.roomName);
+
+    // 現在のゲーム状態を再送信
+    socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+    socket.emit('game:state', { state: this.getClientGameState() });
+
+    // ハンド中ならホールカードも再送信
+    if (this.gameState && !this.gameState.isHandComplete) {
+      const holeCards = this.gameState.players[seatIndex]?.holeCards;
+      if (holeCards && holeCards.length > 0) {
+        this.broadcast.emitToSocket(socket, odId, 'game:hole_cards', { cards: holeCards });
+      }
+    }
+
+    return true;
+  }
+
+  /**
+   * プレイヤーのチップ数を取得（テーブル移動時に使用）
+   */
+  public getPlayerChips(odId: string): number | null {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return null;
+
+    // ハンド中はgameStateの値が最新
+    if (this.gameState && this.gameState.players[seatIndex]) {
+      return this.gameState.players[seatIndex].chips;
+    }
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    return seat?.chips ?? null;
+  }
+
+  /**
    * 指定席の有効アクションを返す（テスト・デバッグ用）
    */
   public getValidActionsForSeat(seatIndex: number): { action: string; minAmount: number; maxAmount: number }[] {
@@ -494,7 +541,14 @@ export class TableInstance {
     }
   }
 
+  private _minPlayersToStart: number | null = null;
+
+  public setMinPlayersToStart(n: number): void {
+    this._minPlayersToStart = n;
+  }
+
   private get minPlayersToStart(): number {
+    if (this._minPlayersToStart !== null) return this._minPlayersToStart;
     if (this.isPrivate) return 2;
     return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
   }
@@ -514,7 +568,8 @@ export class TableInstance {
 
       const newVariant = this.horseVariants[this.horseCurrentIndex];
       this.variantAdapter = new VariantAdapter(newVariant);
-      this.actionController = new ActionController(this.broadcast, this.variantAdapter);
+      const rakeOpts = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
+      this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOpts);
 
     }
 
@@ -607,6 +662,14 @@ export class TableInstance {
     // currentPlayerIndex が -1 の場合（全員オールインなど）はハンド完了処理へ
     if (this.gameState.currentPlayerIndex === -1) {
       this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+      return;
+    }
+
+    // currentPlayer がオールインの場合はスキップして次へ進む
+    // （ブラインド投入でオールインになったケースなど）
+    const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
+    if (currentPlayer && currentPlayer.isAllIn) {
+      this.advanceToNextPlayer();
       return;
     }
 
@@ -785,7 +848,7 @@ export class TableInstance {
       // ターン→リバーは1.5倍のディレイ
       const nextStage = stages[currentStageIndex];
       const delay = nextStage?.street === 'river'
-        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.5
+        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
         : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
       this.runOutTimer = setTimeout(revealNextStage, delay);
     };
@@ -886,12 +949,15 @@ export class TableInstance {
       }
     }
 
+    this._isHandInProgress = false;
+
     // チップ精算コールバック（トーナメント等での外部同期用）
+    // NOTE: isHandInProgress を先に false にしてからコールバックを呼ぶ。
+    // トーナメントの scheduleFormFinalTable / checkAndExecuteBalance が
+    // このテーブルを「ハンド中」と誤判定しないようにするため。
     if (this.lifecycleCallbacks.onHandSettled && settledChips.length > 0) {
       this.lifecycleCallbacks.onHandSettled(settledChips);
     }
-
-    this._isHandInProgress = false;
 
     this.pendingStartHand = true;
 
@@ -916,6 +982,11 @@ export class TableInstance {
         }
       }
     }
+    // バスト処理完了コールバック（トーナメント: 順位確定・フェーズ遷移）
+    if (this.lifecycleCallbacks.onBustsProcessed) {
+      this.lifecycleCallbacks.onBustsProcessed();
+    }
+
     this.pendingStartHand = false;
 
     // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）

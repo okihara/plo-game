@@ -135,7 +135,7 @@ export function Player({
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-12cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
-          <span className="text-[7cqw] font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 bg-clip-text text-transparent drop-shadow-[0_0_4px_rgba(255,200,0,0.6)]">
+          <span className="text-[7cqw] font-black bg-gradient-to-b from-yellow-200 via-yellow-400 to-amber-600 bg-clip-text text-transparent [filter:drop-shadow(0_0_4px_rgba(255,200,0,0.6))_drop-shadow(0_1px_2px_rgba(0,0,0,0.8))_drop-shadow(0_0_6px_rgba(0,0,0,0.5))]">
             WIN +{formatChips(winAmount)}
           </span>
         </div>
@@ -190,7 +190,7 @@ export function Player({
             text-[8cqw] relative overflow-hidden z-10
             ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
             ${player.folded ? 'brightness-[0.3] grayscale' : ''}
-            ${isWinner ? 'border-yellow-400 shadow-[0_0_10cqw_rgba(255,200,0,0.8),0_0_20cqw_rgba(255,150,0,0.4)] animate-pulse' : ''}
+            ${isWinner ? 'border-yellow-400' : ''}
           `}
         >
           {avatarImage ? (
@@ -226,7 +226,7 @@ export function Player({
       </div>
 
       {/* Player Info */}
-      <div className={`relative bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[1.0cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''}`}>
+      <div className={`relative bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[1.0cqw] text-center min-w-[25cqw] z-[20] ${player.folded ? 'brightness-[0.3]' : ''} ${isWinner ? 'animate-[win-box-glow_2s_ease-in-out_infinite]' : ''}`}>
         {labelColor && (
           <div
             className="absolute top-[-1cqw] left-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"
