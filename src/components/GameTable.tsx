@@ -116,7 +116,7 @@ export function GameTable({
   // バリアント変更通知
   useEffect(() => {
     const name = variantDisplayName[gameState.variant] || gameState.variant;
-    showCenterNotice(`${name} ${blindsLabel}`);
+    showCenterNotice(`${name}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.variant]);
 
