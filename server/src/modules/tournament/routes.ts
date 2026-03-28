@@ -158,6 +158,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             position: player.finishPosition,
             totalPlayers: memTournament.getPlayerCount(),
             prizeAmount: prize,
+            playerName: player.displayName ?? player.odName,
           };
         }
       }
@@ -178,11 +179,18 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         return reply.status(404).send({ error: 'Result not found' });
       }
 
+      // ユーザー名を取得
+      const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true, username: true },
+      });
+
       return {
         tournamentName: dbTournament.name,
         position: myResult.position,
         totalPlayers: dbTournament._count.registrations,
         prizeAmount: myResult.prize,
+        playerName: user?.displayName ?? user?.username ?? undefined,
       };
     });
 

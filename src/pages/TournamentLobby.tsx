@@ -170,7 +170,7 @@ function TournamentCard({
           <Users className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
           <span>参加者</span>
         </div>
-        <div className="text-right font-medium">{t.registeredPlayers} / {t.maxPlayers}</div>
+        <div className="text-right font-medium">{t.registeredPlayers}人</div>
 
         <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <Trophy className="w-[3.5cqw] h-[3.5cqw] shrink-0" />

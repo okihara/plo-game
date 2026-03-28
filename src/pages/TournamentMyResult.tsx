@@ -9,6 +9,7 @@ interface MyResultData {
   position: number;
   totalPlayers: number;
   prizeAmount: number;
+  playerName?: string;
 }
 
 interface TournamentMyResultProps {
@@ -70,6 +71,7 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
         totalPlayers={result.totalPlayers}
         prizeAmount={result.prizeAmount}
         tournamentName={result.tournamentName}
+        playerName={result.playerName}
         closeLabel="トーナメント一覧に戻る"
         onClose={onBack}
       />

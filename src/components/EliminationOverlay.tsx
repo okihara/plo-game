@@ -5,6 +5,7 @@ interface EliminationOverlayProps {
   totalPlayers: number;
   prizeAmount: number;
   tournamentName?: string;
+  playerName?: string;
   closeLabel?: string;
   onClose: () => void;
 }
@@ -30,6 +31,7 @@ export function EliminationOverlay({
   totalPlayers,
   prizeAmount,
   tournamentName,
+  playerName,
   closeLabel = 'ロビーに戻る',
   onClose,
 }: EliminationOverlayProps) {
@@ -69,7 +71,7 @@ export function EliminationOverlay({
           </div>
 
           {/* 日付 */}
-          <div className="text-cream-500 text-[3.2cqw] tracking-wider mb-[1.5cqw]">
+          <div className="text-cream-700 text-[3.2cqw] tracking-wider mb-[1.5cqw]">
             {todayLabel()}
           </div>
 
@@ -81,7 +83,7 @@ export function EliminationOverlay({
           )}
 
           {/* 参加者数 */}
-          <div className="text-cream-500 text-[3.2cqw] mb-[5cqw]">
+          <div className="text-cream-700 text-[3.2cqw] mb-[5cqw]">
             {totalPlayers} players
           </div>
 
@@ -92,7 +94,7 @@ export function EliminationOverlay({
           >
             {isInTheMoney ? (
               <>
-                <div className="text-cream-500 text-[2.8cqw] mb-[0.5cqw]">Prize</div>
+                <div className="text-cream-700 text-[2.8cqw] mb-[0.5cqw]">Prize</div>
                 <div
                   className="font-bold text-[5.5cqw]"
                   style={{ color: accentColor }}
@@ -101,11 +103,21 @@ export function EliminationOverlay({
                 </div>
               </>
             ) : (
-              <div className="text-cream-500 text-[3.8cqw] py-[1cqw]">
+              <div className="text-cream-700 text-[3.8cqw] py-[1cqw]">
                 {totalPlayers}人中 {position}位
               </div>
             )}
           </div>
+
+          {/* プレイヤー名 */}
+          {playerName && (
+            <div className="mb-[2cqw] border-b border-cream-400 pb-[1cqw] inline-block mx-auto">
+              <span className="text-cream-700 text-[2.8cqw]">Name. </span>
+              <span className="text-cream-800 font-bold text-[4cqw]">
+                {playerName}
+              </span>
+            </div>
+          )}
 
           {/* サイトロゴ */}
           <img
