@@ -141,6 +141,11 @@
         <span class="sb-sub" id="tableBreakdown"></span>
       </div>
       <div class="sb-sep"></div>
+      <div class="sb-item" id="tournamentStat" style="display:none">
+        <span class="sb-label">MTT</span>
+        <span class="sb-value" id="tournamentCount">-</span>
+      </div>
+      <div class="sb-sep" id="tournamentSep" style="display:none"></div>
       <div class="sb-item">
         <span class="sb-label">ハンド</span>
         <span class="sb-value" id="activeHands">-</span>
@@ -178,6 +183,12 @@
         <button class="maint-btn" style="background:#3b82f6" onclick="setAnnouncement()">送信</button>
         <button class="maint-btn" style="background:#64748b" onclick="clearAnnouncement()">消す</button>
       </div>
+    </div>
+
+    <!-- Tournaments -->
+    <div style="margin-top:10px" id="tournamentsSection" style="display:none">
+      <h2 style="margin-bottom:8px;font-size:14px;">🏆 トーナメント</h2>
+      <div id="tournamentsList"></div>
     </div>
 
     <!-- Tables -->
@@ -261,7 +272,14 @@
         ae.style.color = '#64748b';
       }
 
+      // トーナメント数
+      var tCount = d.tournaments ? d.tournaments.total : 0;
+      document.getElementById('tournamentCount').textContent = tCount;
+      document.getElementById('tournamentStat').style.display = tCount > 0 ? '' : 'none';
+      document.getElementById('tournamentSep').style.display = tCount > 0 ? '' : 'none';
+
       renderTables(d.tables.details);
+      renderTournaments(d.tournaments ? d.tournaments.details : []);
     }
 
     function renderTables(tables) {
@@ -269,48 +287,6 @@
       var variantLabels = { plo:'PLO', stud:'Stud', razz:'Razz' };
       var html = tables.map(function(t) {
         var street = t.currentStreet ? (streetLabels[t.currentStreet] || t.currentStreet) : '待機';
-
-        // Players as 6-col grid cells
-        var playersHtml = Array.from({length:6}, function(_,i) {
-          var p = t.players.find(function(x){return x.seatNumber===i});
-          if (!p) return '<div class="p-cell empty">Seat ' + (i+1) + '</div>';
-
-          var cls = ['p-cell'];
-          if (p.folded) cls.push('folded');
-          var isPending = t.pendingAction && t.pendingAction.seatNumber === i;
-          if (isPending) cls.push('pending');
-
-          var icon = p.isConnected ? '🟢' : '🔴';
-          if (p.folded) icon = 'F';
-          else if (p.isAllIn) icon = 'AI';
-          if (p.isSittingOut) icon = '💤';
-          if (isPending) icon = '⏳';
-
-          var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
-          if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
-          row1 += '<span class="p-name">' + p.odName + '</span></div>';
-          var row2 = '<div class="p-row"><span class="p-money">' + formatChips(p.chips) + '</span>';
-          if (p.currentBet > 0) row2 += '<span class="p-bet">Bet ' + formatChips(p.currentBet) + '</span>';
-          row2 += '</div>';
-
-          return '<div class="' + cls.join(' ') + '">' + row1 + row2 + '</div>';
-        }).join('');
-
-        // Pending action info for header
-        var pendingInfo = '';
-        if (t.pendingAction) {
-          var pa = t.pendingAction;
-          var remaining = Math.max(0, Math.ceil((pa.timeoutMs - (Date.now() - pa.requestedAt)) / 1000));
-          var acts = pa.validActions.map(function(a) {
-            var l = a.action;
-            if (a.minAmount > 0) { l += ' $' + a.minAmount; if (a.maxAmount !== a.minAmount) l += '-$' + a.maxAmount; }
-            return '<span class="action-option">' + l + '</span>';
-          }).join(' ');
-          pendingInfo = '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
-            '<span class="pa-timer">' + remaining + 's</span>' + acts;
-        } else {
-          pendingInfo = '<span style="color:#64748b;font-size:10px">— 待機中</span>';
-        }
 
         // Messages collapsible
         var msgHtml = '';
@@ -333,17 +309,112 @@
               (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px">' +
-              pendingInfo +
+              renderPendingAction(t) +
               '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(t.pot) + '</span>' +
               '<span style="color:#64748b">' + t.playerCount + '/' + t.maxPlayers + '</span>' +
             '</div>' +
           '</div>' +
-          '<div class="players-row">' + playersHtml + '</div>' +
+          '<div class="players-row">' + renderPlayerCells(t) + '</div>' +
           msgHtml +
         '</div>';
       }).join('');
 
       document.getElementById('tablesList').innerHTML = html || '<p style="color:#64748b">テーブルなし</p>';
+    }
+
+    function renderPlayerCells(t) {
+      return Array.from({length:6}, function(_,i) {
+        var p = t.players.find(function(x){return x.seatNumber===i});
+        if (!p) return '<div class="p-cell empty">Seat ' + (i+1) + '</div>';
+
+        var cls = ['p-cell'];
+        if (p.folded) cls.push('folded');
+        var isPending = t.pendingAction && t.pendingAction.seatNumber === i;
+        if (isPending) cls.push('pending');
+
+        var icon = p.isConnected ? '🟢' : '🔴';
+        if (p.folded) icon = 'F';
+        else if (p.isAllIn) icon = 'AI';
+        if (p.isSittingOut) icon = '💤';
+        if (isPending) icon = '⏳';
+
+        var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
+        if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
+        row1 += '<span class="p-name">' + p.odName + '</span></div>';
+        var row2 = '<div class="p-row"><span class="p-money">' + formatChips(p.chips) + '</span>';
+        if (p.currentBet > 0) row2 += '<span class="p-bet">Bet ' + formatChips(p.currentBet) + '</span>';
+        row2 += '</div>';
+
+        return '<div class="' + cls.join(' ') + '">' + row1 + row2 + '</div>';
+      }).join('');
+    }
+
+    function renderPendingAction(t) {
+      if (t.pendingAction) {
+        var pa = t.pendingAction;
+        var remaining = Math.max(0, Math.ceil((pa.timeoutMs - (Date.now() - pa.requestedAt)) / 1000));
+        var acts = pa.validActions.map(function(a) {
+          var l = a.action;
+          if (a.minAmount > 0) { l += ' $' + a.minAmount; if (a.maxAmount !== a.minAmount) l += '-$' + a.maxAmount; }
+          return '<span class="action-option">' + l + '</span>';
+        }).join(' ');
+        return '<span class="pa-label">⏳ ' + pa.playerName + '</span>' +
+          '<span class="pa-timer">' + remaining + 's</span>' + acts;
+      }
+      return '<span style="color:#64748b;font-size:10px">— 待機中</span>';
+    }
+
+    function renderTournaments(tournaments) {
+      var section = document.getElementById('tournamentsSection');
+      if (!tournaments || tournaments.length === 0) {
+        section.style.display = 'none';
+        return;
+      }
+      section.style.display = '';
+
+      var statusLabels = { registering:'登録中', starting:'開始中', running:'進行中', final_table:'FT', heads_up:'HU', completed:'完了', cancelled:'中止' };
+      var statusColors = { registering:'#3b82f6', starting:'#f59e0b', running:'#22c55e', final_table:'#ef4444', heads_up:'#ef4444', completed:'#64748b', cancelled:'#64748b' };
+
+      var html = tournaments.map(function(t) {
+        var statusBadge = '<span class="badge" style="background:' + (statusColors[t.status]||'#64748b') + '">' + (statusLabels[t.status]||t.status) + '</span>';
+        var blindsStr = t.currentBlindLevel ? (t.currentBlindLevel.smallBlind + '/' + t.currentBlindLevel.bigBlind) : '-';
+
+        var header = '<div class="table-header">' +
+          '<div class="table-title">' + statusBadge + ' ' + t.name + '</div>' +
+          '<div style="display:flex;align-items:center;gap:10px;font-size:11px">' +
+            '<span style="color:#94a3b8">残 <b style="color:#f8fafc">' + t.playersRemaining + '</b>/' + t.totalPlayers + '人</span>' +
+            '<span style="color:#94a3b8">テーブル <b style="color:#f8fafc">' + t.tableCount + '</b></span>' +
+            '<span style="color:#94a3b8">Blinds <b style="color:#fbbf24">' + blindsStr + '</b></span>' +
+            '<span style="color:#94a3b8">賞金 <b style="color:#22c55e">' + formatChips(t.prizePool) + '</b></span>' +
+          '</div>' +
+        '</div>';
+
+        // 各テーブルを描画
+        var tablesHtml = t.tables.map(function(tbl) {
+          var streetLabels = { preflop:'Pre', flop:'Flop', turn:'Turn', river:'River', showdown:'SD' };
+          var variantLabels = { plo:'PLO', stud:'Stud', razz:'Razz' };
+          var street = tbl.currentStreet ? (streetLabels[tbl.currentStreet] || tbl.currentStreet) : '待機';
+          return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-bottom:3px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px">' +
+              '<span style="color:#64748b">' + tbl.id.slice(0,8) +
+                (tbl.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
+              '</span>' +
+              '<span style="display:flex;align-items:center;gap:8px">' +
+                renderPendingAction(tbl) +
+                '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(tbl.pot) + '</span>' +
+                '<span style="color:#64748b">' + tbl.playerCount + '/6</span>' +
+              '</span>' +
+            '</div>' +
+            '<div class="players-row">' + renderPlayerCells(tbl) + '</div>' +
+          '</div>';
+        }).join('');
+
+        return '<div class="table-card" style="border-color:#6366f1">' + header +
+          '<div style="margin-top:6px">' + tablesHtml + '</div>' +
+        '</div>';
+      }).join('');
+
+      document.getElementById('tournamentsList').innerHTML = html;
     }
 
     async function setAnnouncement() {

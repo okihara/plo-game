@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { ProfileEditDialog } from '../components/ProfileEditDialog';
@@ -13,6 +13,7 @@ interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
   onCreatePrivate: (blinds: string) => void;
   onJoinPrivate: (inviteCode: string) => void;
+  onTournaments?: () => void;
 }
 
 interface TableOption {
@@ -35,7 +36,7 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTournaments }: SimpleLobbyProps) {
   const { user, loading, logout, refreshUser } = useAuth();
   const [showProfile, setShowProfile] = useState(false);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -133,15 +134,15 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             </div>
           </div>
           {maintenance?.isActive && (
-            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-red-50 border border-red-300 rounded-[2cqw] text-[2.5cqw] text-red-700 leading-relaxed">
-              <p className="font-bold text-[3cqw] text-red-800 text-center">メンテナンス中</p>
+            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-cream-50 border border-cream-400 rounded-[2cqw] text-[2.5cqw] text-cream-800 leading-relaxed">
+              <p className="font-bold text-[3cqw] text-[#C0392B] text-center">メンテナンス中</p>
               {maintenance.message && (
                 <p className="mt-[1cqw] text-center">{maintenance.message}</p>
               )}
             </div>
           )}
           {announcement?.isActive && !maintenance?.isActive && (
-            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-blue-50 border border-blue-300 rounded-[2cqw] text-[2.5cqw] text-blue-700 leading-relaxed">
+            <div className="mt-[2cqw] w-full px-[3cqw] py-[2cqw] bg-cream-50 border border-forest/20 rounded-[2cqw] text-[2.5cqw] text-cream-800 leading-relaxed">
               <p className="mt-[0.5cqw] text-center whitespace-pre-line">{announcement.message}</p>
             </div>
           )}
@@ -234,8 +235,20 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
             </div>
           )}
 
+          {/* Tournament Button */}
+          {onTournaments && (
+            <button
+              onClick={onTournaments}
+              className="w-full py-[3.5cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)] text-white font-bold text-[3.5cqw] flex items-center justify-center gap-[2cqw]"
+            >
+              <Trophy className="w-[4cqw] h-[4cqw]" />
+              トーナメント
+              <svg className="w-[3.5cqw] h-[3.5cqw] text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+            </button>
+          )}
+
           {/* Tables - Fast Fold */}
-          <div className="space-y-[2.5cqw]">
+          <div className="mt-[2.5cqw] space-y-[2.5cqw]">
             {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
               const count = playerCounts[`${table.blinds}-ff`] ?? 0;
               return (
@@ -245,16 +258,16 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate }: Si
                   disabled={!table.enabled || !!maintenance?.isActive || !user}
                   className={`w-full py-[4cqw] px-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] ${
                     table.enabled && !maintenance?.isActive && user
-                      ? 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 shadow-[0_4px_12px_rgba(245,158,11,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(245,158,11,0.45),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(245,158,11,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
-                      : 'bg-gradient-to-b from-amber-400 to-amber-500 border-amber-600/30 opacity-50 cursor-not-allowed'
+                      ? 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 shadow-[0_4px_12px_rgba(45,90,61,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
+                      : 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 opacity-50 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-[2.5cqw]">
-                      <span className="text-[5cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)]">{table.blindsLabel}</span>
+                      <span className="text-[4.2cqw] font-bold text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.15)] whitespace-nowrap">PLO Fast Fold</span>
                       <div className="flex flex-col items-start">
-                        <span className="text-[2.8cqw] font-bold text-white/90">PLO Fast Fold</span>
-                        <span className="text-[2.3cqw] text-white/70">buy-in: {table.buyIn} / rake: {table.rake}</span>
+                        <span className="text-[2.8cqw] font-bold text-white/90">{table.blindsLabel} <span className="font-normal text-white/70">rake: {table.rake}</span></span>
+                        <span className="text-[2.8cqw] text-white/70">buy-in: {table.buyIn}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-[2cqw]">

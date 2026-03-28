@@ -175,7 +175,7 @@ function convertClientStateToGameState(
 export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false, privateMode?: PrivateMode, variant?: string): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(wsService.isConnected());
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isDisplaced, setIsDisplaced] = useState(false);
 
@@ -314,7 +314,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   }, [clientState]);
 
   useEffect(() => {
-    wsService.setListeners({
+    wsService.addListeners('game', {
       onConnected: () => {
         setIsConnected(true);
         setConnectionError(null);
@@ -492,6 +492,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     });
 
     return () => {
+      wsService.removeListeners('game');
       clearAllActionMarkers();
       if (dealingTimerRef.current) {
         clearTimeout(dealingTimerRef.current);

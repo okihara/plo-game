@@ -65,117 +65,19 @@ npm run dev:server
 
 ### インフラ
 - Docker Compose (PostgreSQL)
-- Railway (本番デプロイ)
+- Railway (本番デプロイ) — 手順は [docs/deployment-railway.md](docs/deployment-railway.md)
 
 ## Architecture
 
-### 共有パッケージ構成（@plo/shared）
+### コードの置き場（地図）
 
-フロントエンド・サーバー双方から参照される共有ロジック。
+詳細なファイルツリーはリポジトリを参照。主要な境界だけ押さえる。
 
-```
-packages/shared/src/
-├── index.ts              # re-export
-├── types.ts              # 共有型定義（GameState, Player, Card, Rank, Suit等）
-├── deck.ts               # カード操作（getRankValue等）
-├── handEvaluator.ts      # PLOハンド評価（ホール2枚+コミュニティ3枚）
-├── preflopEquity.ts      # プリフロップ評価（エクイティ+プレイアビリティ）
-├── protocol.ts           # WebSocket通信プロトコル
-└── data/
-    └── preflopEquity.json # 事前計算済みエクイティデータ（16,432ハンド）
-```
-
-### フロントエンド構成
-
-```
-src/
-├── main.tsx                      # ルーティング（パスベース、React Router不使用）
-├── pages/
-│   ├── SimpleLobby.tsx           # ロビー（ブラインド選択・ログイン）
-│   ├── OnlineGame.tsx            # メインゲーム画面
-│   ├── HandHistory.tsx           # ハンド履歴閲覧 (/history)
-│   └── PlayerDebug.tsx           # デバッグ (/debug/player)
-├── components/
-│   ├── PokerTable.tsx            # テーブル（楕円形、6人配置）
-│   ├── Player.tsx                # 個別プレイヤー（アバター・カード・タイマー）
-│   ├── MyCards.tsx               # 自分のホールカード（画面下部、h-[24cqw]）
-│   ├── ActionPanel.tsx           # ベッティングコントロール（フォールド/コール/レイズ）
-│   ├── CommunityCards.tsx        # コミュニティカード5枚（テーブル中央）
-│   ├── Card.tsx                  # カード表示（Card + FaceDownCard）
-│   ├── ResultOverlay.tsx         # ハンド結果表示
-│   ├── HandAnalysisOverlay.tsx   # ハンド分析表示
-│   └── ProfilePopup.tsx          # プレイヤースタッツポップアップ
-├── hooks/
-│   └── useOnlineGameState.ts     # WebSocket + ゲーム状態管理（プレイヤー用）
-├── services/
-│   └── websocket.ts              # WebSocket接続シングルトン（wsService）
-├── logic/
-│   ├── types.ts                  # ゲーム型定義（GameState, Player, Card等）
-│   ├── gameEngine.ts             # ゲームエンジン（状態管理・ハンド進行）
-│   ├── handEvaluator.ts          # PLOハンド評価（ホール2枚+コミュニティ3枚）
-│   └── deck.ts                   # カード操作
-└── contexts/
-    ├── AuthContext.tsx            # 認証（Twitter OAuth、/api/auth/me）
-    └── GameSettingsContext.tsx    # 設定（BB表記、チップフォーマット）
-```
-
-### サーバー構成
-
-```
-server/src/
-├── index.ts                      # エントリーポイント（Fastify + Socket.io + 静的配信）
-├── config/
-│   ├── env.ts                    # 環境変数
-│   └── database.ts               # Prismaクライアント
-├── modules/
-│   ├── game/
-│   │   ├── socket.ts             # エントリーポイント（socket.on登録、テーブル初期化）
-│   │   ├── authMiddleware.ts     # 認証ミドルウェア（JWT/Bot認証、findOrCreateBotUser）
-│   │   ├── fastFoldService.ts    # FastFoldロジック（テーブル移動・再割り当て）
-│   │   └── handlers.ts           # イベントハンドラ実装（DB・TableManager操作）
-│   ├── table/
-│   │   ├── TableManager.ts       # テーブルレジストリ（tables Map、playerTables Map）
-│   │   ├── TableInstance.ts      # テーブル実装（ゲーム状態・ハンド進行・スペクテーター）
-│   │   ├── constants.ts          # 定数（MAX_PLAYERS=6, ACTION_TIMEOUT_MS=10000等）
-│   │   ├── types.ts              # テーブル型定義
-│   │   └── helpers/
-│   │       ├── PlayerManager.ts      # 座席管理（SeatInfo[6]）
-│   │       ├── BroadcastService.ts   # Socket.ioルーム配信（table:${id}）
-│   │       ├── ActionController.ts   # アクション処理 + タイムアウト
-│   │       ├── FoldProcessor.ts      # フォールド処理
-│   │       ├── StateTransformer.ts   # GameState → ClientGameState変換
-│   │       ├── HandHistoryRecorder.ts # ハンド履歴DB保存（fire-and-forget）
-│   │       └── AdminHelper.ts       # 管理・デバッグ機能
-│   ├── fastfold/
-│   │   └── MatchmakingPool.ts    # FFマッチメイキング（500ms間隔キュー処理）
-│   ├── auth/
-│   │   ├── routes.ts             # Twitter OAuth + JWT認証
-│   │   └── bankroll.ts           # バンクロール管理
-│   ├── admin/
-│   │   └── routes.ts             # 管理ダッシュボード（/admin/status）
-│   ├── history/
-│   │   └── routes.ts             # ハンド履歴API
-│   └── stats/
-│       ├── routes.ts             # スタッツAPI（60秒キャッシュ）
-│       └── computeStats.ts       # VPIP/PFR/3Bet等の集計計算
-└── shared/
-    ├── logic/
-    │   ├── types.ts              # 共有型（GameState, Player, Card）
-    │   ├── gameEngine.ts         # 共有ゲームロジック
-    │   ├── cpuAI.ts              # Bot AIエントリーポイント（getCPUAction）
-    │   ├── preflopEquity.ts      # @plo/shared からの re-export
-    │   └── ai/
-    │       ├── types.ts          # AI型定義（BotPersonality, OpponentModel等）
-    │       ├── preflopStrategy.ts # プリフロップ戦略（オープン/ディフェンス/3bet/4bet）
-    │       ├── postflopStrategy.ts # ポストフロップ戦略
-    │       ├── boardAnalysis.ts  # ボードテクスチャ分析
-    │       ├── handStrength.ts   # ハンド強度評価
-    │       ├── equityEstimator.ts # エクイティ推定
-    │       ├── blockerAnalysis.ts # ブロッカー分析
-    │       └── nutsAnalysis.ts   # ナッツ分析
-    └── types/
-        └── websocket.ts          # WebSocketイベント型定義（C2S/S2C）
-```
+- **`packages/shared/`** — フロントとサーバー共通（型、デッキ、PLO 評価、プリフロップエクイティ、WebSocket の protocol 等）。**重複ロジックはここへ寄せる**。
+- **`src/`** — クライアント。`main.tsx`（ルーティング）、`pages/`、`components/`、`hooks/`（例: `useOnlineGameState.ts`）、`services/websocket.ts`（`wsService`）、`logic/`。
+- **`server/src/index.ts`** — Fastify + Socket.io + 本番静的配信のエントリ。
+- **`server/src/modules/`** — 機能別モジュール（例: `game/` の socket・handlers、`table/` の `TableManager`・`TableInstance` と helpers、`fastfold/`、`auth/`、`history/`、`stats/`、`tournament/`、`admin/` 等）。**新規機能は既存モジュールに収まるか検討してから追加**。
+- **`server/src/shared/logic/`** — サーバー側ゲームエンジン・Bot AI（`ai/` 以下）。ゲーム進行の正は `gameEngine` とテーブル層。
 
 ### game/handlers.ts と TableInstance の責務分担
 
@@ -223,123 +125,56 @@ server/src/
 レンダリング: PokerTable → Player（showCards=false → 裏面表示）
 ```
 
-### UIレイアウト（9:16縦画面）
-
-```
-┌──────────────────┐
-│ ヘッダー (4%)     │  ← PLO | ブラインド | 設定
-├──────────────────┤
-│                  │
-│   PokerTable     │  ← 楕円テーブル、6人配置
-│   (flex-1)       │     CommunityCards（中央）
-│                  │     Player × 6（円周配置）
-│                  │     Pot表示（中央下）
-├──────────────────┤
-│ MyCards (24cqw)  │  ← 自分の4枚
-├──────────────────┤
-│ ActionPanel      │  ← プリセット+スライダー+3ボタン
-└──────────────────┘
-```
-
-### プレイヤー配置（PokerTable）
-
-- `humanIndex`（自分の席番号）を基準に6人を回転配置
-- `positionIndex=0` が画面下部（自分の位置）
-- `positionIndex !== 0` のプレイヤーのみ Player にカード表示（自分は MyCards で表示）
-
 ### 認証フロー
 
 1. Twitter OAuth 1.0a → サーバーがJWT発行 → httpOnly Cookie
 2. WebSocket接続時に Cookie から token 取得 → `socket.handshake.auth.token`
 3. 認証失敗/未認証 → ゲスト（`guest_${socket.id}`）として接続
 
+### UI レイアウト・席の見え方
+
+9:16 縦画面のブロック構成と `PokerTable` の回転配置は [docs/ui-mobile-layout.md](docs/ui-mobile-layout.md)。
+
 ### ハンド履歴
 
-- **HandHistoryRecorder** (`server/src/modules/table/helpers/HandHistoryRecorder.ts`) - ハンド完了時にDB保存（fire-and-forget）
-- **history/routes.ts** (`server/src/modules/history/routes.ts`) - `GET /api/history`（一覧）, `GET /api/history/:handId`（詳細）
-- **HandHistory.tsx** (`src/pages/HandHistory.tsx`) - 履歴一覧・詳細閲覧UI（`/history`）
-- 認証済みユーザーのみ保存対象（guest/botは除外）
-- Prismaモデル: `HandHistory` + `HandHistoryPlayer`
-- アクション履歴にはストリート情報（`street`）とディーラー位置（`dealerPosition`）を含む
+- 保存: `server/src/modules/table/helpers/HandHistoryRecorder.ts`（ハンド完了時、fire-and-forget）
+- API: `server/src/modules/history/routes.ts` — `GET /api/history`, `GET /api/history/:handId`
+- UI: `src/pages/HandHistory.tsx`（`/history`）
+- 認証済みユーザーのみ保存（guest/bot は除外）。Prisma: `HandHistory`, `HandHistoryPlayer`
 
 ### プレイヤースタッツ
 
-- **computeStats.ts** (`server/src/modules/stats/computeStats.ts`) - ハンド履歴からスタッツを集計計算
-- **stats/routes.ts** (`server/src/modules/stats/routes.ts`) - `GET /api/stats/:userId`（認証不要、60秒キャッシュ）
-- **ProfilePopup.tsx** (`src/components/ProfilePopup.tsx`) - プレイヤークリック時にスタッツ表示
-- 表示スタッツ: VPIP, PFR, 3Bet, AFq, CBet, Fold to CBet, Fold to 3Bet, WTSD, W$SD, 勝率, 損益
-- 直近1000ハンドから計算、ストリート情報のない旧データはハンド数・勝率のみ
+- 集計: `server/src/modules/stats/computeStats.ts`
+- API: `server/src/modules/stats/routes.ts` — `GET /api/stats/:userId`（60秒キャッシュ）
+- UI例: `src/components/ProfilePopup.tsx`
 
-### プリフロップハンド評価
+### プリフロップハンド評価（スコア・補正の説明）
 
-`packages/shared/src/preflopEquity.ts` で提供。フロントエンド（HandAnalysisOverlay）とサーバー（Bot AI）の両方が使用。
+実装の正: `packages/shared/src/preflopEquity.ts`。人向けの概要は [docs/preflop-hand-evaluation.md](docs/preflop-hand-evaluation.md)。
 
-**スコア算出（2段階）:**
+### Bot AI
 
-1. **エクイティルックアップ**: 事前計算済みモンテカルロシミュレーション結果（16,432通りの正規化ハンド × 10K反復）から6人テーブルでのオールインエクイティを引き、0-1に min-max 正規化
-2. **プレイアビリティ補正**: エクイティ実現率を構造フラグで調整
+全体像とモジュール一覧: [docs/bot-strategy.md](docs/bot-strategy.md)。実装: `server/src/shared/logic/ai/`。
 
-| 補正項目 | 値 | 理由 |
-|---------|------|------|
-| ダブルスーテッド | +0.04 | フラッシュドロー2つでエクイティ実現◎ |
-| シングルスーテッド | +0.02 | フラッシュドロー1つ |
-| ランダウン（ダングラーなし） | +0.03 | ストレートドロー豊富 |
-| ラップポテンシャル | +0.01 | ドロー力あり |
-| Aスーテッド | +0.02 | ナッツフラッシュドロー保証 |
-| ダングラー | -0.04 | 孤立カード、ポストフロップ不参加 |
-| トリプルスーテッド | -0.03 | フラッシュアウツ減少 |
-| レインボー | -0.02 | フラッシュドローなし |
-| ペア+レインボー（ドローなし） | -0.03 | セット以外の発展性なし |
+### SOLID & DRY（必須の設計姿勢）
 
-**インターフェース:**
+コード変更・リファクタ・新規ファイルでは **SOLID 原則** と **DRY 原則** を常に意識する。抽象論で終わらせず、具体的な判断（責務の分割・共通化の場所・依存の向き）に落とし込む。
 
-```typescript
-interface PreFlopEvaluation {
-  score: number;           // 0-1（エクイティ+プレイアビリティ）
-  hasPair: boolean;
-  pairRank: string | null; // "AA", "KK" 等
-  hasAceSuited: boolean;
-  isDoubleSuited: boolean;
-  isSingleSuited: boolean;
-  isRundown: boolean;      // 連続4枚（5-6-7-8等）
-  hasWrap: boolean;        // span≤4で3枚以上
-  hasDangler: boolean;     // gap≥4の孤立カード
-}
-```
+**SOLID**
 
-### Bot AI（プリフロップ戦略）
+- **S — 単一責任**: モジュール・クラス・関数は「変わる理由」が一つになるよう保つ。UI・DB・ドメイン・配信を同一ファイルに詰め込まない。既存の `handlers.ts` / `TableInstance` の分担のように、責務境界を明確にする。
+- **O — 開放閉鎖**: 挙動の追加は既存コードの**拡張**（新しい分岐モジュール・ストラテジ・設定）で行い、安定した核を毎回書き換えない。やむを得ない変更は影響範囲を最小化する。
+- **L — リスコフの置換**: サブタイプや実装の差し替えは、呼び出し側が期待する契約（型・不変条件・副作用）を壊さない。
+- **I — インターフェース分離**: 巨大な型や「なんでもオプション」APIを増やさない。クライアントが使わないメソッドに依存させない。必要なら小さな型・関数群に分割する。
+- **D — 依存性逆転**: 具象（DB・Socket・フレームワーク）にドメインが直接依存しないよう、テストや差し替えしやすい抽象（純粋関数・小さなポート）を挟む。既存の共有ロジック（`@plo/shared`・`gameEngine`）を優先して再利用する。
 
-`server/src/shared/logic/ai/preflopStrategy.ts` でBotのプリフロップ判断を制御。
+**DRY**
 
-**判断フロー:**
+- **単一の真実の源泉**: 同じルール・定数・変換・型は一箇所に集約する。フロントとサーバーで重複するなら `packages/shared` や既存の共有モジュールへ寄せる。
+- **コピペの禁止に近い意識**: 2回目で「共通化の候補」、3回目で**必ず**抽出を検討する。微妙に違う場合はパラメータ化・小関数への分割で一つにまとめる。
+- **DRY の誤用を避ける**: 文脈が違うロジックを無理に一つに束ねて複雑化しない。重複の削除と責務の明確化はセットで考える。
 
-```
-effectiveStrength = score + positionBonus
-         ↓
-AAxx? → playPremium（常にレイズ）
-         ↓
-> 0.85 → playPremium（70-90%レイズ、残りトラップ）
-         ↓
-4bet直面? → 0.80+ かつ ペア/DS のみコール、他フォールド
-         ↓
-3bet直面? → facing3BetDecision（構造+パーソナリティ判定）
-         ↓
-> pfrThreshold → オープンレイズ or コール
-         ↓
-> vpipThreshold → チェック（BB）/ コール（ポットオッズ次第）/ 未レイズならフォールド
-         ↓
-弱い → チェック or フォールド（BTN/COからスチール可能性あり）
-```
-
-**閾値:**
-
-| パラメータ | 計算式 | TAG(vpip=0.20) | LAG(vpip=0.38) |
-|-----------|--------|---------------|---------------|
-| vpipThreshold | max(0.55, 0.85 - vpip×0.65) | 0.72 | 0.60 |
-| pfrThreshold | vpipThreshold + (vpip-pfr)×0.8 | 0.76 | 0.68 |
-| 3bet防御最低 | 0.60 + (1-vpip)×0.15 | 0.72 | 0.69 |
-
-**ポジションボーナス:** BTN +0.10, CO +0.08, HJ +0.05, UTG ±0, SB/BB -0.05
+レビュー観点: 新規コードが SOLID/DRY に反していないか、変更が既存の責務境界を侵食していないかを自分で一度確認してから完了とする。
 
 ### 設計パターン
 
@@ -350,116 +185,17 @@ AAxx? → playPremium（常にレイズ）
 - **Fire-and-forget**: ハンド履歴保存は非同期（ゲーム進行をブロックしない）
 - **切断猶予**: 30秒のgrace periodで再接続対応
 - **アクションタイムアウト**: 10秒で自動フォールド
-- **同一ユーザー単一接続**: 複数タブ/ブラウザからの重複接続を防止（後述）
+- **同一ユーザー単一接続**: 複数タブからの接続は `connection:displaced` で片方を退避。流れの比喩は [docs/poker-room-metaphor.md](docs/poker-room-metaphor.md)
 
-### ポーカールームメタファー（サーバー内部構造）
+### サーバー内部の比喩（オンボーディング用）
 
-サーバー内部のデータ構造とフローを、実際のポーカールームに例えた対応表。
-
-```
-┌─────────────────────────────────────────────────┐
-│  ポーカールーム（setupGameSocket）                │
-│                                                 │
-│  受付名簿（activeConnections: Map<odId, socket>）│
-│     「山田さん → 今店内にいる本人」              │
-│                                                 │
-│  フロアマネージャー（TableManager）              │
-│     手帳（playerTables: Map<odId, tableId>）     │
-│        「山田さん → 3番テーブル」                │
-│                                                 │
-│  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
-│  │ Table 1  │  │ Table 2  │  │ Table 3  │      │
-│  │ 1/3 通常 │  │ 1/3 FF   │  │ 1/2 通常 │      │
-│  │(Instance)│  │(Instance)│  │(Instance)│      │
-│  └──────────┘  └──────────┘  └──────────┘      │
-│                                                 │
-│  キャッシャー（bankroll / cashOutPlayer）         │
-└─────────────────────────────────────────────────┘
-```
-
-| コード | ポーカールーム | 補足 |
-|--------|---------------|------|
-| `socket` | お客さんの**体** | タブごとに別の体。物理的存在 |
-| `odId` | **会員証** | 同一人物なら全タブで同じ |
-| `socket.id` | **入館証番号** | Socket.ioが自動発行、タブごとにユニーク |
-| `activeConnections` | 入口の**受付名簿** | 会員証 → 今店内にいる体 |
-| `TableManager` | **フロアマネージャー** | テーブル管理・案内係 |
-| `playerTables` | フロアの**手帳** | 誰がどのテーブルにいるか |
-| `TableInstance` | 個別の**ポーカーテーブル** | ディーラー付き |
-| `SeatInfo` | テーブルの**椅子** | 座っている人の体（socket）への参照 |
-| `BroadcastService` | ディーラーの**声** | テーブル全員に聞こえる |
-| `emitToSocket` | ディーラーが**個人にこっそり囁く** | ホールカード配布等 |
-| `Socket.io Room` | テーブルの**周囲** | そこにいる人だけ聞こえる範囲 |
-| `cashOutPlayer` | **キャッシャー** | チップ→残高に換金 |
-
-**入店〜着席:**
-1. 入口で会員証を見せる（authMiddleware）→ 入店許可
-2. 受付名簿をチェック（activeConnections）→ 同一人物がいたら前の体を追い出す（displaced）
-3. フロアに「席ある？」（matchmaking:join）→ 手帳で既に座ってたら先に立たせる
-4. フロアが空き席を探す（getOrCreateTable）→ 手帳に記録（setPlayerTable）
-5. テーブルに座る（seatPlayer）→ 椅子に体を紐づけ → テーブル周囲に入る（socket.join）
-
-**退席〜退店:**
-1. 椅子から立つ（unseatPlayer）→ テーブル周囲から離れる（socket.leave）
-2. キャッシャーでチップを換金（cashOutPlayer）
-3. フロアが手帳から消す（removePlayerFromTracking）
-4. 受付名簿から消す（activeConnections.delete）
-
-**FastFold = 高速テーブル移動:**
-フォールドした瞬間にフロアが飛んできて「別テーブルへどうぞ！」（movePlayerToNewTable）。チップを持ったまま即座に別テーブルへ移動し、新しいハンドに参加。
-
-**同一ユーザー単一接続（displaced）:**
-同一人物が別の入口（タブ）から入店すると、受付が名簿をチェックして前の体に「別の入口から来た方を優先します」と通知（connection:displaced）し退店させる。新しい体がフロアに案内される際、前の体が座っていた椅子は通常の入店フローで片付けられる。
+`activeConnections` / `TableManager` / 着席・退店・FastFold などの対応表とストーリーは [docs/poker-room-metaphor.md](docs/poker-room-metaphor.md)（本ファイルでは重複しない）。
 
 ### 管理ダッシュボード
 
-- `/admin/status` - HTMLダッシュボード（2秒自動更新）
-- `/api/admin/stats` - JSON API
-- テーブル一覧、プレイヤー状態、アクション待機、メッセージログ表示
+- `/admin/status` — HTML（自動更新）
+- `/api/admin/stats` — JSON
 
-## Deployment (Railway)
+## その他のドキュメント
 
-### 構成
-
-1つのWebサービスとしてデプロイ。Fastifyサーバーがフロントエンドの静的ファイルも配信する。
-
-```
-Railway Project
-├── Web Service (Fastify + 静的ファイル配信)
-└── PostgreSQL (アドオン)
-```
-
-### ビルド・起動
-
-```bash
-npm run build:all   # フロントビルド + サーバーのprisma generate
-npm run start       # 本番サーバー起動 (cd server && node --import tsx src/index.ts)
-```
-
-`railway.toml` でビルド・起動コマンドを設定済み。
-
-### Railway セットアップ手順
-
-1. Railway でプロジェクト作成、GitHubリポジトリを接続
-2. PostgreSQL アドオン追加 → `DATABASE_URL` が自動設定される
-3. 環境変数を設定:
-
-| 変数名 | 値 | 備考 |
-|--------|-----|------|
-| `NODE_ENV` | `production` | 必須 |
-| `JWT_SECRET` | ランダム文字列 | 32文字以上、必須 |
-| `CLIENT_URL` | `https://<app>.up.railway.app` | デプロイ先URL |
-| `TWITTER_CLIENT_ID` | Twitter Developer Portalから | OAuth用 |
-| `TWITTER_CLIENT_SECRET` | Twitter Developer Portalから | OAuth用 |
-| `DATABASE_URL` | (自動) | PostgreSQLアドオンから |
-| `PORT` | (自動) | Railwayが`$PORT`で提供 |
-
-5. デプロイ実行（`main` ブランチへのpushで自動デプロイ。`develop` ブランチはデプロイされない）
-6. `https://<app>.up.railway.app/health` でヘルスチェック確認
-
-### 環境変数の仕組み
-
-- フロントエンド: `VITE_SERVER_URL` で接続先を制御。本番では未設定（空文字 = 同一オリジン）
-- 開発時: `.env.development` で `VITE_SERVER_URL=http://localhost:3001` を設定
-- サーバー: `server/.env` または Railway の環境変数で設定
-- 本番SPA: `setNotFoundHandler` で API/admin/health 以外を `index.html` にフォールバック
+設計案・個別機能のメモは `docs/` 配下（例: `architecture-redesign.md`, `mtt-design.md`）。デプロイ詳細は [docs/deployment-railway.md](docs/deployment-railway.md)。
