@@ -103,6 +103,15 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
+@keyframes win-box-glow {
+  0%, 100% {
+    box-shadow: 0 0 15cqw rgba(255,200,0,1), 0 0 30cqw rgba(255,150,0,0.7), 0 0 50cqw rgba(255,100,0,0.3);
+  }
+  50% {
+    box-shadow: 0 0 5cqw rgba(255,200,0,0.3), 0 0 10cqw rgba(255,150,0,0.1);
+  }
+}
+
 @keyframes win-glow-pulse {
   0%, 100% {
     text-shadow: 0 0 10px rgba(34, 197, 94, 0.8),
