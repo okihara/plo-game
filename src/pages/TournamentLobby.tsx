@@ -242,13 +242,9 @@ function TournamentCard({
             )}
           </button>
         ) : (
-          <button
-            type="button"
-            onClick={onViewResult}
-            className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors"
-          >
-            結果を見る
-          </button>
+          <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
+            進行中（登録締切済み）
+          </div>
         )}
       </div>
     </div>
