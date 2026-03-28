@@ -1,22 +1,29 @@
 import { BlindLevel } from './types';
 
+export const DEFAULT_DURATION_MINUTES = 0.5;
+
 // デフォルトブラインドスケジュール
 export const DEFAULT_BLIND_SCHEDULE: BlindLevel[] = [
-  { level: 1,  smallBlind: 1,   bigBlind: 2,   ante: 0, durationMinutes: 8 },
-  { level: 2,  smallBlind: 2,   bigBlind: 4,   ante: 0, durationMinutes: 8 },
-  { level: 3,  smallBlind: 3,   bigBlind: 6,   ante: 0, durationMinutes: 8 },
-  { level: 4,  smallBlind: 5,   bigBlind: 10,  ante: 0, durationMinutes: 8 },
-  { level: 5,  smallBlind: 8,   bigBlind: 16,  ante: 0, durationMinutes: 8 },
-  { level: 6,  smallBlind: 10,  bigBlind: 20,  ante: 0, durationMinutes: 8 },
-  { level: 7,  smallBlind: 15,  bigBlind: 30,  ante: 0, durationMinutes: 6 },
-  { level: 8,  smallBlind: 20,  bigBlind: 40,  ante: 0, durationMinutes: 6 },
-  { level: 9,  smallBlind: 30,  bigBlind: 60,  ante: 0, durationMinutes: 6 },
-  { level: 10, smallBlind: 50,  bigBlind: 100, ante: 0, durationMinutes: 6 },
-  { level: 11, smallBlind: 75,  bigBlind: 150, ante: 0, durationMinutes: 5 },
-  { level: 12, smallBlind: 100, bigBlind: 200, ante: 0, durationMinutes: 5 },
-  { level: 13, smallBlind: 150, bigBlind: 300, ante: 0, durationMinutes: 5 },
-  { level: 14, smallBlind: 200, bigBlind: 400, ante: 0, durationMinutes: 5 },
-  { level: 15, smallBlind: 300, bigBlind: 600, ante: 0, durationMinutes: 5 },
+  { level: 1,  smallBlind: 1,   bigBlind: 2,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 2,  smallBlind: 2,   bigBlind: 4,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 3,  smallBlind: 3,   bigBlind: 6,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 4,  smallBlind: 5,   bigBlind: 10,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 5,  smallBlind: 8,   bigBlind: 16,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 6,  smallBlind: 10,  bigBlind: 20,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 7,  smallBlind: 15,  bigBlind: 30,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 8,  smallBlind: 20,  bigBlind: 40,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 9,  smallBlind: 30,  bigBlind: 60,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 10, smallBlind: 50,  bigBlind: 100, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 11, smallBlind: 75,  bigBlind: 150, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 12, smallBlind: 100, bigBlind: 200, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 13, smallBlind: 150, bigBlind: 300, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 14, smallBlind: 200, bigBlind: 400, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 15, smallBlind: 300, bigBlind: 600, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 16, smallBlind: 400, bigBlind: 800, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 17, smallBlind: 500, bigBlind: 1000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 18, smallBlind: 750, bigBlind: 1500, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 19, smallBlind: 1000, bigBlind: 2000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 20, smallBlind: 1500, bigBlind: 3000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
 ];
 
 // デフォルト初期チップ

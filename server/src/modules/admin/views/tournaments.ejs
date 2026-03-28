@@ -121,6 +121,7 @@
           <label>開始条件</label>
           <select id="startCondition">
             <option value="manual">手動開始</option>
+            <option value="immediate">現時刻で開始</option>
             <option value="scheduled">時刻指定</option>
             <option value="player_count">人数到達</option>
           </select>
@@ -224,7 +225,10 @@
         body.reentryDeadlineLevel = parseInt(document.getElementById('reentryDeadlineLevel').value);
       }
 
-      if (body.startCondition === 'scheduled') {
+      var startImmediately = body.startCondition === 'immediate';
+      if (startImmediately) {
+        body.startCondition = 'manual';
+      } else if (body.startCondition === 'scheduled') {
         var dt = document.getElementById('scheduledStartTime').value;
         if (dt) body.scheduledStartTime = new Date(dt).toISOString();
       } else if (body.startCondition === 'player_count') {
@@ -240,7 +244,17 @@
         });
         var data = await res.json();
         if (res.ok) {
-          el.innerHTML = '<div class="result-msg success">作成完了: ' + data.name + ' (ID: ' + data.tournamentId + ')</div>';
+          if (startImmediately) {
+            var startRes = await fetch(apiUrl('/api/tournaments/' + data.tournamentId + '/start'), { method: 'POST' });
+            var startData = await startRes.json();
+            if (startRes.ok) {
+              el.innerHTML = '<div class="result-msg success">作成＆開始完了: ' + data.name + ' (ID: ' + data.tournamentId + ')</div>';
+            } else {
+              el.innerHTML = '<div class="result-msg error">作成完了、開始失敗: ' + (startData.error || startRes.status) + '</div>';
+            }
+          } else {
+            el.innerHTML = '<div class="result-msg success">作成完了: ' + data.name + ' (ID: ' + data.tournamentId + ')</div>';
+          }
           refreshList();
         } else {
           el.innerHTML = '<div class="result-msg error">エラー: ' + (data.error || res.status) + '</div>';
