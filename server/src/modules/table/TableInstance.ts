@@ -13,7 +13,7 @@ import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
-import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { IHandHistoryRecorder, HandHistoryRecorder, NullHandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
@@ -101,7 +101,7 @@ export class TableInstance {
     this.variantAdapter = new VariantAdapter(this.variant);
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
     this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
-    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
+    this.historyRecorder = options?.historyRecorder ?? (this.gameMode === 'tournament' ? new NullHandHistoryRecorder() : new HandHistoryRecorder());
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
 
@@ -700,7 +700,15 @@ export class TableInstance {
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
           const defaultAction = this.getDefaultDisconnectAction(idx);
-          this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === idx) {
+            // handleAction 失敗時のリカバリー: 強制フォールドして進行
+            console.error(`[Table ${this.id}] Disconnected fold failed, forcing advance. seat=${idx}`);
+            const p = this.gameState.players[idx];
+            if (p && !p.folded) p.folded = true;
+            this.actionController.clearTimers();
+            this.advanceToNextPlayer();
+          }
         }
       }
     );
@@ -711,8 +719,7 @@ export class TableInstance {
 
     if (!this.gameState) {
       console.error(`[Table ${this.id}] Action timeout but no gameState: playerId=${playerId}, seat=${seatIndex}`);
-      const seat = this.playerManager.getSeat(seatIndex);
-      seat?.socket?.emit('table:error', { message: 'ゲーム状態が見つかりません。再接続してください。' });
+      this.actionController.clearTimers();
       return;
     }
 
@@ -722,6 +729,17 @@ export class TableInstance {
       // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
       const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+
+      if (!handled) {
+        // handleAction が失敗した場合のリカバリー: 強制フォールドして進行
+        console.error(`[Table ${this.id}] Action timeout: handleAction failed, forcing advance. playerId=${playerId}, seat=${seatIndex}, action=${defaultAction.action}`);
+        if (this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === seatIndex) {
+          const p = this.gameState.players[seatIndex];
+          if (p && !p.folded) p.folded = true;
+          this.actionController.clearTimers();
+          this.advanceToNextPlayer();
+        }
+      }
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
       if (defaultAction.action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
