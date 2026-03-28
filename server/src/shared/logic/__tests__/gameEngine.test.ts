@@ -1706,3 +1706,81 @@ describe('determineWinner with rake', () => {
     expect(totalWinnings).toBe(191);
   });
 });
+
+// ============================================
+// レイズ後のcall可否（コール額 < チップ < ミニマムレイズ額）
+// ============================================
+
+describe('getValidActions - レイズ後のcall', () => {
+  it('コール額 < チップ < ミニマムレイズ額の場合、callとallinの両方が返される', () => {
+    // シナリオ: 相手がレイズして currentBet=100, 自分はchips=70, currentBet=0
+    // コール額=100 → 70（チップ不足でall-in call）ではなく
+    // コール額=50, チップ=70 のケースをテスト（callとallinが別アクション）
+    const state = createTestState({
+      currentBet: 100,
+      pot: 150,
+      minRaise: 50, // 次のレイズは150以上
+      lastFullRaiseBet: 100,
+    });
+    const updated = withPlayers(state, [
+      { currentBet: 50, chips: 70, hasActed: false }, // コール額=50, チップ=70
+    ]);
+
+    const actions = getValidActions(updated, 0);
+    const actionTypes = actions.map(a => a.action);
+
+    // callが含まれること（コール額50）
+    expect(actionTypes).toContain('call');
+    const callAction = actions.find(a => a.action === 'call')!;
+    expect(callAction.minAmount).toBe(50);
+
+    // allinも含まれること（70チップ全額）
+    expect(actionTypes).toContain('allin');
+    const allinAction = actions.find(a => a.action === 'allin')!;
+    expect(allinAction.minAmount).toBe(70);
+
+    // raiseは含まれない（チップ不足: 70 < minRaise後の必要額）
+    expect(actionTypes).not.toContain('raise');
+  });
+
+  it('コール額 == チップの場合、callのみ返される（allinと同額）', () => {
+    const state = createTestState({
+      currentBet: 100,
+      pot: 150,
+      minRaise: 50,
+      lastFullRaiseBet: 100,
+    });
+    const updated = withPlayers(state, [
+      { currentBet: 50, chips: 50, hasActed: false }, // コール額=50 == チップ50
+    ]);
+
+    const actions = getValidActions(updated, 0);
+    const callAction = actions.find(a => a.action === 'call')!;
+    expect(callAction.minAmount).toBe(50);
+  });
+
+  it('レイズ後にアクション済みプレイヤーでもcallが返される', () => {
+    // 非フルレイズall-in後、既にアクション済みのプレイヤー
+    const state = createTestState({
+      currentBet: 130,
+      pot: 260,
+      minRaise: 50,
+      lastFullRaiseBet: 100, // フルレイズは100まで（130は非フルレイズ）
+    });
+    const updated = withPlayers(state, [
+      { currentBet: 100, chips: 400, hasActed: true }, // 既にアクション済み、toCall=30
+    ]);
+
+    const actions = getValidActions(updated, 0);
+    const actionTypes = actions.map(a => a.action);
+
+    // callが含まれること
+    expect(actionTypes).toContain('call');
+    const callAction = actions.find(a => a.action === 'call')!;
+    expect(callAction.minAmount).toBe(30);
+
+    // canRaise=false（hasActed && currentBet >= lastFullRaiseBet）なのでraise/allinは不可
+    expect(actionTypes).not.toContain('raise');
+    expect(actionTypes).not.toContain('allin');
+  });
+});
