@@ -906,7 +906,7 @@ export class TournamentInstance {
   }
 
   /** this.prizes から順位に対応する賞金額を取得（0-indexed position） */
-  private getPrizeForPosition(position: number): number {
+  public getPrizeForPosition(position: number): number {
     const entry = this.prizes.find(p => p.position === position);
     return entry?.amount ?? 0;
   }

@@ -5,6 +5,7 @@ interface EliminationOverlayProps {
   totalPlayers: number;
   prizeAmount: number;
   tournamentName?: string;
+  closeLabel?: string;
   onClose: () => void;
 }
 
@@ -29,6 +30,7 @@ export function EliminationOverlay({
   totalPlayers,
   prizeAmount,
   tournamentName,
+  closeLabel = 'ロビーに戻る',
   onClose,
 }: EliminationOverlayProps) {
   const isWinner = position === 1;
@@ -123,7 +125,7 @@ export function EliminationOverlay({
         onClick={onClose}
         className="w-full max-w-[88cqw] mt-[4cqw] py-[3cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3.5cqw] transition-colors shadow-[0_4px_20px_rgba(45,90,61,0.3)]"
       >
-        ロビーに戻る
+        {closeLabel}
       </button>
     </div>
   );

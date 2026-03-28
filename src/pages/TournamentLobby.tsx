@@ -6,6 +6,7 @@ import { formatChips } from '../utils/formatChips';
 
 interface TournamentLobbyProps {
   onJoinTournament: (tournamentId: string) => void;
+  onViewResult: (tournamentId: string) => void;
   onBack: () => void;
 }
 
@@ -28,7 +29,7 @@ function statusLabel(status: string): { text: string; color: string } {
   }
 }
 
-export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyProps) {
+export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: TournamentLobbyProps) {
   const { user } = useAuth();
   const {
     tournaments,
@@ -110,6 +111,7 @@ export function TournamentLobby({ onJoinTournament, onBack }: TournamentLobbyPro
                 isLoggedIn={!!user}
                 onRegister={() => handleRegister(t.id)}
                 onEnter={() => handleEnter(t.id)}
+                onViewResult={() => onViewResult(t.id)}
               />
             ))}
           </div>
@@ -126,6 +128,7 @@ function TournamentCard({
   isLoggedIn,
   onRegister,
   onEnter,
+  onViewResult,
 }: {
   tournament: TournamentLobbyInfo;
   isRegistered: boolean;
@@ -133,6 +136,7 @@ function TournamentCard({
   isLoggedIn: boolean;
   onRegister: () => void;
   onEnter: () => void;
+  onViewResult: () => void;
 }) {
   const status = statusLabel(t.status);
   const isRunning = t.status !== 'waiting' && t.status !== 'completed' && t.status !== 'cancelled';
@@ -199,7 +203,7 @@ function TournamentCard({
         {isFinished ? (
           <button
             type="button"
-            onClick={onEnter}
+            onClick={onViewResult}
             className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors"
           >
             結果を見る
@@ -235,10 +239,10 @@ function TournamentCard({
         ) : (
           <button
             type="button"
-            onClick={onEnter}
-            className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-800 rounded-[2cqw] text-[3cqw] transition-colors"
+            onClick={onViewResult}
+            className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors"
           >
-            観戦する
+            結果を見る
           </button>
         )}
       </div>

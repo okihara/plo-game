@@ -4,7 +4,7 @@ import { TournamentBotManager } from './TournamentBotManager.js';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:3001';
 const BOT_COUNT = parseInt(process.env.BOT_COUNT || '9', 10);
 const NO_DELAY = process.env.NO_DELAY === 'true';
-const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'Bot Tournament';
+const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'BabyPLO Daily Turbo';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
 const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '1500', 10);
 const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.20'); // 分（デフォルト45秒）

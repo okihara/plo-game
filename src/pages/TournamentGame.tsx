@@ -1,12 +1,9 @@
 import { useEffect, useState, useCallback } from 'react';
 import { GameTable } from '../components/GameTable';
 import { TournamentHUD } from '../components/TournamentHUD';
-import { EliminationOverlay } from '../components/EliminationOverlay';
-import { TournamentResultOverlay } from '../components/TournamentResultOverlay';
 import { TableMoveOverlay } from '../components/TableMoveOverlay';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useTournamentState } from '../hooks/useTournamentState';
-import type { TournamentCompletedData } from '../hooks/useTournamentState';
 import { wsService } from '../services/websocket';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
@@ -30,9 +27,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
   } = useTournamentState();
 
   const [blinds, setBlinds] = useState('1/2');
-  // 終了済みトーナメントの結果（API取得）
-  const [finishedData, setFinishedData] = useState<TournamentCompletedData | null>(null);
-  const [finishedName, setFinishedName] = useState<string | null>(null);
 
   const {
     gameState,
@@ -59,13 +53,11 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         const data = await res.json();
         if (cancelled) return;
 
-        if (data.status === 'completed' && data.results?.length > 0) {
-          setFinishedData({
-            results: data.results,
-            totalPlayers: data.totalPlayers,
-            prizePool: data.prizePool,
-          });
-          setFinishedName(data.name ?? null);
+        if (data.status === 'completed') {
+          // 終了済み → 結果ページへ遷移
+          const resultPath = `/tournament/${tournamentId}/result`;
+          window.history.replaceState({}, '', resultPath);
+          window.dispatchEvent(new PopStateEvent('popstate'));
           return;
         }
       } catch {
@@ -96,36 +88,16 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     onBack();
   }, [elimination, completedData, clearElimination, clearCompleted, onBack]);
 
-  // 排除された場合
-  if (elimination && !completedData) {
-    return (
-      <div className="relative h-full w-full min-h-0">
-        <EliminationOverlay
-          position={elimination.position}
-          totalPlayers={elimination.totalPlayers}
-          prizeAmount={elimination.prizeAmount}
-          tournamentName={tournamentState?.name}
-          onClose={handleBack}
-        />
-      </div>
-    );
-  }
-
-  // 完了データ（リアルタイム or API取得）
-  const resultsData = completedData ?? finishedData;
-  if (resultsData) {
-    return (
-      <div className="relative h-full w-full min-h-0">
-        <TournamentResultOverlay
-          results={resultsData.results}
-          totalPlayers={resultsData.totalPlayers}
-          prizePool={resultsData.prizePool}
-          tournamentName={tournamentState?.name ?? finishedName ?? undefined}
-          onClose={handleBack}
-        />
-      </div>
-    );
-  }
+  // 脱落 or 完了 → 結果ページへ遷移
+  useEffect(() => {
+    if (elimination || completedData) {
+      clearElimination();
+      clearCompleted();
+      const resultPath = `/tournament/${tournamentId}/result`;
+      window.history.replaceState({}, '', resultPath);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    }
+  }, [elimination, completedData, tournamentId, clearElimination, clearCompleted]);
 
   if (isChangingTable) {
     return (

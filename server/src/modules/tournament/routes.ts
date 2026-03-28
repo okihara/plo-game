@@ -127,6 +127,57 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       };
     });
 
+    // 自分のトーナメント結果（認証必須）
+    // メモリにあればそちらを優先、なければDBから読む
+    fastify.get<{ Params: { id: string } }>('/api/tournaments/:id/my-result', async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { userId } = request.user as { userId: string };
+      const tournamentId = request.params.id;
+
+      // メモリ上のトーナメントを確認
+      const memTournament = tournamentManager.getTournament(tournamentId);
+      if (memTournament) {
+        const player = memTournament.getPlayer(userId);
+        if (player?.finishPosition) {
+          const prize = memTournament.getPrizeForPosition(player.finishPosition);
+          return {
+            tournamentName: memTournament.config.name,
+            position: player.finishPosition,
+            totalPlayers: memTournament.getPlayerCount(),
+            prizeAmount: prize,
+          };
+        }
+      }
+
+      // DBフォールバック
+      const dbTournament = await prisma.tournament.findUnique({
+        where: { id: tournamentId },
+        include: { _count: { select: { registrations: true } } },
+      });
+      if (!dbTournament) {
+        return reply.status(404).send({ error: 'Tournament not found' });
+      }
+
+      const myResult = await prisma.tournamentResult.findUnique({
+        where: { tournamentId_userId: { tournamentId, userId } },
+      });
+      if (!myResult) {
+        return reply.status(404).send({ error: 'Result not found' });
+      }
+
+      return {
+        tournamentName: dbTournament.name,
+        position: myResult.position,
+        totalPlayers: dbTournament._count.registrations,
+        prizeAmount: myResult.prize,
+      };
+    });
+
     // トーナメント参加登録（認証必須、DB操作のみ）
     // テーブル着席はソケット接続時（tournament:request_state）に行う
     fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/register', async (request, reply) => {
