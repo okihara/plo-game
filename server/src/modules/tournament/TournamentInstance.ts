@@ -438,6 +438,7 @@ export class TournamentInstance {
     const table = new TableInstance(this.io, blindsStr, false, {
       gameMode: 'tournament',
       lifecycleCallbacks: callbacks,
+      tournamentId: this.id,
     });
 
     this.tables.set(table.id, table);

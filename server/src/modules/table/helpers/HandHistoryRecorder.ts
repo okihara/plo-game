@@ -58,6 +58,11 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
   private allInEVProfits: Map<number, number> | null = null;
+  private readonly tournamentId: string | null;
+
+  constructor(options?: { tournamentId?: string }) {
+    this.tournamentId = options?.tournamentId ?? null;
+  }
 
   /**
    * ハンド開始時に呼ぶ。開始時チップを記録する。
@@ -164,6 +169,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
       await prisma.handHistory.create({
         data: {
           tableId,
+          ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
           handNumber: this.handCount,
           blinds,
           communityCards: serializeCards(gameState.communityCards),
@@ -178,10 +184,12 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
         },
       });
 
-      // スタッツキャッシュ更新 (fire-and-forget)
-      updatePlayerStats(gameState, seats, this.startChips, this.allInEVProfits).catch(err =>
-        console.error('Stats cache update failed:', err)
-      );
+      // スタッツキャッシュ更新 (fire-and-forget) — トーナメントではスキップ
+      if (!this.tournamentId) {
+        updatePlayerStats(gameState, seats, this.startChips, this.allInEVProfits).catch(err =>
+          console.error('Stats cache update failed:', err)
+        );
+      }
     } catch (error) {
       console.error('Failed to save hand history:', error);
     }

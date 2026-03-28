@@ -13,7 +13,7 @@ import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
-import { IHandHistoryRecorder, HandHistoryRecorder, NullHandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
@@ -72,7 +72,7 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
@@ -101,7 +101,9 @@ export class TableInstance {
     this.variantAdapter = new VariantAdapter(this.variant);
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
     this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
-    this.historyRecorder = options?.historyRecorder ?? (this.gameMode === 'tournament' ? new NullHandHistoryRecorder() : new HandHistoryRecorder());
+    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder(
+      this.gameMode === 'tournament' && options?.tournamentId ? { tournamentId: options.tournamentId } : undefined
+    );
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
 
