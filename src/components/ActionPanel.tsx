@@ -63,7 +63,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   // ファストフォールド: ターン前でもフォールド可能
   const isBB = myPlayer.position === 'BB';
   const canFastFold = !!isFastFold && !isMyTurn && !myPlayer.folded && !state.isHandComplete
-    && !(isBB && state.currentStreet === 'preflop' && toCall === 0) && !canCheck && state.currentStreet !== 'showdown'&& !myPlayer.hasActed;
+    && !(isBB && state.currentStreet === 'preflop' && state.currentBet <= myPlayer.currentBet) && !canCheck && state.currentStreet !== 'showdown'&& !myPlayer.hasActed;
 
   const [sliderValue, setSliderValue] = useState(minRaise);
   const [actionSent, setActionSent] = useState(false);
