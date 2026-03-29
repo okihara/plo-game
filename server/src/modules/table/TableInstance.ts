@@ -200,7 +200,14 @@ export class TableInstance {
         // Studブリングインフェーズ等では fold が無効なため、有効アクションを選択
         this.actionController.clearTimers();
         const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-        this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+        const handled = this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+        if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === seatIndex) {
+          console.error(`[Table ${this.id}] removePlayer: handleAction failed, forcing advance. odId=${odId}, seat=${seatIndex}, action=${defaultAction.action}`);
+          const p = this.gameState.players[seatIndex];
+          if (p && !p.folded) p.folded = true;
+          this.actionController.clearTimers();
+          this.advanceToNextPlayer();
+        }
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -695,7 +702,14 @@ export class TableInstance {
       this.pendingEarlyFolds.delete(seatIndex);
       // drawストリート等ではfoldが無効なため、デフォルトアクションを使用
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-      this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      const handled = this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === seatIndex) {
+        console.error(`[Table ${this.id}] Pending early fold failed, forcing advance. odId=${odId}, seat=${seatIndex}, action=${defaultAction.action}`);
+        const p = this.gameState.players[seatIndex];
+        if (p && !p.folded) p.folded = true;
+        this.actionController.clearTimers();
+        this.advanceToNextPlayer();
+      }
       return;
     }
 
