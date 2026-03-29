@@ -114,7 +114,7 @@ export class TableInstance {
   public seatPlayer(
     odId: string,
     odName: string,
-    socket: Socket,
+    socket: Socket | null,
     buyIn: number,
     avatarUrl?: string | null,
     preferredSeat?: number,
@@ -139,18 +139,13 @@ export class TableInstance {
       return null;
     }
 
-    socket.join(this.roomName);
+    if (socket) {
+      socket.join(this.roomName);
 
-    // Broadcast player joined
-    const seat = this.playerManager.getSeat(seatIndex)!;
-    const joinData = {
-      seat: seatIndex,
-      player: StateTransformer.seatToOnlinePlayer(seat, seatIndex, null),
-    };
-
-    // Notify the seated player
-    if (!options?.skipJoinedEmit) {
-      socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+      // Notify the seated player
+      if (!options?.skipJoinedEmit) {
+        socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+      }
     }
     this.broadcast.emitToRoom('game:state', { state: this.getClientGameState() });
 

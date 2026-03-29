@@ -458,11 +458,6 @@ export class TournamentInstance {
     chips: number,
     options?: { skipJoinedEmit?: boolean }
   ): number | null {
-    if (!player.socket) {
-      console.warn(`[Tournament ${this.id}] Cannot seat player ${player.odId}: no socket`);
-      return null;
-    }
-
     const seatIndex = table.seatPlayer(
       player.odId,
       player.odName,
