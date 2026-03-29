@@ -35,6 +35,7 @@ export interface BotConfig {
   onJoinFailed?: (bot: BotClient, reason: string) => void; // マッチメイキング参加失敗時コールバック
   // --- トーナメント用 ---
   tournamentMode?: boolean; // true: トーナメントモード（ランダム切断・再マッチメイキング無効）
+  tournamentChaosMode?: boolean; // true: トーナメント中にランダム切断→再接続を行う（不具合再現用）
   onTournamentEliminated?: (bot: BotClient, position: number) => void;
   onTournamentCompleted?: (bot: BotClient) => void;
   botSecret?: string; // 本番環境でのBot認証シークレット
@@ -66,6 +67,8 @@ export class BotClient {
   private _isMaintenanceActive = false; // サーバーがメンテナンス中か
   private tournamentId: string | null = null; // 参加中のトーナメントID
   private authToken: string | null = null; // REST API用JWTトークン
+  private chaosReconnectTimer: ReturnType<typeof setTimeout> | null = null; // chaosMode: 再接続タイマー
+  private isTournamentEliminated = false; // トーナメント脱落済みフラグ
 
   constructor(config: BotConfig) {
     this.config = config;
@@ -130,176 +133,7 @@ export class BotClient {
         this.stopStuckCheck();
       });
 
-      // Game events
-      this.socket.on('table:joined', (data: { tableId: string; seat: number }) => {
-        this.tableId = data.tableId;
-        this.seatNumber = data.seat;
-        this.lastInGameTime = Date.now();
-        this.actionGeneration++; this.isThinking = false; // 新テーブル参加時に旧アクションを無効化
-        console.log(`[${this.config.name}] Joined table ${data.tableId} at seat ${data.seat}`);
-      });
-
-      this.socket.on('table:left', () => {
-        console.log(`[${this.config.name}] Left table`);
-        this.tableId = null;
-        this.seatNumber = -1;
-        this.actionGeneration++; this.isThinking = false; // テーブル離脱時に旧アクションを無効化
-        // 自動的に再度マッチメイキングに参加（一時無効化）
-        // this.rejoinMatchmaking();
-      });
-
-      this.socket.on('table:closed', () => {
-        console.log(`[${this.config.name}] Table closed`);
-        this.tableId = null;
-        this.seatNumber = -1;
-        this.actionGeneration++; this.isThinking = false; // テーブル閉鎖時に旧アクションを無効化
-        // 自動的に再度マッチメイキングに参加（一時無効化）
-        // this.rejoinMatchmaking();
-      });
-
-      // ファストフォールド: テーブル移動
-      this.socket.on('table:change', (data: { tableId: string; seat: number }) => {
-        this.tableId = data.tableId;
-        this.seatNumber = data.seat;
-        this.holeCards = [];
-        this.handActions = [];
-        this.actionGeneration++; this.isThinking = false;
-        this.pendingFastFoldCheck = false;
-        this.lastInGameTime = Date.now();
-        console.log(`[${this.config.name}] Table changed to ${data.tableId} seat ${data.seat}`);
-      });
-
-      this.socket.on('table:busted', (data: { message: string }) => {
-        console.log(`[${this.config.name}] Busted: ${data.message}`);
-        this.tableId = null;
-        this.seatNumber = -1;
-        this.actionGeneration++; this.isThinking = false;
-      });
-
-      this.socket.on('table:error', (data: { message: string }) => {
-        console.log(`[${this.config.name}] Table error: ${data.message}`);
-        // テーブル未参加時のエラー（バランス不足等）→ 参加失敗として通知
-        if (!this.tableId && this.config.onJoinFailed) {
-          this.config.onJoinFailed(this, data.message);
-        }
-      });
-
-      this.socket.on('maintenance:status', (data: { isActive: boolean; message: string }) => {
-        this._isMaintenanceActive = data.isActive;
-        if (data.isActive) {
-          console.log(`[${this.config.name}] Maintenance mode active: ${data.message}`);
-        } else {
-          console.log(`[${this.config.name}] Maintenance mode ended`);
-        }
-      });
-
-      this.socket.on('game:hole_cards', (data: { cards: Card[] }) => {
-        const isUpdate = this.holeCards.length > 0; // ドロー後のカード更新か
-        this.holeCards = data.cards;
-        if (!isUpdate) {
-          this.handActions = [];
-          console.log(`[${this.config.name}] Received hole cards`);
-          // ファストフォールド: 次のgame:stateで判定する
-          if (this.config.isFastFold) {
-            this.pendingFastFoldCheck = true;
-          }
-        } else {
-          console.log(`[${this.config.name}] Hole cards updated (draw)`);
-        }
-      });
-
-      this.socket.on('game:state', (data: { state: ClientGameState }) => {
-        this.gameState = data.state;
-        // ファストフォールド判定: hole_cards受信後の最初のstate更新で判定
-        if (this.pendingFastFoldCheck) {
-          this.pendingFastFoldCheck = false;
-          this.maybeEarlyFold();
-        }
-        // フロントと同じ: game:state で自分のターンを検知してアクション
-        if (data.state.currentPlayerSeat === this.seatNumber && data.state.isHandInProgress) {
-          this.handleMyTurn();
-        }
-      });
-
-      this.socket.on('game:action_taken', (data: { playerId: string; action: Action; amount: number; seat: number }) => {
-        // 現ハンドのアクション履歴を蓄積
-        this.handActions.push({
-          playerId: data.seat,
-          action: data.action,
-          amount: data.amount,
-        });
-
-        // テスト用: ハンド中に強制切断（自分のターンでない時）
-        if (data.seat !== this.seatNumber) {
-          this.maybeMidHandDisconnect();
-        }
-      });
-
-      this.socket.on('game:hand_complete', () => {
-        // ハンド完了時に保留中のアクションコールバックを無効化
-        this.actionGeneration++; this.isThinking = false;
-
-        // 相手モデルを更新（ハンド間の統計蓄積）
-        if (this.handActions.length > 0 && this.gameState) {
-          const activePlayers = Object.keys(this.gameState.players)
-            .map(Number)
-            .filter(seat => this.gameState!.players[seat]);
-          this.opponentModel.updateFromActions(this.handActions, activePlayers);
-        }
-
-        // Reset for next hand
-        this.handsPlayed++;
-        this.holeCards = [];
-        this.handActions = [];
-
-        // セッション上限チェック（上限到達で離席）
-        if (this.config.maxHandsPerSession && this.handsPlayed >= this.config.maxHandsPerSession) {
-          console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting`);
-          this.disconnect();
-          return;
-        }
-
-        // トーナメントモードではランダム切断しない
-        if (this.config.tournamentMode) return;
-
-        // 一定確率で意図的に切断（人間らしさを演出）
-        this.maybeDisconnectRandomly();
-      });
-
-      // --- トーナメントイベント ---
-
-      this.socket.on('tournament:table_assigned', (data: { tableId: string }) => {
-        // tableId 記録。seatNumber は table:joined で設定される
-        console.log(`[${this.config.name}] Tournament table assigned: ${data.tableId}`);
-      });
-
-      this.socket.on('tournament:eliminated', (data: { position: number; totalPlayers: number; prizeAmount: number }) => {
-        console.log(`[${this.config.name}] Eliminated at position ${data.position}/${data.totalPlayers} (prize: ${data.prizeAmount})`);
-        this.tournamentId = null;
-        this.config.onTournamentEliminated?.(this, data.position);
-      });
-
-      this.socket.on('tournament:completed', () => {
-        console.log(`[${this.config.name}] Tournament completed`);
-        this.tournamentId = null;
-        this.config.onTournamentCompleted?.(this);
-      });
-
-      this.socket.on('tournament:table_move', (data: { fromTableId: string; toTableId: string }) => {
-        console.log(`[${this.config.name}] Table move: ${data.fromTableId} → ${data.toTableId}`);
-        // テーブル移動時に旧アクション状態をリセット
-        this.actionGeneration++; this.isThinking = false;
-        this.holeCards = [];
-        this.handActions = [];
-      });
-
-      this.socket.on('tournament:blind_change', (data: { level: { level: number; smallBlind: number; bigBlind: number } }) => {
-        console.log(`[${this.config.name}] Blind level up: Lv.${data.level.level} (${data.level.smallBlind}/${data.level.bigBlind})`);
-      });
-
-      this.socket.on('tournament:error', (data: { message: string }) => {
-        console.error(`[${this.config.name}] Tournament error: ${data.message}`);
-      });
+      this.registerSocketListeners();
 
       // Timeout for connection
       setTimeout(() => {
@@ -314,6 +148,178 @@ export class BotClient {
    * game:state で自分のターンを検知したときの処理（フロントと同じアプローチ）
    * validActions はサーバーから受け取らず、自前の gameState から計算する
    */
+  /**
+   * ソケットのゲーム・トーナメントイベントリスナーを登録する。
+   * connect() と chaosReconnect() の両方から呼ばれる。
+   */
+  private registerSocketListeners(): void {
+    if (!this.socket) return;
+
+    // Game events
+    this.socket.on('table:joined', (data: { tableId: string; seat: number }) => {
+      this.tableId = data.tableId;
+      this.seatNumber = data.seat;
+      this.lastInGameTime = Date.now();
+      this.actionGeneration++; this.isThinking = false;
+      console.log(`[${this.config.name}] Joined table ${data.tableId} at seat ${data.seat}`);
+    });
+
+    this.socket.on('table:left', () => {
+      console.log(`[${this.config.name}] Left table`);
+      this.tableId = null;
+      this.seatNumber = -1;
+      this.actionGeneration++; this.isThinking = false;
+    });
+
+    this.socket.on('table:closed', () => {
+      console.log(`[${this.config.name}] Table closed`);
+      this.tableId = null;
+      this.seatNumber = -1;
+      this.actionGeneration++; this.isThinking = false;
+    });
+
+    // ファストフォールド: テーブル移動
+    this.socket.on('table:change', (data: { tableId: string; seat: number }) => {
+      this.tableId = data.tableId;
+      this.seatNumber = data.seat;
+      this.holeCards = [];
+      this.handActions = [];
+      this.actionGeneration++; this.isThinking = false;
+      this.pendingFastFoldCheck = false;
+      this.lastInGameTime = Date.now();
+      console.log(`[${this.config.name}] Table changed to ${data.tableId} seat ${data.seat}`);
+    });
+
+    this.socket.on('table:busted', (data: { message: string }) => {
+      console.log(`[${this.config.name}] Busted: ${data.message}`);
+      this.tableId = null;
+      this.seatNumber = -1;
+      this.actionGeneration++; this.isThinking = false;
+    });
+
+    this.socket.on('table:error', (data: { message: string }) => {
+      console.log(`[${this.config.name}] Table error: ${data.message}`);
+      if (!this.tableId && this.config.onJoinFailed) {
+        this.config.onJoinFailed(this, data.message);
+      }
+    });
+
+    this.socket.on('maintenance:status', (data: { isActive: boolean; message: string }) => {
+      this._isMaintenanceActive = data.isActive;
+      if (data.isActive) {
+        console.log(`[${this.config.name}] Maintenance mode active: ${data.message}`);
+      } else {
+        console.log(`[${this.config.name}] Maintenance mode ended`);
+      }
+    });
+
+    this.socket.on('game:hole_cards', (data: { cards: Card[] }) => {
+      const isUpdate = this.holeCards.length > 0;
+      this.holeCards = data.cards;
+      if (!isUpdate) {
+        this.handActions = [];
+        console.log(`[${this.config.name}] Received hole cards`);
+        if (this.config.isFastFold) {
+          this.pendingFastFoldCheck = true;
+        }
+      } else {
+        console.log(`[${this.config.name}] Hole cards updated (draw)`);
+      }
+    });
+
+    this.socket.on('game:state', (data: { state: ClientGameState }) => {
+      this.gameState = data.state;
+      if (this.pendingFastFoldCheck) {
+        this.pendingFastFoldCheck = false;
+        this.maybeEarlyFold();
+      }
+      if (data.state.currentPlayerSeat === this.seatNumber && data.state.isHandInProgress) {
+        this.handleMyTurn();
+      }
+    });
+
+    this.socket.on('game:action_taken', (data: { playerId: string; action: Action; amount: number; seat: number }) => {
+      this.handActions.push({
+        playerId: data.seat,
+        action: data.action,
+        amount: data.amount,
+      });
+
+      // ハンド中に強制切断（自分のターンでない時）
+      if (data.seat !== this.seatNumber) {
+        if (this.config.tournamentChaosMode) {
+          this.maybeTournamentChaosDisconnect('mid_hand');
+        } else {
+          this.maybeMidHandDisconnect();
+        }
+      }
+    });
+
+    this.socket.on('game:hand_complete', () => {
+      this.actionGeneration++; this.isThinking = false;
+
+      if (this.handActions.length > 0 && this.gameState) {
+        const activePlayers = Object.keys(this.gameState.players)
+          .map(Number)
+          .filter(seat => this.gameState!.players[seat]);
+        this.opponentModel.updateFromActions(this.handActions, activePlayers);
+      }
+
+      this.handsPlayed++;
+      this.holeCards = [];
+      this.handActions = [];
+
+      if (this.config.maxHandsPerSession && this.handsPlayed >= this.config.maxHandsPerSession) {
+        console.log(`[${this.config.name}] Session limit reached (${this.handsPlayed} hands), disconnecting`);
+        this.disconnect();
+        return;
+      }
+
+      if (this.config.tournamentMode) {
+        if (this.config.tournamentChaosMode) {
+          this.maybeTournamentChaosDisconnect('hand_complete');
+        }
+        return;
+      }
+
+      this.maybeDisconnectRandomly();
+    });
+
+    // --- トーナメントイベント ---
+
+    this.socket.on('tournament:table_assigned', (data: { tableId: string }) => {
+      console.log(`[${this.config.name}] Tournament table assigned: ${data.tableId}`);
+    });
+
+    this.socket.on('tournament:eliminated', (data: { position: number; totalPlayers: number; prizeAmount: number }) => {
+      console.log(`[${this.config.name}] Eliminated at position ${data.position}/${data.totalPlayers} (prize: ${data.prizeAmount})`);
+      this.tournamentId = null;
+      this.isTournamentEliminated = true;
+      this.config.onTournamentEliminated?.(this, data.position);
+    });
+
+    this.socket.on('tournament:completed', () => {
+      console.log(`[${this.config.name}] Tournament completed`);
+      this.tournamentId = null;
+      this.config.onTournamentCompleted?.(this);
+    });
+
+    this.socket.on('tournament:table_move', (data: { fromTableId: string; toTableId: string }) => {
+      console.log(`[${this.config.name}] Table move: ${data.fromTableId} → ${data.toTableId}`);
+      this.actionGeneration++; this.isThinking = false;
+      this.holeCards = [];
+      this.handActions = [];
+    });
+
+    this.socket.on('tournament:blind_change', (data: { level: { level: number; smallBlind: number; bigBlind: number } }) => {
+      console.log(`[${this.config.name}] Blind level up: Lv.${data.level.level} (${data.level.smallBlind}/${data.level.bigBlind})`);
+    });
+
+    this.socket.on('tournament:error', (data: { message: string }) => {
+      console.error(`[${this.config.name}] Tournament error: ${data.message}`);
+    });
+  }
+
   private handleMyTurn(): void {
     // 同じターンで複数の game:state が来ても重複実行しない
     if (this.isThinking) return;
@@ -738,6 +744,94 @@ export class BotClient {
       this.holeCards = [];
       this.gameState = null;
     }, delay);
+  }
+
+  /**
+   * トーナメントchaosMode: ランダムに切断して数秒後に再接続する。
+   * サーバー側の disconnect → reconnect パスを網羅的にテストする。
+   */
+  private maybeTournamentChaosDisconnect(trigger: 'mid_hand' | 'hand_complete'): void {
+    if (this.isTournamentEliminated || !this.tournamentId) return;
+    if (this.chaosReconnectTimer) return; // 既に切断→再接続中
+
+    // mid_hand: 15% / hand_complete: 10%
+    const chance = trigger === 'mid_hand' ? 0.15 : 0.10;
+    if (Math.random() >= chance) return;
+
+    const disconnectDelay = 100 + Math.random() * 500;
+    console.log(`[${this.config.name}] 🔥 Chaos ${trigger}: disconnect in ${Math.round(disconnectDelay)}ms`);
+
+    const tournamentId = this.tournamentId;
+
+    setTimeout(() => {
+      if (!this.socket || !this.isConnected || this.isTournamentEliminated) return;
+
+      // table:leave を送らずに直接切断 → サーバー側 handleDisconnect が発火
+      this.stopStuckCheck();
+      this.actionGeneration++;
+      this.isThinking = false;
+      this.socket.disconnect();
+      this.socket = null;
+      this.isConnected = false;
+      this.tableId = null;
+      this.seatNumber = -1;
+      this.holeCards = [];
+      this.gameState = null;
+
+      // 1〜8秒後に再接続
+      const reconnectDelay = 1000 + Math.random() * 7000;
+      console.log(`[${this.config.name}] 🔥 Chaos: reconnect in ${Math.round(reconnectDelay)}ms`);
+
+      this.chaosReconnectTimer = setTimeout(async () => {
+        this.chaosReconnectTimer = null;
+        if (this.isTournamentEliminated) return;
+
+        try {
+          await this.chaosReconnect(tournamentId);
+          console.log(`[${this.config.name}] 🔥 Chaos: reconnected to tournament ${tournamentId}`);
+        } catch (err) {
+          console.error(`[${this.config.name}] 🔥 Chaos: reconnect failed:`, err);
+        }
+      }, reconnectDelay);
+    }, disconnectDelay);
+  }
+
+  /**
+   * chaosMode用: 新しいソケットで再接続し、トーナメントに復帰する。
+   * 人間の「アプリ再起動→トーナメント画面に戻る」フローと同じ。
+   */
+  private async chaosReconnect(tournamentId: string): Promise<void> {
+    // playerId は保持（同じbotアカウント）。authToken も再利用。
+    return new Promise((resolve, reject) => {
+      this.socket = io(this.config.serverUrl, {
+        transports: ['websocket'],
+        autoConnect: true,
+        auth: {
+          token: this.authToken,
+        },
+      });
+
+      const onEstablished = () => {
+        this.isConnected = true;
+        this.connectedAt = Date.now();
+        this.startStuckCheck();
+
+        // トーナメント復帰: テーブル再着席＋状態取得
+        this.socket!.emit('tournament:request_state', { tournamentId });
+        this.tournamentId = tournamentId;
+        resolve();
+      };
+
+      const onError = (err: Error) => {
+        reject(err);
+      };
+
+      this.socket.once('connection:established', onEstablished);
+      this.socket.once('connect_error', onError);
+
+      // イベントリスナーを再登録（新しいソケットなので必要）
+      this.registerSocketListeners();
+    });
   }
 
   private maybeDisconnectRandomly(): void {

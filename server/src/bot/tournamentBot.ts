@@ -10,6 +10,7 @@ const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '30000', 10);
 const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.15'); // 15秒
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || ''; // 既存トーナメントに参加する場合
 const JOIN_ACTIVE = process.env.JOIN_ACTIVE === 'true'; // 進行中のトーナメントを自動検索して参加
+const CHAOS_MODE = process.env.CHAOS_MODE === 'true'; // ランダム切断→再接続で不具合を再現する
 
 // テスト用高速ブラインドスケジュール（50/100 スタート）
 const FAST_BLIND_SCHEDULE = [
@@ -45,6 +46,7 @@ async function main(): Promise<void> {
   console.log(`Chips:       ${STARTING_CHIPS}`);
   console.log(`Blind dur:   ${BLIND_DURATION}min`);
   console.log(`No delay:    ${NO_DELAY}`);
+  console.log(`Chaos mode:  ${CHAOS_MODE}`);
   if (TOURNAMENT_ID) console.log(`Join ID:     ${TOURNAMENT_ID}`);
   console.log('=================================');
 
@@ -114,6 +116,7 @@ async function main(): Promise<void> {
     botCount: BOT_COUNT,
     tournamentId,
     noDelay: NO_DELAY,
+    chaosMode: CHAOS_MODE,
   });
 
   await manager.connectAndRegister();
