@@ -66,10 +66,12 @@ export function useTournamentState() {
       const data = (await res.json()) as {
         tournaments?: TournamentLobbyInfo[];
         myTournamentId?: string | null;
+        canReenterTournamentId?: string | null;
       };
       setTournaments(data.tournaments ?? []);
       // DB参加記録に基づいて参加状態を更新
       setRegisteredTournamentId(data.myTournamentId ?? null);
+      setCanReenterTournamentId(data.canReenterTournamentId ?? null);
     } catch {
       if (isFirst) setTournaments([]);
     } finally {
@@ -97,8 +99,24 @@ export function useTournamentState() {
     }
   }, []);
 
-  const reenter = useCallback((tournamentId: string) => {
-    wsService.reenterTournament(tournamentId);
+  const [canReenterTournamentId, setCanReenterTournamentId] = useState<string | null>(null);
+
+  const reenter = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/tournaments/${tournamentId}/reenter`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error ?? 'リエントリーに失敗しました' };
+      }
+      setCanReenterTournamentId(null);
+      setRegisteredTournamentId(tournamentId);
+      return { success: true };
+    } catch {
+      return { success: false, error: '通信エラーが発生しました' };
+    }
   }, []);
 
   const clearElimination = useCallback(() => {
@@ -193,6 +211,7 @@ export function useTournamentState() {
 
     // Registration
     registeredTournamentId,
+    canReenterTournamentId,
     register,
     reenter,
 

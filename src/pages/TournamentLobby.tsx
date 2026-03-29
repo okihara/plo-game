@@ -36,11 +36,14 @@ export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: Tour
     refreshList,
     isListLoading,
     registeredTournamentId,
+    canReenterTournamentId,
     register,
+    reenter,
     error,
   } = useTournamentState();
 
   const [registering, setRegistering] = useState<string | null>(null);
+  const [reentering, setReentering] = useState<string | null>(null);
 
   useEffect(() => {
     void refreshList();
@@ -49,6 +52,7 @@ export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: Tour
   useEffect(() => {
     if (registeredTournamentId) {
       setRegistering(null);
+      setReentering(null);
     }
   }, [registeredTournamentId]);
 
@@ -58,6 +62,15 @@ export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: Tour
     const result = await register(tournamentId);
     if (!result.success) {
       setRegistering(null);
+    }
+  };
+
+  const handleReenter = async (tournamentId: string) => {
+    if (!user) return;
+    setReentering(tournamentId);
+    const result = await reenter(tournamentId);
+    if (!result.success) {
+      setReentering(null);
     }
   };
 
@@ -108,8 +121,11 @@ export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: Tour
                 tournament={t}
                 isRegistered={registeredTournamentId === t.id}
                 isRegistering={registering === t.id}
+                canReenter={canReenterTournamentId === t.id}
+                isReentering={reentering === t.id}
                 isLoggedIn={!!user}
                 onRegister={() => handleRegister(t.id)}
+                onReenter={() => handleReenter(t.id)}
                 onEnter={() => handleEnter(t.id)}
                 onViewResult={() => onViewResult(t.id)}
               />
@@ -125,16 +141,22 @@ function TournamentCard({
   tournament: t,
   isRegistered,
   isRegistering,
+  canReenter,
+  isReentering,
   isLoggedIn,
   onRegister,
+  onReenter,
   onEnter,
   onViewResult,
 }: {
   tournament: TournamentLobbyInfo;
   isRegistered: boolean;
   isRegistering: boolean;
+  canReenter: boolean;
+  isReentering: boolean;
   isLoggedIn: boolean;
   onRegister: () => void;
+  onReenter: () => void;
   onEnter: () => void;
   onViewResult: () => void;
 }) {
@@ -224,6 +246,22 @@ function TournamentCard({
             className="w-full py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
           >
             テーブルに入る
+          </button>
+        ) : canReenter ? (
+          <button
+            type="button"
+            onClick={onReenter}
+            disabled={isReentering}
+            className="w-full py-[2.5cqw] bg-cream-800 hover:bg-cream-700 disabled:bg-cream-300 disabled:text-cream-500 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
+          >
+            {isReentering ? (
+              <>
+                <Loader2 className="w-[4cqw] h-[4cqw] animate-spin shrink-0" />
+                リエントリー中...
+              </>
+            ) : (
+              <>リエントリー ({formatChips(t.buyIn)} chips)</>
+            )}
           </button>
         ) : t.isRegistrationOpen ? (
           <button

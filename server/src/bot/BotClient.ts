@@ -663,13 +663,19 @@ export class BotClient {
     const res = await fetch(`${this.config.serverUrl}/api/tournaments/${tournamentId}/register`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'Authorization': `Bearer ${this.authToken}`,
       },
     });
     if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      throw new Error(`Tournament register failed: ${(body as any).error ?? res.statusText}`);
+      const text = await res.text();
+      let errorMsg: string;
+      try {
+        const body = JSON.parse(text);
+        errorMsg = body.error ?? res.statusText;
+      } catch {
+        errorMsg = text || res.statusText;
+      }
+      throw new Error(`Tournament register failed: ${errorMsg}`);
     }
 
     this.tournamentId = tournamentId;

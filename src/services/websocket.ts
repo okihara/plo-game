@@ -357,10 +357,6 @@ class WebSocketService {
     this.socket?.emit('tournament:unregister', { tournamentId });
   }
 
-  reenterTournament(tournamentId: string): void {
-    this.socket?.emit('tournament:reenter', { tournamentId });
-  }
-
   requestTournamentState(tournamentId: string): void {
     this.socket?.emit('tournament:request_state', { tournamentId });
   }

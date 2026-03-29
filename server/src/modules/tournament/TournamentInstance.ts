@@ -940,6 +940,19 @@ export class TournamentInstance {
     this.disconnectTimers.clear();
   }
 
+  /**
+   * 指定プレイヤーがリエントリー可能かどうかを判定する
+   */
+  public canReenter(odId: string): boolean {
+    const player = this.players.get(odId);
+    if (!player || player.status !== 'eliminated') return false;
+    if (!this.config.allowReentry) return false;
+    if (player.reentryCount >= this.config.maxReentries) return false;
+    const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
+    if (currentLevel > this.config.reentryDeadlineLevel) return false;
+    return true;
+  }
+
   private getTotalEntries(): number {
     // リエントリー分も含めた総エントリー数
     let total = 0;
