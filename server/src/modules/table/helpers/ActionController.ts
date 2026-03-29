@@ -220,26 +220,36 @@ export class ActionController {
   /**
    * アクション演出待ちの遅延処理（ストリート変更前の一拍）
    */
-  scheduleActionAnimation(callback: () => void): void {
+  scheduleActionAnimation(callback: () => void, onError?: (err: unknown) => void): void {
     if (this.streetTransitionTimer) {
       clearTimeout(this.streetTransitionTimer);
     }
     this.streetTransitionTimer = setTimeout(() => {
       this.streetTransitionTimer = null;
-      callback();
+      try {
+        callback();
+      } catch (err) {
+        console.error('[ActionController] scheduleActionAnimation callback error:', err);
+        onError?.(err);
+      }
     }, TABLE_CONSTANTS.ACTION_ANIMATION_DELAY_MS);
   }
 
   /**
    * ストリート遷移の遅延処理（コミュニティカード確認時間）
    */
-  scheduleStreetTransition(callback: () => void): void {
+  scheduleStreetTransition(callback: () => void, onError?: (err: unknown) => void): void {
     if (this.streetTransitionTimer) {
       clearTimeout(this.streetTransitionTimer);
     }
     this.streetTransitionTimer = setTimeout(() => {
       this.streetTransitionTimer = null;
-      callback();
+      try {
+        callback();
+      } catch (err) {
+        console.error('[ActionController] scheduleStreetTransition callback error:', err);
+        onError?.(err);
+      }
     }, TABLE_CONSTANTS.STREET_TRANSITION_DELAY_MS);
   }
 }

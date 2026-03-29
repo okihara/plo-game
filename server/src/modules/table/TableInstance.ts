@@ -278,14 +278,18 @@ export class TableInstance {
       const finalCardCount = this.gameState.communityCards.length;
       if (finalCardCount > previousCardCount) {
         // オールインでのランアウト: ストリートごとに段階的にカードを表示
-        this.handleAllInRunOut(this.gameState, previousCardCount);
+        this.handleAllInRunOut(this.gameState, previousCardCount).catch(e => {
+          console.error(`[Table ${this.id}] handleAllInRunOut error:`, e);
+          this.recoverFromStuckState();
+        });
       } else {
         // 通常のハンド完了（全員フォールド or リバーベッティング終了）
-        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+        this.handleHandComplete().catch(() => {/* error handled inside */});
         // this.broadcastGameState();
       }
     } else if (result.streetChanged) {
       // アクション演出を待ってからカードを表示
+      const onTimerError = () => this.recoverFromStuckState();
       this.actionController.scheduleActionAnimation(() => {
         // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
         if (this.gameState) {
@@ -301,8 +305,8 @@ export class TableInstance {
         this.actionController.scheduleStreetTransition(() => {
           this.requestNextAction();
           this.broadcastGameState();
-        });
-      });
+        }, onTimerError);
+      }, onTimerError);
     } else {
       // 次のアクション要求後に状態をブロードキャスト（pendingActionがセットされている状態で送信するため）
       this.requestNextAction();
@@ -524,22 +528,45 @@ export class TableInstance {
     return `table:${this.id}`;
   }
 
+  /**
+   * 例外等でゲーム進行が宙ぶらりんになった場合の最終リカバリー。
+   * フラグをリセットし、次のハンド開始を試みる。
+   */
+  private recoverFromStuckState(): void {
+    console.error(`[Table ${this.id}] recoverFromStuckState: resetting flags and attempting next hand`);
+    this.isRunOutInProgress = false;
+    this._isHandInProgress = false;
+    this.pendingStartHand = false;
+    this.actionController.clearTimers();
+    if (this.runOutTimer) {
+      clearTimeout(this.runOutTimer);
+      this.runOutTimer = null;
+    }
+    this.gameState = null;
+    this.maybeStartHand();
+  }
+
   private advanceToNextPlayer(): void {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) return;
 
-    const result = this.actionController.advanceToNextPlayer(
-      this.gameState,
-      this.playerManager.getSeats()
-    );
+    try {
+      const result = this.actionController.advanceToNextPlayer(
+        this.gameState,
+        this.playerManager.getSeats()
+      );
 
-    this.gameState = result.gameState;
+      this.gameState = result.gameState;
 
-    if (result.handComplete) {
-      this.broadcastGameState();
-      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
-    } else {
-      this.requestNextAction();
-      this.broadcastGameState();
+      if (result.handComplete) {
+        this.broadcastGameState();
+        this.handleHandComplete().catch(() => {/* error handled inside */});
+      } else {
+        this.requestNextAction();
+        this.broadcastGameState();
+      }
+    } catch (e) {
+      console.error(`[Table ${this.id}] advanceToNextPlayer error:`, e);
+      this.recoverFromStuckState();
     }
   }
 
@@ -606,56 +633,62 @@ export class TableInstance {
     this._isHandInProgress = true;
     this.pendingEarlyFolds.clear(); // safety
 
-    // HORSE: バリアントローテーション
-    if (this.isHorse) {
-      this.advanceHorseVariantIfNeeded();
-    }
-
-    // Create initial game state
-    const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
-    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
-
-    // Restore dealer position (startNewHand will increment it)
-    if (this.lastDealerPosition >= 0) {
-      this.gameState.dealerPosition = this.lastDealerPosition;
-    }
-
-    // Clear waiting flags and sync chips from seats to game state
-    this.playerManager.clearWaitingFlags();
-
-    const seats = this.playerManager.getSeats();
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      const seat = seats[i];
-      if (seat) {
-        this.gameState.players[i].chips = seat.chips;
-        this.gameState.players[i].name = seat.odName;
-        this.gameState.players[i].isSittingOut = false;
-      } else {
-        // 空席はシッティングアウトとしてマーク
-        this.gameState.players[i].chips = 0;
-        this.gameState.players[i].isSittingOut = true;
+    try {
+      // HORSE: バリアントローテーション
+      if (this.isHorse) {
+        this.advanceHorseVariantIfNeeded();
       }
-    }
 
-    // Start the hand (this will increment dealerPosition and update positions)
-    this.gameState = this.variantAdapter.startHand(this.gameState);
-    this.lastDealerPosition = this.gameState.dealerPosition;
+      // Create initial game state
+      const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
+      this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
 
-    // Send hole cards to each player (human and bot)
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
-      const seat = seats[i];
-      if (seat?.socket) {
-        const holeCardsData = { cards: this.gameState.players[i].holeCards };
-        this.broadcast.emitToSocket(seat.socket, seat.odId, 'game:hole_cards', holeCardsData);
+      // Restore dealer position (startNewHand will increment it)
+      if (this.lastDealerPosition >= 0) {
+        this.gameState.dealerPosition = this.lastDealerPosition;
       }
+
+      // Clear waiting flags and sync chips from seats to game state
+      this.playerManager.clearWaitingFlags();
+
+      const seats = this.playerManager.getSeats();
+      for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+        const seat = seats[i];
+        if (seat) {
+          this.gameState.players[i].chips = seat.chips;
+          this.gameState.players[i].name = seat.odName;
+          this.gameState.players[i].isSittingOut = false;
+        } else {
+          // 空席はシッティングアウトとしてマーク
+          this.gameState.players[i].chips = 0;
+          this.gameState.players[i].isSittingOut = true;
+        }
+      }
+
+      // Start the hand (this will increment dealerPosition and update positions)
+      this.gameState = this.variantAdapter.startHand(this.gameState);
+      this.lastDealerPosition = this.gameState.dealerPosition;
+
+      // Send hole cards to each player (human and bot)
+      for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+        const seat = seats[i];
+        if (seat?.socket) {
+          const holeCardsData = { cards: this.gameState.players[i].holeCards };
+          this.broadcast.emitToSocket(seat.socket, seat.odId, 'game:hole_cards', holeCardsData);
+        }
+      }
+
+      // ハンドヒストリー用スナップショット記録
+      this.historyRecorder.recordHandStart(seats, this.gameState);
+
+      // Request first action then broadcast (so pendingAction is set)
+      this.requestNextAction();
+      this.broadcastGameState();
+    } catch (e) {
+      console.error(`[Table ${this.id}] startNewHand error:`, e);
+      this._isHandInProgress = false;
+      this.gameState = null;
     }
-
-    // ハンドヒストリー用スナップショット記録
-    this.historyRecorder.recordHandStart(seats, this.gameState);
-
-    // Request first action then broadcast (so pendingAction is set)
-    this.requestNextAction();
-    this.broadcastGameState();
   }
 
   private requestNextAction(): void {
@@ -663,7 +696,7 @@ export class TableInstance {
 
     // currentPlayerIndex が -1 の場合（全員オールインなど）はハンド完了処理へ
     if (this.gameState.currentPlayerIndex === -1) {
-      this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
+      this.handleHandComplete().catch(() => {/* error handled inside */});
       return;
     }
 
@@ -862,37 +895,45 @@ export class TableInstance {
     let currentStageIndex = 0;
 
     const revealNextStage = () => {
-      this.runOutTimer = null;
+      try {
+        this.runOutTimer = null;
 
-      if (currentStageIndex >= stages.length) {
-        // 全カード表示完了 → 最終結果を表示
-        this.isRunOutInProgress = false;
-        this.gameState = finalState;
+        if (currentStageIndex >= stages.length) {
+          // 全カード表示完了 → 最終結果を表示
+          this.isRunOutInProgress = false;
+          this.gameState = finalState;
+          this.broadcastGameState();
+          this.handleHandComplete().catch(e => {
+            console.error(`[Table ${this.id}] handleHandComplete error after runout:`, e);
+            this.recoverFromStuckState();
+          });
+          return;
+        }
+
+        const stage = stages[currentStageIndex];
+
+        // 中間状態を作成（このストリートまでのカードだけ見せる）
+        const intermediateState = JSON.parse(JSON.stringify(finalState)) as GameState;
+        intermediateState.communityCards = allCards.slice(0, stage.cardCount);
+        intermediateState.isHandComplete = false;
+        intermediateState.winners = [];
+        intermediateState.currentStreet = stage.street;
+        intermediateState.currentPlayerIndex = -1;
+
+        this.gameState = intermediateState;
         this.broadcastGameState();
-        this.handleHandComplete().catch(e => console.error('handleHandComplete error:', e));
-        return;
+
+        currentStageIndex++;
+        // ターン→リバーは1.5倍のディレイ
+        const nextStage = stages[currentStageIndex];
+        const delay = nextStage?.street === 'river'
+          ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
+          : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
+        this.runOutTimer = setTimeout(revealNextStage, delay);
+      } catch (e) {
+        console.error(`[Table ${this.id}] revealNextStage error:`, e);
+        this.recoverFromStuckState();
       }
-
-      const stage = stages[currentStageIndex];
-
-      // 中間状態を作成（このストリートまでのカードだけ見せる）
-      const intermediateState = JSON.parse(JSON.stringify(finalState)) as GameState;
-      intermediateState.communityCards = allCards.slice(0, stage.cardCount);
-      intermediateState.isHandComplete = false;
-      intermediateState.winners = [];
-      intermediateState.currentStreet = stage.street;
-      intermediateState.currentPlayerIndex = -1;
-
-      this.gameState = intermediateState;
-      this.broadcastGameState();
-
-      currentStageIndex++;
-      // ターン→リバーは1.5倍のディレイ
-      const nextStage = stages[currentStageIndex];
-      const delay = nextStage?.street === 'river'
-        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
-        : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
-      this.runOutTimer = setTimeout(revealNextStage, delay);
     };
 
     // 最初のステージを即座に表示開始
@@ -902,9 +943,20 @@ export class TableInstance {
   private async handleHandComplete(): Promise<void> {
     if (!this.gameState) {
       console.error(`[Table ${this.id}] handleHandComplete called but gameState is null`);
+      this._isHandInProgress = false;
+      this.pendingStartHand = false;
       return;
     }
 
+    try {
+      await this.handleHandCompleteInner();
+    } catch (e) {
+      console.error(`[Table ${this.id}] handleHandComplete error, recovering:`, e);
+      this.recoverFromStuckState();
+    }
+  }
+
+  private async handleHandCompleteInner(): Promise<void> {
     // Clear pending action and ensure runout flag is reset (safety)
     this.actionController.clearTimers();
     this.isRunOutInProgress = false;
