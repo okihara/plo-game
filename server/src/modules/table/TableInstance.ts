@@ -684,7 +684,19 @@ export class TableInstance {
       this.pendingEarlyFolds.delete(seatIndex);
       // drawストリート等ではfoldが無効なため、デフォルトアクションを使用
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-      this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      let handled = false;
+      try {
+        handled = this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      } catch (err) {
+        console.error(`[Table ${this.id}] Pending early fold threw error. seat=${seatIndex}`, err);
+      }
+      if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === seatIndex) {
+        console.error(`[Table ${this.id}] Pending early fold failed, forcing advance. seat=${seatIndex}`);
+        const p = this.gameState.players[seatIndex];
+        if (p && !p.folded) p.folded = true;
+        this.actionController.clearTimers();
+        this.advanceToNextPlayer();
+      }
       return;
     }
 
@@ -702,9 +714,14 @@ export class TableInstance {
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
           const defaultAction = this.getDefaultDisconnectAction(idx);
-          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          let handled = false;
+          try {
+            handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          } catch (err) {
+            console.error(`[Table ${this.id}] Disconnected fold threw error. seat=${idx}`, err);
+          }
           if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === idx) {
-            // handleAction 失敗時のリカバリー: 強制フォールドして進行
+            // handleAction 失敗または例外時のリカバリー: 強制フォールドして進行
             console.error(`[Table ${this.id}] Disconnected fold failed, forcing advance. seat=${idx}`);
             const p = this.gameState.players[idx];
             if (p && !p.folded) p.folded = true;
@@ -730,10 +747,15 @@ export class TableInstance {
     if (seat && seat.odId === playerId) {
       // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      let handled = false;
+      try {
+        handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      } catch (err) {
+        console.error(`[Table ${this.id}] Action timeout: handleAction threw error. playerId=${playerId}, seat=${seatIndex}, action=${defaultAction.action}`, err);
+      }
 
       if (!handled) {
-        // handleAction が失敗した場合のリカバリー: 強制フォールドして進行
+        // handleAction が失敗または例外した場合のリカバリー: 強制フォールドして進行
         console.error(`[Table ${this.id}] Action timeout: handleAction failed, forcing advance. playerId=${playerId}, seat=${seatIndex}, action=${defaultAction.action}`);
         if (this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === seatIndex) {
           const p = this.gameState.players[seatIndex];
