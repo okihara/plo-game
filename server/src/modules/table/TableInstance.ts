@@ -839,12 +839,12 @@ export class TableInstance {
         players: showdownPlayers,
       };
 
-      await new Promise<void>(resolve => { setTimeout(resolve, 2000); });
+      await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS); });
 
       this.broadcast.emitToRoom('game:showdown', showdownData);
       this.showdownSentDuringRunOut = true;
 
-      await new Promise<void>(resolve => { setTimeout(resolve, 2000); });
+      await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS); });
     }
 
     let currentStageIndex = 0;
