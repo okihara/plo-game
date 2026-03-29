@@ -328,6 +328,7 @@ export class TableInstance {
    */
   public handleEarlyFold(odId: string): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
+      console.warn(`[Table ${this.id}] handleEarlyFold rejected: odId=${odId}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
       return false;
     }
 
@@ -873,13 +874,8 @@ export class TableInstance {
       this.broadcastGameState();
 
       currentStageIndex++;
-      // ターン→リバーは1.5倍のディレイ
-      const nextStage = stages[currentStageIndex];
-      const delay = nextStage?.street === 'river'
-        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
-        : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
-        
-      await new Promise(resolve => setTimeout(resolve, delay));
+
+      await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS));
       
       await revealNextStage();
     };
