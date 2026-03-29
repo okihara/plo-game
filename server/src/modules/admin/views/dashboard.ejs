@@ -482,16 +482,7 @@
           body: JSON.stringify({ odId: odId }),
         });
         var data = await res.json();
-        if (!data.success) {
-          // キャッシュゲームテーブルにいなければトーナメントキックを試行
-          var res2 = await fetch(apiUrl('/api/admin/tournament/kick'), {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ odId: odId }),
-          });
-          var data2 = await res2.json();
-          if (!data2.success) alert('キック失敗: ' + (data2.error || data.error));
-        }
+        if (!data.success) alert('キック失敗: ' + data.error);
         fetchStats();
       } catch (e) { alert('エラー: ' + e.message); }
     }

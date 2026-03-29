@@ -544,65 +544,47 @@ export function adminRoutes(deps: AdminDependencies) {
     // Admin Operations API
     // ============================================
 
-    // プレイヤーをキャッシュゲームテーブルからキック（離席＋キャッシュアウト）
+    // プレイヤーをキック（キャッシュゲーム・トーナメント両対応）
     fastify.post('/api/admin/kick', async (request) => {
       const { odId } = request.body as { odId: string };
       if (!odId) return { success: false, error: 'odId is required' };
 
-      const table = tableManager.getPlayerTable(odId);
-      if (!table) return { success: false, error: 'Player not found at any table' };
-
-      const result = table.unseatPlayer(odId);
-      tableManager.removePlayerFromTracking(odId);
-      if (result) {
-        await cashOutPlayer(result.odId, result.chips, table.id);
-      }
-
-      // ソケットにも通知
+      // ソケット特定（通知用）
+      let playerSocket: import('socket.io').Socket | null = null;
       for (const s of io.sockets.sockets.values()) {
-        if ((s as any).odId === odId) {
-          s.emit('table:left');
-          break;
+        if ((s as any).odId === odId) { playerSocket = s; break; }
+      }
+
+      // 1. キャッシュゲームテーブルを確認
+      const cashTable = tableManager.getPlayerTable(odId);
+      if (cashTable) {
+        const result = cashTable.unseatPlayer(odId);
+        tableManager.removePlayerFromTracking(odId);
+        if (result) {
+          await cashOutPlayer(result.odId, result.chips, cashTable.id);
+        }
+        playerSocket?.emit('table:left');
+        console.log(`[Admin] Kicked player ${odId} from cash table ${cashTable.id} (chips: ${result?.chips ?? 0})`);
+        return { success: true, type: 'cash', tableId: cashTable.id, chips: result?.chips ?? 0 };
+      }
+
+      // 2. トーナメントを確認
+      const tid = tournamentManager.getPlayerTournament(odId);
+      if (tid) {
+        const tournament = tournamentManager.getTournament(tid);
+        const player = tournament?.getPlayer(odId);
+        if (tournament && player) {
+          if (player.tableId) {
+            const table = Array.from(tournament.getTables()).find(t => t.id === player.tableId);
+            table?.unseatPlayer(odId);
+          }
+          playerSocket?.emit('tournament:kicked', { tournamentId: tid, reason: '管理者によるキック' });
+          console.log(`[Admin] Kicked player ${odId} from tournament ${tid}`);
+          return { success: true, type: 'tournament', tournamentId: tid };
         }
       }
 
-      console.log(`[Admin] Kicked player ${odId} from table ${table.id} (chips: ${result?.chips ?? 0})`);
-      return { success: true, tableId: table.id, chips: result?.chips ?? 0 };
-    });
-
-    // トーナメントテーブルからプレイヤーをキック（チップ没収＝即バスト扱い）
-    fastify.post('/api/admin/tournament/kick', async (request) => {
-      const { odId, tournamentId: reqTournamentId } = request.body as { odId: string; tournamentId?: string };
-      if (!odId) return { success: false, error: 'odId is required' };
-
-      // トーナメントを特定
-      const tid = reqTournamentId ?? tournamentManager.getPlayerTournament(odId);
-      if (!tid) return { success: false, error: 'Player not found in any tournament' };
-
-      const tournament = tournamentManager.getTournament(tid);
-      if (!tournament) return { success: false, error: 'Tournament not found' };
-
-      const player = tournament.getPlayer(odId);
-      if (!player) return { success: false, error: 'Player not in tournament' };
-
-      // テーブルから離席
-      if (player.tableId) {
-        const table = Array.from(tournament.getTables()).find(t => t.id === player.tableId);
-        if (table) {
-          table.unseatPlayer(odId);
-        }
-      }
-
-      // ソケットに通知
-      for (const s of io.sockets.sockets.values()) {
-        if ((s as any).odId === odId) {
-          s.emit('tournament:kicked', { tournamentId: tid, reason: '管理者によるキック' });
-          break;
-        }
-      }
-
-      console.log(`[Admin] Kicked player ${odId} from tournament ${tid}`);
-      return { success: true, tournamentId: tid };
+      return { success: false, error: 'Player not found at any table or tournament' };
     });
 
     // テーブルの手番プレイヤーを強制フォールド
