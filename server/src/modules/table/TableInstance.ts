@@ -976,6 +976,10 @@ export class TableInstance {
       }
     }
 
+    // pendingStartHand を先に設定してから isHandInProgress を解除する。
+    // 逆順だと、onHandSettled コールバック内で triggerMaybeStartHand() が呼ばれた際に
+    // 両方のガードが外れた状態になり、ハンドが二重起動する。
+    this.pendingStartHand = true;
     this._isHandInProgress = false;
 
     // チップ精算コールバック（トーナメント等での外部同期用）
@@ -985,8 +989,6 @@ export class TableInstance {
     if (this.lifecycleCallbacks.onHandSettled && settledChips.length > 0) {
       this.lifecycleCallbacks.onHandSettled(settledChips);
     }
-
-    this.pendingStartHand = true;
 
     // 待ち時間
     // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）
