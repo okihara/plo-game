@@ -51,7 +51,6 @@ export class TableInstance {
 
   private gameState: GameState | null = null;
   private lastDealerPosition = -1;
-  private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
   private _isHandInProgress = false;
@@ -285,24 +284,8 @@ export class TableInstance {
         // this.broadcastGameState();
       }
     } else if (result.streetChanged) {
-      // アクション演出を待ってからカードを表示
-      this.actionController.scheduleActionAnimation(() => {
-        // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
-        if (this.gameState) {
-          this.variantAdapter.broadcastStreetChangeCards(
-            this.gameState,
-            this.playerManager.getSeats(),
-            this.broadcast,
-            () => {},
-          );
-        }
-        this.broadcastGameState();
-        // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
-        this.actionController.scheduleStreetTransition(() => {
-          this.requestNextAction();
-          this.broadcastGameState();
-        });
-      });
+      // 演出待ち → カード表示 → 確認時間 → 次アクション（async、fire-and-forget）
+      this.handleStreetTransition().catch(e => console.error('handleStreetTransition error:', e));
     } else {
       // 次のアクション要求後に状態をブロードキャスト（pendingActionがセットされている状態で送信するため）
       this.requestNextAction();
@@ -310,6 +293,33 @@ export class TableInstance {
     }
 
     return true;
+  }
+
+  /**
+   * ストリート変更時の演出待ち（アクション演出 → カード表示 → 確認時間 → 次アクション）
+   */
+  private async handleStreetTransition(): Promise<void> {
+    // アクション演出待ち（チップ移動等）
+    await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.ACTION_ANIMATION_DELAY_MS); });
+
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
+    this.variantAdapter.broadcastStreetChangeCards(
+      this.gameState,
+      this.playerManager.getSeats(),
+      this.broadcast,
+      () => {},
+    );
+    this.broadcastGameState();
+
+    // プレイヤーがカードを確認できるよう遅延
+    await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.STREET_TRANSITION_DELAY_MS); });
+
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    this.requestNextAction();
+    this.broadcastGameState();
   }
 
   /**
@@ -839,9 +849,7 @@ export class TableInstance {
 
     let currentStageIndex = 0;
 
-    const revealNextStage = () => {
-      this.runOutTimer = null;
-
+    const revealNextStage = async() => {
       if (currentStageIndex >= stages.length) {
         // 全カード表示完了 → 最終結果を表示
         this.isRunOutInProgress = false;
@@ -870,11 +878,14 @@ export class TableInstance {
       const delay = nextStage?.street === 'river'
         ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
         : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
-      this.runOutTimer = setTimeout(revealNextStage, delay);
+        
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      await revealNextStage();
     };
 
     // 最初のステージを即座に表示開始
-    revealNextStage();
+    await revealNextStage();
   }
 
   private async handleHandComplete(): Promise<void> {
