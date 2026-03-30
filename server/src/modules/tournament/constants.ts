@@ -43,9 +43,9 @@ export const TOURNAMENT_DISCONNECT_GRACE_MS = 2 * 60 * 1000; // 2分
 export const DEFAULT_BUY_IN = 3000;
 
 // 最小参加者数
-export const DEFAULT_MIN_PLAYERS = 6;
+export const DEFAULT_MIN_PLAYERS = 3;
 
-// 最大参加者数（9テーブル × 6人）
+// 最大参加者数（90テーブル × 6人）
 export const DEFAULT_MAX_PLAYERS = 540;
 
 // 登録可能レベル（開始からこのレベルまで参加可能）
@@ -58,3 +58,6 @@ export const PAYOUT_STRUCTURES: { maxPlayers: number; percentages: number[] }[] 
   { maxPlayers: 27, percentages: [45, 25, 18, 12] },
   { maxPlayers: Infinity, percentages: [40, 23, 16, 12, 9] },
 ];
+
+// リエントリー可能回数
+export const DEFAULT_MAX_REENTRIES = 2;

@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
 import { TournamentConfig } from './types.js';
-import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, PLAYERS_PER_TABLE } from './constants.js';
+import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { prisma } from '../../config/database.js';
 
@@ -168,8 +168,8 @@ export function createTournamentFromConfig(
     scheduledStartTime: options?.scheduledStartTime,
     requiredPlayerCount: options?.requiredPlayerCount,
     allowReentry: options?.allowReentry ?? true,
-    maxReentries: options?.maxReentries ?? 2,
-    reentryDeadlineLevel: options?.reentryDeadlineLevel ?? 4,
+    maxReentries: options?.maxReentries ?? DEFAULT_MAX_REENTRIES,
+    reentryDeadlineLevel: options?.reentryDeadlineLevel ?? DEFAULT_REGISTRATION_LEVELS,
   };
 
   tournamentManager.createTournament(config);
