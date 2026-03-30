@@ -191,10 +191,10 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const showSlider = !isFixedLimit;
 
   return (
-    <div className={`h-[25cqw] px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
+    <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
       {/* Preset Buttons & Bet Slider */}
       {showSlider && (
-        <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+        <div className={`flex items-center gap-[1.8cqw] px-[0cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           <div className="w-1/2 flex gap-[0.9cqw]">
             {[
               { label: '1/3', value: 0.33 },
@@ -213,7 +213,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
             ))}
           </div>
           <div className="w-1/2 flex items-center gap-[1.8cqw]">
-            <span className="text-emerald-400 text-[3.5cqw] w-[10.7cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
+            <span className="text-emerald-400 text-[3.5cqw] w-[14.6cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
               {formatChips(sliderValue)}
             </span>
             <input

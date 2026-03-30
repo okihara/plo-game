@@ -31,7 +31,7 @@ function formatAction(action: Action, amount: number, formatChips: (n: number) =
     case 'call': return `CALL ${formatChips(amount)}`;
     case 'bet': return `BET ${formatChips(amount)}`;
     case 'raise': return `RAISE ${formatChips(amount)}`;
-    case 'allin': return 'ALL-IN';
+    case 'allin': return `ALL-IN ${formatChips(amount)}`;
     case 'draw': return drawCount === 0 ? 'STAND PAT' : `DRAW ${drawCount ?? ''}`;
     default: return '';
   }
@@ -219,7 +219,7 @@ export function Player({
         )}
         {/* Last Action Marker (CSS animation handles fade-out) */}
         {showActionMarker && !showdownHandName && (
-          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[-2cqw] -translate-y-1/2 px-[3cqw] py-[1cqw] rounded-xl text-[5.0cqw] font-bold uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.7cqw] ${actionColorStyles[lastAction.action]}`}>
+          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[-2cqw] -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] uppercase whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] ${actionColorStyles[lastAction.action]}`}>
             {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount)}
           </div>
         )}
@@ -265,7 +265,7 @@ export function Player({
       {player.currentBet > 0 && (
         <div
           key={chipAnimKey}
-          className={`absolute bg-black/70 text-yellow-400 px-[3cqw] py-[1.2cqw] rounded-full text-[4.8cqw] font-bold whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
+          className={`absolute bg-black/70 text-yellow-400 px-[1.8cqw] py-[1.2cqw] rounded-full text-[4.8cqw] whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
         >
           {formatChips(player.currentBet)}
         </div>
