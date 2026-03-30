@@ -39,11 +39,11 @@ export function HandAnalysisOverlay({
   const isPreflop = communityCards.length < 3;
 
   return (
-    <div className="absolute bottom-[25cqw] left-[0cqw] z-50 pointer-events-auto shrink-0">
+    <div className="absolute bottom-[25cqw] left-[0.7cqw] z-50 pointer-events-auto shrink-0">
       <div className="bg-black/70 border border-gray-600 rounded p-[1cqw] shadow-xl text-[2.5cqw] backdrop-blur-sm w-[20cqw]">
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-[0.3cqw] border-b border-gray-700 pb-[0.3cqw]">
-          <span className="text-white font-bold text-[2.5cqw]">オープン評価</span>
+          <span className="text-white/80 font-bold text-[2.5cqw]">オープン評価</span>
         </div>
 
         {/* プリフロップ評価 */}
