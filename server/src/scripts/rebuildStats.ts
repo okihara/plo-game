@@ -74,7 +74,7 @@ async function main() {
     if (hands.length === 0) break;
 
     for (const hand of hands) {
-      const actions = (hand.actions as StoredAction[]) ?? [];
+      const actions = (hand.actions as unknown as StoredAction[]) ?? [];
       const winnerOdIds = hand.winners as string[];
       const activeSeatPositions = hand.players.map(p => p.seatPosition);
       const playerInfos = hand.players.map(p => ({
