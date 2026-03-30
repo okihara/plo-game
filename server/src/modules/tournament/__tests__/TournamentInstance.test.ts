@@ -840,6 +840,232 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
+  // G-4. テーブル移動のエッジケース
+  // ============================================
+
+  describe('テーブル移動のエッジケース', () => {
+    /**
+     * ヘルパー: 2テーブルトーナメントを作成し、テーブル情報を返す
+     */
+    function setup2Tables(ioRef: Server, playerCount = 8) {
+      const tournament = new TournamentInstance(ioRef, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      const { odIds, sockets } = startAndEnterNPlayers(tournament, playerCount);
+
+      const tables = (tournament as any).tables as Map<string, any>;
+      const tablePlayerMap = (tournament as any).tablePlayerMap as Map<string, Set<string>>;
+      const entries = Array.from(tables.entries()) as [string, any][];
+      const [tableAId] = entries[0];
+      const [tableBId] = entries[1];
+      const tableAPlayers = Array.from(tablePlayerMap.get(tableAId) ?? []);
+      const tableBPlayers = Array.from(tablePlayerMap.get(tableBId) ?? []);
+
+      return { tournament, odIds, sockets, tables, tablePlayerMap, tableAId, tableBId, tableAPlayers, tableBPlayers };
+    }
+
+    it('バスト済みプレイヤーのpending moveはスキップされる', () => {
+      const { tournament, tableAPlayers, tableAId, tableBId } = setup2Tables(io);
+
+      const targetPlayer = tableAPlayers[0];
+
+      // ペンディング移動をキューに追加
+      const pendingMoves = (tournament as any).pendingMoves as any[];
+      pendingMoves.push({
+        odId: targetPlayer,
+        fromTableId: tableAId,
+        toTableId: tableBId,
+      });
+
+      // プレイヤーをバスト
+      simulateBust(tournament, targetPlayer, 300);
+      // onHandSettled 前に finalizeBustedPlayers を手動実行
+      (tournament as any).finalizeBustedPlayers();
+
+      const player = tournament.getPlayer(targetPlayer);
+      expect(player?.status).toBe('eliminated');
+
+      // executePendingMoves がエラーなく完了し、移動がスキップされること
+      const executePendingMoves = (tournament as any).executePendingMoves.bind(tournament);
+      expect(() => executePendingMoves()).not.toThrow();
+
+      // プレイヤーはeliminatedのまま
+      expect(tournament.getPlayer(targetPlayer)?.status).toBe('eliminated');
+    });
+
+    it('移動先テーブルが削除済みならpending moveはスキップされる', () => {
+      const { tournament, tableAPlayers, tableAId, tableBId, tables, tablePlayerMap } = setup2Tables(io);
+
+      const targetPlayer = tableAPlayers[0];
+
+      // ペンディング移動をキュー（A→Bへの移動）
+      const pendingMoves = (tournament as any).pendingMoves as any[];
+      pendingMoves.push({
+        odId: targetPlayer,
+        fromTableId: tableAId,
+        toTableId: tableBId,
+      });
+
+      // テーブルBを手動削除（全員バストした想定）
+      tables.delete(tableBId);
+      tablePlayerMap.delete(tableBId);
+
+      // executePendingMoves がエラーなく完了し、移動がスキップされること
+      const executePendingMoves = (tournament as any).executePendingMoves.bind(tournament);
+      expect(() => executePendingMoves()).not.toThrow();
+
+      // プレイヤーは元のテーブルAに残っている
+      expect(tournament.getPlayer(targetPlayer)?.tableId).toBe(tableAId);
+    });
+
+    it('movePlayerで着席失敗時に元テーブルにリカバリされる', () => {
+      const { tournament, tableAPlayers, tableAId, tableBId } = setup2Tables(io);
+
+      const targetPlayer = tableAPlayers[0];
+
+      // ハンドを停止（unseatPlayerが席を実際に解放するために必要）
+      const tables = (tournament as any).tables as Map<string, any>;
+      for (const table of tables.values()) {
+        table._isHandInProgress = false;
+        table.gameState = null;
+      }
+
+      // テーブルBの空席をすべて埋めて満席にする
+      const tableB = tables.get(tableBId)!;
+      while (tableB.hasAvailableSeat()) {
+        const dummyId = `dummy_${Math.random().toString(36).slice(2)}`;
+        tableB.seatPlayer(dummyId, 'Dummy', createMockSocket(), 1000);
+      }
+
+      // movePlayer を呼ぶ（着席失敗 → リカバリ）
+      const movePlayer = (tournament as any).movePlayer.bind(tournament);
+      movePlayer(targetPlayer, tableAId, tableBId);
+
+      // プレイヤーは元テーブルAにリカバリされている
+      const player = tournament.getPlayer(targetPlayer);
+      expect(player?.tableId).toBe(tableAId);
+
+      // tablePlayerMapもテーブルAで追跡されている
+      const tablePlayerMap = (tournament as any).tablePlayerMap as Map<string, Set<string>>;
+      expect(tablePlayerMap.get(tableAId)?.has(targetPlayer)).toBe(true);
+      expect(tablePlayerMap.get(tableBId)?.has(targetPlayer)).toBeFalsy();
+    });
+
+    it('ハンド中テーブルからのmovePlayerは席をleftForFastFoldにする（席は解放されない）', () => {
+      const { tournament, tableAPlayers, tableAId, tableBId } = setup2Tables(io);
+
+      const targetPlayer = tableAPlayers[0];
+
+      // テーブルAはハンド中（デフォルト状態）
+      const tables = (tournament as any).tables as Map<string, any>;
+      const tableA = tables.get(tableAId)!;
+      expect(tableA.isHandInProgress).toBe(true);
+
+      // テーブルBのハンドは完了
+      const tableB = tables.get(tableBId)!;
+      tableB._isHandInProgress = false;
+      tableB.gameState = null;
+
+      // ハンド中テーブルからmovePlayer → unseatPlayerが席を即解放しない
+      const movePlayer = (tournament as any).movePlayer.bind(tournament);
+      movePlayer(targetPlayer, tableAId, tableBId);
+
+      // プレイヤーはテーブルBに移動できている（テーブルBに空席があるため）
+      const player = tournament.getPlayer(targetPlayer);
+      expect(player?.tableId).toBe(tableBId);
+    });
+
+    it('再接続したプレイヤーのpending moveが正しく実行される', () => {
+      const { tournament, sockets, tableAPlayers, tableAId, tableBId } = setup2Tables(io);
+
+      const targetPlayer = tableAPlayers[0];
+
+      // 切断
+      tournament.handleDisconnect(targetPlayer);
+      expect(tournament.getPlayer(targetPlayer)?.socket).toBeNull();
+
+      // ペンディング移動をキュー
+      const pendingMoves = (tournament as any).pendingMoves as any[];
+      pendingMoves.push({
+        odId: targetPlayer,
+        fromTableId: tableAId,
+        toTableId: tableBId,
+      });
+
+      // 再接続
+      const newSocket = createMockSocket();
+      tournament.handleReconnect(targetPlayer, newSocket);
+      expect(tournament.getPlayer(targetPlayer)?.socket).toBe(newSocket);
+
+      // executePendingMoves — 再接続済みなので移動は実行される
+      const tables = (tournament as any).tables as Map<string, any>;
+      for (const table of tables.values()) {
+        table._isHandInProgress = false;
+      }
+      const executePendingMoves = (tournament as any).executePendingMoves.bind(tournament);
+      executePendingMoves();
+
+      // 移動が成功し、新しいsocketに通知が送られている
+      const player = tournament.getPlayer(targetPlayer);
+      expect(player?.tableId).toBe(tableBId);
+      expect(newSocket.emit).toHaveBeenCalledWith('tournament:table_move', expect.any(Object));
+    });
+
+    it('pendingFinalTable中のonHandSettledでファイナルテーブルが正しく形成される', () => {
+      const { tournament, tableAPlayers, tableBPlayers } = setup2Tables(io, 10);
+
+      // テーブルAから4人バスト → 残り6人（= PLAYERS_PER_TABLE）
+      for (let i = 1; i < tableAPlayers.length; i++) {
+        simulateBust(tournament, tableAPlayers[i], 300);
+      }
+
+      // pendingFinalTable を立てる
+      // （通常は handlePhaseTransition → scheduleFormFinalTable で設定される）
+      (tournament as any).pendingFinalTable = true;
+
+      // onHandSettled を呼ぶ（pendingFinalTable処理 → formFinalTable → 1テーブルに統合）
+      const remainingPlayers = [tableAPlayers[0], ...tableBPlayers];
+      const seatChips = remainingPlayers.map((id, i) => ({
+        odId: id, seatIndex: i, chips: 2000,
+      }));
+      simulateHandSettled(tournament, seatChips);
+
+      // テーブルが1つになりファイナルテーブルが形成されている
+      expect(tournament.getTableCount()).toBe(1);
+
+      // 全残りプレイヤーが同一テーブルにいる
+      const tableIds = new Set<string>();
+      for (const odId of remainingPlayers) {
+        const p = tournament.getPlayer(odId);
+        if (p?.status === 'playing' && p.tableId) {
+          tableIds.add(p.tableId);
+        }
+      }
+      expect(tableIds.size).toBe(1);
+    });
+
+    it('checkAndExecuteBalanceで空テーブルが正しく削除される', () => {
+      const { tournament, tableAPlayers, tableBPlayers, tableAId } = setup2Tables(io);
+
+      // テーブルAの全員をバスト → テーブルAが空になる
+      for (const odId of tableAPlayers) {
+        simulateBust(tournament, odId, 300);
+      }
+
+      const seatChips = tableBPlayers.map((id, i) => ({
+        odId: id, seatIndex: i, chips: 2000,
+      }));
+      simulateHandSettled(tournament, seatChips);
+
+      // テーブルAが削除されている
+      const tables = (tournament as any).tables as Map<string, any>;
+      expect(tables.has(tableAId)).toBe(false);
+      expect(tournament.getTableCount()).toBe(1);
+    });
+  });
+
+  // ============================================
   // H. リエントリーテスト
   // ============================================
 
