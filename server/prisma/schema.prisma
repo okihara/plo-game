@@ -208,8 +208,8 @@ model Tournament {
   prizePool              Int              @default(0)
   registrationLevels     Int              @default(4)
   payoutPercentage       Json             @default("[50, 30, 20]")
-  allowReentry           Boolean          @default(false)
-  maxReentries           Int              @default(0)
+  allowReentry           Boolean          @default(true)
+  maxReentries           Int              @default(2)
   reentryDeadlineLevel   Int              @default(4)
   scheduledStartTime     DateTime?
   startedAt              DateTime?

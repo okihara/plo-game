@@ -96,6 +96,19 @@ export class TournamentInstance {
     return this.prizePool;
   }
 
+  public getResults(): TournamentResult[] {
+    return Array.from(this.players.values())
+      .filter(p => p.finishPosition !== null)
+      .sort((a, b) => a.finishPosition! - b.finishPosition!)
+      .map(p => ({
+        odId: p.odId,
+        odName: p.displayName ?? (p.nameMasked ? maskName(p.odName) : p.odName),
+        position: p.finishPosition!,
+        prize: this.getPrizeForPosition(p.finishPosition!),
+        reentries: p.reentryCount,
+      }));
+  }
+
   // ============================================
   // Registration
   // ============================================
@@ -409,6 +422,10 @@ export class TournamentInstance {
           : String(this.config.scheduledStartTime))
         : undefined,
       isRegistrationOpen: this.isRegistrationOpen(),
+      allowReentry: this.config.allowReentry,
+      maxReentries: this.config.maxReentries,
+      totalReentries: this.getTotalReentries(),
+      reentryDeadlineLevel: this.config.reentryDeadlineLevel,
     };
   }
 
@@ -438,6 +455,7 @@ export class TournamentInstance {
     const table = new TableInstance(this.io, blindsStr, false, {
       gameMode: 'tournament',
       lifecycleCallbacks: callbacks,
+      tournamentId: this.id,
     });
 
     this.tables.set(table.id, table);
@@ -457,11 +475,6 @@ export class TournamentInstance {
     chips: number,
     options?: { skipJoinedEmit?: boolean }
   ): number | null {
-    if (!player.socket) {
-      console.warn(`[Tournament ${this.id}] Cannot seat player ${player.odId}: no socket`);
-      return null;
-    }
-
     const seatIndex = table.seatPlayer(
       player.odId,
       player.odName,
@@ -892,16 +905,7 @@ export class TournamentInstance {
     }
 
     // 結果を構築（既に計算済みの this.prizes を参照）
-    const results = Array.from(this.players.values())
-      .filter(p => p.finishPosition !== null)
-      .sort((a, b) => a.finishPosition! - b.finishPosition!)
-      .map(p => ({
-        odId: p.odId,
-        odName: p.odName,
-        position: p.finishPosition!,
-        prize: this.getPrizeForPosition(p.finishPosition!),
-        reentries: p.reentryCount,
-      }));
+    const results = this.getResults();
 
     // 全プレイヤーに結果通知
     this.io.to(this.roomName).emit('tournament:completed', {
@@ -937,6 +941,27 @@ export class TournamentInstance {
       clearTimeout(timer);
     }
     this.disconnectTimers.clear();
+  }
+
+  /**
+   * 指定プレイヤーがリエントリー可能かどうかを判定する
+   */
+  public canReenter(odId: string): boolean {
+    const player = this.players.get(odId);
+    if (!player || player.status !== 'eliminated') return false;
+    if (!this.config.allowReentry) return false;
+    if (player.reentryCount >= this.config.maxReentries) return false;
+    const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
+    if (currentLevel > this.config.reentryDeadlineLevel) return false;
+    return true;
+  }
+
+  private getTotalReentries(): number {
+    let total = 0;
+    for (const p of this.players.values()) {
+      total += p.reentryCount;
+    }
+    return total;
   }
 
   private getTotalEntries(): number {

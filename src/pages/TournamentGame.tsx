@@ -16,6 +16,7 @@ interface TournamentGameProps {
 export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
   const {
     connect,
+    disconnect,
     tournamentState,
     elimination,
     completedData,
@@ -24,6 +25,8 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     blindChangeNotice,
     clearElimination,
     clearCompleted,
+    maintenanceStatus,
+    announcementStatus,
   } = useTournamentState();
 
   const [blinds, setBlinds] = useState('1/2');
@@ -69,8 +72,11 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         wsService.requestTournamentState(tournamentId);
       });
     })();
-    return () => { cancelled = true; };
-  }, [connect, tournamentId]);
+    return () => {
+      cancelled = true;
+      disconnect();
+    };
+  }, [connect, disconnect, tournamentId]);
 
   // ブラインド同期: game:state（ハンド開始時）のブラインドを反映
   useEffect(() => {
@@ -135,6 +141,8 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         onBack={handleBack}
         blindsLabel={blinds}
         notice={blindChangeNotice}
+        maintenanceStatus={maintenanceStatus}
+        announcementStatus={announcementStatus}
       >
         {/* トーナメントHUD（オーバーレイ） */}
         {tournamentState && (

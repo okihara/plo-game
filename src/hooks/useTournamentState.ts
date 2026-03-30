@@ -30,6 +30,8 @@ export function useTournamentState() {
   const [lastEliminated, setLastEliminated] = useState<TournamentPlayerEliminatedData | null>(null);
   const [blindChangeNotice, setBlindChangeNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
 
   const eliminatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blindNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -66,10 +68,14 @@ export function useTournamentState() {
       const data = (await res.json()) as {
         tournaments?: TournamentLobbyInfo[];
         myTournamentId?: string | null;
+        canReenterTournamentId?: string | null;
+        myFinishedTournamentIds?: string[];
       };
       setTournaments(data.tournaments ?? []);
       // DB参加記録に基づいて参加状態を更新
       setRegisteredTournamentId(data.myTournamentId ?? null);
+      setCanReenterTournamentId(data.canReenterTournamentId ?? null);
+      setMyFinishedTournamentIds(new Set(data.myFinishedTournamentIds ?? []));
     } catch {
       if (isFirst) setTournaments([]);
     } finally {
@@ -97,8 +103,25 @@ export function useTournamentState() {
     }
   }, []);
 
-  const reenter = useCallback((tournamentId: string) => {
-    wsService.reenterTournament(tournamentId);
+  const [canReenterTournamentId, setCanReenterTournamentId] = useState<string | null>(null);
+  const [myFinishedTournamentIds, setMyFinishedTournamentIds] = useState<Set<string>>(new Set());
+
+  const reenter = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
+    try {
+      const res = await fetch(`${API_BASE}/api/tournaments/${tournamentId}/reenter`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = (await res.json()) as { success?: boolean; error?: string };
+      if (!res.ok || !data.success) {
+        return { success: false, error: data.error ?? 'リエントリーに失敗しました' };
+      }
+      setCanReenterTournamentId(null);
+      setRegisteredTournamentId(tournamentId);
+      return { success: true };
+    } catch {
+      return { success: false, error: '通信エラーが発生しました' };
+    }
   }, []);
 
   const clearElimination = useCallback(() => {
@@ -113,12 +136,6 @@ export function useTournamentState() {
     wsService.addListeners('tournament', {
       onConnected: () => setIsConnected(true),
       onDisconnected: () => setIsConnected(false),
-
-      onTournamentRegistered: (data) => {
-        setRegisteredTournamentId(data.tournamentId);
-        setError(null);
-        void refreshList();
-      },
 
       onTournamentState: (state) => {
         setTournamentState(state);
@@ -177,6 +194,13 @@ export function useTournamentState() {
         setRegisteredTournamentId(null);
         setError('トーナメントがキャンセルされました');
       },
+
+      onMaintenanceStatus: (data) => {
+        setMaintenanceStatus(data);
+      },
+      onAnnouncementStatus: (data) => {
+        setAnnouncementStatus(data);
+      },
     });
 
     return () => {
@@ -199,6 +223,8 @@ export function useTournamentState() {
 
     // Registration
     registeredTournamentId,
+    canReenterTournamentId,
+    myFinishedTournamentIds,
     register,
     reenter,
 
@@ -213,6 +239,8 @@ export function useTournamentState() {
     lastEliminated,
     blindChangeNotice,
     error,
+    maintenanceStatus,
+    announcementStatus,
 
     // Actions
     clearElimination,

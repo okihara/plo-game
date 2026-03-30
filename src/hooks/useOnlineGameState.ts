@@ -13,6 +13,8 @@ export interface LastAction {
   amount: number;
   timestamp: number;
   drawCount?: number;
+  /** チップを動かしたアクション用: ストリート上のこのプレイヤーの合計ベット（アクション後）。未設定時は amount のみ表示 */
+  displayChipTotal?: number;
 }
 
 // アクションタイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
@@ -218,10 +220,16 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // アクションマーカー管理（CSSアニメーションで自動フェードアウト）
   // ============================================
 
-  const recordAction = useCallback((playerId: number, action: Action, amount: number, drawCount?: number) => {
+  const recordAction = useCallback((
+    playerId: number,
+    action: Action,
+    amount: number,
+    drawCount?: number,
+    displayChipTotal?: number,
+  ) => {
     setLastActions(prev => {
       const newMap = new Map(prev);
-      newMap.set(playerId, { action, amount, timestamp: Date.now(), drawCount });
+      newMap.set(playerId, { action, amount, timestamp: Date.now(), drawCount, displayChipTotal });
       return newMap;
     });
   }, []);
@@ -435,10 +443,15 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
         // playerIdからシート番号を取得（refで最新のclientStateを参照）
         const currentState = clientStateRef.current;
-        const seat = currentState?.players.findIndex(p => p?.odId === playerId);
-        if (seat !== undefined && seat >= 0) {
-          recordAction(seat, action, amount, drawCount);
-        }
+        if (!currentState) return;
+        const seat = currentState.players.findIndex(p => p?.odId === playerId);
+        if (seat < 0) return;
+        const acting = currentState.players[seat];
+        if (!acting) return;
+        const prevBet = acting.currentBet;
+        const chipMoving = action === 'bet' || action === 'raise' || action === 'call' || action === 'allin';
+        const displayChipTotal = chipMoving ? prevBet + amount : undefined;
+        recordAction(seat, action, amount, drawCount, displayChipTotal);
       },
       onHandComplete: (serverWinners) => {
         isNewHandRef.current = true;

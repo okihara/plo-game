@@ -1,6 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GameState, Action, getVariantConfig } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import {
+  betSliderAmountToNearestIndex,
+  betSliderChipStepFromSmallBlind,
+  betSliderIndexToAmount,
+  betSliderMaxIndex,
+} from '../utils/betSliderRange';
 
 function ActionButton({ onClick, disabled, colorFrom, colorTo, borderColor, label, className = '' }: {
   onClick: () => void;
@@ -15,7 +21,7 @@ function ActionButton({ onClick, disabled, colorFrom, colorTo, borderColor, labe
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`h-[11cqw] rounded-[1cqw] text-[3.5cqw] font-bold uppercase tracking-wide transition-all active:scale-95 active:shadow-none active:border-b-0 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-lg bg-gradient-to-b ${colorFrom} ${colorTo} border-b-[0.8cqw] ${borderColor} ${className}`}
+      className={`h-[11cqw] rounded-[1cqw] text-[3.5cqw] font-bold tracking-wide transition-all active:scale-95 active:shadow-none active:border-b-0 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-lg bg-gradient-to-b ${colorFrom} ${colorTo} border-b-[0.8cqw] ${borderColor} ${className}`}
     >
       {label}
     </button>
@@ -65,14 +71,28 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const canFastFold = !!isFastFold && !isMyTurn && !myPlayer.folded && !state.isHandComplete
     && !(isBB && state.currentStreet === 'preflop' && state.currentBet <= myPlayer.currentBet) && !canCheck && state.currentStreet !== 'showdown'&& !myPlayer.hasActed;
 
-  const [sliderValue, setSliderValue] = useState(minRaise);
+  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind);
+  const maxSliderIndex = betSliderMaxIndex(minRaise, maxRaise, chipStep);
+
+  const [sliderIndex, setSliderIndex] = useState(0);
   const [actionSent, setActionSent] = useState(false);
   const [prefoldChecked, setPrefoldChecked] = useState(false);
   const prefoldTriggeredRef = useRef(false);
 
+  const sliderValue = useMemo(
+    () => betSliderIndexToAmount(sliderIndex, minRaise, maxRaise, chipStep),
+    [sliderIndex, minRaise, maxRaise, chipStep],
+  );
+
+  const prevMinRaiseRef = useRef(minRaise);
   useEffect(() => {
-    setSliderValue(minRaise);
-  }, [minRaise]);
+    if (prevMinRaiseRef.current !== minRaise) {
+      prevMinRaiseRef.current = minRaise;
+      setSliderIndex(0);
+      return;
+    }
+    setSliderIndex((i) => Math.min(i, betSliderMaxIndex(minRaise, maxRaise, chipStep)));
+  }, [minRaise, maxRaise, chipStep]);
 
   useEffect(() => {
     setActionSent(false);
@@ -102,8 +122,8 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const handlePreset = useCallback((preset: number) => {
     const betByPot = Math.round((state.pot + toCall) * preset) + toCall;
     const clampedValue = Math.max(minRaise, Math.min(maxRaise, betByPot));
-    setSliderValue(clampedValue);
-  }, [state.pot, toCall, minRaise, maxRaise]);
+    setSliderIndex(betSliderAmountToNearestIndex(clampedValue, minRaise, maxRaise, chipStep));
+  }, [state.pot, toCall, minRaise, maxRaise, chipStep]);
 
   const handleAction = useCallback((action: Action) => {
     let amount = 0;
@@ -154,32 +174,35 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
 
   // 中央ボタン: check or call
   const centerAction: Action = canCheck ? 'check' : 'call';
-  const centerLabel = canCheck ? 'CHECK' : `CALL ${formatChips(toCall)}`;
+  const centerLabel = canCheck ? 'CHECK' : `CALL ${formatChips(myPlayer.currentBet + toCall)}`;
   const centerDisabled = !isMyTurn || actionSent || (!canCheck && !callInfo) || isShortStack;
 
   // 右ボタン: bet/raise/allin
   const rightAction: Action = isShortStack || sliderValue >= myPlayer.chips ? 'allin'
     : betInfo ? 'bet' : 'raise';
+  const raiseToChips = myPlayer.currentBet + (isFixedLimit ? minRaise : sliderValue);
+  /** スライダー・BET/RAISE 表記: このストリートでの自分の合計ベット（currentBet + 増分） */
+  const sliderTotalChips = myPlayer.currentBet + sliderValue;
   const rightLabel = isShortStack || sliderValue >= myPlayer.chips
     ? `ALL IN ${formatChips(allinInfo?.minAmount ?? myPlayer.chips)}`
     : isFixedLimit
-      ? (betInfo ? `BET ${formatChips(minRaise)}` : `RAISE ${formatChips(minRaise)}`)
-      : (betInfo ? `BET ${formatChips(sliderValue)}` : `RAISE ${formatChips(sliderValue)}`);
+      ? (betInfo ? `BET ${formatChips(minRaise)}` : `RAISE ${formatChips(raiseToChips)}`)
+      : (betInfo ? `BET ${formatChips(sliderTotalChips)}` : `RAISE ${formatChips(sliderTotalChips)}`);
   const rightDisabled = isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent);
 
   // スライダー表示: 可変額のbet/raiseがある場合のみ（Fixed Limitでは非表示）
   const showSlider = !isFixedLimit;
 
   return (
-    <div className={`h-[25cqw] px-[2.7cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
+    <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
       {/* Preset Buttons & Bet Slider */}
       {showSlider && (
-        <div className={`flex items-center gap-[1.8cqw] px-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+        <div className={`flex items-center gap-[1.8cqw] px-[0cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           <div className="w-1/2 flex gap-[0.9cqw]">
             {[
-              { label: '1/3', value: 0.33 },
-              { label: '1/2', value: 0.5 },
-              { label: '3/4', value: 0.75 },
+              { label: '33%', value: 0.33 },
+              { label: '50%', value: 0.5 },
+              { label: '75%', value: 0.75 },
               { label: 'Pot', value: 1 },
             ].map(({ label, value }) => (
               <button
@@ -193,18 +216,18 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
             ))}
           </div>
           <div className="w-1/2 flex items-center gap-[1.8cqw]">
-            <span className="text-emerald-400 text-[3.5cqw] w-[10.7cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
-              {formatChips(sliderValue)}
+            <span className="text-emerald-400 text-[3.5cqw] w-[14.6cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
+              {formatChips(sliderTotalChips)}
             </span>
             <input
               type="range"
-              min={minRaise}
-              max={maxRaise}
-              value={sliderValue}
+              min={0}
+              max={maxSliderIndex}
+              value={sliderIndex}
               step={1}
-              onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
+              onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
               disabled={!canRaise || !isMyTurn || actionSent}
-              className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[5.4cqw] [&::-webkit-slider-thumb]:h-[5.4cqw] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+              className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[2.8cqw] [&::-webkit-slider-thumb]:h-[7.2cqw] [&::-webkit-slider-thumb]:rounded-[0.6cqw] [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:h-[7.2cqw] [&::-moz-range-thumb]:w-[2.8cqw] [&::-moz-range-thumb]:rounded-[0.6cqw] [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-emerald-400 [&::-moz-range-thumb]:to-emerald-600 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md"
             />
           </div>
         </div>

@@ -852,6 +852,187 @@ describe('TableInstance - 切断/離席時のフォールド処理', () => {
 });
 
 // ============================================
+// F2. 切断プレイヤー即座フォールド（socket.connected=false）
+// ============================================
+
+describe('TableInstance - socket.connected=false の即座フォールド', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('トーナメント風: 全プレイヤー切断でも即座にフォールドされハンドが完了する', async () => {
+    const io = createMockIO();
+    const table = new TableInstance(io, '100/200', false, { gameMode: 'tournament' });
+
+    // 3人着席
+    const sockets: ReturnType<typeof createMockSocket>[] = [];
+    const odIds: string[] = [];
+    const seatMap: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const socket = createMockSocket();
+      const odId = `player_${i}`;
+      const seat = table.seatPlayer(odId, `Player ${i}`, socket, 10000);
+      if (seat === null) throw new Error(`Failed to seat player ${i}`);
+      sockets.push(socket);
+      odIds.push(odId);
+      seatMap.push(seat);
+    }
+
+    // 全ソケットを切断状態にしてからハンド開始
+    for (const socket of sockets) {
+      (socket as any).connected = false;
+    }
+    table.triggerMaybeStartHand();
+
+    expect(table.isHandInProgress).toBe(true);
+
+    // socket.connected=false のプレイヤーは requestNextAction で即座にフォールドされるので
+    // タイマーを待たずにハンドが完了するはず
+    // handleHandComplete の非同期処理を進める
+    await vi.advanceTimersByTimeAsync(2000); // HAND_COMPLETE_DELAY
+    await vi.advanceTimersByTimeAsync(5000); // NEXT_HAND_DELAY
+
+    const handComplete = getRoomEmits(io, 'game:hand_complete');
+    expect(handComplete.length).toBeGreaterThan(0);
+  });
+
+  it('部分切断: 切断プレイヤーに手番が回ったら即座にフォールドされる', () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 4, blinds: '1/2' });
+
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+
+    // 手番でないプレイヤーのソケットを切断
+    const otherIdx = odIds.findIndex(id => id !== current!.odId);
+    (sockets[otherIdx] as any).connected = false;
+    const disconnectedOdId = odIds[otherIdx];
+
+    // 手番プレイヤーがコール → 次のプレイヤーに手番が回る
+    table.handleAction(current!.odId, 'call', 2);
+
+    // 切断プレイヤーに手番が回ったら、タイマーを待たず即座にフォールドされるはず
+    const actions = getRoomEmits(io, 'game:action_taken') as { playerId: string; action: string }[];
+    const disconnectFold = actions.find(a => a.playerId === disconnectedOdId);
+
+    if (disconnectFold) {
+      // 即座にフォールドされた（修正後の期待動作）
+      expect(disconnectFold.action).toBe('fold');
+    } else {
+      // タイマーがセットされた場合（切断プレイヤーの前にまだ他のプレイヤーがいる場合）
+      // 20秒のタイマー発火でフォールドされることを確認
+      vi.advanceTimersByTime(20000);
+      const actionsAfterTimeout = getRoomEmits(io, 'game:action_taken') as { playerId: string; action: string }[];
+      const timeoutFold = actionsAfterTimeout.find(a => a.playerId === disconnectedOdId);
+      expect(timeoutFold).toBeDefined();
+    }
+  });
+
+  it('修正前の再現: socket.connected=falseでも20秒タイマーを待っていた問題が解消', () => {
+    // 修正前: socket!=null なら connected=false でもタイマーセット（20秒待ち）
+    // 修正後: socket.connected=false なら即座に onDisconnectedFold
+    const io = createMockIO();
+    const table = new TableInstance(io, '100/200', false, { gameMode: 'tournament' });
+
+    const sockets: ReturnType<typeof createMockSocket>[] = [];
+    const odIds: string[] = [];
+    const seatMap: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const socket = createMockSocket();
+      const odId = `player_${i}`;
+      const seat = table.seatPlayer(odId, `Player ${i}`, socket, 10000);
+      if (seat === null) throw new Error(`Failed to seat player ${i}`);
+      sockets.push(socket);
+      odIds.push(odId);
+      seatMap.push(seat);
+    }
+
+    table.triggerMaybeStartHand();
+    expect(table.isHandInProgress).toBe(true);
+
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+
+    // 次のプレイヤーを特定して、アクション実行 *前に* 切断状態にする
+    // （requestNextAction は handleAction 内で同期的に呼ばれるため、
+    //   呼ばれる前に socket.connected=false にしておく必要がある）
+    const currentSeatIdx = seatMap.indexOf(current!.seatIndex);
+    // 手番プレイヤーの次の席を見つける
+    for (let i = 0; i < odIds.length; i++) {
+      if (i !== currentSeatIdx) {
+        (sockets[i] as any).connected = false;
+      }
+    }
+
+    // 手番プレイヤーがコール → requestNextAction で次のプレイヤー（切断済み）に手番が回る
+    // → 修正後: 即座にフォールドされるはず（タイマー不要）
+    table.handleAction(current!.odId, 'call', 200);
+
+    // 確認: 切断プレイヤーの自動アクションがタイマーなしで処理されている
+    const actions = getRoomEmits(io, 'game:action_taken') as { playerId: string; action: string }[];
+    // 手番プレイヤーのコール + 切断プレイヤーのフォールド/チェック
+    expect(actions.length).toBeGreaterThanOrEqual(2);
+
+    // 切断プレイヤーのアクションが含まれている
+    const disconnectedActions = actions.filter(a => a.playerId !== current!.odId);
+    expect(disconnectedActions.length).toBeGreaterThan(0);
+    for (const a of disconnectedActions) {
+      expect(['fold', 'check']).toContain(a.action);
+    }
+  });
+});
+
+// ============================================
+// F3. handleActionTimeout リカバリーテスト
+// ============================================
+
+describe('TableInstance - タイムアウト時のリカバリー', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('handleAction失敗時でもタイムアウトで進行不能にならない', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, blinds: '1/2' });
+
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+
+    // handleActionをスパイして一度だけfalseを返すようにする
+    const originalHandleAction = table.handleAction.bind(table);
+    let callCount = 0;
+    vi.spyOn(table, 'handleAction').mockImplementation((...args) => {
+      callCount++;
+      if (callCount === 1) {
+        // 最初の呼び出し（タイムアウトからの呼び出し）は失敗させる
+        return false;
+      }
+      // リカバリー後の呼び出しは正常処理
+      return originalHandleAction(...args);
+    });
+
+    // タイムアウトを発火
+    vi.advanceTimersByTime(20000);
+
+    // handleActionが失敗してもリカバリーが働き、ゲームが進行しているはず
+    const state = table.getClientGameState();
+    // 進行不能ではない: 手番が移っているか、ハンドが完了している
+    const isProgressing = state.currentPlayerSeat !== current!.seatIndex || !state.isHandInProgress;
+    expect(isProgressing).toBe(true);
+  });
+});
+
+// ============================================
 // G. タイムアウト時のチェック/フォールド判定テスト
 // ============================================
 

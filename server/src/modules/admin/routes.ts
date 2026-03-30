@@ -7,6 +7,7 @@ import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
+import { cashOutPlayer } from '../auth/bankroll.js';
 import {
   DEFAULT_BUY_IN,
   DEFAULT_STARTING_CHIPS,
@@ -537,6 +538,90 @@ export function adminRoutes(deps: AdminDependencies) {
 
     fastify.get('/admin/tournaments', async (request, reply) => {
       return reply.view('tournaments.ejs', { defaults: tournamentDefaults });
+    });
+
+    // ============================================
+    // Admin Operations API
+    // ============================================
+
+    // プレイヤーをキック（キャッシュゲーム・トーナメント両対応）
+    fastify.post('/api/admin/kick', async (request) => {
+      const { odId } = request.body as { odId: string };
+      if (!odId) return { success: false, error: 'odId is required' };
+
+      // ソケット特定（通知用）
+      let playerSocket: import('socket.io').Socket | null = null;
+      for (const s of io.sockets.sockets.values()) {
+        if ((s as any).odId === odId) { playerSocket = s; break; }
+      }
+
+      // 1. キャッシュゲームテーブルを確認
+      const cashTable = tableManager.getPlayerTable(odId);
+      if (cashTable) {
+        const result = cashTable.unseatPlayer(odId);
+        tableManager.removePlayerFromTracking(odId);
+        if (result) {
+          await cashOutPlayer(result.odId, result.chips, cashTable.id);
+        }
+        playerSocket?.emit('table:left');
+        console.log(`[Admin] Kicked player ${odId} from cash table ${cashTable.id} (chips: ${result?.chips ?? 0})`);
+        return { success: true, type: 'cash', tableId: cashTable.id, chips: result?.chips ?? 0 };
+      }
+
+      // 2. トーナメントを確認
+      const tid = tournamentManager.getPlayerTournament(odId);
+      if (tid) {
+        const tournament = tournamentManager.getTournament(tid);
+        const player = tournament?.getPlayer(odId);
+        if (tournament && player) {
+          if (player.tableId) {
+            const table = Array.from(tournament.getTables()).find(t => t.id === player.tableId);
+            table?.unseatPlayer(odId);
+          }
+          playerSocket?.emit('tournament:kicked', { tournamentId: tid, reason: '管理者によるキック' });
+          console.log(`[Admin] Kicked player ${odId} from tournament ${tid}`);
+          return { success: true, type: 'tournament', tournamentId: tid };
+        }
+      }
+
+      return { success: false, error: 'Player not found at any table or tournament' };
+    });
+
+    // テーブルの手番プレイヤーを強制フォールド
+    fastify.post('/api/admin/force-action', async (request) => {
+      const { tableId, tournamentId: reqTournamentId } = request.body as { tableId: string; tournamentId?: string };
+      if (!tableId) return { success: false, error: 'tableId is required' };
+
+      // キャッシュゲームテーブルを先に探し、なければトーナメントテーブルを探す
+      let table = tableManager.getTable(tableId);
+      if (!table && reqTournamentId) {
+        const tournament = tournamentManager.getTournament(reqTournamentId);
+        const tables = tournament ? Array.from(tournament.getTables()) : [];
+        table = tables.find(t => t.id === tableId);
+      }
+      // トーナメントIDなしでも全トーナメントから探す
+      if (!table) {
+        for (const lobby of tournamentManager.getActiveTournaments()) {
+          const tournament = tournamentManager.getTournament(lobby.id);
+          if (!tournament) continue;
+          table = Array.from(tournament.getTables()).find(t => t.id === tableId);
+          if (table) break;
+        }
+      }
+      if (!table) return { success: false, error: 'Table not found' };
+
+      const state = table.getClientGameState();
+      if (!state.isHandInProgress || state.currentPlayerSeat === null) {
+        return { success: false, error: 'No active hand or no current player' };
+      }
+
+      const seats = table.getAdminSeats();
+      const currentSeat = seats[state.currentPlayerSeat];
+      if (!currentSeat) return { success: false, error: 'Current seat is empty' };
+
+      const handled = table.handleAction(currentSeat.odId, 'fold', 0);
+      console.log(`[Admin] Forced fold on table ${tableId}: seat=${state.currentPlayerSeat}, odId=${currentSeat.odId}, handled=${handled}`);
+      return { success: handled, tableId, seat: state.currentPlayerSeat, odId: currentSeat.odId };
     });
   };
 }

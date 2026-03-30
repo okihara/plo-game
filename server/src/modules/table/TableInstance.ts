@@ -51,7 +51,6 @@ export class TableInstance {
 
   private gameState: GameState | null = null;
   private lastDealerPosition = -1;
-  private runOutTimer: NodeJS.Timeout | null = null;
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
   private _isHandInProgress = false;
@@ -72,7 +71,7 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
@@ -101,7 +100,9 @@ export class TableInstance {
     this.variantAdapter = new VariantAdapter(this.variant);
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
     this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
-    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder();
+    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder(
+      this.gameMode === 'tournament' && options?.tournamentId ? { tournamentId: options.tournamentId } : undefined
+    );
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
 
@@ -113,7 +114,7 @@ export class TableInstance {
   public seatPlayer(
     odId: string,
     odName: string,
-    socket: Socket,
+    socket: Socket | null,
     buyIn: number,
     avatarUrl?: string | null,
     preferredSeat?: number,
@@ -138,18 +139,13 @@ export class TableInstance {
       return null;
     }
 
-    socket.join(this.roomName);
+    if (socket) {
+      socket.join(this.roomName);
 
-    // Broadcast player joined
-    const seat = this.playerManager.getSeat(seatIndex)!;
-    const joinData = {
-      seat: seatIndex,
-      player: StateTransformer.seatToOnlinePlayer(seat, seatIndex, null),
-    };
-
-    // Notify the seated player
-    if (!options?.skipJoinedEmit) {
-      socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+      // Notify the seated player
+      if (!options?.skipJoinedEmit) {
+        socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
+      }
     }
     this.broadcast.emitToRoom('game:state', { state: this.getClientGameState() });
 
@@ -283,24 +279,8 @@ export class TableInstance {
         // this.broadcastGameState();
       }
     } else if (result.streetChanged) {
-      // アクション演出を待ってからカードを表示
-      this.actionController.scheduleActionAnimation(() => {
-        // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
-        if (this.gameState) {
-          this.variantAdapter.broadcastStreetChangeCards(
-            this.gameState,
-            this.playerManager.getSeats(),
-            this.broadcast,
-            () => {},
-          );
-        }
-        this.broadcastGameState();
-        // プレイヤーがカードを確認できるよう遅延後に次のアクションを要求
-        this.actionController.scheduleStreetTransition(() => {
-          this.requestNextAction();
-          this.broadcastGameState();
-        });
-      });
+      // 演出待ち → カード表示 → 確認時間 → 次アクション（async、fire-and-forget）
+      this.handleStreetTransition().catch(e => console.error('handleStreetTransition error:', e));
     } else {
       // 次のアクション要求後に状態をブロードキャスト（pendingActionがセットされている状態で送信するため）
       this.requestNextAction();
@@ -311,11 +291,39 @@ export class TableInstance {
   }
 
   /**
+   * ストリート変更時の演出待ち（アクション演出 → カード表示 → 確認時間 → 次アクション）
+   */
+  private async handleStreetTransition(): Promise<void> {
+    // アクション演出待ち（チップ移動等）
+    await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.ACTION_ANIMATION_DELAY_MS); });
+
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    // Stud: ストリート変更時に新しいホールカード（7th streetの裏カード等）を送信
+    this.variantAdapter.broadcastStreetChangeCards(
+      this.gameState,
+      this.playerManager.getSeats(),
+      this.broadcast,
+      () => {},
+    );
+    this.broadcastGameState();
+
+    // プレイヤーがカードを確認できるよう遅延
+    await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.STREET_TRANSITION_DELAY_MS); });
+
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    this.requestNextAction();
+    this.broadcastGameState();
+  }
+
+  /**
    * ファストフォールド用: ターン前にフォールドして即座にテーブル移動可能にする
    * BBはプリフロップでチェックできる場合はファストフォールドできない（レイズされていればOK）
    */
   public handleEarlyFold(odId: string): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
+      console.warn(`[Table ${this.id}] handleEarlyFold rejected: odId=${odId}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
       return false;
     }
 
@@ -432,11 +440,12 @@ export class TableInstance {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
-    // ハンド中はgameStateの値が最新
-    if (this.gameState && this.gameState.players[seatIndex]) {
+    // ハンド中（未完了）はgameStateの値が最新
+    if (this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
       return this.gameState.players[seatIndex].chips;
     }
 
+    // ハンド完了後・ハンド外はseatの値を返す
     const seat = this.playerManager.getSeat(seatIndex);
     return seat?.chips ?? null;
   }
@@ -700,7 +709,15 @@ export class TableInstance {
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
           const defaultAction = this.getDefaultDisconnectAction(idx);
-          this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === idx) {
+            // handleAction 失敗時のリカバリー: 強制フォールドして進行
+            console.error(`[Table ${this.id}] Disconnected fold failed, forcing advance. seat=${idx}`);
+            const p = this.gameState.players[idx];
+            if (p && !p.folded) p.folded = true;
+            this.actionController.clearTimers();
+            this.advanceToNextPlayer();
+          }
         }
       }
     );
@@ -711,8 +728,7 @@ export class TableInstance {
 
     if (!this.gameState) {
       console.error(`[Table ${this.id}] Action timeout but no gameState: playerId=${playerId}, seat=${seatIndex}`);
-      const seat = this.playerManager.getSeat(seatIndex);
-      seat?.socket?.emit('table:error', { message: 'ゲーム状態が見つかりません。再接続してください。' });
+      this.actionController.clearTimers();
       return;
     }
 
@@ -722,6 +738,17 @@ export class TableInstance {
       // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
       const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+
+      if (!handled) {
+        // handleAction が失敗した場合のリカバリー: 強制フォールドして進行
+        console.error(`[Table ${this.id}] Action timeout: handleAction failed, forcing advance. playerId=${playerId}, seat=${seatIndex}, action=${defaultAction.action}`);
+        if (this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === seatIndex) {
+          const p = this.gameState.players[seatIndex];
+          if (p && !p.folded) p.folded = true;
+          this.actionController.clearTimers();
+          this.advanceToNextPlayer();
+        }
+      }
 
       // ファストフォールド: タイムアウトフォールド後にテーブル移動
       if (defaultAction.action === 'fold' && handled && this.isFastFold && seat.socket && this.onTimeoutFold) {
@@ -809,19 +836,17 @@ export class TableInstance {
         players: showdownPlayers,
       };
 
-      await new Promise<void>(resolve => { setTimeout(resolve, 2000); });
+      await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS); });
 
       this.broadcast.emitToRoom('game:showdown', showdownData);
       this.showdownSentDuringRunOut = true;
 
-      await new Promise<void>(resolve => { setTimeout(resolve, 2000); });
+      await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS); });
     }
 
     let currentStageIndex = 0;
 
-    const revealNextStage = () => {
-      this.runOutTimer = null;
-
+    const revealNextStage = async() => {
       if (currentStageIndex >= stages.length) {
         // 全カード表示完了 → 最終結果を表示
         this.isRunOutInProgress = false;
@@ -845,16 +870,14 @@ export class TableInstance {
       this.broadcastGameState();
 
       currentStageIndex++;
-      // ターン→リバーは1.5倍のディレイ
-      const nextStage = stages[currentStageIndex];
-      const delay = nextStage?.street === 'river'
-        ? TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS * 1.15
-        : TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS;
-      this.runOutTimer = setTimeout(revealNextStage, delay);
+
+      await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.RUNOUT_STREET_DELAY_MS));
+      
+      await revealNextStage();
     };
 
     // 最初のステージを即座に表示開始
-    revealNextStage();
+    await revealNextStage();
   }
 
   private async handleHandComplete(): Promise<void> {
@@ -949,6 +972,10 @@ export class TableInstance {
       }
     }
 
+    // pendingStartHand を先に設定してから isHandInProgress を解除する。
+    // 逆順だと、onHandSettled コールバック内で triggerMaybeStartHand() が呼ばれた際に
+    // 両方のガードが外れた状態になり、ハンドが二重起動する。
+    this.pendingStartHand = true;
     this._isHandInProgress = false;
 
     // チップ精算コールバック（トーナメント等での外部同期用）
@@ -958,8 +985,6 @@ export class TableInstance {
     if (this.lifecycleCallbacks.onHandSettled && settledChips.length > 0) {
       this.lifecycleCallbacks.onHandSettled(settledChips);
     }
-
-    this.pendingStartHand = true;
 
     // 待ち時間
     // ショーダウンかどうかを記録（次ハンド開始までの待ち時間に影響）

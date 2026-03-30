@@ -8,7 +8,7 @@ export interface SeatPlayerParams {
   odId: string;
   odName: string;
   displayName?: string | null;
-  socket: Socket;
+  socket: Socket | null;
   buyIn: number;
   avatarUrl?: string | null;
   preferredSeat?: number;

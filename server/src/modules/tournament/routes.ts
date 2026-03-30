@@ -35,7 +35,10 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           status: { in: ['COMPLETED', 'CANCELLED'] },
           id: { notIn: [...activeIds] },
         },
-        include: { _count: { select: { registrations: true } } },
+        include: {
+          _count: { select: { registrations: true } },
+          registrations: { select: { reentryCount: true } },
+        },
         orderBy: { completedAt: 'desc' },
         take: 20,
       });
@@ -53,6 +56,10 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         scheduledStartTime: t.scheduledStartTime?.toISOString(),
         startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
         isRegistrationOpen: false,
+        allowReentry: t.allowReentry,
+        maxReentries: t.maxReentries,
+        totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
+        reentryDeadlineLevel: t.reentryDeadlineLevel,
       }));
 
       // アクティブ（waiting含む）を先頭、その後に終了済みを開始時刻降順
@@ -68,6 +75,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
 
       // オプショナル認証: ログイン済みならDB参加記録を返す
       let myTournamentId: string | null = null;
+      let canReenterTournamentId: string | null = null;
       try {
         await request.jwtVerify();
         const { userId } = request.user as { userId: string };
@@ -81,11 +89,13 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             select: { tournamentId: true },
           });
           if (reg) {
-            // メモリ上のプレイヤー状態を確認（eliminatedなら表示しない）
             const t = tournamentManager.getTournament(reg.tournamentId);
             const player = t?.getPlayer(userId);
             if (!player || player.status !== 'eliminated') {
               myTournamentId = reg.tournamentId;
+            } else if (t?.canReenter(userId)) {
+              // eliminated かつリエントリー可能
+              canReenterTournamentId = reg.tournamentId;
             }
           }
         }
@@ -93,7 +103,24 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         // 未認証 — myTournamentId は null のまま
       }
 
-      return { tournaments, myTournamentId };
+      // 終了済みトーナメントへの参加履歴
+      let myFinishedTournamentIds: string[] = [];
+      try {
+        if (!myTournamentId) await request.jwtVerify(); // 上で認証済みならスキップされる
+        const { userId } = request.user as { userId: string };
+        const finishedIds = tournaments.filter(t => t.status === 'completed' || t.status === 'cancelled').map(t => t.id);
+        if (finishedIds.length > 0) {
+          const regs = await prisma.tournamentRegistration.findMany({
+            where: { userId, tournamentId: { in: finishedIds } },
+            select: { tournamentId: true },
+          });
+          myFinishedTournamentIds = regs.map(r => r.tournamentId);
+        }
+      } catch {
+        // 未認証
+      }
+
+      return { tournaments, myTournamentId, canReenterTournamentId, myFinishedTournamentIds };
     });
 
     // トーナメント詳細（公開）
@@ -101,7 +128,11 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     fastify.get<{ Params: { id: string } }>('/api/tournaments/:id', async (request, reply) => {
       const tournament = tournamentManager.getTournament(request.params.id);
       if (tournament) {
-        return tournament.getClientState();
+        const state = tournament.getClientState();
+        if (state.status === 'completed') {
+          return { ...state, results: tournament.getResults() };
+        }
+        return state;
       }
 
       // DBから取得（終了済みトーナメント対応）
@@ -244,6 +275,55 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         const message = err instanceof Error && err.message === 'INSUFFICIENT_BALANCE'
           ? '残高が不足しています'
           : '登録に失敗しました';
+        return reply.status(400).send({ error: message });
+      }
+
+      return { success: true, tournamentId };
+    });
+
+    // トーナメント リエントリー（認証必須、DB操作のみ）
+    // テーブル着席はソケット接続時（tournament:request_state）に行う
+    fastify.post<{ Params: { id: string } }>('/api/tournaments/:id/reenter', async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { userId } = request.user as { userId: string };
+      const tournamentId = request.params.id;
+      const tournament = tournamentManager.getTournament(tournamentId);
+      if (!tournament) {
+        return reply.status(404).send({ error: 'トーナメントが見つかりません' });
+      }
+
+      if (!tournament.canReenter(userId)) {
+        return reply.status(400).send({ error: 'リエントリーできません' });
+      }
+
+      const buyIn = tournament.config.buyIn;
+
+      try {
+        await prisma.$transaction(async (tx) => {
+          const updated = await tx.bankroll.updateMany({
+            where: { userId, balance: { gte: buyIn } },
+            data: { balance: { decrement: buyIn } },
+          });
+          if (updated.count === 0) {
+            throw new Error('INSUFFICIENT_BALANCE');
+          }
+          await tx.transaction.create({
+            data: { userId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
+          });
+          await tx.tournamentRegistration.update({
+            where: { tournamentId_userId: { tournamentId, userId } },
+            data: { reentryCount: { increment: 1 } },
+          });
+        });
+      } catch (err) {
+        const message = err instanceof Error && err.message === 'INSUFFICIENT_BALANCE'
+          ? '残高が不足しています'
+          : 'リエントリーに失敗しました';
         return reply.status(400).send({ error: message });
       }
 

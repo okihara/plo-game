@@ -97,7 +97,7 @@ export function PokerTable({
                 state.ante ? `Ante ${formatChips(state.ante)}` : null,
                 state.bringIn ? `BI ${formatChips(state.bringIn)}` : null,
                 `SB ${formatChips(state.smallBlind)}`,
-                `BB ${formatChips(state.bigBlind)}`,
+                `bb ${formatChips(state.bigBlind)}`,
               ].filter(Boolean).map((text, i) => (
                 <span key={i}>
                   {i > 0 && <span className="text-white/30 mr-[2cqw]">|</span>}

@@ -6,6 +6,7 @@ export interface TournamentBotConfig {
   botCount: number;
   tournamentId: string;
   noDelay?: boolean;
+  chaosMode?: boolean; // true: ランダム切断→再接続で不具合を再現する
 }
 
 /**
@@ -48,6 +49,7 @@ export class TournamentBotManager {
         avatarUrl,
         noDelay,
         tournamentMode: true,
+        tournamentChaosMode: this.config.chaosMode,
         disconnectChance: 0,
         onTournamentEliminated: () => this.onBotEliminated(),
         onTournamentCompleted: () => this.onBotCompleted(),

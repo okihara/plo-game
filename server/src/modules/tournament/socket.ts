@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
 import { TournamentConfig } from './types.js';
-import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, PLAYERS_PER_TABLE } from './constants.js';
+import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { prisma } from '../../config/database.js';
 
@@ -103,6 +103,25 @@ export function registerTournamentHandlers(
       }
 
       player = tournament.getPlayer(odId)!;
+    } else if (player.status === 'eliminated') {
+      // eliminated プレイヤー: REST でリエントリー課金済みならメモリ側のリエントリーを実行
+      const reg = await prisma.tournamentRegistration.findUnique({
+        where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
+        select: { reentryCount: true },
+      });
+      if (reg && reg.reentryCount > player.reentryCount) {
+        // DB課金済み → enterPlayer でリエントリー（handleReentry が呼ばれる）
+        const result = tournament.enterPlayer(odId, player.odName, socket);
+        if (!result.success) {
+          socket.emit('tournament:error', { message: result.error ?? 'リエントリーに失敗しました' });
+          return;
+        }
+        player = tournament.getPlayer(odId)!;
+      } else {
+        // リエントリーしていない eliminated → 状態だけ送信
+        player.socket = socket;
+        socket.join(`tournament:${data.tournamentId}`);
+      }
     } else {
       // 既存プレイヤー: ソケット更新（ページ遷移でリスナーが変わるため）
       player.socket = socket;
@@ -118,144 +137,6 @@ export function registerTournamentHandlers(
       if (table) {
         table.reconnectPlayer(odId, socket);
       }
-    }
-  });
-
-  // トーナメント参加登録
-  socket.on('tournament:register', async (data: { tournamentId: string }) => {
-    const tournament = tournamentManager.getTournament(data.tournamentId);
-    if (!tournament) {
-      socket.emit('tournament:error', { message: 'トーナメントが見つかりません' });
-      return;
-    }
-
-    // 既に登録済みなら再接続として処理（切断復帰フロー）
-    const existingPlayer = tournament.getPlayer(odId);
-    if (existingPlayer) {
-      if (existingPlayer.status === 'eliminated') {
-        socket.emit('tournament:error', { message: 'このトーナメントでは既に敗退しています' });
-        return;
-      }
-      tournament.handleReconnect(odId, socket);
-      tournamentManager.setPlayerTournament(odId, data.tournamentId);
-      socket.emit('tournament:registered', { tournamentId: data.tournamentId });
-      return;
-    }
-
-    const buyIn = tournament.config.buyIn;
-
-    // ユーザー情報を取得（残高チェックはトランザクション内で行う）
-    const user = await prisma.user.findUnique({
-      where: { id: odId },
-      select: { username: true, displayName: true, avatarUrl: true, nameMasked: true },
-    });
-    if (!user) {
-      socket.emit('tournament:error', { message: 'ユーザーが見つかりません' });
-      return;
-    }
-
-    const result = await withDbAndMemory({
-      label: 'Register',
-      odId,
-      dbOps: async (tx) => {
-        // 残高チェックをトランザクション内で行いレースコンディションを防止
-        const updated = await tx.bankroll.updateMany({
-          where: { userId: odId, balance: { gte: buyIn } },
-          data: { balance: { decrement: buyIn } },
-        });
-        if (updated.count === 0) {
-          throw new Error('INSUFFICIENT_BALANCE');
-        }
-        await tx.transaction.create({
-          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
-        });
-        await tx.tournamentRegistration.upsert({
-          where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
-          create: { tournamentId: data.tournamentId, userId: odId },
-          update: {},
-        });
-      },
-      memoryOp: () => {
-        return tournament.enterPlayer(odId, user.username, socket, {
-          displayName: user.displayName,
-          avatarUrl: user.avatarUrl,
-          nameMasked: user.nameMasked,
-        });
-      },
-      compensate: async (tx) => {
-        await tx.bankroll.update({
-          where: { userId: odId },
-          data: { balance: { increment: buyIn } },
-        });
-        await tx.transaction.create({
-          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: buyIn },
-        });
-        await tx.tournamentRegistration.deleteMany({
-          where: { tournamentId: data.tournamentId, userId: odId },
-        });
-      },
-    });
-
-    if (!result.success) {
-      socket.emit('tournament:error', { message: result.error ?? '登録に失敗しました' });
-      return;
-    }
-
-    tournamentManager.setPlayerTournament(odId, data.tournamentId);
-    socket.emit('tournament:registered', { tournamentId: data.tournamentId });
-  });
-
-  // リエントリー
-  socket.on('tournament:reenter', async (data: { tournamentId: string }) => {
-    const tournament = tournamentManager.getTournament(data.tournamentId);
-    if (!tournament) {
-      socket.emit('tournament:error', { message: 'トーナメントが見つかりません' });
-      return;
-    }
-
-    const buyIn = tournament.config.buyIn;
-    const result = await withDbAndMemory({
-      label: 'Reentry',
-      odId,
-      dbOps: async (tx) => {
-        // 残高チェックをトランザクション内で行いレースコンディションを防止
-        const updated = await tx.bankroll.updateMany({
-          where: { userId: odId, balance: { gte: buyIn } },
-          data: { balance: { decrement: buyIn } },
-        });
-        if (updated.count === 0) {
-          throw new Error('INSUFFICIENT_BALANCE');
-        }
-        await tx.transaction.create({
-          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
-        });
-        await tx.tournamentRegistration.update({
-          where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
-          data: { reentryCount: { increment: 1 } },
-        });
-      },
-      memoryOp: () => {
-        const player = tournament.getPlayer(odId);
-        return tournament.enterPlayer(odId, player?.odName ?? odId, socket);
-      },
-      compensate: async (tx) => {
-        await tx.bankroll.update({
-          where: { userId: odId },
-          data: { balance: { increment: buyIn } },
-        });
-        await tx.transaction.create({
-          data: { userId: odId, type: 'TOURNAMENT_BUY_IN', amount: buyIn },
-        });
-        await tx.tournamentRegistration.update({
-          where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
-          data: { reentryCount: { decrement: 1 } },
-        });
-      },
-    });
-
-    if (!result.success) {
-      socket.emit('tournament:error', { message: result.error ?? 'リエントリーに失敗しました' });
-      return;
     }
   });
 
@@ -286,9 +167,9 @@ export function createTournamentFromConfig(
     startCondition: options?.startCondition ?? 'manual',
     scheduledStartTime: options?.scheduledStartTime,
     requiredPlayerCount: options?.requiredPlayerCount,
-    allowReentry: options?.allowReentry ?? false,
-    maxReentries: options?.maxReentries ?? 0,
-    reentryDeadlineLevel: options?.reentryDeadlineLevel ?? 4,
+    allowReentry: options?.allowReentry ?? true,
+    maxReentries: options?.maxReentries ?? DEFAULT_MAX_REENTRIES,
+    reentryDeadlineLevel: options?.reentryDeadlineLevel ?? DEFAULT_REGISTRATION_LEVELS,
   };
 
   tournamentManager.createTournament(config);

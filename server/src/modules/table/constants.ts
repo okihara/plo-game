@@ -11,10 +11,10 @@ export const TABLE_CONSTANTS = {
   ACTION_TIMEOUT_MS: 20000,
   ACTION_ANIMATION_DELAY_MS: 1200,    // ストリート変更前のアクション演出待ち
   STREET_TRANSITION_DELAY_MS: 800,    // コミュニティカード確認時間
-  SHOWDOWN_DELAY_MS: 2000,            // ショウダウンカード公開前の待ち時間
-  HAND_COMPLETE_DELAY_MS: 2000,       // hand_complete表示前の待ち時間
-  NEXT_HAND_DELAY_MS: 2000,           // 通常ハンド完了後の次ハンドまでの待ち時間
-  NEXT_HAND_SHOWDOWN_DELAY_MS: 5000,  // ショウダウン後の次ハンドまでの待ち時間
+  SHOWDOWN_DELAY_MS: 1800,            // ショウダウンカード公開前の待ち時間
+  HAND_COMPLETE_DELAY_MS: 1800,       // hand_complete表示前の待ち時間
+  NEXT_HAND_DELAY_MS: 1800,           // 通常ハンド完了後の次ハンドまでの待ち時間
+  NEXT_HAND_SHOWDOWN_DELAY_MS: 4200,  // ショウダウン後の次ハンドまでの待ち時間
   RUNOUT_STREET_DELAY_MS: 1500,       // オールイン時の各ストリート表示間隔
   
   // レーキ

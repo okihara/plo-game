@@ -23,7 +23,6 @@ export interface AdvanceResult {
 
 export class ActionController {
   private actionTimer: NodeJS.Timeout | null = null;
-  private streetTransitionTimer: NodeJS.Timeout | null = null;
   private pendingAction: PendingAction | null = null;
   private actionGeneration = 0;
 
@@ -47,10 +46,6 @@ export class ActionController {
     if (this.actionTimer) {
       clearTimeout(this.actionTimer);
       this.actionTimer = null;
-    }
-    if (this.streetTransitionTimer) {
-      clearTimeout(this.streetTransitionTimer);
-      this.streetTransitionTimer = null;
     }
     this.pendingAction = null;
   }
@@ -184,7 +179,8 @@ export class ActionController {
     const currentSeat = seats[currentPlayerIndex];
 
     // 切断・離席済みプレイヤーの処理（FoldProcessorに委譲）
-    if (!currentSeat || !currentSeat.socket) {
+    // socket が null、または socket.connected が false（トーナメント切断プレイヤー等）の場合は即座にフォールド
+    if (!currentSeat || !currentSeat.socket || !currentSeat.socket.connected) {
       onDisconnectedFold();
       return;
     }
@@ -216,29 +212,4 @@ export class ActionController {
     }, TABLE_CONSTANTS.ACTION_TIMEOUT_MS);
   }
 
-  /**
-   * アクション演出待ちの遅延処理（ストリート変更前の一拍）
-   */
-  scheduleActionAnimation(callback: () => void): void {
-    if (this.streetTransitionTimer) {
-      clearTimeout(this.streetTransitionTimer);
-    }
-    this.streetTransitionTimer = setTimeout(() => {
-      this.streetTransitionTimer = null;
-      callback();
-    }, TABLE_CONSTANTS.ACTION_ANIMATION_DELAY_MS);
-  }
-
-  /**
-   * ストリート遷移の遅延処理（コミュニティカード確認時間）
-   */
-  scheduleStreetTransition(callback: () => void): void {
-    if (this.streetTransitionTimer) {
-      clearTimeout(this.streetTransitionTimer);
-    }
-    this.streetTransitionTimer = setTimeout(() => {
-      this.streetTransitionTimer = null;
-      callback();
-    }, TABLE_CONSTANTS.STREET_TRANSITION_DELAY_MS);
-  }
 }

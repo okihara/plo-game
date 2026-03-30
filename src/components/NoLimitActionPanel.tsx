@@ -1,6 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GameState, Action } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import {
+  betSliderAmountToNearestIndex,
+  betSliderChipStepFromSmallBlind,
+  betSliderIndexToAmount,
+  betSliderMaxIndex,
+} from '../utils/betSliderRange';
 
 interface NoLimitActionPanelProps {
   state: GameState;
@@ -22,14 +28,29 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
   const minRaise = Math.max(minRaiseTotal - myPlayer.currentBet, state.bigBlind);
   const maxRaise = myPlayer.chips;
 
-  const [sliderValue, setSliderValue] = useState(minRaise);
+  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind);
+  const maxSliderIndex = betSliderMaxIndex(minRaise, maxRaise, chipStep);
+
+  const [sliderIndex, setSliderIndex] = useState(0);
   const [actionSent, setActionSent] = useState(false);
   const [prefoldChecked, setPrefoldChecked] = useState(false);
   const prefoldTriggeredRef = useRef(false);
 
+  const sliderValue = useMemo(
+    () => betSliderIndexToAmount(sliderIndex, minRaise, maxRaise, chipStep),
+    [sliderIndex, minRaise, maxRaise, chipStep],
+  );
+  const sliderTotalChips = myPlayer.currentBet + sliderValue;
+
+  const prevMinRaiseRef = useRef(minRaise);
   useEffect(() => {
-    setSliderValue(minRaise);
-  }, [minRaise]);
+    if (prevMinRaiseRef.current !== minRaise) {
+      prevMinRaiseRef.current = minRaise;
+      setSliderIndex(0);
+      return;
+    }
+    setSliderIndex((i) => Math.min(i, betSliderMaxIndex(minRaise, maxRaise, chipStep)));
+  }, [minRaise, maxRaise, chipStep]);
 
   useEffect(() => {
     setActionSent(false);
@@ -56,8 +77,8 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
   const handlePreset = useCallback((preset: number) => {
     const betByPot = Math.round((state.pot + toCall) * preset) + toCall;
     const clampedValue = Math.max(minRaise, Math.min(maxRaise, betByPot));
-    setSliderValue(clampedValue);
-  }, [state.pot, toCall, minRaise, maxRaise]);
+    setSliderIndex(betSliderAmountToNearestIndex(clampedValue, minRaise, maxRaise, chipStep));
+  }, [state.pot, toCall, minRaise, maxRaise, chipStep]);
 
   const handleAction = useCallback((action: Action) => {
     let amount = 0;
@@ -94,17 +115,17 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
         </div>
         <div className="w-1/2 flex items-center gap-[1.8cqw]">
           <span className="text-emerald-400 font-bold text-[2.7cqw] min-w-[10.7cqw] text-right border-2 border-gray-600 rounded px-[1.8cqw] py-[0.9cqw] bg-gray-800">
-            {formatChips(sliderValue)}
+            {formatChips(sliderTotalChips)}
           </span>
           <input
             type="range"
-            min={minRaise}
-            max={maxRaise}
-            value={sliderValue}
+            min={0}
+            max={maxSliderIndex}
+            value={sliderIndex}
             step={1}
-            onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
+            onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
             disabled={!canRaise || !isMyTurn || actionSent}
-            className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[5.4cqw] [&::-webkit-slider-thumb]:h-[5.4cqw] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
+            className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[2.8cqw] [&::-webkit-slider-thumb]:h-[7.2cqw] [&::-webkit-slider-thumb]:rounded-[0.6cqw] [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:h-[7.2cqw] [&::-moz-range-thumb]:w-[2.8cqw] [&::-moz-range-thumb]:rounded-[0.6cqw] [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-emerald-400 [&::-moz-range-thumb]:to-emerald-600 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md"
           />
         </div>
       </div>
@@ -134,7 +155,7 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
           <button
             onClick={() => handleAction('fold')}
             disabled={!(isMyTurn && !actionSent && !canCheck)}
-            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
+            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
           >
             FOLD
           </button>
@@ -142,24 +163,24 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
           disabled={!isMyTurn || actionSent || isShortStack}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
               : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
           }`}
         >
-          {toCall === 0 ? 'CHECK' : `CALL ${formatChips(toCall)}`}
+          {toCall === 0 ? 'CHECK' : `CALL ${formatChips(myPlayer.currentBet + toCall)}`}
         </button>
         <button
           onClick={() => handleAction(isShortStack ? 'allin' : sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
           disabled={isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent)}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             isShortStack || sliderValue >= myPlayer.chips
               ? 'bg-gradient-to-b from-red-500 to-red-600'
               : 'bg-gradient-to-b from-amber-500 to-amber-600'
           }`}
         >
-          {isShortStack || sliderValue >= myPlayer.chips ? `ALL IN ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `BET ${formatChips(sliderValue)}` : `RAISE ${formatChips(sliderValue)}`}
+          {isShortStack || sliderValue >= myPlayer.chips ? `ALL IN ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `BET ${formatChips(sliderTotalChips)}` : `RAISE ${formatChips(sliderTotalChips)}`}
         </button>
       </div>
     </div>

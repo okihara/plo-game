@@ -5,14 +5,12 @@ interface HandAnalysisOverlayProps {
   holeCards: CardType[];
   communityCards: CardType[];
   isVisible: boolean;
-  onClose: () => void;
 }
 
 export function HandAnalysisOverlay({
   holeCards,
   communityCards,
   isVisible,
-  onClose,
 }: HandAnalysisOverlayProps) {
   const preflopEval = useMemo(
     () => isVisible ? getPreFlopEvaluation(holeCards) : null,
@@ -39,49 +37,43 @@ export function HandAnalysisOverlay({
   const isPreflop = communityCards.length < 3;
 
   return (
-    <div className="absolute top-[3%] left-[2%] z-50 pointer-events-auto">
-      <div className="bg-black/70 border border-gray-600 rounded-md p-[1vh] min-w-[18vh] shadow-xl text-[1.2vh] backdrop-blur-sm">
+    <div className="absolute bottom-[25cqw] left-[0.7cqw] z-50 pointer-events-auto shrink-0">
+      <div className="bg-black/70 border border-gray-600 rounded p-[1cqw] shadow-xl text-[2.5cqw] backdrop-blur-sm w-[20cqw]">
         {/* ヘッダー */}
-        <div className="flex justify-between items-center mb-[0.8vh] border-b border-gray-700 pb-[0.5vh]">
-          <span className="text-white font-bold">オープンハンド評価</span>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-[1.5vh] leading-none"
-          >
-            ×
-          </button>
+        <div className="flex justify-between items-center mb-[0.3cqw] border-b border-gray-700 pb-[0.3cqw]">
+          <span className="text-white/80 font-bold text-[2.5cqw]">オープン評価</span>
         </div>
 
         {/* プリフロップ評価 */}
-        <div className="mb-[1vh]">
-          <div className="text-white font-bold text-[1.5vh] mb-[0.5vh]">
-            スコア: {preflopEval.score.toFixed(2)}
+        <div className={!isPreflop && postflopInfo ? 'mb-[0.5cqw]' : ''}>
+          <div className="text-white font-bold text-[3cqw] mb-[0.3cqw]">
+            {preflopEval.score.toFixed(2)}
           </div>
-          <div className="flex flex-col gap-[0.3vh]">
+          <div className="flex flex-col gap-[0.1cqw]">
             <EvalItem label="ペア" value={preflopEval.pairRank} positive={!!preflopEval.pairRank} />
-            <EvalItem label="Aスート" value={preflopEval.hasAceSuited ? "あり" : "なし"} positive={preflopEval.hasAceSuited} />
-            <EvalItem label="ダブルスート" value={preflopEval.isDoubleSuited ? "あり" : "なし"} positive={preflopEval.isDoubleSuited} />
-            <EvalItem label="シングルスート" value={preflopEval.isSingleSuited ? "あり" : "なし"} positive={preflopEval.isSingleSuited} />
-            <EvalItem label="ランダウン" value={preflopEval.isRundown ? "あり" : "なし"} positive={preflopEval.isRundown} />
-            <EvalItem label="ラップ" value={preflopEval.hasWrap ? "あり" : "なし"} positive={preflopEval.hasWrap} />
-            <EvalItem label="ダングラー" value={preflopEval.hasDangler ? "あり" : "なし"} positive={false} negative={preflopEval.hasDangler} />
+            <EvalItem label="A♠" value={preflopEval.hasAceSuited ? "✓" : "-"} positive={preflopEval.hasAceSuited} />
+            <EvalItem label="DS" value={preflopEval.isDoubleSuited ? "✓" : "-"} positive={preflopEval.isDoubleSuited} />
+            <EvalItem label="SS" value={preflopEval.isSingleSuited ? "✓" : "-"} positive={preflopEval.isSingleSuited} />
+            <EvalItem label="Run" value={preflopEval.isRundown ? "✓" : "-"} positive={preflopEval.isRundown} />
+            <EvalItem label="Wrap" value={preflopEval.hasWrap ? "✓" : "-"} positive={preflopEval.hasWrap} />
+            <EvalItem label="Dng" value={preflopEval.hasDangler ? "!" : "-"} positive={false} negative={preflopEval.hasDangler} />
           </div>
         </div>
 
         {/* ポストフロップ評価 */}
         {!isPreflop && postflopInfo && (
-          <div className="border-t border-gray-700 pt-[0.8vh]">
-            <div className="flex flex-col gap-[0.3vh]">
+          <div className="border-t border-gray-700 pt-[0.3cqw]">
+            <div className="flex flex-col gap-[0.1cqw]">
               {postflopInfo.handRank && (
                 <div className="flex justify-between">
-                  <span className="text-gray-400">ハンド</span>
+                  <span className="text-gray-400">役</span>
                   <span className="text-yellow-300 font-bold">{postflopInfo.handRank.name}</span>
                 </div>
               )}
               {postflopInfo.outs && (
                 <>
-                  <OutsItem label="フラッシュ" value={postflopInfo.outs.flushOuts} icon="♣" />
-                  <OutsItem label="ストレート" value={postflopInfo.outs.straightOuts} icon="→" />
+                  <OutsItem label="F" value={postflopInfo.outs.flushOuts} icon="♣" />
+                  <OutsItem label="S" value={postflopInfo.outs.straightOuts} icon="→" />
                 </>
               )}
             </div>

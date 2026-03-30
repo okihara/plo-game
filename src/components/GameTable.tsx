@@ -215,7 +215,7 @@ export function GameTable({
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-10 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
+          <div className={`absolute top-0 left-0 right-0 ${showSettingsMenu ? 'z-[200]' : 'z-10'} h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]`}>
             <button
               onClick={onBack}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
@@ -290,7 +290,7 @@ export function GameTable({
                     className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
                     style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                   >
-                    <span>BB表記</span>
+                    <span>bb表記</span>
                     <span className={settings.useBBNotation ? 'text-emerald-400' : 'text-gray-500'}>
                       {settings.useBBNotation ? '✓' : ''}
                     </span>
@@ -394,7 +394,6 @@ export function GameTable({
               holeCards={myHoleCards}
               communityCards={gameState.communityCards}
               isVisible={analysisEnabled && gameState.currentStreet === 'preflop'}
-              onClose={() => setAnalysisEnabled(false)}
             />
           )}
 
