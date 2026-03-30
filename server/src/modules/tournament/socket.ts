@@ -167,8 +167,8 @@ export function createTournamentFromConfig(
     startCondition: options?.startCondition ?? 'manual',
     scheduledStartTime: options?.scheduledStartTime,
     requiredPlayerCount: options?.requiredPlayerCount,
-    allowReentry: options?.allowReentry ?? false,
-    maxReentries: options?.maxReentries ?? 0,
+    allowReentry: options?.allowReentry ?? true,
+    maxReentries: options?.maxReentries ?? 2,
     reentryDeadlineLevel: options?.reentryDeadlineLevel ?? 4,
   };
 
