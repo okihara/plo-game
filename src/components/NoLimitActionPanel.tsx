@@ -1,6 +1,12 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
 import { GameState, Action } from '../logic';
 import { useGameSettings } from '../contexts/GameSettingsContext';
+import {
+  betSliderAmountToNearestIndex,
+  betSliderChipStepFromSmallBlind,
+  betSliderIndexToAmount,
+  betSliderMaxIndex,
+} from '../utils/betSliderRange';
 
 interface NoLimitActionPanelProps {
   state: GameState;
@@ -22,14 +28,28 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
   const minRaise = Math.max(minRaiseTotal - myPlayer.currentBet, state.bigBlind);
   const maxRaise = myPlayer.chips;
 
-  const [sliderValue, setSliderValue] = useState(minRaise);
+  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind);
+  const maxSliderIndex = betSliderMaxIndex(minRaise, maxRaise, chipStep);
+
+  const [sliderIndex, setSliderIndex] = useState(0);
   const [actionSent, setActionSent] = useState(false);
   const [prefoldChecked, setPrefoldChecked] = useState(false);
   const prefoldTriggeredRef = useRef(false);
 
+  const sliderValue = useMemo(
+    () => betSliderIndexToAmount(sliderIndex, minRaise, maxRaise, chipStep),
+    [sliderIndex, minRaise, maxRaise, chipStep],
+  );
+
+  const prevMinRaiseRef = useRef(minRaise);
   useEffect(() => {
-    setSliderValue(minRaise);
-  }, [minRaise]);
+    if (prevMinRaiseRef.current !== minRaise) {
+      prevMinRaiseRef.current = minRaise;
+      setSliderIndex(0);
+      return;
+    }
+    setSliderIndex((i) => Math.min(i, betSliderMaxIndex(minRaise, maxRaise, chipStep)));
+  }, [minRaise, maxRaise, chipStep]);
 
   useEffect(() => {
     setActionSent(false);
@@ -56,8 +76,8 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
   const handlePreset = useCallback((preset: number) => {
     const betByPot = Math.round((state.pot + toCall) * preset) + toCall;
     const clampedValue = Math.max(minRaise, Math.min(maxRaise, betByPot));
-    setSliderValue(clampedValue);
-  }, [state.pot, toCall, minRaise, maxRaise]);
+    setSliderIndex(betSliderAmountToNearestIndex(clampedValue, minRaise, maxRaise, chipStep));
+  }, [state.pot, toCall, minRaise, maxRaise, chipStep]);
 
   const handleAction = useCallback((action: Action) => {
     let amount = 0;
@@ -98,11 +118,11 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
           </span>
           <input
             type="range"
-            min={minRaise}
-            max={maxRaise}
-            value={sliderValue}
+            min={0}
+            max={maxSliderIndex}
+            value={sliderIndex}
             step={1}
-            onChange={(e) => setSliderValue(parseInt(e.target.value, 10))}
+            onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
             disabled={!canRaise || !isMyTurn || actionSent}
             className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[5.4cqw] [&::-webkit-slider-thumb]:h-[5.4cqw] [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md"
           />
