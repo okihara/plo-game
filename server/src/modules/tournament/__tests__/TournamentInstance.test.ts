@@ -798,6 +798,48 @@ describe('TournamentInstance', () => {
   });
 
   // ============================================
+  // G-3. 切断中プレイヤーのテーブルバランシング
+  // ============================================
+
+  describe('切断中プレイヤーのテーブルバランシング', () => {
+    it('切断中のプレイヤーもmovePlayerで移動される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+      startAndEnterNPlayers(tournament, 8);
+
+      expect(tournament.getTableCount()).toBe(2);
+
+      const tables = (tournament as any).tables as Map<string, any>;
+      const tablePlayerMap = (tournament as any).tablePlayerMap as Map<string, Set<string>>;
+      const tableEntries = Array.from(tables.entries()) as [string, any][];
+
+      // テーブルAとBを取得
+      const [tableAId] = tableEntries[0];
+      const [tableBId] = tableEntries[1];
+      const tableAPlayers = Array.from(tablePlayerMap.get(tableAId) ?? []);
+
+      // テーブルAのプレイヤーを1人選んで切断する
+      const disconnectedPlayer = tableAPlayers[0];
+      tournament.handleDisconnect(disconnectedPlayer);
+
+      const player = tournament.getPlayer(disconnectedPlayer);
+      expect(player?.socket).toBeNull();
+      expect(player?.status).toBe('disconnected');
+      expect(player?.tableId).toBe(tableAId);
+
+      // movePlayer を直接呼び出して切断中プレイヤーの移動をテスト
+      const movePlayer = (tournament as any).movePlayer.bind(tournament);
+      movePlayer(disconnectedPlayer, tableAId, tableBId);
+
+      // 切断中プレイヤーがテーブルBに移動していることを確認
+      const movedPlayer = tournament.getPlayer(disconnectedPlayer);
+      expect(movedPlayer?.tableId).toBe(tableBId);
+    });
+  });
+
+  // ============================================
   // H. リエントリーテスト
   // ============================================
 
