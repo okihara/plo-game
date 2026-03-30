@@ -21,7 +21,7 @@ function ActionButton({ onClick, disabled, colorFrom, colorTo, borderColor, labe
     <button
       onClick={onClick}
       disabled={disabled}
-      className={`h-[11cqw] rounded-[1cqw] text-[3.5cqw] font-bold uppercase tracking-wide transition-all active:scale-95 active:shadow-none active:border-b-0 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-lg bg-gradient-to-b ${colorFrom} ${colorTo} border-b-[0.8cqw] ${borderColor} ${className}`}
+      className={`h-[11cqw] rounded-[1cqw] text-[3.5cqw] font-bold tracking-wide transition-all active:scale-95 active:shadow-none active:border-b-0 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-lg bg-gradient-to-b ${colorFrom} ${colorTo} border-b-[0.8cqw] ${borderColor} ${className}`}
     >
       {label}
     </button>
@@ -174,17 +174,20 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
 
   // 中央ボタン: check or call
   const centerAction: Action = canCheck ? 'check' : 'call';
-  const centerLabel = canCheck ? 'CHECK' : `CALL ${formatChips(toCall)}`;
+  const centerLabel = canCheck ? 'CHECK' : `CALL ${formatChips(myPlayer.currentBet + toCall)}`;
   const centerDisabled = !isMyTurn || actionSent || (!canCheck && !callInfo) || isShortStack;
 
   // 右ボタン: bet/raise/allin
   const rightAction: Action = isShortStack || sliderValue >= myPlayer.chips ? 'allin'
     : betInfo ? 'bet' : 'raise';
+  const raiseToChips = myPlayer.currentBet + (isFixedLimit ? minRaise : sliderValue);
+  /** スライダー・BET/RAISE 表記: このストリートでの自分の合計ベット（currentBet + 増分） */
+  const sliderTotalChips = myPlayer.currentBet + sliderValue;
   const rightLabel = isShortStack || sliderValue >= myPlayer.chips
     ? `ALL IN ${formatChips(allinInfo?.minAmount ?? myPlayer.chips)}`
     : isFixedLimit
-      ? (betInfo ? `BET ${formatChips(minRaise)}` : `RAISE ${formatChips(minRaise)}`)
-      : (betInfo ? `BET ${formatChips(sliderValue)}` : `RAISE ${formatChips(sliderValue)}`);
+      ? (betInfo ? `BET ${formatChips(minRaise)}` : `RAISE ${formatChips(raiseToChips)}`)
+      : (betInfo ? `BET ${formatChips(sliderTotalChips)}` : `RAISE ${formatChips(sliderTotalChips)}`);
   const rightDisabled = isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent);
 
   // スライダー表示: 可変額のbet/raiseがある場合のみ（Fixed Limitでは非表示）
@@ -197,9 +200,9 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
         <div className={`flex items-center gap-[1.8cqw] px-[0cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           <div className="w-1/2 flex gap-[0.9cqw]">
             {[
-              { label: '1/3', value: 0.33 },
-              { label: '1/2', value: 0.5 },
-              { label: '3/4', value: 0.75 },
+              { label: '33%', value: 0.33 },
+              { label: '50%', value: 0.5 },
+              { label: '75%', value: 0.75 },
               { label: 'Pot', value: 1 },
             ].map(({ label, value }) => (
               <button
@@ -214,7 +217,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
           </div>
           <div className="w-1/2 flex items-center gap-[1.8cqw]">
             <span className="text-emerald-400 text-[3.5cqw] w-[14.6cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
-              {formatChips(sliderValue)}
+              {formatChips(sliderTotalChips)}
             </span>
             <input
               type="range"

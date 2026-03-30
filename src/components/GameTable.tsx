@@ -290,7 +290,7 @@ export function GameTable({
                     className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
                     style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
                   >
-                    <span>BB表記</span>
+                    <span>bb表記</span>
                     <span className={settings.useBBNotation ? 'text-emerald-400' : 'text-gray-500'}>
                       {settings.useBBNotation ? '✓' : ''}
                     </span>

@@ -130,7 +130,7 @@ export function FixedLimitActionPanel({ state, mySeat, onAction }: FixedLimitAct
           <button
             onClick={() => handleAction('fold')}
             disabled={!(isMyTurn && !actionSent && !canCheck && !isBringInPhase)}
-            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
+            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
           >
             FOLD
           </button>
@@ -138,7 +138,7 @@ export function FixedLimitActionPanel({ state, mySeat, onAction }: FixedLimitAct
         <button
           onClick={() => handleAction(isBringInPhase ? 'call' : toCall === 0 ? 'check' : 'call')}
           disabled={!isMyTurn || actionSent || isShortStack}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0 && !isBringInPhase
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
               : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
@@ -149,7 +149,7 @@ export function FixedLimitActionPanel({ state, mySeat, onAction }: FixedLimitAct
         <button
           onClick={() => handleAction(isAllIn ? 'allin' : isBetAction ? 'bet' : 'raise')}
           disabled={isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent)}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             isAllIn
               ? 'bg-gradient-to-b from-red-500 to-red-600'
               : 'bg-gradient-to-b from-amber-500 to-amber-600'

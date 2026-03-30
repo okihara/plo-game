@@ -40,6 +40,7 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
     () => betSliderIndexToAmount(sliderIndex, minRaise, maxRaise, chipStep),
     [sliderIndex, minRaise, maxRaise, chipStep],
   );
+  const sliderTotalChips = myPlayer.currentBet + sliderValue;
 
   const prevMinRaiseRef = useRef(minRaise);
   useEffect(() => {
@@ -114,7 +115,7 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
         </div>
         <div className="w-1/2 flex items-center gap-[1.8cqw]">
           <span className="text-emerald-400 font-bold text-[2.7cqw] min-w-[10.7cqw] text-right border-2 border-gray-600 rounded px-[1.8cqw] py-[0.9cqw] bg-gray-800">
-            {formatChips(sliderValue)}
+            {formatChips(sliderTotalChips)}
           </span>
           <input
             type="range"
@@ -154,7 +155,7 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
           <button
             onClick={() => handleAction('fold')}
             disabled={!(isMyTurn && !actionSent && !canCheck)}
-            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
+            className="flex-1 py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md bg-gradient-to-b from-gray-500 to-gray-600"
           >
             FOLD
           </button>
@@ -162,24 +163,24 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
         <button
           onClick={() => handleAction(toCall === 0 ? 'check' : 'call')}
           disabled={!isMyTurn || actionSent || isShortStack}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             toCall === 0
               ? 'bg-gradient-to-b from-blue-500 to-blue-600'
               : 'bg-gradient-to-b from-emerald-500 to-emerald-600'
           }`}
         >
-          {toCall === 0 ? 'CHECK' : `CALL ${formatChips(toCall)}`}
+          {toCall === 0 ? 'CHECK' : `CALL ${formatChips(myPlayer.currentBet + toCall)}`}
         </button>
         <button
           onClick={() => handleAction(isShortStack ? 'allin' : sliderValue >= myPlayer.chips ? 'allin' : state.currentBet === 0 ? 'bet' : 'raise')}
           disabled={isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent)}
-          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold uppercase tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
+          className={`py-[3.2cqw] px-[1.8cqw] rounded-xl text-[2.7cqw] font-bold tracking-wide transition-all active:scale-95 disabled:brightness-[0.3] disabled:cursor-not-allowed text-white shadow-md ${
             isShortStack || sliderValue >= myPlayer.chips
               ? 'bg-gradient-to-b from-red-500 to-red-600'
               : 'bg-gradient-to-b from-amber-500 to-amber-600'
           }`}
         >
-          {isShortStack || sliderValue >= myPlayer.chips ? `ALL IN ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `BET ${formatChips(sliderValue)}` : `RAISE ${formatChips(sliderValue)}`}
+          {isShortStack || sliderValue >= myPlayer.chips ? `ALL IN ${formatChips(myPlayer.chips)}` : state.currentBet === 0 ? `BET ${formatChips(sliderTotalChips)}` : `RAISE ${formatChips(sliderTotalChips)}`}
         </button>
       </div>
     </div>
