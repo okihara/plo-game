@@ -30,6 +30,8 @@ export function useTournamentState() {
   const [lastEliminated, setLastEliminated] = useState<TournamentPlayerEliminatedData | null>(null);
   const [blindChangeNotice, setBlindChangeNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
 
   const eliminatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blindNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -192,6 +194,13 @@ export function useTournamentState() {
         setRegisteredTournamentId(null);
         setError('トーナメントがキャンセルされました');
       },
+
+      onMaintenanceStatus: (data) => {
+        setMaintenanceStatus(data);
+      },
+      onAnnouncementStatus: (data) => {
+        setAnnouncementStatus(data);
+      },
     });
 
     return () => {
@@ -230,6 +239,8 @@ export function useTournamentState() {
     lastEliminated,
     blindChangeNotice,
     error,
+    maintenanceStatus,
+    announcementStatus,
 
     // Actions
     clearElimination,

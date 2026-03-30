@@ -25,6 +25,8 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     blindChangeNotice,
     clearElimination,
     clearCompleted,
+    maintenanceStatus,
+    announcementStatus,
   } = useTournamentState();
 
   const [blinds, setBlinds] = useState('1/2');
@@ -139,6 +141,8 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
         onBack={handleBack}
         blindsLabel={blinds}
         notice={blindChangeNotice}
+        maintenanceStatus={maintenanceStatus}
+        announcementStatus={announcementStatus}
       >
         {/* トーナメントHUD（オーバーレイ） */}
         {tournamentState && (
