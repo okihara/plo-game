@@ -1,18 +1,14 @@
 /**
- * スライダーのチップ刻みは、この並びのうち「SB 以下で最大」（SB に最も近い同値かそれより小さい段）を使う。
+ * スライダーのチップ刻み: SB === 1 のみ例外で 1。それ以外は floor(SB/5)（0 になる場合は 1）。
  * 右端は常に maxRaise（ポット上限やスタックにクランプされた最大レイズ額）。
  */
-
-export const BET_SLIDER_DENOMINATIONS = [1, 100, 500, 1000, 5000, 25000] as const;
 
 /** SB が 0 以下のときは 1 を返す */
 export function betSliderChipStepFromSmallBlind(smallBlind: number): number {
   if (smallBlind <= 0) return 1;
-  let step = 1;
-  for (const d of BET_SLIDER_DENOMINATIONS) {
-    if (d <= smallBlind) step = d;
-  }
-  return step;
+  if (smallBlind === 1) return 1;
+  const step = Math.floor(smallBlind / 5);
+  return step >= 1 ? step : 1;
 }
 
 export function betSliderMaxIndex(minRaise: number, maxRaise: number, chipStep: number): number {
