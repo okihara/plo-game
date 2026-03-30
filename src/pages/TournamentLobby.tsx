@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useTournamentState, TournamentLobbyInfo } from '../hooks/useTournamentState';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy, Users, Clock, ChevronLeft, Loader2 } from 'lucide-react';
-import { formatChips } from '../utils/formatChips';
+import { Trophy, Clock, ChevronLeft, Loader2 } from 'lucide-react';
 
 interface TournamentLobbyProps {
   onJoinTournament: (tournamentId: string) => void;
-  onViewResult: (tournamentId: string) => void;
+  onViewMyResult: (tournamentId: string) => void;
+  onViewResults: (tournamentId: string) => void;
   onBack: () => void;
 }
 
@@ -29,7 +29,7 @@ function statusLabel(status: string): { text: string; color: string } {
   }
 }
 
-export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: TournamentLobbyProps) {
+export function TournamentLobby({ onJoinTournament, onViewMyResult, onViewResults, onBack }: TournamentLobbyProps) {
   const { user } = useAuth();
   const {
     tournaments,
@@ -37,6 +37,7 @@ export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: Tour
     isListLoading,
     registeredTournamentId,
     canReenterTournamentId,
+    myFinishedTournamentIds,
     register,
     reenter,
     error,
@@ -124,10 +125,12 @@ export function TournamentLobby({ onJoinTournament, onViewResult, onBack }: Tour
                 canReenter={canReenterTournamentId === t.id}
                 isReentering={reentering === t.id}
                 isLoggedIn={!!user}
+                hasParticipated={myFinishedTournamentIds.has(t.id)}
                 onRegister={() => handleRegister(t.id)}
                 onReenter={() => handleReenter(t.id)}
                 onEnter={() => handleEnter(t.id)}
-                onViewResult={() => onViewResult(t.id)}
+                onViewMyResult={() => onViewMyResult(t.id)}
+                onViewResults={() => onViewResults(t.id)}
               />
             ))}
           </div>
@@ -144,10 +147,12 @@ function TournamentCard({
   canReenter,
   isReentering,
   isLoggedIn,
+  hasParticipated,
   onRegister,
   onReenter,
   onEnter,
-  onViewResult,
+  onViewMyResult,
+  onViewResults,
 }: {
   tournament: TournamentLobbyInfo;
   isRegistered: boolean;
@@ -155,10 +160,12 @@ function TournamentCard({
   canReenter: boolean;
   isReentering: boolean;
   isLoggedIn: boolean;
+  hasParticipated: boolean;
   onRegister: () => void;
   onReenter: () => void;
   onEnter: () => void;
-  onViewResult: () => void;
+  onViewMyResult: () => void;
+  onViewResults: () => void;
 }) {
   const status = statusLabel(t.status);
   const isRunning = t.status !== 'waiting' && t.status !== 'completed' && t.status !== 'cancelled';
@@ -181,24 +188,12 @@ function TournamentCard({
         <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <span>Buy-in</span>
         </div>
-        <div className="text-right font-medium">{formatChips(t.buyIn)}</div>
+        <div className="text-right font-medium">{t.buyIn.toLocaleString()}</div>
 
         <div className="text-cream-600 flex items-center gap-[1.5cqw]">
           <span>初期チップ</span>
         </div>
-        <div className="text-right font-medium">{formatChips(t.startingChips)}</div>
-
-        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
-          <Users className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
-          <span>参加者</span>
-        </div>
-        <div className="text-right font-medium">{t.registeredPlayers}人</div>
-
-        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
-          <Trophy className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
-          <span>賞金プール</span>
-        </div>
-        <div className="text-right font-medium text-forest font-bold">{formatChips(t.prizePool)}</div>
+        <div className="text-right font-medium">{t.startingChips.toLocaleString()}</div>
 
         {(t.scheduledStartTime || t.startedAt) && (
           <>
@@ -209,6 +204,23 @@ function TournamentCard({
             <div className="text-right font-medium">{formatTime(t.startedAt ?? t.scheduledStartTime)}</div>
           </>
         )}
+
+        {t.allowReentry && (
+          <>
+            <div className="text-cream-600 flex items-center gap-[1.5cqw]">
+              <span>リエントリー上限</span>
+            </div>
+            <div className="text-right font-medium">{t.maxReentries}回 (Lv.{t.reentryDeadlineLevel}まで)</div>
+          </>
+        )}
+
+        <div className="text-cream-600">参加者</div>
+        <div className="text-right font-medium">
+          {t.registeredPlayers}人{t.allowReentry && t.totalReentries > 0 && ` (Reentry: ${t.totalReentries})`}
+        </div>
+
+        <div className="text-cream-600">賞金プール</div>
+        <div className="text-right font-medium text-forest font-bold">{t.prizePool.toLocaleString()}</div>
 
         {isRunning && (
           <>
@@ -222,15 +234,27 @@ function TournamentCard({
         )}
       </div>
 
+
       <div className="px-[4cqw] pb-[4cqw]">
         {isFinished ? (
-          <button
-            type="button"
-            onClick={onViewResult}
-            className="w-full py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors"
-          >
-            結果を見る
-          </button>
+          <div className="flex gap-[2cqw]">
+            {hasParticipated && (
+              <button
+                type="button"
+                onClick={onViewMyResult}
+                className="flex-1 py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+              >
+                自分の結果を見る
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onViewResults}
+              className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors`}
+            >
+              結果を見る
+            </button>
+          </div>
         ) : isWaitingForStart ? (
           <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
             開始時刻をお待ちください
@@ -260,7 +284,7 @@ function TournamentCard({
                 リエントリー中...
               </>
             ) : (
-              <>リエントリー ({formatChips(t.buyIn)} chips)</>
+              <>リエントリー ({t.buyIn.toLocaleString()} chips)</>
             )}
           </button>
         ) : t.isRegistrationOpen ? (
@@ -276,7 +300,7 @@ function TournamentCard({
                 登録中...
               </>
             ) : (
-              <>参加登録 ({formatChips(t.buyIn)} chips)</>
+              <>参加登録 ({t.buyIn.toLocaleString()} chips)</>
             )}
           </button>
         ) : (

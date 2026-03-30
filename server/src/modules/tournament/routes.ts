@@ -35,7 +35,10 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           status: { in: ['COMPLETED', 'CANCELLED'] },
           id: { notIn: [...activeIds] },
         },
-        include: { _count: { select: { registrations: true } } },
+        include: {
+          _count: { select: { registrations: true } },
+          registrations: { select: { reentryCount: true } },
+        },
         orderBy: { completedAt: 'desc' },
         take: 20,
       });
@@ -53,6 +56,10 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         scheduledStartTime: t.scheduledStartTime?.toISOString(),
         startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
         isRegistrationOpen: false,
+        allowReentry: t.allowReentry,
+        maxReentries: t.maxReentries,
+        totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
+        reentryDeadlineLevel: t.reentryDeadlineLevel,
       }));
 
       // アクティブ（waiting含む）を先頭、その後に終了済みを開始時刻降順
@@ -96,7 +103,24 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         // 未認証 — myTournamentId は null のまま
       }
 
-      return { tournaments, myTournamentId, canReenterTournamentId };
+      // 終了済みトーナメントへの参加履歴
+      let myFinishedTournamentIds: string[] = [];
+      try {
+        if (!myTournamentId) await request.jwtVerify(); // 上で認証済みならスキップされる
+        const { userId } = request.user as { userId: string };
+        const finishedIds = tournaments.filter(t => t.status === 'completed' || t.status === 'cancelled').map(t => t.id);
+        if (finishedIds.length > 0) {
+          const regs = await prisma.tournamentRegistration.findMany({
+            where: { userId, tournamentId: { in: finishedIds } },
+            select: { tournamentId: true },
+          });
+          myFinishedTournamentIds = regs.map(r => r.tournamentId);
+        }
+      } catch {
+        // 未認証
+      }
+
+      return { tournaments, myTournamentId, canReenterTournamentId, myFinishedTournamentIds };
     });
 
     // トーナメント詳細（公開）
@@ -104,7 +128,11 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     fastify.get<{ Params: { id: string } }>('/api/tournaments/:id', async (request, reply) => {
       const tournament = tournamentManager.getTournament(request.params.id);
       if (tournament) {
-        return tournament.getClientState();
+        const state = tournament.getClientState();
+        if (state.status === 'completed') {
+          return { ...state, results: tournament.getResults() };
+        }
+        return state;
       }
 
       // DBから取得（終了済みトーナメント対応）

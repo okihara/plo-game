@@ -293,9 +293,20 @@ export class BotClient {
 
     this.socket.on('tournament:eliminated', (data: { position: number; totalPlayers: number; prizeAmount: number }) => {
       console.log(`[${this.config.name}] Eliminated at position ${data.position}/${data.totalPlayers} (prize: ${data.prizeAmount})`);
+      const eliminatedTournamentId = this.tournamentId;
       this.tournamentId = null;
       this.isTournamentEliminated = true;
-      this.config.onTournamentEliminated?.(this, data.position);
+
+      // リエントリー試行（トーナメントモードのみ）
+      if (eliminatedTournamentId && this.config.tournamentMode) {
+        this.attemptReentry(eliminatedTournamentId).then(reentered => {
+          if (!reentered) {
+            this.config.onTournamentEliminated?.(this, data.position);
+          }
+        });
+      } else {
+        this.config.onTournamentEliminated?.(this, data.position);
+      }
     });
 
     this.socket.on('tournament:completed', () => {
@@ -692,6 +703,44 @@ export class BotClient {
 
   getTournamentId(): string | null {
     return this.tournamentId;
+  }
+
+  /**
+   * 脱落後にリエントリーを試みる。
+   * 成功したら true を返し、上限到達・残高不足などで失敗したら false を返して切断する。
+   */
+  private async attemptReentry(tournamentId: string): Promise<boolean> {
+    if (!this.socket || !this.isConnected || !this.authToken) return false;
+
+    console.log(`[${this.config.name}] Attempting reentry for tournament ${tournamentId}...`);
+
+    try {
+      const res = await fetch(`${this.config.serverUrl}/api/tournaments/${tournamentId}/reenter`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${this.authToken}` },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText }));
+        console.log(`[${this.config.name}] Reentry denied: ${(body as any).error ?? res.statusText} → disconnecting`);
+        this.disconnect();
+        return false;
+      }
+
+      console.log(`[${this.config.name}] Reentry successful, requesting state...`);
+      this.isTournamentEliminated = false;
+      this.tournamentId = tournamentId;
+      this.holeCards = [];
+      this.handActions = [];
+      this.actionGeneration++;
+      this.isThinking = false;
+      this.socket.emit('tournament:request_state', { tournamentId });
+      return true;
+    } catch (err) {
+      console.error(`[${this.config.name}] Reentry error:`, err);
+      this.disconnect();
+      return false;
+    }
   }
 
   async joinPrivateTable(inviteCode: string): Promise<void> {

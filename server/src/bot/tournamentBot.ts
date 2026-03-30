@@ -97,6 +97,10 @@ async function main(): Promise<void> {
         minPlayers: 2,
         maxPlayers: Math.max(BOT_COUNT + 2, 18),
         blindSchedule: FAST_BLIND_SCHEDULE,
+        registrationLevels: 30,
+        allowReentry: true,
+        maxReentries: 3,
+        reentryDeadlineLevel: 30,
       }),
     });
 

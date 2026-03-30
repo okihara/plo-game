@@ -60,6 +60,10 @@ export interface TournamentLobbyInfo {
   scheduledStartTime?: string; // ISO string
   startedAt?: string;          // ISO string
   isRegistrationOpen: boolean;
+  allowReentry: boolean;
+  maxReentries: number;
+  totalReentries: number;       // 実際に行われたリエントリー数
+  reentryDeadlineLevel: number;
 }
 
 // --- Tournament Result ---

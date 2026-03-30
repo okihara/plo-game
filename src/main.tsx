@@ -8,6 +8,7 @@ import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { EliminationDebug } from './pages/EliminationDebug';
 import { TournamentMyResult } from './pages/TournamentMyResult';
+import { TournamentResults } from './pages/TournamentResults';
 import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
@@ -82,10 +83,14 @@ function App() {
     page = (
       <TournamentLobby
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
-        onViewResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
+        onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
+        onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
         onBack={goBackToLobby}
       />
     );
+  } else if (currentPath.match(/^\/tournament\/[^/]+\/results$/)) {
+    const tId = currentPath.replace('/tournament/', '').replace('/results', '');
+    page = <TournamentResults tournamentId={tId} onBack={goToTournaments} />;
   } else if (currentPath.match(/^\/tournament\/[^/]+\/result$/)) {
     const tId = currentPath.replace('/tournament/', '').replace('/result', '');
     page = <TournamentMyResult tournamentId={tId} onBack={goToTournaments} />;

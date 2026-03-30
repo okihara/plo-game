@@ -96,6 +96,19 @@ export class TournamentInstance {
     return this.prizePool;
   }
 
+  public getResults(): TournamentResult[] {
+    return Array.from(this.players.values())
+      .filter(p => p.finishPosition !== null)
+      .sort((a, b) => a.finishPosition! - b.finishPosition!)
+      .map(p => ({
+        odId: p.odId,
+        odName: p.displayName ?? (p.nameMasked ? maskName(p.odName) : p.odName),
+        position: p.finishPosition!,
+        prize: this.getPrizeForPosition(p.finishPosition!),
+        reentries: p.reentryCount,
+      }));
+  }
+
   // ============================================
   // Registration
   // ============================================
@@ -409,6 +422,10 @@ export class TournamentInstance {
           : String(this.config.scheduledStartTime))
         : undefined,
       isRegistrationOpen: this.isRegistrationOpen(),
+      allowReentry: this.config.allowReentry,
+      maxReentries: this.config.maxReentries,
+      totalReentries: this.getTotalReentries(),
+      reentryDeadlineLevel: this.config.reentryDeadlineLevel,
     };
   }
 
@@ -888,16 +905,7 @@ export class TournamentInstance {
     }
 
     // 結果を構築（既に計算済みの this.prizes を参照）
-    const results = Array.from(this.players.values())
-      .filter(p => p.finishPosition !== null)
-      .sort((a, b) => a.finishPosition! - b.finishPosition!)
-      .map(p => ({
-        odId: p.odId,
-        odName: p.odName,
-        position: p.finishPosition!,
-        prize: this.getPrizeForPosition(p.finishPosition!),
-        reentries: p.reentryCount,
-      }));
+    const results = this.getResults();
 
     // 全プレイヤーに結果通知
     this.io.to(this.roomName).emit('tournament:completed', {
@@ -946,6 +954,14 @@ export class TournamentInstance {
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
     if (currentLevel > this.config.reentryDeadlineLevel) return false;
     return true;
+  }
+
+  private getTotalReentries(): number {
+    let total = 0;
+    for (const p of this.players.values()) {
+      total += p.reentryCount;
+    }
+    return total;
   }
 
   private getTotalEntries(): number {

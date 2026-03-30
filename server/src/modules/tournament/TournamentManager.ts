@@ -35,7 +35,8 @@ export class TournamentManager {
       }
 
       // 賞金支払い・結果DB保存（fire-and-forget）
-      this.persistTournamentResults(tournamentId, results).catch(err => {
+      const prizePool = tournament.getPrizePool();
+      this.persistTournamentResults(tournamentId, results, prizePool).catch(err => {
         console.error(`[TournamentManager] Failed to persist results for ${tournamentId}:`, err);
       });
     };
@@ -47,7 +48,7 @@ export class TournamentManager {
   /**
    * トーナメント完了時のDB操作: 賞金支払い + 結果保存 + ステータス更新
    */
-  private async persistTournamentResults(tournamentId: string, results: TournamentResult[]): Promise<void> {
+  private async persistTournamentResults(tournamentId: string, results: TournamentResult[], prizePool: number): Promise<void> {
     await prisma.$transaction(async (tx) => {
       // 1. 入賞者への賞金支払い
       for (const result of results) {
@@ -89,6 +90,7 @@ export class TournamentManager {
         data: {
           status: 'COMPLETED',
           completedAt: new Date(),
+          prizePool,
         },
       });
     });
