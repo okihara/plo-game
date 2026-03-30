@@ -48,6 +48,7 @@ export class TournamentBotManager {
         name: names[i],
         avatarUrl,
         noDelay,
+        botSecret: process.env.BOT_SECRET,
         tournamentMode: true,
         tournamentChaosMode: this.config.chaosMode,
         disconnectChance: 0,

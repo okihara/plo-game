@@ -248,7 +248,8 @@ export async function authRoutes(fastify: FastifyInstance) {
         return reply.code(401).send({ error: 'Unauthorized' });
       }
     },
-  }, async (request: FastifyRequest) => {
+  }, async (request: FastifyRequest, reply) => {
+    reply.header('Cache-Control', 'no-store');
     const { userId } = request.user as { userId: string };
 
     const user = await prisma.user.update({
