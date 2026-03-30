@@ -776,14 +776,14 @@ export class TournamentInstance {
 
   private movePlayer(odId: string, fromTableId: string, toTableId: string): void {
     const player = this.players.get(odId);
-    if (!player || !player.socket) return;
+    if (!player) return;
 
     const fromTable = this.tables.get(fromTableId);
     const toTable = this.tables.get(toTableId);
     if (!fromTable || !toTable) return;
 
-    // テーブル移動通知
-    player.socket.emit('tournament:table_move', {
+    // テーブル移動通知（切断中は通知スキップ）
+    player.socket?.emit('tournament:table_move', {
       fromTableId,
       toTableId,
       reason: 'テーブルバランス調整',
@@ -798,7 +798,7 @@ export class TournamentInstance {
     const seatIndex = this.seatPlayerAtTable(player, toTable, chips);
 
     if (seatIndex !== null) {
-      player.socket.emit('tournament:table_assigned', {
+      player.socket?.emit('tournament:table_assigned', {
         tableId: toTableId,
         tournamentId: this.id,
       });
