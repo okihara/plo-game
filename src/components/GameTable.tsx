@@ -394,7 +394,6 @@ export function GameTable({
               holeCards={myHoleCards}
               communityCards={gameState.communityCards}
               isVisible={analysisEnabled && gameState.currentStreet === 'preflop'}
-              onClose={() => setAnalysisEnabled(false)}
             />
           )}
 

@@ -5,14 +5,12 @@ interface HandAnalysisOverlayProps {
   holeCards: CardType[];
   communityCards: CardType[];
   isVisible: boolean;
-  onClose: () => void;
 }
 
 export function HandAnalysisOverlay({
   holeCards,
   communityCards,
   isVisible,
-  onClose,
 }: HandAnalysisOverlayProps) {
   const preflopEval = useMemo(
     () => isVisible ? getPreFlopEvaluation(holeCards) : null,
