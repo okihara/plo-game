@@ -56,7 +56,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
 
     const [rows, cache] = await Promise.all([
       prisma.handHistoryPlayer.findMany({
-        where: { userId },
+        where: { userId, handHistory: { tournamentId: null } },
         orderBy: { handHistory: { createdAt: 'asc' } },
         select: { profit: true, finalHand: true, allInEVProfit: true },
       }),
@@ -202,6 +202,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
         JOIN "HandHistory" hh ON hp."handHistoryId" = hh."id"
         JOIN "User" u ON hp."userId" = u."id"
         WHERE hp."userId" IS NOT NULL
+          AND hh."tournamentId" IS NULL
           AND hh."createdAt" >= ${startDate}
           ${endDate ? Prisma.sql`AND hh."createdAt" < ${endDate}` : Prisma.empty}
         GROUP BY hp."userId", u."username", u."displayName", u."avatarUrl", u."nameMasked", u."useTwitterAvatar", u."provider"
