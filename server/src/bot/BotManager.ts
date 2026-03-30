@@ -171,6 +171,7 @@ export class BotManager {
       midHandDisconnectChance: this.config.midHandDisconnectChance,
       maxHandsPerSession: maxHands,
       noDelay: this.config.noDelay,
+      botSecret: process.env.BOT_SECRET,
       onJoinFailed: (failedBot, reason) => this.handleJoinFailed(failedBot, reason),
     });
 
