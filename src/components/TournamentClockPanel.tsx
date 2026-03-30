@@ -72,14 +72,14 @@ export function TournamentClockPanel({ tournamentState: ts, onClose }: Tournamen
       role="presentation"
     >
       <div
-        className="@container relative flex min-h-0 min-w-0 w-full max-w-[96cqw] max-h-[90%] flex-col overflow-hidden border-2 border-white/45 bg-[#2563eb] text-white shadow-2xl [text-shadow:0_1px_3px_rgba(0,0,0,0.45),0_0_1px_rgba(0,0,0,0.25)]"
+        className="@container relative flex min-h-0 min-w-0 w-full max-w-[96cqw] max-h-[90%] flex-col overflow-hidden border-2 border-white/45 bg-[#0000cc] text-white shadow-2xl [text-shadow:0_1px_3px_rgba(0,0,0,0.45),0_0_1px_rgba(0,0,0,0.25)]"
         onClick={e => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
         aria-labelledby="tournament-clock-title"
       >
         {/* —— ヘッダー（全幅） —— */}
-        <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-[1.5cqw] border-b border-white/45 px-[2.5cqw] py-[2.6cqw]">
+        <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-x-[1.5cqw] border-b-2 border-white/45 px-[2.5cqw] py-[2.6cqw]">
           <div className="flex min-w-0 justify-start">
             <Trophy
               className="h-[6.8cqw] w-[6.8cqw] shrink-0 text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.45)]"
@@ -103,7 +103,7 @@ export function TournamentClockPanel({ tournamentState: ts, onClose }: Tournamen
         {/* —— 本体：左＝賞金 / 中央＝クロック＆ブラインド / 右＝統計 —— */}
         <div className="grid min-h-0 min-w-0 flex-1 grid-cols-[1fr_1.45fr_1fr]">
           {/* 左カラム：プライズ */}
-          <section className="flex min-h-0 min-w-0 flex-col border-r border-white/45 px-[2.5cqw] py-[2.5cqw]">
+          <section className="flex min-h-0 min-w-0 flex-col border-r-2 border-white/45 px-[2.5cqw] py-[2.5cqw]">
             {payouts.length === 0 ? (
               <p className="text-[3.2cqw] text-white">—</p>
             ) : (
@@ -121,7 +121,7 @@ export function TournamentClockPanel({ tournamentState: ts, onClose }: Tournamen
                 ))}
               </ul>
             )}
-            <div className="mt-auto min-w-0 border-t border-white/40 pt-[2.2cqw]">
+            <div className="mt-auto min-w-0 border-t-2 border-white/40 pt-[2.2cqw]">
               <div className="text-[2.3cqw] font-medium uppercase tracking-tight text-white whitespace-nowrap">
                 TOTAL PRIZE POOL
               </div>
@@ -132,13 +132,13 @@ export function TournamentClockPanel({ tournamentState: ts, onClose }: Tournamen
           </section>
 
           {/* 中央カラム */}
-          <section className="flex min-h-0 min-w-0 flex-col justify-between border-r border-white/45 px-[2cqw] py-[3cqw]">
+          <section className="flex min-h-0 min-w-0 flex-col justify-between border-r-2 border-white/45 px-[2cqw] py-[3cqw]">
             <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col items-center justify-center overflow-hidden">
               <span className="max-w-full whitespace-nowrap text-center font-mono text-[min(12.5cqw,20cqmin)] font-black leading-none tabular-nums tracking-tight text-white">
                 {clock}
               </span>
             </div>
-            <div className="mt-[2.5cqw] min-w-0 w-full space-y-[1.6cqw] border-t border-white/35 pt-[2.6cqw] text-left text-[3.2cqw] leading-snug">
+            <div className="mt-[2.5cqw] min-w-0 w-full space-y-[1.6cqw] border-t-2 border-white/35 pt-[2.6cqw] text-left text-[3.2cqw] leading-snug">
               <div className="whitespace-nowrap">
                 <span className="font-semibold text-white">BLINDS: </span>
                 <span className="tabular-nums text-white">
@@ -176,7 +176,7 @@ export function TournamentClockPanel({ tournamentState: ts, onClose }: Tournamen
         </div>
 
         {/* —— フッター —— */}
-        <footer className="border-t border-white/45 px-[2.5cqw] py-[2.2cqw]">
+        <footer className="border-t-2 border-white/45 px-[2.5cqw] py-[2.2cqw]">
           <p className="text-center text-[2.9cqw] font-medium leading-tight text-white">
             タイマーがゼロになるとブラインドが上がります
           </p>
