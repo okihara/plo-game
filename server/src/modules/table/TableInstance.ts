@@ -440,11 +440,12 @@ export class TableInstance {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
-    // ハンド中はgameStateの値が最新
-    if (this.gameState && this.gameState.players[seatIndex]) {
+    // ハンド中（未完了）はgameStateの値が最新
+    if (this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
       return this.gameState.players[seatIndex].chips;
     }
 
+    // ハンド完了後・ハンド外はseatの値を返す
     const seat = this.playerManager.getSeat(seatIndex);
     return seat?.chips ?? null;
   }
