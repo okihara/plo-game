@@ -34,6 +34,21 @@ const FAST_BLIND_SCHEDULE = [
   { level: 18, smallBlind: 10000, bigBlind: 20000, ante: 0, durationMinutes: BLIND_DURATION },
   { level: 19, smallBlind: 15000, bigBlind: 30000, ante: 0, durationMinutes: BLIND_DURATION },
   { level: 20, smallBlind: 20000, bigBlind: 40000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 21, smallBlind: 30000, bigBlind: 60000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 22, smallBlind: 40000, bigBlind: 80000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 23, smallBlind: 50000, bigBlind: 100000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 24, smallBlind: 75000, bigBlind: 150000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 25, smallBlind: 100000, bigBlind: 200000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 26, smallBlind: 150000, bigBlind: 300000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 27, smallBlind: 200000, bigBlind: 400000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 28, smallBlind: 300000, bigBlind: 600000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 29, smallBlind: 400000, bigBlind: 800000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 30, smallBlind: 500000, bigBlind: 1000000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 31, smallBlind: 750000, bigBlind: 1500000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 32, smallBlind: 1000000, bigBlind: 2000000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 33, smallBlind: 1500000, bigBlind: 3000000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 34, smallBlind: 2000000, bigBlind: 4000000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 35, smallBlind: 3000000, bigBlind: 6000000, ante: 0, durationMinutes: BLIND_DURATION },
 ];
 
 async function main(): Promise<void> {
