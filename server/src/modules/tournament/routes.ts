@@ -140,7 +140,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         where: { id: request.params.id },
         include: {
           results: {
-            include: { user: { select: { username: true, displayName: true } } },
+            include: { user: { select: { username: true, displayName: true, avatarUrl: true } } },
             orderBy: { position: 'asc' },
           },
           _count: { select: { registrations: true } },
@@ -162,6 +162,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           position: r.position,
           prize: r.prize,
           reentries: r.reentries,
+          avatarUrl: r.user.avatarUrl,
         })),
       };
     });

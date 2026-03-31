@@ -74,6 +74,7 @@ export interface TournamentResult {
   position: number;
   prize: number;
   reentries: number;
+  avatarUrl?: string | null;
 }
 
 // --- Elimination Info (sent to the eliminated player) ---
