@@ -106,6 +106,7 @@ export class TournamentInstance {
         position: p.finishPosition!,
         prize: this.getPrizeForPosition(p.finishPosition!),
         reentries: p.reentryCount,
+        avatarUrl: p.avatarUrl,
       }));
   }
 
