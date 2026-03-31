@@ -194,47 +194,50 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const showSlider = !isFixedLimit;
 
   return (
-    <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw]`}>
-      {/* Preset Buttons & Bet Slider */}
+    <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw] relative overflow-visible`}>
+      {/* Vertical Bet Slider (absolute, extends above ActionPanel) */}
       {showSlider && (
-        <div className={`flex items-center gap-[1.8cqw] px-[0cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
-          <div className="w-1/2 flex gap-[0.9cqw]">
-            {[
-              { label: '33%', value: 0.33 },
-              { label: '50%', value: 0.5 },
-              { label: '75%', value: 0.75 },
-              { label: 'Pot', value: 1 },
-            ].map(({ label, value }) => (
-              <button
-                key={label}
-                onClick={() => handlePreset(value)}
-                disabled={!canRaise || !isMyTurn || actionSent}
-                className="flex-1 py-[0.8cqw] px-[0.9cqw] border-[0.3cqw] border-gray-500 rounded-[1cqw] bg-gray-700 text-gray-200 text-[4cqw] transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <div className="w-1/2 flex items-center gap-[1.8cqw]">
-            <span className="text-emerald-400 text-[3.5cqw] w-[14.6cqw] text-right border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.8cqw] py-[0.9cqw] bg-gray-800">
-              {formatChips(sliderTotalChips)}
-            </span>
-            <input
-              type="range"
-              min={0}
-              max={maxSliderIndex}
-              value={sliderIndex}
-              step={1}
-              onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
+        <div className={`absolute right-[4cqw] bottom-[25cqw] h-[40cqw] w-[13cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+          <span className="text-emerald-400 text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.2cqw] py-[0.4cqw] bg-gray-800/90 backdrop-blur-sm w-full">
+            {formatChips(sliderTotalChips)}
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={maxSliderIndex}
+            value={sliderIndex}
+            step={1}
+            onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
+            disabled={!canRaise || !isMyTurn || actionSent}
+            style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+            className="flex-1 w-[3cqw] rounded bg-gradient-to-b from-emerald-600 to-gray-600 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[12cqw] [&::-webkit-slider-thumb]:h-[8cqw] [&::-webkit-slider-thumb]:rounded-[3cqw] [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-[0.4cqw] [&::-webkit-slider-thumb]:border-emerald-300/50 [&::-moz-range-thumb]:w-[12cqw] [&::-moz-range-thumb]:h-[8cqw] [&::-moz-range-thumb]:rounded-[3cqw] [&::-moz-range-thumb]:border-[0.4cqw] [&::-moz-range-thumb]:border-emerald-300/50 [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-emerald-400 [&::-moz-range-thumb]:to-emerald-600 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-lg"
+          />
+        </div>
+      )}
+
+      {/* Preset Buttons */}
+      {showSlider && (
+        <div className={`flex gap-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+          {[
+            { label: '33%', value: 0.33 },
+            { label: '50%', value: 0.5 },
+            { label: '75%', value: 0.75 },
+            { label: 'Pot', value: 1 },
+          ].map(({ label, value }) => (
+            <button
+              key={label}
+              onClick={() => handlePreset(value)}
               disabled={!canRaise || !isMyTurn || actionSent}
-              className="flex-1 h-[1.8cqw] rounded bg-gradient-to-r from-gray-600 to-emerald-600 appearance-none [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[2.8cqw] [&::-webkit-slider-thumb]:h-[7.2cqw] [&::-webkit-slider-thumb]:rounded-[0.6cqw] [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-md [&::-moz-range-thumb]:h-[7.2cqw] [&::-moz-range-thumb]:w-[2.8cqw] [&::-moz-range-thumb]:rounded-[0.6cqw] [&::-moz-range-thumb]:border-0 [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-emerald-400 [&::-moz-range-thumb]:to-emerald-600 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-md"
-            />
-          </div>
+              className="flex-1 py-[0.8cqw] px-[0.9cqw] border-[0.3cqw] border-gray-500 rounded-[1cqw] bg-gray-700 text-gray-200 text-[4cqw] transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
+            >
+              {label}
+            </button>
+          ))}
         </div>
       )}
 
       {/* Action Buttons */}
-      <div className="grid grid-cols-3 gap-[1.8cqw]">
+      <div className={"grid grid-cols-3 gap-[1.8cqw]"}>
         <div className="flex items-center gap-[1.2cqw]">
           {/* プリフォールドチェックボックス: FF時はファストフォールドボタンがあるので非表示 */}
           {!isFastFold && (
