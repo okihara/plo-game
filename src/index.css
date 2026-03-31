@@ -288,3 +288,55 @@ body {
 .light-scrollbar::-webkit-scrollbar-thumb:hover {
   background: rgba(139, 126, 106, 0.35);
 }
+
+/* Vertical bet slider thumb with grip lines */
+.bet-slider-vertical::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12cqw;
+  height: 8cqw;
+  border-radius: 3cqw;
+  cursor: pointer;
+  border: 0.4cqw solid rgba(251, 191, 36, 0.5);
+  background:
+    linear-gradient(to bottom,
+      transparent 35%, rgba(255,255,255,0.35) 35%, rgba(255,255,255,0.35) 37%,
+      transparent 37%, transparent 48%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0.35) 50%,
+      transparent 50%, transparent 63%, rgba(255,255,255,0.35) 63%, rgba(255,255,255,0.35) 65%,
+      transparent 65%
+    ),
+    linear-gradient(to bottom right, #f59e0b, #d97706);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.bet-slider-vertical::-webkit-slider-thumb:active {
+  filter: brightness(1.15);
+  box-shadow:
+    0 1px 4px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+}
+.bet-slider-vertical::-moz-range-thumb {
+  width: 12cqw;
+  height: 8cqw;
+  border-radius: 3cqw;
+  cursor: pointer;
+  border: 0.4cqw solid rgba(251, 191, 36, 0.5);
+  background:
+    linear-gradient(to bottom,
+      transparent 35%, rgba(255,255,255,0.35) 35%, rgba(255,255,255,0.35) 37%,
+      transparent 37%, transparent 48%, rgba(255,255,255,0.35) 48%, rgba(255,255,255,0.35) 50%,
+      transparent 50%, transparent 63%, rgba(255,255,255,0.35) 63%, rgba(255,255,255,0.35) 65%,
+      transparent 65%
+    ),
+    linear-gradient(to bottom right, #f59e0b, #d97706);
+  box-shadow:
+    0 2px 6px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.bet-slider-vertical::-moz-range-thumb:active {
+  filter: brightness(1.15);
+  box-shadow:
+    0 1px 4px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+}

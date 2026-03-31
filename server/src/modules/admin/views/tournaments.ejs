@@ -284,6 +284,15 @@
       } catch (e) { alert('通信エラー: ' + e.message); }
     }
 
+    async function forceRebalance(id) {
+      try {
+        var res = await fetch(apiUrl('/api/admin/tournament/' + id + '/rebalance'), { method: 'POST' });
+        var data = await res.json();
+        if (!data.success) alert('リバランス失敗: ' + data.error);
+        else alert('リバランスを実行しました');
+      } catch (e) { alert('通信エラー: ' + e.message); }
+    }
+
     async function refreshList() {
       try {
         var res = await fetch(apiUrl('/api/tournaments'));
@@ -328,7 +337,8 @@
           actions = '<button class="btn btn-start" onclick="startTournament(\'' + t.id + '\')">開始</button>' +
                     '<button class="btn btn-cancel" onclick="cancelTournament(\'' + t.id + '\')">キャンセル</button>';
         } else if (t.status === 'running' || t.status === 'final_table' || t.status === 'heads_up') {
-          actions = '<button class="btn btn-cancel" onclick="cancelTournament(\'' + t.id + '\')">中止</button>';
+          actions = '<button class="btn btn-start" onclick="forceRebalance(\'' + t.id + '\')">リバランス</button>' +
+                    '<button class="btn btn-cancel" onclick="cancelTournament(\'' + t.id + '\')">中止</button>';
         }
 
         return '<div class="t-item">' +

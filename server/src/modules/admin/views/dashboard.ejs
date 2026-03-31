@@ -357,7 +357,6 @@
         var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
         if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
         row1 += '<span class="p-name">' + p.odName + '</span>';
-        row1 += '<button class="admin-btn danger" onclick="kickPlayer(\'' + p.odId + '\',\'' + t.id + '\')" title="キック">✕</button>';
         row1 += '</div>';
         var row2 = '<div class="p-row"><span class="p-money">' + formatChips(p.chips) + '</span>';
         if (p.currentBet > 0) row2 += '<span class="p-bet">Bet ' + formatChips(p.currentBet) + '</span>';
@@ -471,20 +470,6 @@
         });
         fetchStats();
       } catch (e) { alert('Failed: ' + e.message); }
-    }
-
-    async function kickPlayer(odId, tableId) {
-      if (!confirm(odId.slice(0,8) + '... をキックしますか？')) return;
-      try {
-        var res = await fetch(apiUrl('/api/admin/kick'), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ odId: odId }),
-        });
-        var data = await res.json();
-        if (!data.success) alert('キック失敗: ' + data.error);
-        fetchStats();
-      } catch (e) { alert('エラー: ' + e.message); }
     }
 
     async function forceAction(tableId) {

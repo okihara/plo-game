@@ -722,6 +722,16 @@ export class TournamentInstance {
   }
 
   // ============================================
+  // Public: Admin Operations
+  // ============================================
+
+  /** 管理者が手動でテーブルバランシングを実行する */
+  forceRebalance(): void {
+    console.log(`[Tournament ${this.id}] Force rebalance triggered by admin`);
+    this.checkAndExecuteBalance();
+  }
+
+  // ============================================
   // Private: Table Balancing
   // ============================================
 

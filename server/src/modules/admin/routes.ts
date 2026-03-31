@@ -7,7 +7,6 @@ import { env } from '../../config/env.js';
 import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
-import { cashOutPlayer } from '../auth/bankroll.js';
 import {
   DEFAULT_BUY_IN,
   DEFAULT_STARTING_CHIPS,
@@ -544,47 +543,13 @@ export function adminRoutes(deps: AdminDependencies) {
     // Admin Operations API
     // ============================================
 
-    // プレイヤーをキック（キャッシュゲーム・トーナメント両対応）
-    fastify.post('/api/admin/kick', async (request) => {
-      const { odId } = request.body as { odId: string };
-      if (!odId) return { success: false, error: 'odId is required' };
-
-      // ソケット特定（通知用）
-      let playerSocket: import('socket.io').Socket | null = null;
-      for (const s of io.sockets.sockets.values()) {
-        if ((s as any).odId === odId) { playerSocket = s; break; }
-      }
-
-      // 1. キャッシュゲームテーブルを確認
-      const cashTable = tableManager.getPlayerTable(odId);
-      if (cashTable) {
-        const result = cashTable.unseatPlayer(odId);
-        tableManager.removePlayerFromTracking(odId);
-        if (result) {
-          await cashOutPlayer(result.odId, result.chips, cashTable.id);
-        }
-        playerSocket?.emit('table:left');
-        console.log(`[Admin] Kicked player ${odId} from cash table ${cashTable.id} (chips: ${result?.chips ?? 0})`);
-        return { success: true, type: 'cash', tableId: cashTable.id, chips: result?.chips ?? 0 };
-      }
-
-      // 2. トーナメントを確認
-      const tid = tournamentManager.getPlayerTournament(odId);
-      if (tid) {
-        const tournament = tournamentManager.getTournament(tid);
-        const player = tournament?.getPlayer(odId);
-        if (tournament && player) {
-          if (player.tableId) {
-            const table = Array.from(tournament.getTables()).find(t => t.id === player.tableId);
-            table?.unseatPlayer(odId);
-          }
-          playerSocket?.emit('tournament:kicked', { tournamentId: tid, reason: '管理者によるキック' });
-          console.log(`[Admin] Kicked player ${odId} from tournament ${tid}`);
-          return { success: true, type: 'tournament', tournamentId: tid };
-        }
-      }
-
-      return { success: false, error: 'Player not found at any table or tournament' };
+    // トーナメントのテーブルバランシングを手動実行
+    fastify.post('/api/admin/tournament/:id/rebalance', async (request) => {
+      const { id } = request.params as { id: string };
+      const tournament = tournamentManager.getTournament(id);
+      if (!tournament) return { success: false, error: 'Tournament not found' };
+      tournament.forceRebalance();
+      return { success: true };
     });
 
     // テーブルの手番プレイヤーを強制フォールド
