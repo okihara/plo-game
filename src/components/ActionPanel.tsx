@@ -198,7 +198,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
       {/* Vertical Bet Slider (absolute, extends above ActionPanel) */}
       {showSlider && (
         <div className={`absolute right-[4cqw] bottom-[15cqw] h-[50cqw] w-[17cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
-          <span className="text-white text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[3cqw] px-[1.2cqw] py-[0.4cqw] bg-gray-800/90 backdrop-blur-sm w-full">
+          <span className="text-white text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[3cqw] px-[1.2cqw] py-[0.7cqw] bg-black backdrop-blur-sm w-full">
             {formatChips(sliderTotalChips)}
           </span>
           <input
@@ -210,7 +210,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
             onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
             disabled={!canRaise || !isMyTurn || actionSent}
             style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-            className="bet-slider-vertical flex-1 w-[3cqw] rounded bg-gradient-to-b from-amber-500 to-gray-600 appearance-none cursor-pointer"
+            className="bet-slider-vertical flex-1 w-[3cqw] rounded-full bg-gradient-to-b from-amber-500 to-gray-600 appearance-none cursor-pointer"
           />
         </div>
       )}
