@@ -543,6 +543,15 @@ export function adminRoutes(deps: AdminDependencies) {
     // Admin Operations API
     // ============================================
 
+    // トーナメントのテーブルバランシングを手動実行
+    fastify.post('/api/admin/tournament/:id/rebalance', async (request) => {
+      const { id } = request.params as { id: string };
+      const tournament = tournamentManager.getTournament(id);
+      if (!tournament) return { success: false, error: 'Tournament not found' };
+      tournament.forceRebalance();
+      return { success: true };
+    });
+
     // テーブルの手番プレイヤーを強制フォールド
     fastify.post('/api/admin/force-action', async (request) => {
       const { tableId, tournamentId: reqTournamentId } = request.body as { tableId: string; tournamentId?: string };
