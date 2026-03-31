@@ -197,8 +197,8 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw] relative overflow-visible`}>
       {/* Vertical Bet Slider (absolute, extends above ActionPanel) */}
       {showSlider && (
-        <div className={`absolute right-[4cqw] bottom-[25cqw] h-[40cqw] w-[13cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
-          <span className="text-emerald-400 text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[0.5cqw] px-[1.2cqw] py-[0.4cqw] bg-gray-800/90 backdrop-blur-sm w-full">
+        <div className={`absolute right-[4cqw] bottom-[15cqw] h-[50cqw] w-[17cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+          <span className="text-white text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[3cqw] px-[1.2cqw] py-[0.4cqw] bg-gray-800/90 backdrop-blur-sm w-full">
             {formatChips(sliderTotalChips)}
           </span>
           <input
@@ -210,14 +210,14 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
             onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
             disabled={!canRaise || !isMyTurn || actionSent}
             style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-            className="flex-1 w-[3cqw] rounded bg-gradient-to-b from-emerald-600 to-gray-600 appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-[12cqw] [&::-webkit-slider-thumb]:h-[8cqw] [&::-webkit-slider-thumb]:rounded-[3cqw] [&::-webkit-slider-thumb]:bg-gradient-to-br [&::-webkit-slider-thumb]:from-emerald-400 [&::-webkit-slider-thumb]:to-emerald-600 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:shadow-lg [&::-webkit-slider-thumb]:border-[0.4cqw] [&::-webkit-slider-thumb]:border-emerald-300/50 [&::-moz-range-thumb]:w-[12cqw] [&::-moz-range-thumb]:h-[8cqw] [&::-moz-range-thumb]:rounded-[3cqw] [&::-moz-range-thumb]:border-[0.4cqw] [&::-moz-range-thumb]:border-emerald-300/50 [&::-moz-range-thumb]:bg-gradient-to-br [&::-moz-range-thumb]:from-emerald-400 [&::-moz-range-thumb]:to-emerald-600 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:shadow-lg"
+            className="bet-slider-vertical flex-1 w-[3cqw] rounded bg-gradient-to-b from-amber-500 to-gray-600 appearance-none cursor-pointer"
           />
         </div>
       )}
 
       {/* Preset Buttons */}
       {showSlider && (
-        <div className={`flex gap-[0.9cqw] mb-[2.2cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+        <div className={`flex gap-[0.9cqw] mb-[2.2cqw] pr-[22cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           {[
             { label: '33%', value: 0.33 },
             { label: '50%', value: 0.5 },
