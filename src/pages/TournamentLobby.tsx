@@ -172,70 +172,99 @@ function TournamentCard({
   const isFinished = t.status === 'completed' || t.status === 'cancelled';
   const isWaitingForStart = t.status === 'waiting' && t.scheduledStartTime && new Date(t.scheduledStartTime) > new Date();
 
+  const showStartContext =
+    !isFinished && !isRunning && (t.scheduledStartTime || t.startedAt);
+  const startContextStrong = isWaitingForStart;
+
   return (
     <div className="bg-white rounded-[2.5cqw] border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] overflow-hidden">
-      <div className="px-[4cqw] py-[3cqw] flex items-center justify-between gap-[2cqw]">
-        <div className="flex items-center gap-[2cqw] min-w-0">
-          <Trophy className="w-[4cqw] h-[4cqw] text-forest shrink-0" />
-          <span className="font-bold text-[3.5cqw] truncate">{t.name}</span>
+      <div className="px-[4cqw] py-[3cqw] flex items-start justify-between gap-[2cqw] border-b border-cream-200">
+        <div className="flex items-center gap-[2cqw] min-w-0 flex-1">
+          <Trophy className="w-[4.5cqw] h-[4.5cqw] text-forest shrink-0 mt-[0.3cqw]" />
+          <span className="font-bold text-[4cqw] leading-snug truncate">{t.name}</span>
         </div>
-        <span className={`shrink-0 px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium text-white ${status.color}`}>
-          {status.text}
-        </span>
+        <div className="flex flex-col items-end gap-[1cqw] shrink-0">
+          <div className="flex flex-wrap items-center justify-end gap-[1.5cqw]">
+            {t.isRegistrationOpen && !isFinished && (
+              <span className="px-[1.8cqw] py-[0.35cqw] rounded-full text-[2.2cqw] font-semibold bg-forest/10 text-forest border border-forest/25">
+                参加可能
+              </span>
+            )}
+            <span className={`px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium text-white ${status.color}`}>
+              {status.text}
+            </span>
+          </div>
+        </div>
       </div>
 
-      <div className="px-[4cqw] pb-[3cqw] grid grid-cols-2 gap-y-[1.5cqw] text-[3cqw]">
-        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
-          <span>Buy-in</span>
+      <div className="px-[4cqw] pt-[3cqw] grid grid-cols-3 gap-x-[2cqw]">
+        <div className="min-w-0">
+          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-500 truncate">バイイン</div>
+          <div className="text-[4.2cqw] font-bold tabular-nums text-cream-900 leading-tight mt-[0.4cqw]">
+            {t.buyIn.toLocaleString()}
+          </div>
         </div>
-        <div className="text-right font-medium">{t.buyIn.toLocaleString()}</div>
+        <div className="min-w-0 text-center">
+          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-500">参加</div>
+          <div className="text-[4.2cqw] font-bold tabular-nums text-cream-900 leading-tight mt-[0.4cqw]">
+            {t.registeredPlayers}
+            <span className="text-[2.8cqw] font-semibold text-cream-500">
+              /{t.maxPlayers}
+            </span>
+          </div>
+        </div>
+        <div className="min-w-0 text-right">
+          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-500 truncate">賞金</div>
+          <div className="text-[4.2cqw] font-bold tabular-nums text-forest leading-tight mt-[0.4cqw]">
+            {t.prizePool.toLocaleString()}
+          </div>
+        </div>
+      </div>
 
-        <div className="text-cream-600 flex items-center gap-[1.5cqw]">
+      {(isRunning || showStartContext) && (
+        <div className="px-[4cqw] pt-[2.5cqw]">
+          {isRunning ? (
+            <div className="flex items-center justify-center text-[3cqw] font-semibold text-cream-800 bg-cream-100 rounded-[1.5cqw] px-[2.5cqw] py-[1.8cqw]">
+              ブラインド Lv.{t.currentBlindLevel}
+            </div>
+          ) : showStartContext ? (
+            <div
+              className={`flex items-center justify-center gap-[1.5cqw] text-[3cqw] font-semibold text-cream-800 rounded-[1.5cqw] px-[2.5cqw] py-[1.8cqw] ${
+                startContextStrong
+                  ? 'bg-cream-100 ring-1 ring-cream-300/80'
+                  : 'bg-cream-50'
+              }`}
+            >
+              <Clock className="w-[3.5cqw] h-[3.5cqw] shrink-0 opacity-80" />
+              開始 {formatTime(t.startedAt ?? t.scheduledStartTime)}
+            </div>
+          ) : null}
+        </div>
+      )}
+
+      <div className="px-[4cqw] pt-[2.5cqw] pb-[3cqw] space-y-[1cqw] text-[2.6cqw] text-cream-600 border-b border-cream-100">
+        <div className="flex justify-between gap-[3cqw]">
           <span>初期チップ</span>
+          <span className="shrink-0 tabular-nums font-medium text-cream-800">
+            {t.startingChips.toLocaleString()}
+          </span>
         </div>
-        <div className="text-right font-medium">{t.startingChips.toLocaleString()}</div>
-
-        {(t.scheduledStartTime || t.startedAt) && (
-          <>
-            <div className="text-cream-600 flex items-center gap-[1.5cqw]">
-              <Clock className="w-[3.5cqw] h-[3.5cqw] shrink-0" />
-              <span>開始時刻</span>
-            </div>
-            <div className="text-right font-medium">{formatTime(t.startedAt ?? t.scheduledStartTime)}</div>
-          </>
-        )}
-
         {t.allowReentry && (
-          <>
-            <div className="text-cream-600 flex items-center gap-[1.5cqw]">
-              <span>リエントリー上限</span>
-            </div>
-            <div className="text-right font-medium">{t.maxReentries}回 (Lv.{t.reentryDeadlineLevel}まで)</div>
-          </>
+          <div className="flex justify-between gap-[3cqw]">
+            <span className="shrink-0">リエントリー</span>
+            <span className="text-right font-medium text-cream-800">
+              最大 {t.maxReentries}回（Lv.{t.reentryDeadlineLevel}まで）
+            </span>
+          </div>
         )}
-
-        <div className="text-cream-600">参加者</div>
-        <div className="text-right font-medium">
-          {t.registeredPlayers}人{t.allowReentry && t.totalReentries > 0 && ` (Reentry: ${t.totalReentries})`}
-        </div>
-
-        <div className="text-cream-600">賞金プール</div>
-        <div className="text-right font-medium text-forest font-bold">{t.prizePool.toLocaleString()}</div>
-
-        {isRunning && (
-          <>
-            <div className="text-cream-600">ブラインドLv</div>
-            <div className="text-right font-medium">Lv.{t.currentBlindLevel}</div>
-          </>
-        )}
-
-        {t.isRegistrationOpen && (
-          <div className="col-span-2 text-[2.5cqw] text-forest mt-[1cqw]">参加可能</div>
+        {t.allowReentry && t.totalReentries > 0 && (
+          <div className="text-[2.4cqw] text-cream-500 pt-[0.2cqw]">
+            Reentry 利用 {t.totalReentries}回
+          </div>
         )}
       </div>
 
-
-      <div className="px-[4cqw] pb-[4cqw]">
+      <div className="px-[4cqw] pb-[4cqw] pt-[1cqw]">
         {isFinished ? (
           <div className="flex gap-[2cqw]">
             {hasParticipated && (
@@ -250,7 +279,7 @@ function TournamentCard({
             <button
               type="button"
               onClick={onViewResults}
-              className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] bg-cream-200 hover:bg-cream-300 text-cream-700 rounded-[2cqw] text-[3cqw] transition-colors`}
+              className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] rounded-[2cqw] text-[3cqw] font-bold transition-colors border-[0.4cqw] border-forest bg-cream-50 text-forest hover:bg-cream-100 active:bg-cream-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]`}
             >
               結果を見る
             </button>
