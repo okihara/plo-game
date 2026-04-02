@@ -40,6 +40,7 @@ export class StateTransformer {
         avatarId: seat.avatarId,
         avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
+        position: player?.position,
         chips: player?.chips ?? seat.chips,
         currentBet: player?.currentBet ?? 0,
         folded: player?.folded ?? false,
@@ -58,6 +59,7 @@ export class StateTransformer {
         avatarId: seat.avatarId,
         avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
+        position: player?.position,
         chips: seat.chips, // buyIn時のチップを表示
         currentBet: 0,
         folded: true, // 参加していないのでfolded扱い
@@ -74,6 +76,7 @@ export class StateTransformer {
       avatarId: seat.avatarId,
       avatarUrl: seat.avatarUrl,
       seatNumber: seatIndex,
+      position: player?.position,
       chips: player?.chips ?? seat.chips,
       currentBet: player?.currentBet ?? 0,
       folded: player?.folded ?? false,

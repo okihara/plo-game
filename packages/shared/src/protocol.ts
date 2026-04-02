@@ -1,6 +1,6 @@
 // WebSocket event types shared between client and server
 
-import type { Action, Card } from './types';
+import type { Action, Card, Position } from './types';
 import type {
   BlindLevel,
   ClientTournamentState,
@@ -100,6 +100,8 @@ export interface OnlinePlayer {
   avatarId: number;
   avatarUrl?: string | null;  // Twitter/OAuth profile image URL
   seatNumber: number;
+  /** サーバーがハンド開始時に設定（空席・ハンド外フォールバック時は省略可） */
+  position?: Position;
   chips: number;
   currentBet: number;
   folded: boolean;

@@ -8,6 +8,7 @@ export function convertOnlinePlayerToPlayer(
   index: number,
   dealerSeat: number
 ): Player {
+  const fallbackPosition = POSITIONS[(index - dealerSeat + 6) % 6];
   if (!online) {
     return {
       id: index,
@@ -20,11 +21,9 @@ export function convertOnlinePlayerToPlayer(
       isAllIn: false,
       hasActed: true,
       isSittingOut: true,
-      position: POSITIONS[(index - dealerSeat + 6) % 6],
+      position: fallbackPosition,
     };
   }
-
-  const posIndex = (index - dealerSeat + 6) % 6;
 
   return {
     id: index,
@@ -37,7 +36,7 @@ export function convertOnlinePlayerToPlayer(
     isAllIn: online.isAllIn,
     hasActed: online.hasActed,
     isSittingOut: false,
-    position: POSITIONS[posIndex],
+    position: online.position ?? fallbackPosition,
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
     odId: online.odId,
