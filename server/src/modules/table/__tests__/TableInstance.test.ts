@@ -1482,15 +1482,24 @@ describe('TableInstance - 観戦', () => {
     expect(table.getSpectatorCount()).toBe(0);
   });
 
-  it('観戦ソケットには game:hole_cards が送られない（着席者のみ）', () => {
+  it('観戦ソケットにも着席者と同タイミングで席付き game:hole_cards（protocol）が送られる', () => {
     const spec = createMockSocket('spectator_sock');
     expect(table.addSpectator(spec).ok).toBe(true);
     const { sockets } = seatNPlayers(table, 3, 600);
     table.triggerMaybeStartHand();
 
-    expect(getSocketEmits(spec, 'game:hole_cards')).toHaveLength(0);
+    const specEmits = getSocketEmits(spec, 'game:hole_cards');
+    expect(specEmits).toHaveLength(3);
+    for (const e of specEmits as { seatIndex: number; cards: unknown[] }[]) {
+      expect(typeof e.seatIndex).toBe('number');
+      expect(e.seatIndex).toBeGreaterThanOrEqual(0);
+      expect(e.seatIndex).toBeLessThan(6);
+      expect(e.cards).toHaveLength(4);
+    }
     for (const s of sockets) {
-      expect(getSocketEmits(s, 'game:hole_cards').length).toBeGreaterThan(0);
+      const emits = getSocketEmits(s, 'game:hole_cards') as { seatIndex?: number; cards: unknown[] }[];
+      expect(emits.length).toBeGreaterThan(0);
+      expect(emits.every(x => typeof x.seatIndex === 'number')).toBe(true);
     }
   });
 });

@@ -307,7 +307,7 @@ export class TableInstance {
       this.gameState,
       this.playerManager.getSeats(),
       this.broadcast,
-      () => {},
+      (seatIndex) => this.emitHoleCardsToSpectators(seatIndex),
     );
     this.broadcastGameState();
 
@@ -429,7 +429,7 @@ export class TableInstance {
     if (this.gameState && !this.gameState.isHandComplete) {
       const holeCards = this.gameState.players[seatIndex]?.holeCards;
       if (holeCards && holeCards.length > 0) {
-        this.broadcast.emitToSocket(socket, odId, 'game:hole_cards', { cards: holeCards });
+        this.broadcast.emitToSocket(socket, odId, 'game:hole_cards', { cards: holeCards, seatIndex });
       }
     }
 
@@ -480,6 +480,18 @@ export class TableInstance {
 
   public getSpectatorCount(): number {
     return this.spectators.size;
+  }
+
+  /** 観戦者へ着席者と同タイミングでホールを席単位で送る */
+  private emitHoleCardsToSpectators(seatIndex: number): void {
+    if (this.spectators.size === 0 || !this.gameState) return;
+    const player = this.gameState.players[seatIndex] ?? null;
+    const cards = player?.holeCards ?? [];
+    if (cards.length === 0) return;
+    const payload = { seatIndex, cards };
+    for (const sock of this.spectators.values()) {
+      sock.emit('game:hole_cards', payload);
+    }
   }
 
   public addSpectator(socket: Socket): { ok: true } | { ok: false; message: string } {
@@ -690,13 +702,18 @@ export class TableInstance {
     this.gameState = this.variantAdapter.startHand(this.gameState);
     this.lastDealerPosition = this.gameState.dealerPosition;
 
-    // Send hole cards to each player (human and bot)
+    // ホール配布: 着席者へはソケットがある相手のみ。観戦者へはソケット無し席（CPU等）も含め全参加席分送る。
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
-      if (seat?.socket) {
-        const holeCardsData = { cards: this.gameState.players[i].holeCards };
+      const holeCards = this.gameState.players[i].holeCards;
+      if (holeCards.length === 0) continue;
+      if (!seat || seat.waitingForNextHand) continue;
+
+      if (seat.socket) {
+        const holeCardsData = { cards: holeCards, seatIndex: i };
         this.broadcast.emitToSocket(seat.socket, seat.odId, 'game:hole_cards', holeCardsData);
       }
+      this.emitHoleCardsToSpectators(i);
     }
 
     // ハンドヒストリー用スナップショット記録

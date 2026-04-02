@@ -101,6 +101,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clientStateRef = useRef<ClientGameState | null>(null);
+  const mySeatRef = useRef<number | null>(null);
 
   // ショウダウン演出タイミング用Refs
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -216,6 +217,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   useEffect(() => {
     clientStateRef.current = clientState;
   }, [clientState]);
+
+  useEffect(() => {
+    mySeatRef.current = mySeat;
+  }, [mySeat]);
 
   useEffect(() => {
     wsService.addListeners('game', {
@@ -334,7 +339,14 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
-      onHoleCards: (cards) => {
+      onHoleCards: ({ cards, seatIndex }) => {
+        if (
+          seatIndex !== undefined &&
+          mySeatRef.current !== null &&
+          seatIndex !== mySeatRef.current
+        ) {
+          return;
+        }
         // Stud: 各ストリートで呼ばれる。新ハンド初回だけディール演出（演出リセットは onGameState の isHandInProgress 遷移に任せる）
         if (cards.length > 0 && isNewHandRef.current) {
           isNewHandRef.current = false;
@@ -382,13 +394,24 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           }
         }
       },
-      onShowdown: ({ players: showdownPlayers }) => {
+      onShowdown: ({ players: showdownPlayers, winners }) => {
         const cardsMap = new Map<number, Card[]>();
         const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
           cardsMap.set(p.seatIndex, p.cards);
           if (p.handName) {
             handNamesMap.set(p.seatIndex, p.handName);
+          }
+        }
+        const cs = clientStateRef.current;
+        if (cs && winners?.length) {
+          for (const w of winners) {
+            if (!w.cards?.length) continue;
+            const seat = cs.players.findIndex(pl => pl?.odId === w.playerId);
+            if (seat >= 0) {
+              cardsMap.set(seat, w.cards);
+              if (w.handName) handNamesMap.set(seat, w.handName);
+            }
           }
         }
         // カードを公開（役名はhand_completeで表示）

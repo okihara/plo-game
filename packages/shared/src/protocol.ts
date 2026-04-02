@@ -55,7 +55,8 @@ export interface ServerToClientEvents {
 
   // Game state updates
   'game:state': (data: { state: ClientGameState }) => void;
-  'game:hole_cards': (data: { cards: Card[] }) => void;
+  /** seatIndex 付きは着席者・観戦者共通。 */
+  'game:hole_cards': (data: { cards: Card[]; seatIndex?: number }) => void;
   'game:action_taken': (data: {
     playerId: string;
     action: Action;

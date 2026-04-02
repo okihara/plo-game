@@ -14,6 +14,7 @@ export interface SpectatorGameHookResult {
   gameState: GameState | null;
   tableId: string | null;
   myHoleCards: Card[];
+  holeCardsBySeat: Map<number, Card[]>;
   lastActions: Map<number, LastAction>;
   isDealingCards: boolean;
   newCommunityCardsCount: number;
@@ -47,6 +48,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
+  const [holeCardsBySeat, setHoleCardsBySeat] = useState<Map<number, Card[]>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
 
@@ -54,7 +56,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const prevCardCountRef = useRef(0);
   const clientStateRef = useRef<ClientGameState | null>(null);
   const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
-  /** 観戦は game:hole_cards が来ないため、新ハンドは isHandInProgress の false→true で演出をクリア */
+  /** WIN / オーバーレイ等: 新ハンドは isHandInProgress の false→true でクリア（hole_cards 補完とは独立） */
   const prevIsHandInProgressRef = useRef(false);
 
   const clearAllActionMarkers = useCallback(() => {
@@ -105,6 +107,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     setWinners([]);
     setShowdownCards(new Map());
     setShowdownHandNames(new Map());
+    setHoleCardsBySeat(new Map());
     pendingShowdownHandNamesRef.current = null;
     prevIsHandInProgressRef.current = false;
   }, []);
@@ -132,6 +135,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         setWinners([]);
         setShowdownCards(new Map());
         setShowdownHandNames(new Map());
+        setHoleCardsBySeat(new Map());
         pendingShowdownHandNamesRef.current = null;
         prevIsHandInProgressRef.current = false;
       },
@@ -139,10 +143,16 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         const nowInProgress = state.isHandInProgress;
         const wasInProgress = prevIsHandInProgressRef.current;
         prevIsHandInProgressRef.current = nowInProgress;
+        // ハンド終了: 観戦用ホールキャッシュを捨てる（次ハンド前の古い中身を防ぐ）
+        if (wasInProgress && !nowInProgress) {
+          setHoleCardsBySeat(new Map());
+        }
         if (!wasInProgress && nowInProgress) {
           setWinners([]);
           setShowdownCards(new Map());
           setShowdownHandNames(new Map());
+          // 新ハンド開始で holeCardsBySeat はクリアしない（game:hole_cards が先に届いていることが多く、
+          // 直後の本 game:state で消すと AllHands が空のままになる）
           pendingShowdownHandNamesRef.current = null;
         }
 
@@ -168,8 +178,9 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
-      onHoleCards: () => {
-        /* 観戦者には配られない想定。万一届いても無視 */
+      onHoleCards: ({ cards, seatIndex }) => {
+        if (seatIndex === undefined) return;
+        setHoleCardsBySeat(prev => new Map(prev).set(seatIndex, cards));
       },
       onActionTaken: ({ playerId, action, amount, drawCount }) => {
         playActionSound(action);
@@ -203,12 +214,24 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
           }
         }
       },
-      onShowdown: ({ players: showdownPlayers }) => {
+      onShowdown: ({ players: showdownPlayers, winners }) => {
         const cardsMap = new Map<number, Card[]>();
         const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
           cardsMap.set(p.seatIndex, p.cards);
           if (p.handName) handNamesMap.set(p.seatIndex, p.handName);
+        }
+        // players に載らない公開（Hi/Lo の重複行など）を winners.cards から席へ補完
+        const cs = clientStateRef.current;
+        if (cs && winners?.length) {
+          for (const w of winners) {
+            if (!w.cards?.length) continue;
+            const seat = cs.players.findIndex(pl => pl?.odId === w.playerId);
+            if (seat >= 0) {
+              cardsMap.set(seat, w.cards);
+              if (w.handName) handNamesMap.set(seat, w.handName);
+            }
+          }
         }
         setShowdownCards(cardsMap);
         pendingShowdownHandNamesRef.current = handNamesMap;
@@ -247,6 +270,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     gameState,
     tableId,
     myHoleCards,
+    holeCardsBySeat,
     lastActions,
     isDealingCards: false,
     newCommunityCardsCount,

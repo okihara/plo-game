@@ -203,17 +203,23 @@ export class VariantAdapter {
     gameState: GameState,
     seats: (SeatInfo | null)[],
     broadcast: BroadcastService,
-    _broadcastSpectatorCards: () => void,
+    emitSpectatorHoleCards: (seatIndex: number) => void,
   ): void {
     if (this.config.usesCommunityCards) return;
 
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
-      if (seat?.socket && gameState.players[i].holeCards.length > 0) {
+      const holeCards = gameState.players[i].holeCards;
+      if (holeCards.length === 0) continue;
+      if (!seat || seat.waitingForNextHand) continue;
+
+      if (seat.socket) {
         broadcast.emitToSocket(seat.socket, seat.odId, 'game:hole_cards', {
-          cards: gameState.players[i].holeCards,
+          cards: holeCards,
+          seatIndex: i,
         });
       }
+      emitSpectatorHoleCards(i);
     }
   }
 }

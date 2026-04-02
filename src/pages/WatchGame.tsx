@@ -3,6 +3,7 @@ import { useSpectatorGameState } from '../hooks/useSpectatorGameState';
 import { GameTable } from '../components/GameTable';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { ConnectionErrorScreen } from '../components/ConnectionErrorScreen';
+import { SpectatorAllHands } from '../components/SpectatorAllHands';
 
 interface WatchGameProps {
   tableId: string;
@@ -17,6 +18,7 @@ export function WatchGame({ tableId, inviteCode, onBack }: WatchGameProps) {
     isDisplaced,
     gameState,
     myHoleCards,
+    holeCardsBySeat,
     lastActions,
     newCommunityCardsCount,
     actionTimeoutAt,
@@ -85,22 +87,28 @@ export function WatchGame({ tableId, inviteCode, onBack }: WatchGameProps) {
   }
 
   return (
-    <GameTable
-      gameState={gameState}
-      mySeat={null}
-      myHoleCards={myHoleCards}
-      lastActions={lastActions}
-      isDealingCards={false}
-      newCommunityCardsCount={newCommunityCardsCount}
-      actionTimeoutAt={actionTimeoutAt}
-      actionTimeoutMs={actionTimeoutMs}
-      showdownHandNames={showdownHandNames}
-      handleAction={() => {}}
-      onBack={onBack}
-      blindsLabel={blindsLabel}
-      isSpectator
-      maintenanceStatus={maintenanceStatus}
-      announcementStatus={announcementStatus}
-    />
+    <>
+      <GameTable
+        gameState={gameState}
+        mySeat={null}
+        myHoleCards={myHoleCards}
+        lastActions={lastActions}
+        isDealingCards={false}
+        newCommunityCardsCount={newCommunityCardsCount}
+        actionTimeoutAt={actionTimeoutAt}
+        actionTimeoutMs={actionTimeoutMs}
+        showdownHandNames={showdownHandNames}
+        handleAction={() => {}}
+        onBack={onBack}
+        blindsLabel={blindsLabel}
+        isSpectator
+        maintenanceStatus={maintenanceStatus}
+        announcementStatus={announcementStatus}
+      />
+      <SpectatorAllHands
+        gameState={gameState}
+        holeCardsBySeat={holeCardsBySeat}
+      />
+    </>
   );
 }

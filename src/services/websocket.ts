@@ -30,7 +30,7 @@ export type WsListeners = {
   onTableJoined?: (tableId: string, seat: number) => void;
   onTableLeft?: () => void;
   onGameState?: (state: ClientGameState) => void;
-  onHoleCards?: (cards: Card[]) => void;
+  onHoleCards?: (data: { cards: Card[]; seatIndex?: number }) => void;
   onActionTaken?: (data: { playerId: string; action: Action; amount: number; drawCount?: number }) => void;
   onShowdown?: (data: {
     winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
@@ -192,9 +192,9 @@ class WebSocketService {
         this.emit('onGameState', state);
       });
 
-      this.socket.on('game:hole_cards', ({ cards }) => {
-        wsLog('game:hole_cards', { cards });
-        this.emit('onHoleCards', cards);
+      this.socket.on('game:hole_cards', (data) => {
+        wsLog('game:hole_cards', data);
+        this.emit('onHoleCards', data);
       });
 
       this.socket.on('game:action_taken', (data) => {
