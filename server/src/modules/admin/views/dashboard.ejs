@@ -109,6 +109,8 @@
       flex-shrink: 0;
     }
     .admin-btn:hover { background: #475569; color: #f8fafc; }
+    a.admin-btn { text-decoration: none; display: inline-block; }
+    a.admin-btn:visited { color: #94a3b8; }
     .admin-btn.danger { border-color: #ef4444; color: #ef4444; }
     .admin-btn.danger:hover { background: #ef4444; color: white; }
     .admin-btn.warn { border-color: #f59e0b; color: #f59e0b; }
@@ -294,8 +296,24 @@
       document.getElementById('tournamentStat').style.display = tCount > 0 ? '' : 'none';
       document.getElementById('tournamentSep').style.display = tCount > 0 ? '' : 'none';
 
+      window.adminClientAppUrl = d.clientAppUrl || '';
       renderTables(d.tables.details);
       renderTournaments(d.tournaments ? d.tournaments.details : []);
+    }
+
+    function spectateControl(t) {
+      if (!t.canSpectate) {
+        return '<span class="admin-btn" style="opacity:0.45;cursor:default;pointer-events:none" title="Fast foldテーブルは観戦できません">観戦</span>';
+      }
+      var base = (window.adminClientAppUrl || '').replace(/\/$/, '');
+      var path = '/watch/' + encodeURIComponent(t.id);
+      if (t.isPrivate && t.inviteCode) {
+        path += '?invite=' + encodeURIComponent(t.inviteCode);
+      }
+      var href = base + path;
+      var title = 'クライアントで観戦を開く（CLIENT_URL）';
+      if (base) title = 'クライアントで観戦を開く: ' + base;
+      return '<a class="admin-btn" href="' + href + '" target="_blank" rel="noopener noreferrer" title="' + title + '">観戦</a>';
     }
 
     function renderTables(tables) {
@@ -325,6 +343,7 @@
               (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px">' +
+              spectateControl(t) +
               renderPendingAction(t) +
               '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(t.pot) + '</span>' +
               '<span style="color:#64748b">' + t.playerCount + '/' + t.maxPlayers + '</span>' +
@@ -418,6 +437,7 @@
                 (tbl.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
               '</span>' +
               '<span style="display:flex;align-items:center;gap:8px">' +
+                spectateControl(tbl) +
                 renderPendingAction(tbl) +
                 '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(tbl.pot) + '</span>' +
                 '<span style="color:#64748b">' + tbl.playerCount + '/6</span>' +

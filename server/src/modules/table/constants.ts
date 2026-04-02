@@ -23,4 +23,7 @@ export const TABLE_CONSTANTS = {
 
   // ダッシュボード
   MAX_MESSAGE_LOG: 50,
+
+  /** 1卓あたりの同時観戦者上限 */
+  MAX_SPECTATORS_PER_TABLE: 50,
 } as const;

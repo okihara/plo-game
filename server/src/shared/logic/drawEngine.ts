@@ -1,6 +1,12 @@
 import { GameState, Player, Position, Action, Card, Street, GameVariant } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
-import { getActivePlayers, getPlayersWhoCanAct, calculateSidePots, calculateRake } from './gameEngine.js';
+import {
+  getActivePlayers,
+  getPlayersWhoCanAct,
+  calculateSidePots,
+  calculateRake,
+  assignBlindPostingPositions,
+} from './gameEngine.js';
 import { evaluate27LowHand, compare27LowHands } from './handEvaluator.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
@@ -156,12 +162,6 @@ export function startDrawHand(state: GameState): GameState {
     newState.dealerPosition = nextDealer;
   }
 
-  // ポジション名更新
-  for (let i = 0; i < MAX_PLAYERS; i++) {
-    const posIndex = (i - newState.dealerPosition + MAX_PLAYERS) % MAX_PLAYERS;
-    newState.players[i].position = POSITIONS[posIndex];
-  }
-
   const activeCount = getActivePlayerCount(newState);
 
   // === ブラインド位置決定 ===
@@ -177,6 +177,8 @@ export function startDrawHand(state: GameState): GameState {
     sbIndex = getNextSeatWithChips(newState, newState.dealerPosition);
     bbIndex = getNextSeatWithChips(newState, sbIndex);
   }
+
+  assignBlindPostingPositions(newState, newState.dealerPosition, sbIndex, bbIndex, activeCount, MAX_PLAYERS);
 
   // === ブラインド投稿 ===
   const sbAmount = Math.min(newState.smallBlind, newState.players[sbIndex].chips);

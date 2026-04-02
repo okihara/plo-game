@@ -17,6 +17,9 @@ import {
   handleDebugSetChips,
   handlePrivateCreate,
   handlePrivateJoin,
+  handleSpectateJoin,
+  handleSpectateLeave,
+  handleSpectatorDisconnect,
 } from './handlers.js';
 
 interface GameSocketDependencies {
@@ -28,8 +31,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
   const tableManager = new TableManager(io);
   const tournamentManager = new TournamentManager(io);
 
-  // 同一ユーザーの最新socket接続を追跡（odId → socket）
-  const activeConnections = new Map<string, AuthenticatedSocket>();
+  // 同一ユーザーのプレイ用最新socket（観戦専用接続はここに入れない）
+  const activePlayerConnections = new Map<string, AuthenticatedSocket>();
 
   // Create default tables
   tableManager.createTable('1/3', false); // Regular table
@@ -41,23 +44,27 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
   io.on('connection', (socket: AuthenticatedSocket) => {
     const odId = socket.odId!;
-    console.log(`Player connected: ${odId} (socket: ${socket.id})`);
+    const isSpectate = socket.odConnectionMode === 'spectate';
+    console.log(`${isSpectate ? 'Spectator' : 'Player'} connected: ${odId} (socket: ${socket.id})`);
 
-    // 同一ユーザーの旧接続を切断
-    const existingSocket = activeConnections.get(odId);
-    if (existingSocket && existingSocket.id !== socket.id) {
-      console.log(`[DuplicateConnection] Disconnecting old socket for ${odId}: ${existingSocket.id}`);
-      existingSocket.odDisplacedByNewConnection = true;
-      existingSocket.emit('connection:displaced', { reason: 'new_connection' });
-      existingSocket.disconnect(true);
+    if (!isSpectate) {
+      const existingSocket = activePlayerConnections.get(odId);
+      if (existingSocket && existingSocket.id !== socket.id) {
+        console.log(`[DuplicateConnection] Disconnecting old socket for ${odId}: ${existingSocket.id}`);
+        existingSocket.odDisplacedByNewConnection = true;
+        existingSocket.emit('connection:displaced', { reason: 'new_connection' });
+        existingSocket.disconnect(true);
+      }
+      activePlayerConnections.set(odId, socket);
     }
-    activeConnections.set(odId, socket);
 
-    // トーナメント参加中なら再接続処理
-    const tournamentId = tournamentManager.getPlayerTournament(odId);
-    if (tournamentId) {
-      const tournament = tournamentManager.getTournament(tournamentId);
-      tournament?.handleReconnect(odId, socket);
+    // トーナメント参加中なら再接続処理（観戦接続ではプレイ座席のソケット置換をしない）
+    if (!isSpectate) {
+      const tournamentId = tournamentManager.getPlayerTournament(odId);
+      if (tournamentId) {
+        const tournament = tournamentManager.getTournament(tournamentId);
+        tournament?.handleReconnect(odId, socket);
+      }
     }
 
     socket.emit('connection:established', { playerId: odId });
@@ -70,6 +77,12 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     }
 
     socket.on('table:leave', () => handleTableLeave(socket, tableManager));
+    socket.on('table:spectate_join', (data) =>
+      handleSpectateJoin(socket, data ?? {}, tableManager, tournamentManager)
+    );
+    socket.on('table:spectate_leave', () =>
+      handleSpectateLeave(socket, tableManager, tournamentManager)
+    );
     socket.on('game:action', (data) => handleGameAction(socket, data, tableManager, tournamentManager));
     socket.on('game:fast_fold', () => handleFastFold(socket, tableManager));
     socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager));
@@ -88,14 +101,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         return;
       }
 
-      // 自分がまだ最新の接続の場合のみレジストリから削除
-      if (activeConnections.get(odId)?.id === socket.id) {
-        activeConnections.delete(odId);
+      if (socket.odConnectionMode === 'spectate') {
+        handleSpectatorDisconnect(socket, tableManager, tournamentManager);
+        return;
+      }
+
+      if (activePlayerConnections.get(odId)?.id === socket.id) {
+        activePlayerConnections.delete(odId);
       }
 
       handleDisconnect(socket, tableManager);
 
-      // トーナメントの切断処理
       const tournamentId = tournamentManager.getPlayerTournament(odId);
       if (tournamentId) {
         const tournament = tournamentManager.getTournament(tournamentId);

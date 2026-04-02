@@ -99,8 +99,11 @@ export class TableManager {
     const table = this.tables.get(tableId);
     if (!table) {
       console.warn(`[TableManager] removeTable: table ${tableId} not found`);
-    } else if (table.inviteCode) {
-      this.inviteCodeToTable.delete(table.inviteCode);
+    } else {
+      table.disconnectAllSpectators('テーブルが閉じられました');
+      if (table.inviteCode) {
+        this.inviteCodeToTable.delete(table.inviteCode);
+      }
     }
     this.tables.delete(tableId);
   }

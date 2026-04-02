@@ -5,7 +5,13 @@
 
 import { GameState, Player, Position, Action, Street } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
-import { getActivePlayers, getPlayersWhoCanAct, calculateSidePots, calculateRake } from './gameEngine.js';
+import {
+  getActivePlayers,
+  getPlayersWhoCanAct,
+  calculateSidePots,
+  calculateRake,
+  assignBlindPostingPositions,
+} from './gameEngine.js';
 import { evaluateOmahaHiLoHand } from './handEvaluator.js';
 import { resolveHiLoShowdown, HiLoPotWinner } from './hiLoSplitPot.js';
 
@@ -144,12 +150,6 @@ export function startOmahaHiLoHand(state: GameState): GameState {
     newState.dealerPosition = nextDealer;
   }
 
-  // ポジション更新
-  for (let i = 0; i < MAX_PLAYERS; i++) {
-    const posIndex = (i - newState.dealerPosition + MAX_PLAYERS) % MAX_PLAYERS;
-    newState.players[i].position = POSITIONS[posIndex];
-  }
-
   const activeCount = getActivePlayerCount(newState);
 
   // ブラインド位置決定
@@ -164,6 +164,8 @@ export function startOmahaHiLoHand(state: GameState): GameState {
     sbIndex = getNextPlayerWithChips(newState, newState.dealerPosition);
     bbIndex = getNextPlayerWithChips(newState, sbIndex);
   }
+
+  assignBlindPostingPositions(newState, newState.dealerPosition, sbIndex, bbIndex, activeCount, MAX_PLAYERS);
 
   // SBポスト
   const sbAmount = Math.floor(sb / 2);

@@ -31,6 +31,14 @@ function withPlayers(state: GameState, updates: Partial<Player>[]): GameState {
   return newState;
 }
 
+/** 指定席を空席に（startNewHand 前のテーブル構成用） */
+function setPlayersSittingOut(state: GameState, indices: readonly number[]) {
+  for (const i of indices) {
+    state.players[i].isSittingOut = true;
+    state.players[i].chips = 0;
+  }
+}
+
 /** テスト用の固定カード */
 function card(rank: Card['rank'], suit: Card['suit']): Card {
   return { rank, suit };
@@ -157,6 +165,25 @@ describe('startNewHand', () => {
     }
   });
 
+  it('空席が挟まってもポジション名が実際のBTN/SB/BBと一致する', () => {
+    const state = createInitialGameState();
+    state.players[1].isSittingOut = true;
+    state.players[1].chips = 0;
+    state.dealerPosition = 0;
+
+    const newState = startNewHand(state);
+    const byPos = (pos: (typeof newState.players)[0]['position']) =>
+      newState.players.findIndex(p => p.position === pos);
+
+    const btn = byPos('BTN');
+    const sb = byPos('SB');
+    const bb = byPos('BB');
+    expect(newState.players[sb].currentBet).toBe(newState.smallBlind);
+    expect(newState.players[bb].currentBet).toBe(newState.bigBlind);
+    expect(btn).toBe(newState.dealerPosition);
+    expect(newState.players[1].isSittingOut).toBe(true);
+  });
+
   it('Heads-upでBTN=SBのルールが適用される', () => {
     // 4人をisSittingOutにしてHeads-upにする
     const state = createInitialGameState();
@@ -181,6 +208,100 @@ describe('startNewHand', () => {
 
     // ポットにブラインドが正しく入っている
     expect(newState.pot).toBe(newState.smallBlind + newState.bigBlind);
+  });
+
+  describe('ポジション割り当て（人数・ヘッズ・空席）', () => {
+    it('ヘッズアップ: BTN 表示の席が SB 額、BB 表示の席が BB 額をポストし先手は BTN', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [2, 3, 4, 5]);
+      const newState = startNewHand(state);
+
+      const btnSeat = newState.players.findIndex(p => p.position === 'BTN' && !p.isSittingOut);
+      const bbSeat = newState.players.findIndex(p => p.position === 'BB' && !p.isSittingOut);
+      expect(btnSeat).toBeGreaterThanOrEqual(0);
+      expect(bbSeat).toBeGreaterThanOrEqual(0);
+      expect(btnSeat).not.toBe(bbSeat);
+      expect(newState.players[btnSeat].currentBet).toBe(newState.smallBlind);
+      expect(newState.players[bbSeat].currentBet).toBe(newState.bigBlind);
+      expect(newState.currentPlayerIndex).toBe(btnSeat);
+    });
+
+    it('ヘッズアップ: アクティブ2席に BTN と BB だけが付く', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [2, 3, 4, 5]);
+      const newState = startNewHand(state);
+      const activePositions = newState.players
+        .filter(p => !p.isSittingOut)
+        .map(p => p.position);
+      expect(new Set(activePositions)).toEqual(new Set(['BTN', 'BB'] as const));
+    });
+
+    it('3人（連席）: アクティブは BTN / SB / BB のみ', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [3, 4, 5]);
+      const newState = startNewHand(state);
+      const activePositions = newState.players.filter(p => !p.isSittingOut).map(p => p.position);
+      expect(new Set(activePositions)).toEqual(new Set(['BTN', 'SB', 'BB'] as const));
+    });
+
+    it('3人（席0,2,4のみ）: BTN/SB/BB だけがアクティブにつき UTG などは付かない', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [1, 3, 5]);
+      const newState = startNewHand(state);
+      const activePositions = newState.players.filter(p => !p.isSittingOut).map(p => p.position);
+      expect(new Set(activePositions)).toEqual(new Set(['BTN', 'SB', 'BB'] as const));
+    });
+
+    it('3人以上: BTN の席は常に dealerPosition と一致する', () => {
+      for (const sittingOut of [[3, 4, 5], [1, 3, 5], [1], [2, 5]] as const) {
+        const state = createInitialGameState();
+        setPlayersSittingOut(state, sittingOut);
+        const newState = startNewHand(state);
+        if (newState.players.filter(p => !p.isSittingOut && !p.folded).length < 3) continue;
+        const btnSeat = newState.players.findIndex(
+          p => p.position === 'BTN' && !p.isSittingOut,
+        );
+        expect(btnSeat).toBe(newState.dealerPosition);
+      }
+    });
+
+    it('4人（空席あり）: アクティブに UTG が付く', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [2, 5]);
+      const newState = startNewHand(state);
+      const activePositions = newState.players.filter(p => !p.isSittingOut).map(p => p.position);
+      expect(new Set(activePositions)).toEqual(new Set(['BTN', 'SB', 'BB', 'UTG'] as const));
+    });
+
+    it('5人: UTG のあと CO（HJ は使わない）', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [5]);
+      const newState = startNewHand(state);
+      const activePositions = newState.players.filter(p => !p.isSittingOut).map(p => p.position);
+      expect(new Set(activePositions)).toEqual(new Set(['BTN', 'SB', 'BB', 'UTG', 'CO'] as const));
+      expect(activePositions.includes('HJ')).toBe(false);
+    });
+
+    it('6人フル: BTN から CO まで重複なく付く', () => {
+      const state = createInitialGameState();
+      const newState = startNewHand(state);
+      const activePositions = newState.players.filter(p => !p.isSittingOut).map(p => p.position);
+      expect(new Set(activePositions)).toEqual(
+        new Set(['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'] as const),
+      );
+    });
+
+    it('空席: 表示用ポジションはディーラー基準の環状インデックス', () => {
+      const state = createInitialGameState();
+      setPlayersSittingOut(state, [1]);
+      state.dealerPosition = 0;
+      const newState = startNewHand(state);
+      const d = newState.dealerPosition;
+      expect(newState.players[1].isSittingOut).toBe(true);
+      const expected = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'] as const;
+      const posIndex = (1 - d + 6) % 6;
+      expect(newState.players[1].position).toBe(expected[posIndex]);
+    });
   });
 });
 
