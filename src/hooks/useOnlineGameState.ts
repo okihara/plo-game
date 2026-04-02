@@ -109,6 +109,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
   // Stud: 新ハンド判定用（onHoleCardsが複数ストリートで呼ばれるため）
   const isNewHandRef = useRef(true);
+  /** ハンド間の演出クリア: 観戦同様に「新ハンド開始」(isHandInProgress false→true) でもクリアする */
+  const prevIsHandInProgressRef = useRef(false);
 
   // ============================================
   // アクションマーカー管理（CSSアニメーションで自動フェードアウト）
@@ -233,6 +235,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setMySeat(seat);
         setMyHoleCards([]);
         isNewHandRef.current = true;
+        prevIsHandInProgressRef.current = false;
       },
       onTableLeft: () => {
         setTableId(null);
@@ -241,6 +244,11 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setClientState(null);
         setActionTimeoutAt(null);
         setPrivateTableInfo(null);
+        setWinners([]);
+        setShowdownCards(new Map());
+        setShowdownHandNames(new Map());
+        pendingShowdownHandNamesRef.current = null;
+        prevIsHandInProgressRef.current = false;
       },
       onTableChanged: (tid, seat) => {
         // ファストフォールド: テーブル移動
@@ -280,10 +288,23 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         isNewHandRef.current = true;
         setTableId(tid);
         setMySeat(seat);
+        prevIsHandInProgressRef.current = false;
       },
       onGameState: (state) => {
         // ファストフォールド移動後、新テーブルの状態が届いたらフラグクリア
         setIsChangingTable(false);
+
+        const nowInProgress = state.isHandInProgress;
+        const wasInProgress = prevIsHandInProgressRef.current;
+        prevIsHandInProgressRef.current = nowInProgress;
+        // 新ハンド開始: 観戦と同じ境界で WIN / ショウダウン / アクションマーカーをまとめてクリア
+        if (!wasInProgress && nowInProgress) {
+          setWinners([]);
+          setShowdownCards(new Map());
+          setShowdownHandNames(new Map());
+          pendingShowdownHandNamesRef.current = null;
+          setLastActions(new Map());
+        }
 
         // ストリート変更検出
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
@@ -314,18 +335,13 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
       onHoleCards: (cards) => {
-        // Stud: onHoleCardsは各ストリートで呼ばれる。新ハンドのみアニメーション実行
+        // Stud: 各ストリートで呼ばれる。新ハンド初回だけディール演出（演出リセットは onGameState の isHandInProgress 遷移に任せる）
         if (cards.length > 0 && isNewHandRef.current) {
           isNewHandRef.current = false;
-          pendingShowdownHandNamesRef.current = null;
           startDealingAnimation();
           playDealSound();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
-          setWinners([]);
-          setLastActions(new Map());
-          setShowdownCards(new Map());
-          setShowdownHandNames(new Map());
         }
         setMyHoleCards(cards);
       },

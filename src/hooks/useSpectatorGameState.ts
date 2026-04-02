@@ -54,6 +54,8 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const prevCardCountRef = useRef(0);
   const clientStateRef = useRef<ClientGameState | null>(null);
   const pendingShowdownHandNamesRef = useRef<Map<number, string> | null>(null);
+  /** 観戦は game:hole_cards が来ないため、新ハンドは isHandInProgress の false→true で演出をクリア */
+  const prevIsHandInProgressRef = useRef(false);
 
   const clearAllActionMarkers = useCallback(() => {
     setLastActions(new Map());
@@ -103,6 +105,8 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     setWinners([]);
     setShowdownCards(new Map());
     setShowdownHandNames(new Map());
+    pendingShowdownHandNamesRef.current = null;
+    prevIsHandInProgressRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -120,12 +124,28 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
       },
       onSpectateJoined: (tid) => {
         setTableId(tid);
+        prevIsHandInProgressRef.current = false;
       },
       onSpectateLeft: () => {
         setTableId(null);
         setClientState(null);
+        setWinners([]);
+        setShowdownCards(new Map());
+        setShowdownHandNames(new Map());
+        pendingShowdownHandNamesRef.current = null;
+        prevIsHandInProgressRef.current = false;
       },
       onGameState: (state) => {
+        const nowInProgress = state.isHandInProgress;
+        const wasInProgress = prevIsHandInProgressRef.current;
+        prevIsHandInProgressRef.current = nowInProgress;
+        if (!wasInProgress && nowInProgress) {
+          setWinners([]);
+          setShowdownCards(new Map());
+          setShowdownHandNames(new Map());
+          pendingShowdownHandNamesRef.current = null;
+        }
+
         if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
           clearAllActionMarkers();
