@@ -157,7 +157,8 @@ export function GameTable({
   }, [gameState, setBigBlind]);
 
   const myPlayer = mySeat !== null ? gameState.players[mySeat] : null;
-  const myPlayerIdx = mySeat !== null ? mySeat : gameState.dealerPosition;
+  // 観戦は常に席0を画面手前基準（ディーラー／BTN基準にしない）
+  const myPlayerIdx = isSpectator ? 0 : mySeat !== null ? mySeat : gameState.dealerPosition;
 
   const myCurrentHandName = useMemo(() => {
     const variantConfig = getVariantConfig(gameState.variant);
