@@ -6,7 +6,7 @@ import { SeatInfo, PendingAction } from '../types.js';
 import { maskName } from '../../../shared/utils.js';
 
 /** 裏カードの値を隠してダミー値に置換（セキュリティ: 他プレイヤーに見せない） */
-function toProtocolCards(player: Player | null): OnlinePlayer['cards'] {
+export function toProtocolHoleCards(player: Player | null): OnlinePlayer['cards'] {
   if (!player) return [];
   return player.holeCards
     .map(c => c.isUp
@@ -40,13 +40,14 @@ export class StateTransformer {
         avatarId: seat.avatarId,
         avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
+        position: player?.position,
         chips: player?.chips ?? seat.chips,
         currentBet: player?.currentBet ?? 0,
         folded: player?.folded ?? false,
         isAllIn: false,
         hasActed: true,
         isConnected: false,
-        cards: toProtocolCards(player),
+        cards: toProtocolHoleCards(player),
       };
     }
 
@@ -58,6 +59,7 @@ export class StateTransformer {
         avatarId: seat.avatarId,
         avatarUrl: seat.avatarUrl,
         seatNumber: seatIndex,
+        position: player?.position,
         chips: seat.chips, // buyIn時のチップを表示
         currentBet: 0,
         folded: true, // 参加していないのでfolded扱い
@@ -74,13 +76,14 @@ export class StateTransformer {
       avatarId: seat.avatarId,
       avatarUrl: seat.avatarUrl,
       seatNumber: seatIndex,
+      position: player?.position,
       chips: player?.chips ?? seat.chips,
       currentBet: player?.currentBet ?? 0,
       folded: player?.folded ?? false,
       isAllIn: player?.isAllIn ?? false,
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
-      cards: toProtocolCards(player),
+      cards: toProtocolHoleCards(player),
     };
   }
 

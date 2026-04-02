@@ -100,12 +100,6 @@ export function startNewHand(state: GameState): GameState {
     newState.dealerPosition = nextDealer;
   }
 
-  // ポジション名を更新（ディーラー位置基準で再計算）
-  for (let i = 0; i < 6; i++) {
-    const posIndex = (i - newState.dealerPosition + 6) % 6;
-    newState.players[i].position = POSITIONS[posIndex];
-  }
-
   // アクティブプレイヤー数を確認
   const activeCount = getActivePlayerCount(newState);
 
@@ -124,6 +118,8 @@ export function startNewHand(state: GameState): GameState {
     sbIndex = getNextPlayerWithChips(newState, newState.dealerPosition);
     bbIndex = getNextPlayerWithChips(newState, sbIndex);
   }
+
+  assignBlindPostingPositions(newState, newState.dealerPosition, sbIndex, bbIndex, activeCount, 6);
 
   // === ブラインドを投稿 ===
   // スモールブラインド（チップが足りない場合はオールイン）
@@ -214,6 +210,74 @@ function getNextPlayerWithChips(state: GameState, fromIndex: number): number {
     count++;
   }
   return -1;
+}
+
+/** BB 以降（人数に応じて）— 5-max は HJ を省略して UTG→CO */
+const POST_BB_POSITION_LABELS: Record<number, readonly Position[]> = {
+  1: ['UTG'],
+  2: ['UTG', 'CO'],
+  3: ['UTG', 'HJ', 'CO'],
+};
+
+function getNextOccupiedSeatForLabels(
+  state: GameState,
+  fromIndex: number,
+  assigned: Set<number>,
+  maxSeats: number,
+): number {
+  let index = (fromIndex + 1) % maxSeats;
+  for (let c = 0; c < maxSeats; c++) {
+    if (!assigned.has(index)) {
+      const p = state.players[index];
+      if (!p.isSittingOut && !p.folded) {
+        return index;
+      }
+    }
+    index = (index + 1) % maxSeats;
+  }
+  return -1;
+}
+
+/**
+ * 空席を挟むテーブルでも BTN/SB/BB/UTG… を実際のブラインド順と一致させる
+ */
+export function assignBlindPostingPositions(
+  state: GameState,
+  dealerPosition: number,
+  sbIndex: number,
+  bbIndex: number,
+  activeCount: number,
+  maxSeats: number = 6,
+): void {
+  const assigned = new Set<number>();
+
+  if (activeCount === 2) {
+    state.players[sbIndex].position = 'BTN';
+    state.players[bbIndex].position = 'BB';
+    assigned.add(sbIndex).add(bbIndex);
+  } else {
+    state.players[dealerPosition].position = 'BTN';
+    state.players[sbIndex].position = 'SB';
+    state.players[bbIndex].position = 'BB';
+    assigned.add(dealerPosition).add(sbIndex).add(bbIndex);
+
+    const extra = activeCount - 3;
+    const labels = POST_BB_POSITION_LABELS[extra] ?? [];
+    let cursor = bbIndex;
+    for (const label of labels) {
+      const next = getNextOccupiedSeatForLabels(state, cursor, assigned, maxSeats);
+      if (next === -1) break;
+      state.players[next].position = label;
+      assigned.add(next);
+      cursor = next;
+    }
+  }
+
+  for (let i = 0; i < maxSeats; i++) {
+    if (state.players[i].isSittingOut) {
+      state.players[i].position = POSITIONS[(i - dealerPosition + maxSeats) % maxSeats];
+    }
+  }
 }
 
 /**

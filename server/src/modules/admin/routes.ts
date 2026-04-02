@@ -34,6 +34,10 @@ interface TableStats {
   blinds: string;
   variant: string;
   isFastFold: boolean;
+  isPrivate: boolean;
+  inviteCode: string | null;
+  /** Fast fold 卓は観戦不可 */
+  canSpectate: boolean;
   playerCount: number;
   maxPlayers: number;
   isHandInProgress: boolean;
@@ -98,6 +102,8 @@ interface ServerStats {
     isActive: boolean;
     message: string;
   };
+  /** 観戦リンク用（末尾スラッシュなし）。クライアントオリジン。 */
+  clientAppUrl: string;
 }
 
 interface TournamentStats {
@@ -148,6 +154,9 @@ export function adminRoutes(deps: AdminDependencies) {
             blinds: info.blinds,
             variant: info.variant,
             isFastFold: info.isFastFold,
+            isPrivate: table.isPrivate,
+            inviteCode: table.inviteCode,
+            canSpectate: !table.isFastFold,
             playerCount: info.players,
             maxPlayers: info.maxPlayers,
             isHandInProgress: gameState?.isHandInProgress ?? false,
@@ -180,6 +189,9 @@ export function adminRoutes(deps: AdminDependencies) {
               blinds: table.blinds,
               variant: table.variant ?? 'plo',
               isFastFold: false,
+              isPrivate: table.isPrivate,
+              inviteCode: table.inviteCode,
+              canSpectate: !table.isFastFold,
               playerCount: table.getAdminSeats().filter((s): s is NonNullable<typeof s> => s !== null).length,
               maxPlayers: 6,
               isHandInProgress: gameState?.isHandInProgress ?? false,
@@ -250,6 +262,7 @@ export function adminRoutes(deps: AdminDependencies) {
         },
         maintenance: maintenanceService.getStatus(),
         announcement: announcementService.getStatus(),
+        clientAppUrl: env.CLIENT_URL.replace(/\/$/, ''),
       };
     });
 

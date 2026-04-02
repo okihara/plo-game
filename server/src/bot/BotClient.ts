@@ -213,7 +213,10 @@ export class BotClient {
       }
     });
 
-    this.socket.on('game:hole_cards', (data: { cards: Card[] }) => {
+    this.socket.on('game:hole_cards', (data: { cards: Card[]; seatIndex?: number }) => {
+      if (data.seatIndex !== undefined && data.seatIndex !== this.seatNumber) {
+        return;
+      }
       const isUpdate = this.holeCards.length > 0;
       this.holeCards = data.cards;
       if (!isUpdate) {

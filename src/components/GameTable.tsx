@@ -64,6 +64,9 @@ export interface GameTableProps {
 
   // 外から差し込むオーバーレイ（TournamentHUD等）
   children?: React.ReactNode;
+
+  /** 観戦モード: アクション・自分のホール非表示、席の基準はディーラー */
+  isSpectator?: boolean;
 }
 
 export function GameTable({
@@ -90,6 +93,7 @@ export function GameTable({
   seatedPlayerCount,
   notice: externalNotice,
   children,
+  isSpectator = false,
 }: GameTableProps) {
   const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
   const { user } = useAuth();
@@ -153,7 +157,8 @@ export function GameTable({
   }, [gameState, setBigBlind]);
 
   const myPlayer = mySeat !== null ? gameState.players[mySeat] : null;
-  const myPlayerIdx = mySeat ?? 0;
+  // 観戦は常に席0を画面手前基準（ディーラー／BTN基準にしない）
+  const myPlayerIdx = isSpectator ? 0 : mySeat !== null ? mySeat : gameState.dealerPosition;
 
   const myCurrentHandName = useMemo(() => {
     const variantConfig = getVariantConfig(gameState.variant);
@@ -196,6 +201,7 @@ export function GameTable({
 
   return (
     <>
+
       {/* メンテナンス通知バナー */}
       {maintenanceStatus?.isActive && (
         <div className="absolute top-[4%] left-0 right-0 z-50 flex justify-center pointer-events-none">
@@ -305,8 +311,8 @@ export function GameTable({
           {variantDisplayName[gameState.variant] || gameState.variant} {blindsLabel}
         </span>
       </div>
-      {/* 招待コードボタン（プライベートテーブル） */}
-      {privateTableInfo && (
+      {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}
+      {!isSpectator && privateTableInfo && (
         <div className="absolute top-[9%] right-[4%] z-[160]">
           <div className="relative">
             <button
@@ -368,28 +374,32 @@ export function GameTable({
             getLabel={getLabel}
           />
 
-          <MyCards
-            cards={myHoleCards}
-            dealOrder={humanDealOrder}
-            folded={myPlayer?.folded}
-            handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
-            variant={gameState.variant}
-            isDrawPhase={isDraw && isCurrentDrawStreet}
-            selectedCardIndices={selectedCardIndices}
-            onCardToggle={handleCardToggle}
-          />
+          {!isSpectator && (
+            <MyCards
+              cards={myHoleCards}
+              dealOrder={humanDealOrder}
+              folded={myPlayer?.folded}
+              handName={showHandName ? (showdownHandNames.get(myPlayerIdx) || myCurrentHandName) : showdownHandNames.get(myPlayerIdx)}
+              variant={gameState.variant}
+              isDrawPhase={isDraw && isCurrentDrawStreet}
+              selectedCardIndices={selectedCardIndices}
+              onCardToggle={handleCardToggle}
+            />
+          )}
 
-          <ActionPanel
-            state={gameState}
-            mySeat={myPlayerIdx}
-            onAction={handleAction}
-            isFastFold={isFastFold}
-            onFastFold={handleFastFold}
-            isDrawPhase={isDraw && isCurrentDrawStreet}
-            selectedCardIndices={selectedCardIndices}
-          />
+          {!isSpectator && (
+            <ActionPanel
+              state={gameState}
+              mySeat={myPlayerIdx}
+              onAction={handleAction}
+              isFastFold={isFastFold}
+              onFastFold={handleFastFold}
+              isDrawPhase={isDraw && isCurrentDrawStreet}
+              selectedCardIndices={selectedCardIndices}
+            />
+          )}
 
-          {myPlayer && (
+          {!isSpectator && myPlayer && (
             <HandAnalysisOverlay
               holeCards={myHoleCards}
               communityCards={gameState.communityCards}
@@ -405,7 +415,7 @@ export function GameTable({
           )}
 
           {/* テーブル検索・待機中オーバーレイ */}
-          {(isChangingTable || isWaitingForPlayers) && (
+          {!isSpectator && (isChangingTable || isWaitingForPlayers) && (
             <div className="absolute inset-0 z-[150] flex items-center justify-center bg-black/70">
               <div className="text-center">
                 <div className="animate-spin w-12 h-12 border-4 border-white/30 border-t-white rounded-full mx-auto mb-4"></div>
@@ -435,10 +445,10 @@ export function GameTable({
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
-              isSelf={selectedPlayer.id === myPlayerIdx}
+              isSelf={mySeat !== null && selectedPlayer.id === mySeat}
               onClose={() => setSelectedPlayer(null)}
-              twitterAvatarUrl={selectedPlayer.id === myPlayerIdx ? user?.twitterAvatarUrl : undefined}
-              useTwitterAvatar={selectedPlayer.id === myPlayerIdx ? user?.useTwitterAvatar : undefined}
+              twitterAvatarUrl={mySeat !== null && selectedPlayer.id === mySeat ? user?.twitterAvatarUrl : undefined}
+              useTwitterAvatar={mySeat !== null && selectedPlayer.id === mySeat ? user?.useTwitterAvatar : undefined}
               label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
               onLabelChange={setLabel}
               onLabelRemove={removeLabel}

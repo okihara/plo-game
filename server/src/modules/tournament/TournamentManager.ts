@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { TournamentInstance } from './TournamentInstance.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentResult } from './types.js';
 import { prisma } from '../../config/database.js';
+import type { TableInstance } from '../table/TableInstance.js';
 
 /**
  * 全トーナメントのレジストリ
@@ -103,6 +104,17 @@ export class TournamentManager {
    */
   getTournament(tournamentId: string): TournamentInstance | undefined {
     return this.tournaments.get(tournamentId);
+  }
+
+  /**
+   * キャッシュ用 TableManager に無い卓ID（トーナメント卓）を解決する
+   */
+  findTableInstanceByTableId(tableId: string): TableInstance | undefined {
+    for (const tournament of this.tournaments.values()) {
+      const table = tournament.getTable(tableId);
+      if (table) return table;
+    }
+    return undefined;
   }
 
   /**

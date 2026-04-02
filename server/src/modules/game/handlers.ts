@@ -8,6 +8,32 @@ import { cashOutPlayer, deductBuyIn } from '../auth/bankroll.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
 import { handleFastFoldMove, setupFastFoldCallback } from './fastFoldService.js';
 
+const SPECTATE_JOIN_WINDOW_MS = 60_000;
+const SPECTATE_JOIN_MAX_PER_WINDOW = 30;
+const spectateJoinTimestamps = new Map<string, number[]>();
+
+function checkSpectateRateLimit(odId: string): boolean {
+  const now = Date.now();
+  let arr = spectateJoinTimestamps.get(odId) ?? [];
+  arr = arr.filter((t) => now - t < SPECTATE_JOIN_WINDOW_MS);
+  if (arr.length >= SPECTATE_JOIN_MAX_PER_WINDOW) {
+    return false;
+  }
+  arr.push(now);
+  spectateJoinTimestamps.set(odId, arr);
+  return true;
+}
+
+function resolveTableInstance(
+  tableId: string,
+  tableManager: TableManager,
+  tournamentManager: TournamentManager
+): TableInstance | undefined {
+  const cash = tableManager.getTable(tableId);
+  if (cash) return cash;
+  return tournamentManager.findTableInstanceByTableId(tableId);
+}
+
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
   const result = table.unseatPlayer(odId);
@@ -106,6 +132,92 @@ export async function handleDisconnect(socket: AuthenticatedSocket, tableManager
   } catch (err) {
     console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
   }
+}
+
+/** 観戦ソケット切断時: ルーム退出のみ（着席プレイヤーのキャッシュアウトはしない） */
+export function handleSpectatorDisconnect(
+  socket: AuthenticatedSocket,
+  tableManager: TableManager,
+  tournamentManager: TournamentManager
+): void {
+  const tableId = socket.odSpectatingTableId;
+  if (!tableId) return;
+  const table = resolveTableInstance(tableId, tableManager, tournamentManager);
+  table?.removeSpectator(socket);
+  socket.odSpectatingTableId = null;
+}
+
+export function handleSpectateJoin(
+  socket: AuthenticatedSocket,
+  data: { tableId?: string; inviteCode?: string },
+  tableManager: TableManager,
+  tournamentManager: TournamentManager
+): void {
+  if (maintenanceService.isMaintenanceActive()) {
+    socket.emit('table:error', { message: 'メンテナンス中のため観戦できません' });
+    return;
+  }
+  if (socket.odConnectionMode !== 'spectate') {
+    socket.emit('table:error', { message: '観戦には観戦用の接続が必要です' });
+    return;
+  }
+  const odId = socket.odId;
+  if (!odId) {
+    socket.emit('table:error', { message: '認証が必要です' });
+    return;
+  }
+  const tableId = data.tableId?.trim();
+  if (!tableId) {
+    socket.emit('table:error', { message: 'テーブルIDが必要です' });
+    return;
+  }
+
+  const table = resolveTableInstance(tableId, tableManager, tournamentManager);
+  if (!table) {
+    socket.emit('table:error', { message: 'テーブルが見つかりません' });
+    return;
+  }
+
+  if (table.isPrivate) {
+    const code = data.inviteCode?.toUpperCase().trim();
+    if (!code || code !== table.inviteCode) {
+      socket.emit('table:error', { message: '招待コードが必要です' });
+      return;
+    }
+  }
+
+  if (!checkSpectateRateLimit(odId)) {
+    socket.emit('table:error', { message: 'リクエストが多すぎます。しばらく待ってからお試しください' });
+    return;
+  }
+
+  if (socket.odSpectatingTableId && socket.odSpectatingTableId !== table.id) {
+    const prev = resolveTableInstance(socket.odSpectatingTableId, tableManager, tournamentManager);
+    prev?.removeSpectator(socket);
+    socket.odSpectatingTableId = null;
+  }
+
+  const result = table.addSpectator(socket);
+  if (!result.ok) {
+    socket.emit('table:error', { message: result.message });
+    return;
+  }
+
+  socket.odSpectatingTableId = table.id;
+  socket.emit('table:spectate_joined', { tableId: table.id });
+  socket.emit('game:state', { state: table.getClientGameState() });
+}
+
+export function handleSpectateLeave(
+  socket: AuthenticatedSocket,
+  tableManager: TableManager,
+  tournamentManager: TournamentManager
+): void {
+  if (socket.odConnectionMode !== 'spectate') {
+    return;
+  }
+  handleSpectatorDisconnect(socket, tableManager, tournamentManager);
+  socket.emit('table:spectate_left');
 }
 
 export async function handleMatchmakingJoin(
