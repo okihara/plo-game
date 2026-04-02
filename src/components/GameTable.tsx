@@ -201,16 +201,6 @@ export function GameTable({
 
   return (
     <>
-      {isSpectator && (
-        <div className="absolute top-[7%] left-1/2 -translate-x-1/2 z-[170] pointer-events-none">
-          <span
-            className="bg-black/75 text-white/95 px-[3cqw] py-[1cqw] rounded-full font-semibold tracking-wide"
-            style={{ fontSize: '2.8cqw' }}
-          >
-            観戦中
-          </span>
-        </div>
-      )}
 
       {/* メンテナンス通知バナー */}
       {maintenanceStatus?.isActive && (
