@@ -11,7 +11,7 @@ vi.mock('../../maintenance/MaintenanceService.js', () => ({
   },
 }));
 
-vi.mock('../../config/database.js', () => ({
+vi.mock('../../../config/database.js', () => ({
   prisma: {},
 }));
 
