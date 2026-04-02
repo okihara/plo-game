@@ -6,6 +6,10 @@ export interface AuthenticatedSocket extends Socket {
   odId?: string;
   odIsBot?: boolean;
   odDisplacedByNewConnection?: boolean;
+  /** WebSocket 接続モード（観戦専用接続ではプレイ用ソケットを置き換えない） */
+  odConnectionMode?: 'play' | 'spectate';
+  /** 観戦中のテーブルID（切断時にルーム退出用） */
+  odSpectatingTableId?: string | null;
 }
 
 // Bot用ユーザーをDBにfind or create
@@ -56,6 +60,8 @@ export function setupAuthMiddleware(io: Server, fastify: FastifyInstance): void 
 
         socket.odId = user.id;
         socket.odIsBot = true;
+        socket.odConnectionMode =
+          socket.handshake.auth.connectionMode === 'spectate' ? 'spectate' : 'play';
 
         console.log(`Bot connected: ${user.id} (${user.username})`);
         return next();
@@ -78,9 +84,11 @@ export function setupAuthMiddleware(io: Server, fastify: FastifyInstance): void 
         return next(new Error('ユーザーが見つかりません'));
       }
 
-      socket.odId = user.id;
-      socket.odIsBot = false;
-      return next();
+        socket.odId = user.id;
+        socket.odIsBot = false;
+        socket.odConnectionMode =
+          socket.handshake.auth.connectionMode === 'spectate' ? 'spectate' : 'play';
+        return next();
     } catch (err) {
       console.warn('Socket auth failed:', err);
       return next(new Error('認証に失敗しました'));

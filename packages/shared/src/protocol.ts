@@ -14,6 +14,9 @@ import type {
 export interface ClientToServerEvents {
   // Table actions
   'table:leave': () => void;
+  /** 観戦入室（connectionMode: spectate の接続のみ可） */
+  'table:spectate_join': (data: { tableId: string; inviteCode?: string }) => void;
+  'table:spectate_leave': () => void;
 
   // Game actions
   'game:action': (data: { action: Action; amount?: number; discardIndices?: number[] }) => void;
@@ -43,6 +46,8 @@ export interface ServerToClientEvents {
 
   // Table events
   'table:joined': (data: { tableId: string; seat: number }) => void;
+  'table:spectate_joined': (data: { tableId: string }) => void;
+  'table:spectate_left': () => void;
   'table:left': () => void;
   'table:error': (data: { message: string }) => void;
   'table:busted': (data: { message: string }) => void;

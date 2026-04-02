@@ -12,6 +12,7 @@ import { TournamentResults } from './pages/TournamentResults';
 import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
+import { WatchGame } from './pages/WatchGame';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
@@ -47,7 +48,13 @@ function App() {
   }
 
 
-  const isGameScreen = (!!blinds || !!privateMode || !!tournamentId || currentPath.startsWith('/private/') || currentPath.startsWith('/tournament/'));
+  const isGameScreen =
+    !!blinds ||
+    !!privateMode ||
+    !!tournamentId ||
+    currentPath.startsWith('/private/') ||
+    currentPath.startsWith('/tournament/') ||
+    currentPath.startsWith('/watch/');
   const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
 
   const goBackToLobby = () => {
@@ -97,6 +104,31 @@ function App() {
   } else if (currentPath.startsWith('/tournament/') || tournamentId) {
     const tId = tournamentId || currentPath.replace('/tournament/', '');
     page = <TournamentGame tournamentId={tId} onBack={goBackToLobby} />;
+  } else if (currentPath.startsWith('/watch/')) {
+    const raw = currentPath.slice('/watch/'.length);
+    const tableIdForWatch = raw.split('/')[0] || '';
+    const inviteFromQuery = new URLSearchParams(window.location.search).get('invite') ?? undefined;
+    page = !tableIdForWatch.trim() ? (
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-black text-white px-[8%]">
+        <p className="text-center mb-6 text-white/90" style={{ fontSize: 'min(2vh, 3.5vw)' }}>
+          テーブルIDが無効です。URL を確認してください。
+        </p>
+        <button
+          type="button"
+          onClick={goBackToLobby}
+          className="px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10"
+          style={{ fontSize: 'min(2vh, 3.5vw)' }}
+        >
+          ロビーに戻る
+        </button>
+      </div>
+    ) : (
+      <WatchGame
+        tableId={tableIdForWatch}
+        inviteCode={inviteFromQuery}
+        onBack={goBackToLobby}
+      />
+    );
   } else if (currentPath.startsWith('/private/')) {
     const code = currentPath.replace('/private/', '');
     page = <NormalGame blinds="1/3" privateMode={{ type: 'join', inviteCode: code }} onBack={goBackToLobby} />;

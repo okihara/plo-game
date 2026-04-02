@@ -43,6 +43,8 @@ export type WsListeners = {
   onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
   onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   onDisplaced?: () => void;
+  onSpectateJoined?: (tableId: string) => void;
+  onSpectateLeft?: () => void;
   // Tournament events
   onTournamentUnregistered?: (data: { tournamentId: string }) => void;
   onTournamentState?: (state: ClientTournamentState) => void;
@@ -61,6 +63,7 @@ class WebSocketService {
   private socket: TypedSocket | null = null;
   private playerId: string | null = null;
   private connectionTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private lastConnectionMode: 'play' | 'spectate' = 'play';
 
   /**
    * 複数コンポーネントが共存できるサブスクライバーマップ
@@ -79,14 +82,20 @@ class WebSocketService {
     }
   }
 
-  connect(): Promise<string> {
+  connect(options?: { connectionMode?: 'play' | 'spectate' }): Promise<string> {
     return new Promise((resolve, reject) => {
+      const connectionMode = options?.connectionMode ?? 'play';
+
       if (this.socket?.connected) {
-        if (this.playerId) {
+        if (this.lastConnectionMode === connectionMode && this.playerId) {
           resolve(this.playerId);
           return;
         }
+        this.socket.disconnect();
+        this.socket = null;
+        this.playerId = null;
       }
+      this.lastConnectionMode = connectionMode;
 
       // 前回の接続タイムアウトが残っていたらクリア
       if (this.connectionTimeoutId) {
@@ -107,6 +116,7 @@ class WebSocketService {
         autoConnect: true,
         withCredentials: true,
         reconnection: false,
+        auth: { connectionMode },
       });
 
       let settled = false;
@@ -220,6 +230,16 @@ class WebSocketService {
         this.emit('onPrivateCreated', data);
       });
 
+      this.socket.on('table:spectate_joined', (data) => {
+        wsLog('table:spectate_joined', data);
+        this.emit('onSpectateJoined', data.tableId);
+      });
+
+      this.socket.on('table:spectate_left', () => {
+        wsLog('table:spectate_left');
+        this.emit('onSpectateLeft');
+      });
+
       // Tournament events
       this.socket.on('tournament:unregistered', (data) => {
         wsLog('tournament:unregistered', data);
@@ -285,6 +305,7 @@ class WebSocketService {
     this.socket?.disconnect();
     this.socket = null;
     this.playerId = null;
+    this.lastConnectionMode = 'play';
   }
 
   isConnected(): boolean {
@@ -350,6 +371,14 @@ class WebSocketService {
 
   joinPrivateTable(inviteCode: string): void {
     this.socket?.emit('private:join', { inviteCode });
+  }
+
+  joinSpectate(tableId: string, inviteCode?: string): void {
+    this.socket?.emit('table:spectate_join', { tableId, inviteCode });
+  }
+
+  leaveSpectate(): void {
+    this.socket?.emit('table:spectate_leave');
   }
 
   // Tournament actions

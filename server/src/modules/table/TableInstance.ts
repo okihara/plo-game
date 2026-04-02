@@ -63,6 +63,9 @@ export class TableInstance {
   // ファストフォールド: 手番が来るまで保留するフォールド (seatIndex → odId)
   private pendingEarlyFolds: Map<number, string> = new Map();
 
+  /** 観戦者（着席なし・socket.id → Socket） */
+  private spectators: Map<string, Socket> = new Map();
+
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
@@ -473,6 +476,45 @@ export class TableInstance {
       this.bigBlind,
       va
     );
+  }
+
+  public getSpectatorCount(): number {
+    return this.spectators.size;
+  }
+
+  public addSpectator(socket: Socket): { ok: true } | { ok: false; message: string } {
+    if (this.isFastFold) {
+      return { ok: false, message: 'Fast foldテーブルは観戦できません' };
+    }
+    const atCap =
+      this.spectators.size >= TABLE_CONSTANTS.MAX_SPECTATORS_PER_TABLE && !this.spectators.has(socket.id);
+    if (atCap) {
+      return { ok: false, message: '観戦者が上限に達しています' };
+    }
+    if (!this.spectators.has(socket.id)) {
+      this.spectators.set(socket.id, socket);
+      socket.join(this.roomName);
+    }
+    return { ok: true };
+  }
+
+  public removeSpectator(socket: Socket): void {
+    if (!this.spectators.has(socket.id)) return;
+    this.spectators.delete(socket.id);
+    socket.leave(this.roomName);
+  }
+
+  /** 卓削除時など: 全観戦者をルームから外す */
+  public disconnectAllSpectators(message: string): void {
+    for (const s of this.spectators.values()) {
+      try {
+        s.emit('table:error', { message });
+        s.leave(this.roomName);
+      } catch {
+        /* ignore */
+      }
+    }
+    this.spectators.clear();
   }
 
   // デバッグ・管理用
