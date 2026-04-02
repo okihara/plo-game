@@ -101,7 +101,6 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clientStateRef = useRef<ClientGameState | null>(null);
-  const mySeatRef = useRef<number | null>(null);
 
   // ショウダウン演出タイミング用Refs
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -217,10 +216,6 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   useEffect(() => {
     clientStateRef.current = clientState;
   }, [clientState]);
-
-  useEffect(() => {
-    mySeatRef.current = mySeat;
-  }, [mySeat]);
 
   useEffect(() => {
     wsService.addListeners('game', {
@@ -339,14 +334,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
       },
-      onHoleCards: ({ cards, seatIndex }) => {
-        if (
-          seatIndex !== undefined &&
-          mySeatRef.current !== null &&
-          seatIndex !== mySeatRef.current
-        ) {
-          return;
-        }
+      onHoleCards: ({ cards }) => {
+        // サーバーは自席のカードしか送らないのでseatIndexチェック不要
         // Stud: 各ストリートで呼ばれる。新ハンド初回だけディール演出（演出リセットは onGameState の isHandInProgress 遷移に任せる）
         if (cards.length > 0 && isNewHandRef.current) {
           isNewHandRef.current = false;

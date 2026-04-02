@@ -59,8 +59,6 @@ export function PlayerCards({
     }
   }, [showCards, player.folded, player.holeCards.length]);
 
-  // 自分の位置（positionIndex=0）はMyCardsで表示するので非表示
-  if (positionIndex === 0) return null;
   
   // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
   const cardOverlapMargin = getVariantConfig(variant).family === 'stud' ? '-ml-[5cqw]' : '-ml-[2cqw]';
