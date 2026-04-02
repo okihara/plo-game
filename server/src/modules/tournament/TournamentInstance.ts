@@ -766,6 +766,7 @@ export class TournamentInstance {
     // 空テーブルの削除
     for (const [tableId, table] of this.tables) {
       if (table.getPlayerCount() === 0) {
+        table.disconnectAllSpectators('トーナメントテーブルが閉じられました');
         this.tables.delete(tableId);
         this.tablePlayerMap.delete(tableId);
       }
@@ -881,6 +882,7 @@ export class TournamentInstance {
     // 古いテーブルを削除
     for (const [tableId] of this.tables) {
       if (tableId !== finalTable.id) {
+        this.tables.get(tableId)?.disconnectAllSpectators('ファイナルテーブルに統合されました');
         this.tables.delete(tableId);
         this.tablePlayerMap.delete(tableId);
       }
