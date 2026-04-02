@@ -11,6 +11,10 @@ vi.mock('../../maintenance/MaintenanceService.js', () => ({
   },
 }));
 
+vi.mock('../../config/database.js', () => ({
+  prisma: {},
+}));
+
 function mockSocket(overrides: Partial<AuthenticatedSocket> = {}): AuthenticatedSocket {
   return {
     id: 's1',
