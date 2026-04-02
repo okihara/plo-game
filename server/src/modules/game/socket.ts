@@ -58,12 +58,18 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       activePlayerConnections.set(odId, socket);
     }
 
-    // トーナメント参加中なら再接続処理（観戦接続ではプレイ座席のソケット置換をしない）
+    // 再接続処理（観戦接続ではプレイ座席のソケット置換をしない）
     if (!isSpectate) {
       const tournamentId = tournamentManager.getPlayerTournament(odId);
       if (tournamentId) {
         const tournament = tournamentManager.getTournament(tournamentId);
         tournament?.handleReconnect(odId, socket);
+      } else {
+        // キャッシュゲームテーブルに着席中なら席のソケットを更新
+        const table = tableManager.getPlayerTable(odId);
+        if (table) {
+          table.reconnectPlayer(odId, socket);
+        }
       }
     }
 
