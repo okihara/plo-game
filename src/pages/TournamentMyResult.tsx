@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { EliminationOverlay } from '../components/EliminationOverlay';
+import type { HandSummaryForResult } from '../components/EliminationOverlay';
 import { Loader2 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
@@ -12,6 +13,13 @@ interface MyResultData {
   playerName?: string;
 }
 
+interface HandStatsData {
+  lastHand: HandSummaryForResult | null;
+  bestHand: HandSummaryForResult | null;
+  worstHand: HandSummaryForResult | null;
+  totalHands: number;
+}
+
 interface TournamentMyResultProps {
   tournamentId: string;
   onBack: () => void;
@@ -19,21 +27,28 @@ interface TournamentMyResultProps {
 
 export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultProps) {
   const [result, setResult] = useState<MyResultData | null>(null);
+  const [handStats, setHandStats] = useState<HandStatsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/tournaments/${tournamentId}/my-result`, {
-          credentials: 'include',
-        });
-        if (!res.ok) {
-          const data = await res.json().catch(() => ({}));
-          throw new Error(data.error ?? `HTTP ${res.status}`);
+        const [resultRes, statsRes] = await Promise.all([
+          fetch(`${API_BASE}/api/tournaments/${tournamentId}/my-result`, { credentials: 'include' }),
+          fetch(`${API_BASE}/api/tournaments/${tournamentId}/my-hand-stats`, { credentials: 'include' }),
+        ]);
+        if (!resultRes.ok) {
+          const data = await resultRes.json().catch(() => ({}));
+          throw new Error(data.error ?? `HTTP ${resultRes.status}`);
         }
-        const data: MyResultData = await res.json();
+        const data: MyResultData = await resultRes.json();
         if (!cancelled) setResult(data);
+
+        if (statsRes.ok) {
+          const stats: HandStatsData = await statsRes.json();
+          if (!cancelled) setHandStats(stats);
+        }
       } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : '取得に失敗しました');
       }
@@ -72,6 +87,7 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
         prizeAmount={result.prizeAmount}
         tournamentName={result.tournamentName}
         playerName={result.playerName}
+        handStats={handStats ?? undefined}
         closeLabel="トーナメント一覧に戻る"
         onClose={onBack}
       />

@@ -977,7 +977,7 @@ export class TournamentInstance {
     return total;
   }
 
-  private getTotalEntries(): number {
+  public getTotalEntries(): number {
     // リエントリー分も含めた総エントリー数
     let total = 0;
     for (const p of this.players.values()) {
