@@ -187,7 +187,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
                         disabled={claimingBonus || !user.loginBonusAvailable}
                         className="px-[1.5cqw] py-[0.5cqw] text-[2.5cqw] bg-forest/10 text-forest font-bold rounded-[1cqw] hover:bg-forest/20 disabled:opacity-40 transition-all"
                       >
-                        {claimingBonus ? '...' : user.loginBonusAvailable ? '600まで補填' : '受取済み'}
+                        {claimingBonus ? '...' : user.loginBonusAvailable ? '1000まで補填' : '受取済み'}
                       </button>
                     </div>
                   </div>
