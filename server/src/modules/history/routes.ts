@@ -79,17 +79,24 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
   // ハンド一覧取得（ページネーション付き）
   fastify.get('/', async (request: FastifyRequest) => {
     const { userId } = request.user as { userId: string };
-    const { limit = 20, offset = 0 } = request.query as {
+    const { limit = 20, offset = 0, gameType } = request.query as {
       limit?: number;
       offset?: number;
+      gameType?: 'cash' | 'tournament';
     };
 
     const take = Math.min(Number(limit), 50);
     const skip = Number(offset);
 
+    const tournamentFilter = gameType === 'cash'
+      ? { tournamentId: null }
+      : gameType === 'tournament'
+        ? { NOT: { tournamentId: null } }
+        : {};
+
     const [playerHands, total] = await Promise.all([
       prisma.handHistoryPlayer.findMany({
-        where: { userId },
+        where: { userId, handHistory: tournamentFilter },
         orderBy: { handHistory: { createdAt: 'desc' } },
         take,
         skip,
@@ -122,7 +129,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
           },
         },
       }),
-      prisma.handHistoryPlayer.count({ where: { userId } }),
+      prisma.handHistoryPlayer.count({ where: { userId, handHistory: tournamentFilter } }),
     ]);
 
     const hands = playerHands.map(ph => ({

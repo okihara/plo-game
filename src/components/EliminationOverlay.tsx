@@ -1,4 +1,20 @@
-import { formatChips } from '../utils/formatChips';
+import { MiniCard } from './HandHistoryPanel';
+
+export interface HandSummaryForResult {
+  handId: string;
+  holeCards: string[];
+  communityCards: string[];
+  finalHand: string | null;
+  profit: number;
+  potSize: number;
+}
+
+interface HandStatsForOverlay {
+  lastHand: HandSummaryForResult | null;
+  bestHand: HandSummaryForResult | null;
+  worstHand: HandSummaryForResult | null;
+  totalHands: number;
+}
 
 interface EliminationOverlayProps {
   position: number;
@@ -6,6 +22,7 @@ interface EliminationOverlayProps {
   prizeAmount: number;
   tournamentName?: string;
   playerName?: string;
+  handStats?: HandStatsForOverlay;
   closeLabel?: string;
   onClose: () => void;
 }
@@ -26,19 +43,31 @@ function todayLabel(): string {
   return `${y}.${m}.${day}`;
 }
 
+function HandStatRow({ label, hand }: { label: string; hand: HandSummaryForResult }) {
+  return (
+    <div className="flex items-center justify-between gap-[2cqw]">
+      <span className="text-cream-600 text-[2.6cqw] font-medium shrink-0">{label}</span>
+      <div className="flex items-center gap-[0.5cqw]">
+        {hand.holeCards.map((c, i) => (
+          <MiniCard key={i} cardStr={c} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function EliminationOverlay({
   position,
   totalPlayers,
-  prizeAmount,
+  prizeAmount: _prizeAmount,
   tournamentName,
   playerName,
+  handStats,
   closeLabel = 'ロビーに戻る',
   onClose,
 }: EliminationOverlayProps) {
   const isWinner = position === 1;
   const isTop3 = position <= 3;
-  const isInTheMoney = prizeAmount > 0;
-
   // カード左帯と順位テキストの色を順位で変える
   const accentColor = isWinner
     ? '#b8860b'          // gold
@@ -84,24 +113,26 @@ export function EliminationOverlay({
 
           {/* 参加者数 */}
           <div className="text-cream-700 text-[3.2cqw] mb-[5cqw]">
-            {totalPlayers} players
+            {totalPlayers} entries
           </div>
 
-          {/* 賞金 / 順位メッセージ */}
+          {/* ハンド統計 or 順位メッセージ */}
           <div
             className="inline-block rounded-[2cqw] px-[5cqw] py-[2.5cqw] mb-[5cqw]"
             style={{ backgroundColor: `${accentColor}12`, border: `1px solid ${accentColor}30` }}
           >
-            {isInTheMoney ? (
-              <>
-                <div className="text-cream-700 text-[2.8cqw] mb-[0.5cqw]">Prize</div>
-                <div
-                  className="font-bold text-[5.5cqw]"
-                  style={{ color: accentColor }}
-                >
-                  +{formatChips(prizeAmount)}
-                </div>
-              </>
+            {handStats && handStats.totalHands > 0 ? (
+              <div className="flex flex-col gap-[1.5cqw]">
+                {handStats.lastHand && (
+                  <HandStatRow label="Last Hand" hand={handStats.lastHand} />
+                )}
+                {handStats.bestHand && (
+                  <HandStatRow label="Best Hand" hand={handStats.bestHand} />
+                )}
+                {handStats.worstHand && (
+                  <HandStatRow label="Worst Hand" hand={handStats.worstHand} />
+                )}
+              </div>
             ) : (
               <div className="text-cream-700 text-[3.8cqw] py-[1cqw]">
                 {totalPlayers}人中 {position}位
@@ -112,7 +143,7 @@ export function EliminationOverlay({
           {/* プレイヤー名 */}
           {playerName && (
             <div className="mb-[2cqw] border-b border-cream-400 pb-[1cqw] inline-block mx-auto">
-              <span className="text-cream-700 text-[2.8cqw]">Name. </span>
+              <span className="text-cream-700 text-[2.8cqw]">Name: </span>
               <span className="text-cream-800 font-bold text-[4cqw]">
                 {playerName}
               </span>

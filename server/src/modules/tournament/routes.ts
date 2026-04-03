@@ -188,7 +188,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           return {
             tournamentName: memTournament.config.name,
             position: player.finishPosition,
-            totalPlayers: memTournament.getPlayerCount(),
+            totalPlayers: memTournament.getTotalEntries(),
             prizeAmount: prize,
             playerName: player.displayName ?? player.odName,
           };
@@ -198,7 +198,9 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       // DBフォールバック
       const dbTournament = await prisma.tournament.findUnique({
         where: { id: tournamentId },
-        include: { _count: { select: { registrations: true } } },
+        include: {
+          registrations: { select: { reentryCount: true } },
+        },
       });
       if (!dbTournament) {
         return reply.status(404).send({ error: 'Tournament not found' });
@@ -217,12 +219,78 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         select: { displayName: true, username: true },
       });
 
+      // リエントリー込みの総エントリー数
+      const totalEntries = dbTournament.registrations.reduce(
+        (sum, r) => sum + 1 + r.reentryCount, 0
+      );
+
       return {
         tournamentName: dbTournament.name,
         position: myResult.position,
-        totalPlayers: dbTournament._count.registrations,
+        totalPlayers: totalEntries,
         prizeAmount: myResult.prize,
         playerName: user?.displayName ?? user?.username ?? undefined,
+      };
+    });
+
+    // 自分のトーナメント内ハンド統計（last / best / worst hand）
+    fastify.get<{ Params: { id: string } }>('/api/tournaments/:id/my-hand-stats', async (request, reply) => {
+      try {
+        await request.jwtVerify();
+      } catch {
+        return reply.status(401).send({ error: 'Unauthorized' });
+      }
+
+      const { userId } = request.user as { userId: string };
+      const tournamentId = request.params.id;
+
+      // そのトーナメントの自分のハンドを profit 付きで取得
+      const playerHands = await prisma.handHistoryPlayer.findMany({
+        where: {
+          userId,
+          handHistory: { tournamentId },
+        },
+        include: {
+          handHistory: {
+            select: {
+              id: true,
+              communityCards: true,
+              potSize: true,
+              createdAt: true,
+            },
+          },
+        },
+        orderBy: { handHistory: { createdAt: 'desc' } },
+      });
+
+      if (playerHands.length === 0) {
+        return { lastHand: null, bestHand: null, worstHand: null, totalHands: 0 };
+      }
+
+      const toHandSummary = (ph: typeof playerHands[number]) => ({
+        handId: ph.handHistory.id,
+        holeCards: ph.holeCards,
+        communityCards: ph.handHistory.communityCards,
+        finalHand: ph.finalHand,
+        profit: ph.profit,
+        potSize: ph.handHistory.potSize,
+      });
+
+      const lastHand = toHandSummary(playerHands[0]);
+
+      // best = 最大 profit、worst = 最小 profit
+      let bestIdx = 0;
+      let worstIdx = 0;
+      for (let i = 1; i < playerHands.length; i++) {
+        if (playerHands[i].profit > playerHands[bestIdx].profit) bestIdx = i;
+        if (playerHands[i].profit < playerHands[worstIdx].profit) worstIdx = i;
+      }
+
+      return {
+        lastHand,
+        bestHand: toHandSummary(playerHands[bestIdx]),
+        worstHand: toHandSummary(playerHands[worstIdx]),
+        totalHands: playerHands.length,
       };
     });
 

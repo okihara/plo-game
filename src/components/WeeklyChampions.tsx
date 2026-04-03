@@ -38,17 +38,17 @@ export function WeeklyChampions() {
   return (
     <>
       <div
-        className="mt-[3cqw] bg-white border border-cream-300 rounded-[3cqw] px-[4cqw] py-[3cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
+        className="mt-[2cqw] bg-white border border-cream-300 rounded-[3cqw] px-[3cqw] py-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
         onClick={() => setShowDialog(true)}
       >
-        <div className="flex items-center justify-between mb-[2cqw]">
-          <span className="text-[3cqw] font-bold text-cream-900">最近のチャンピオン</span>
-          <span className="text-[2.5cqw] text-cream-400">もっと見る &gt;</span>
+        <div className="flex items-center justify-between mb-[1.5cqw]">
+          <span className="text-[3.2cqw] font-bold text-cream-900">最近のチャンピオン</span>
+          <span className="text-[2.8cqw] text-cream-400">もっと見る &gt;</span>
         </div>
         <div className="grid grid-cols-3 gap-[1.5cqw]">
           {champions.map((c, i) => (
             <div key={`${c.userId}-${i}`} className="flex flex-col min-w-0">
-              <span className="text-[1.8cqw] text-cream-700 mb-[0.5cqw] text-center">{getWeekLabel(c.awardedAt)}</span>
+              <span className="text-[2.2cqw] text-cream-700 mb-[0.5cqw] text-center">{getWeekLabel(c.awardedAt)}</span>
               <div className="flex items-center gap-[1.5cqw]">
                 <div className="w-[5cqw] h-[5cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                   <img
@@ -57,7 +57,7 @@ export function WeeklyChampions() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <span className="text-[2.3cqw] font-bold text-cream-900 truncate">{c.username}</span>
+                <span className="text-[2.8cqw] font-bold text-cream-900 truncate">{c.username}</span>
               </div>
             </div>
           ))}

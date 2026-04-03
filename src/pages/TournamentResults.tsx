@@ -28,10 +28,10 @@ const POSITION_COLORS: Record<number, { bg: string; border: string; text: string
 function PodiumCard({ result, size }: { result: TournamentResult; size: 'lg' | 'md' | 'sm' }) {
   const pos = result.position;
   const style = POSITION_COLORS[pos];
-  const avatarSize = size === 'lg' ? 'w-[16cqw] h-[16cqw]' : 'w-[12cqw] h-[12cqw]';
-  const medalSize = size === 'lg' ? 'text-[7cqw]' : 'text-[5cqw]';
-  const nameSize = size === 'lg' ? 'text-[3.2cqw]' : 'text-[2.8cqw]';
-  const prizeSize = size === 'lg' ? 'text-[3.5cqw]' : 'text-[3cqw]';
+  const avatarSize = size === 'lg' ? 'w-[22cqw] h-[22cqw]' : 'w-[17cqw] h-[17cqw]';
+  const medalSize = size === 'lg' ? 'text-[10cqw]' : 'text-[7cqw]';
+  const nameSize = size === 'lg' ? 'text-[4.5cqw]' : 'text-[4cqw]';
+  const prizeSize = size === 'lg' ? 'text-[5cqw]' : 'text-[4.2cqw]';
   const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉';
 
   return (
@@ -51,7 +51,7 @@ function PodiumCard({ result, size }: { result: TournamentResult; size: 'lg' | '
       </div>
 
       {/* Name */}
-      <span className={`${nameSize} font-bold text-cream-900 text-center truncate max-w-[22cqw]`}>
+      <span className={`${nameSize} font-bold text-cream-900 text-center truncate max-w-[30cqw]`}>
         {result.odName}
       </span>
 
@@ -119,12 +119,12 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
         <button type="button" onClick={onBack} className="p-[1.5cqw] rounded-[2cqw] hover:bg-cream-200 transition-colors">
           <ChevronLeft className="w-[5cqw] h-[5cqw]" />
         </button>
-        <Trophy className="w-[5cqw] h-[5cqw] text-forest shrink-0" />
-        <h1 className="text-[4cqw] font-bold truncate">{data.name}</h1>
+        <Trophy className="w-[6cqw] h-[6cqw] text-forest shrink-0" />
+        <h1 className="text-[5cqw] font-bold truncate">{data.name}</h1>
       </div>
 
       {/* Summary bar */}
-      <div className="shrink-0 px-[4cqw] py-[2cqw] flex items-center justify-between text-[3cqw] text-cream-600 border-b border-cream-200">
+      <div className="shrink-0 px-[4cqw] py-[2cqw] flex items-center justify-between text-[4cqw] text-cream-600 border-b border-cream-200">
         <span>参加者: {data.totalPlayers}人</span>
         <span>賞金プール: {formatChips(data.prizePool)}</span>
       </div>
@@ -133,7 +133,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
         {/* Podium section */}
         {top3.length > 0 && (
           <div className="px-[4cqw] pt-[4cqw] pb-[3cqw]">
-            <div className="flex items-end justify-center gap-[3cqw]">
+            <div className="flex items-end justify-center gap-[6cqw]">
               {podiumOrder.map(r => (
                 <div
                   key={r.odId}
@@ -157,16 +157,16 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                 {rest.map((r) => (
                   <div
                     key={r.odId}
-                    className="flex items-center gap-[2cqw] py-[2cqw] px-[2.5cqw] rounded-[2cqw] hover:bg-cream-50"
+                    className="flex items-center gap-[2.5cqw] py-[2.5cqw] px-[3cqw] rounded-[2cqw] hover:bg-cream-50"
                   >
                     {/* Rank */}
-                    <div className="w-[7cqw] text-center shrink-0">
-                      <span className="text-[3.2cqw] font-bold text-cream-500">{r.position}</span>
+                    <div className="w-[8cqw] text-center shrink-0">
+                      <span className="text-[4.5cqw] font-bold text-cream-500">{r.position}</span>
                     </div>
 
                     {/* Avatar + Name */}
-                    <div className="flex items-center gap-[2cqw] flex-1 min-w-0">
-                      <div className="w-[7cqw] h-[7cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
+                    <div className="flex items-center gap-[2.5cqw] flex-1 min-w-0">
+                      <div className="w-[10cqw] h-[10cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                         <img
                           src={r.avatarUrl || '/images/icons/anonymous.svg'}
                           alt=""
@@ -174,18 +174,18 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                         />
                       </div>
                       <div className="min-w-0">
-                        <span className="text-[3cqw] text-cream-800 truncate block">
+                        <span className="text-[4.2cqw] text-cream-800 truncate block">
                           {r.odName}
                         </span>
                         {r.reentries > 0 && (
-                          <span className="text-cream-500 text-[2.2cqw]">Reentry:{r.reentries}</span>
+                          <span className="text-cream-500 text-[3cqw]">Reentry:{r.reentries}</span>
                         )}
                       </div>
                     </div>
 
                     {/* Prize */}
                     <div className="text-right shrink-0">
-                      <span className={`text-[3.2cqw] font-bold ${r.prize > 0 ? 'text-forest' : 'text-cream-400'}`}>
+                      <span className={`text-[4.5cqw] font-bold ${r.prize > 0 ? 'text-forest' : 'text-cream-400'}`}>
                         {r.prize > 0 ? formatChips(r.prize) : '-'}
                       </span>
                     </div>

@@ -2,7 +2,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 
 const DAILY_BONUS = 1000;
-const LOGIN_BONUS_TARGET = 600;
+const LOGIN_BONUS_TARGET = 1000;
 const DEBUG_ADD_AMOUNT = 10000;
 
 // バイイン引き落とし（着席直前に呼ばれる）
