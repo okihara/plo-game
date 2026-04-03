@@ -133,7 +133,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
         {/* Podium section */}
         {top3.length > 0 && (
           <div className="px-[4cqw] pt-[4cqw] pb-[3cqw]">
-            <div className="flex items-end justify-center gap-[3cqw]">
+            <div className="flex items-end justify-center gap-[6cqw]">
               {podiumOrder.map(r => (
                 <div
                   key={r.odId}
