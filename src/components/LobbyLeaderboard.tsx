@@ -42,15 +42,15 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
 
   return (
     <div
-      className="mt-[3cqw] bg-white border border-cream-300 rounded-[3cqw] px-[4cqw] py-[3cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
+      className="mt-[2cqw] bg-white border border-cream-300 rounded-[3cqw] px-[3cqw] py-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
       onClick={onShowFull}
     >
-      <div className="flex items-center justify-between mb-[2cqw]">
+      <div className="flex items-center justify-between mb-[1.5cqw]">
         <div>
-          <span className="text-[3cqw] font-bold text-cream-900">週間ランキング</span>
-          <span className="text-[2.2cqw] text-cream-600 ml-[1.5cqw]">{getWeekRange()}</span>
+          <span className="text-[3.2cqw] font-bold text-cream-900">週間ランキング</span>
+          <span className="text-[2.5cqw] text-cream-600 ml-[1.5cqw]">{getWeekRange()}</span>
         </div>
-        <span className="text-[2.5cqw] text-cream-400">もっと見る &gt;</span>
+        <span className="text-[2.8cqw] text-cream-400">もっと見る &gt;</span>
       </div>
       {!loaded ? (
         <div className="flex justify-center py-[3cqw]">
@@ -78,10 +78,10 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
                   className="w-full h-full object-cover"
                 />
               </div>
-              <span className={`text-[2.8cqw] truncate flex-1 ${isMe ? 'text-forest' : 'text-cream-800'}`}>
+              <span className={`text-[3cqw] truncate flex-1 ${isMe ? 'text-forest' : 'text-cream-800'}`}>
                 {displayName}
               </span>
-              <span className={`text-[2.8cqw] font-bold shrink-0 ${profit >= 0 ? 'text-forest' : 'text-[#C0392B]'}`}>
+              <span className={`text-[3cqw] font-bold shrink-0 ${profit >= 0 ? 'text-forest' : 'text-[#C0392B]'}`}>
                 {formatProfit(profit)}
               </span>
             </div>
