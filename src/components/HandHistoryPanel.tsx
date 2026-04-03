@@ -4,7 +4,6 @@ import { HandDetailDialog } from './HandDetailDialog';
 import type { HandDetail, HandDetailPlayer } from './HandDetailDialog';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
-
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
 
@@ -119,8 +118,7 @@ function HandSummaryCard({
       <div className="flex items-center justify-between mb-[2cqw]">
         <div className="flex items-center gap-[1.5cqw]">
           <span className="text-cream-700 text-[3cqw] w-[15cqw] shrink-0">{formatDate(hand.createdAt)}</span>
-          <span className="text-cream-800 text-[3cqw] font-semibold w-[12cqw] shrink-0">#{hand.id.slice(-6)}</span>
-          <span className="text-cream-900 text-[3.2cqw] font-bold w-[7cqw] shrink-0">{hand.blinds}</span>
+          <span className="text-cream-900 text-[2.8cqw] font-bold shrink-0">{hand.blinds}</span>
           {(() => {
             const me = hand.players.find(p => p.isCurrentUser);
             const pos = me ? getPositionName(me.seatPosition, hand.dealerPosition, hand.players.map(p => p.seatPosition)) : '';
@@ -157,6 +155,8 @@ function HandSummaryCard({
   );
 }
 
+type GameType = 'cash' | 'tournament';
+
 export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
   const { user } = useAuth();
   const [hands, setHands] = useState<HandSummary[]>([]);
@@ -166,6 +166,14 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
+  const [gameType, setGameType] = useState<GameType>('cash');
+
+  const switchTab = (type: GameType) => {
+    setGameType(type);
+    setHands([]);
+    setTotal(0);
+    setOffset(0);
+  };
 
   const fetchHands = async (offsetVal: number, append = false) => {
     if (!append) setLoading(true);
@@ -173,7 +181,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
 
     try {
       const res = await fetch(
-        `${API_BASE}/api/history?limit=${PAGE_SIZE}&offset=${offsetVal}`,
+        `${API_BASE}/api/history?limit=${PAGE_SIZE}&offset=${offsetVal}&gameType=${gameType}`,
         { credentials: 'include' }
       );
       if (!res.ok) return;
@@ -208,7 +216,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
   useEffect(() => {
     if (user) fetchHands(0);
     else setLoading(false);
-  }, [user]);
+  }, [user, gameType]);
 
   if (!user) {
     return (
@@ -227,12 +235,29 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
     <div className="h-full relative light-bg">
       <div className="h-full overflow-y-auto light-scrollbar">
         {/* ヘッダー */}
-        <div className="sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center z-10 shadow-sm">
-          <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
-            &larr; 戻る
-          </button>
-          <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">ハンド履歴</h1>
-          <span className="ml-auto text-cream-600 text-[3cqw] font-medium">{total}件</span>
+        <div className="sticky top-0 z-10 bg-white shadow-sm">
+          <div className="border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center">
+            <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
+              &larr; 戻る
+            </button>
+            <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">ハンド履歴</h1>
+            <span className="ml-auto text-cream-600 text-[3cqw] font-medium">{total}件</span>
+          </div>
+          <div className="flex border-b border-cream-300">
+            {([['cash', 'キャッシュ'], ['tournament', 'トーナメント']] as const).map(([type, label]) => (
+              <button
+                key={type}
+                onClick={() => switchTab(type)}
+                className={`flex-1 py-[2.5cqw] text-[3cqw] font-semibold transition-colors ${
+                  gameType === type
+                    ? 'text-forest border-b-[0.5cqw] border-forest'
+                    : 'text-cream-500 hover:text-cream-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </div>
 
         {loading ? (
