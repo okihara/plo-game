@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { GameTable } from '../components/GameTable';
 import { TournamentHUD } from '../components/TournamentHUD';
 import { TableMoveOverlay } from '../components/TableMoveOverlay';
+import { OnlineConnectionGate } from '../components/OnlineConnectionGate';
 import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { useTournamentState } from '../hooks/useTournamentState';
 import { wsService } from '../services/websocket';
@@ -44,6 +45,8 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     handleAction,
     handleFastFold,
     isWaitingForPlayers,
+    connectionError,
+    isDisplaced,
   } = useOnlineGameState(blinds);
 
   // まずAPIでトーナメント状態を確認。終了済みなら結果を表示、進行中ならソケット接続
@@ -112,46 +115,42 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     );
   }
 
-  if (!gameState) {
-    return (
-      <div className="flex items-center justify-center h-full w-full min-h-0 bg-gray-950">
-        <div className="text-center px-[4cqw]">
-          <div className="animate-spin w-[10cqw] h-[10cqw] mx-auto mb-[4cqw] rounded-full border-[1cqw] border-white/30 border-t-white" />
-          <p className="text-white/60 text-[3cqw]">テーブルに接続中...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="relative w-full h-full min-h-0">
-      <GameTable
-        gameState={gameState}
-        mySeat={mySeat}
-        myHoleCards={myHoleCards}
-        lastActions={lastActions}
-        isDealingCards={isDealingCards}
-        newCommunityCardsCount={newCommunityCardsCount}
-        actionTimeoutAt={actionTimeoutAt}
-        actionTimeoutMs={actionTimeoutMs}
-        showdownHandNames={showdownHandNames}
-        handleAction={handleAction}
-        handleFastFold={handleFastFold}
-        isWaitingForPlayers={isWaitingForPlayers}
-        onBack={handleBack}
-        blindsLabel={blinds}
-        notice={blindChangeNotice}
-        maintenanceStatus={maintenanceStatus}
-        announcementStatus={announcementStatus}
-      >
-        {/* トーナメントHUD（オーバーレイ） */}
-        {tournamentState && (
-          <TournamentHUD
-            tournamentState={tournamentState}
-            lastEliminated={lastEliminated}
-          />
-        )}
-      </GameTable>
-    </div>
+    <OnlineConnectionGate isDisplaced={isDisplaced} connectionError={connectionError} onBack={handleBack}>
+      {!gameState ? (
+        <div className="flex items-center justify-center h-full w-full min-h-0 bg-gray-950">
+          <div className="text-center px-[4cqw]">
+            <div className="animate-spin w-[10cqw] h-[10cqw] mx-auto mb-[4cqw] rounded-full border-[1cqw] border-white/30 border-t-white" />
+            <p className="text-white/60 text-[3cqw]">テーブルに接続中...</p>
+          </div>
+        </div>
+      ) : (
+        <div className="relative w-full h-full min-h-0">
+          <GameTable
+            gameState={gameState}
+            mySeat={mySeat}
+            myHoleCards={myHoleCards}
+            lastActions={lastActions}
+            isDealingCards={isDealingCards}
+            newCommunityCardsCount={newCommunityCardsCount}
+            actionTimeoutAt={actionTimeoutAt}
+            actionTimeoutMs={actionTimeoutMs}
+            showdownHandNames={showdownHandNames}
+            handleAction={handleAction}
+            handleFastFold={handleFastFold}
+            isWaitingForPlayers={isWaitingForPlayers}
+            onBack={handleBack}
+            blindsLabel={blinds}
+            notice={blindChangeNotice}
+            maintenanceStatus={maintenanceStatus}
+            announcementStatus={announcementStatus}
+          >
+            {tournamentState && (
+              <TournamentHUD tournamentState={tournamentState} lastEliminated={lastEliminated} />
+            )}
+          </GameTable>
+        </div>
+      )}
+    </OnlineConnectionGate>
   );
 }
