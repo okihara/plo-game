@@ -21,6 +21,10 @@ type OnlineConnectionGateProps = {
   connectionErrorPolicy?: 'always' | 'without-game-state';
   hasGameState?: boolean;
   onBack: () => void;
+  /** 切断エラー時の主ボタンラベル（既定は「ロビーに戻る」） */
+  connectionErrorPrimaryLabel?: string;
+  /** 切断エラー時の主ボタン処理（既定は onBack） */
+  onConnectionErrorPrimary?: () => void;
   children: ReactNode;
 };
 
@@ -34,6 +38,8 @@ export function OnlineConnectionGate({
   connectionErrorPolicy = 'always',
   hasGameState = false,
   onBack,
+  connectionErrorPrimaryLabel = 'ロビーに戻る',
+  onConnectionErrorPrimary,
   children,
 }: OnlineConnectionGateProps) {
   const showConnectionError =
@@ -48,12 +54,14 @@ export function OnlineConnectionGate({
         title: '別のタブで接続されました' as const,
         description: copy.subtitle,
         primaryLabel: copy.backLabel,
+        onPrimary: onBack,
       }
     : showConnectionError
       ? {
           title: 'エラー' as const,
           description: connectionError as string,
-          primaryLabel: 'ロビーに戻る' as const,
+          primaryLabel: connectionErrorPrimaryLabel,
+          onPrimary: onConnectionErrorPrimary ?? onBack,
         }
       : null;
 
@@ -65,7 +73,7 @@ export function OnlineConnectionGate({
           title={overlayProps.title}
           description={overlayProps.description}
           primaryLabel={overlayProps.primaryLabel}
-          onPrimary={onBack}
+          onPrimary={overlayProps.onPrimary}
         />
       )}
     </>
