@@ -903,6 +903,13 @@ export class TableInstance {
       await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.SHOWDOWN_DELAY_MS); });
     }
 
+    // ランアウト中の中間状態用: 分配前のチップとポットを計算
+    const preDistributionChips = finalState.players.map(p => {
+      const winEntry = finalState.winners.find(w => w.playerId === p.id);
+      return winEntry ? p.chips - winEntry.amount : p.chips;
+    });
+    const preDistributionPot = finalState.winners.reduce((sum, w) => sum + w.amount, 0) + finalState.rake;
+
     let currentStageIndex = 0;
 
     const revealNextStage = async() => {
@@ -924,6 +931,13 @@ export class TableInstance {
       intermediateState.winners = [];
       intermediateState.currentStreet = stage.street;
       intermediateState.currentPlayerIndex = -1;
+
+      // チップを分配前の状態に戻す（ボード完了前に結果がわからないようにする）
+      for (let i = 0; i < intermediateState.players.length; i++) {
+        intermediateState.players[i].chips = preDistributionChips[i];
+      }
+      intermediateState.pot = preDistributionPot;
+      intermediateState.rake = 0;
 
       this.gameState = intermediateState;
       this.broadcastGameState();
