@@ -8,7 +8,7 @@ import { evaluatePLOHand, compareHands } from '../../../shared/logic/handEvaluat
 import { evaluateHandExtended } from '../../../shared/logic/ai/handStrength.js';
 import { analyzeBoard } from '../../../shared/logic/ai/boardAnalysis.js';
 import { countOuts } from '../../../shared/logic/ai/equityEstimator.js';
-import type { Quiz } from '../types.js';
+import type { Quiz, BoardQuizSubtype } from '../types.js';
 
 const SUIT_EMOJI: Record<Suit, string> = { h: '♥️', d: '♦️', c: '♣️', s: '♠️' };
 
@@ -245,17 +245,23 @@ function generateOutsQuiz(): Quiz | null {
   return null;
 }
 
-/** ボード問題をランダムに1つ生成 */
-export function generateBoardQuiz(): Quiz {
-  const generators = [
-    generateWinnerQuiz,
-    generateNutsQuiz,
-    generateHandNameQuiz,
-    generateOutsQuiz,
-  ];
+const BOARD_GENERATORS: Record<BoardQuizSubtype, () => Quiz | null> = {
+  winner: generateWinnerQuiz,
+  nuts: generateNutsQuiz,
+  handname: generateHandNameQuiz,
+  outs: generateOutsQuiz,
+};
+
+/** ボード問題をランダムに1つ生成。subtype でサブタイプを指定可能。 */
+export function generateBoardQuiz(subtype?: BoardQuizSubtype): Quiz {
+  if (subtype) {
+    const quiz = BOARD_GENERATORS[subtype]();
+    if (quiz) return quiz;
+    throw new Error(`Failed to generate board quiz: ${subtype}`);
+  }
 
   // ランダムな順序で試行
-  const shuffled = shuffle(generators);
+  const shuffled = shuffle(Object.values(BOARD_GENERATORS));
   for (const gen of shuffled) {
     const quiz = gen();
     if (quiz) return quiz;

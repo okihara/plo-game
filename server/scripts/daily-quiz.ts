@@ -3,9 +3,15 @@
  * ローカルから手動または cron で実行する。
  *
  * 使い方:
- *   cd server && npx tsx scripts/daily-quiz.ts              # ツイート投稿
- *   cd server && npx tsx scripts/daily-quiz.ts --dry-run    # 投稿なし（確認用）
- *   cd server && npx tsx scripts/daily-quiz.ts --answer     # 前日の正解を投稿
+ *   cd server && npx tsx scripts/daily-quiz.ts                       # ツイート投稿
+ *   cd server && npx tsx scripts/daily-quiz.ts --dry-run             # 投稿なし（確認用）
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board          # ボード問題（ランダム）
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board:outs    # アウツ問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board:winner  # 勝敗問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board:nuts    # ナッツ問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board:handname # 役名問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type knowledge      # 知識問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --answer              # 前日の正解を投稿
  *
  * 環境変数（.env または直接指定）:
  *   TWITTER_API_KEY, TWITTER_API_KEY_SECRET,
@@ -19,7 +25,7 @@ config();
 import { existsSync, readFileSync, appendFileSync, mkdirSync, writeFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { generateQuiz } from '../src/modules/quiz/quizGenerator.js';
+import { generateQuiz, parseQuizType } from '../src/modules/quiz/quizGenerator.js';
 import { renderQuizImage, type QuizImageData } from '../src/modules/quiz/renderQuizImage.js';
 import { postTweet, getCredentialsFromEnv } from '../src/modules/quiz/twitterClient.js';
 import type { Quiz, QuizHistory } from '../src/modules/quiz/types.js';
@@ -71,8 +77,21 @@ async function main() {
   const args = process.argv.slice(2);
   const dryRun = args.includes('--dry-run');
   const answerMode = args.includes('--answer');
+  const typeIndex = args.indexOf('--type');
+  const typeRaw = typeIndex !== -1 ? args[typeIndex + 1] : undefined;
+  const parsed = typeRaw ? (() => {
+    try { return parseQuizType(typeRaw); }
+    catch (e) { console.error(`❌ ${(e as Error).message}`); process.exit(1); }
+  })() : undefined;
+  const quizType = parsed?.type;
+  const quizSubtype = parsed?.subtype;
 
-  console.log(`=== Daily PLO Quiz ${dryRun ? '(DRY RUN)' : answerMode ? '(ANSWER MODE)' : ''} ===\n`);
+  const modeLabel = [
+    dryRun && 'DRY RUN',
+    answerMode && 'ANSWER MODE',
+    typeRaw && `type=${typeRaw}`,
+  ].filter(Boolean).join(', ');
+  console.log(`=== Daily PLO Quiz ${modeLabel ? `(${modeLabel})` : ''} ===\n`);
 
   if (answerMode) {
     await postAnswer(dryRun);
@@ -94,7 +113,7 @@ async function main() {
   );
 
   // クイズ生成
-  const quiz = generateQuiz(usedKnowledge);
+  const quiz = generateQuiz(usedKnowledge, quizType, quizSubtype);
   console.log('📝 生成されたクイズ:');
   console.log('─'.repeat(50));
   console.log(quiz.question);

@@ -1,6 +1,7 @@
 /** デイリーPLOクイズの型定義 */
 
 export type QuizType = 'board' | 'knowledge';
+export type BoardQuizSubtype = 'winner' | 'nuts' | 'handname' | 'outs';
 
 export interface Quiz {
   type: QuizType;
