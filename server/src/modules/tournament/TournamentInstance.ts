@@ -88,6 +88,11 @@ export class TournamentInstance {
     return this.tables.values();
   }
 
+  /** 観戦の前後テーブル移動用（安定した順序） */
+  public getTableIdsSorted(): string[] {
+    return Array.from(this.tables.keys()).sort();
+  }
+
   public getPlayer(odId: string): TournamentPlayer | undefined {
     return this.players.get(odId);
   }
