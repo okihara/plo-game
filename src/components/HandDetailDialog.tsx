@@ -76,8 +76,8 @@ const MASKED_PLAYER_NAME = '********';
 function getStreetCards(communityCards: string[]): Record<string, string[]> {
   return {
     flop: communityCards.slice(0, 3),
-    turn: communityCards.slice(0, 4),
-    river: communityCards.slice(0, 5),
+    turn: communityCards.slice(3, 4),
+    river: communityCards.slice(4, 5),
   };
 }
 
@@ -210,14 +210,14 @@ function StreetHeader({ street, cards, pot, isFirst }: {
   return (
     <div className={isFirst ? 'mb-[1cqw]' : 'mt-[3cqw] mb-[1cqw]'}>
       <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
-        <span className="text-cream-800 text-[3cqw] font-bold">{STREET_LABELS[street] || street}</span>
-        {pot != null && pot > 0 && (
-          <span className="text-cream-600 text-[2.5cqw] font-medium">Pot {pot}</span>
-        )}
+        <span className="text-cream-800 text-[3cqw] font-bold w-[10cqw] shrink-0">{STREET_LABELS[street] || street}</span>
         {cards && cards.length > 0 && (
           <div className="flex gap-[0.4cqw]">
             {cards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
           </div>
+        )}
+        {pot != null && pot > 0 && (
+          <span className="text-cream-800 text-[3cqw] font-bold">{pot}</span>
         )}
       </div>
     </div>
@@ -388,10 +388,10 @@ function ResultSection({
       <div className="mt-[3cqw] mb-[1cqw]">
         <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
           <span className="text-cream-800 text-[3cqw] font-bold">Result</span>
-          <span className="text-forest text-[3cqw] font-bold">Pot {hand.potSize}</span>
           {hand.rakeAmount != null && hand.rakeAmount > 0 && (
             <span className="text-cream-500 text-[2.5cqw] font-medium">Rake {hand.rakeAmount}</span>
           )}
+          <span className="text-forest text-[3cqw] font-bold">{hand.potSize}</span>
         </div>
       </div>
       {activePlayers.map((p, i) => {
