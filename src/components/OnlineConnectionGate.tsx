@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ConnectionErrorScreen } from './ConnectionErrorScreen';
+import { ConnectionErrorPanel } from './ConnectionErrorScreen';
 
 const DISPLACED_COPY = {
   play: {
@@ -20,8 +20,8 @@ type OnlineConnectionGateProps = {
   displacedVariant?: OnlineConnectionDisplacedVariant;
   connectionError: string | null;
   /**
-   * always: 切断メッセージがあれば常に ConnectionErrorScreen
-   * without-game-state: 観戦など、卓状態がまだないときだけエラー画面
+   * always: 切断メッセージがあれば常にエラーダイアログ
+   * without-game-state: 観戦など、卓状態がまだないときだけ
    */
   connectionErrorPolicy?: 'always' | 'without-game-state';
   /** connectionErrorPolicy が without-game-state のときに使用 */
@@ -31,7 +31,7 @@ type OnlineConnectionGateProps = {
 };
 
 /**
- * 別タブ接続（displaced）と切断エラーを共通処理し、問題なければ children を表示する。
+ * 別タブ接続（displaced）と切断エラーをゲーム画面に重ねて表示する。
  */
 export function OnlineConnectionGate({
   isDisplaced,
@@ -42,38 +42,53 @@ export function OnlineConnectionGate({
   onBack,
   children,
 }: OnlineConnectionGateProps) {
-  if (isDisplaced) {
-    const { subtitle, backLabel } = DISPLACED_COPY[displacedVariant];
-    return (
-      <div className="absolute inset-0 z-[200] flex items-center justify-center bg-black/90">
-        <div className="text-center px-[8%]">
-          <p className="text-white font-bold mb-4" style={{ fontSize: 'min(2.5vh, 4.5vw)' }}>
-            別のタブで接続されました
-          </p>
-          <p className="text-white/70 mb-6" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-            {subtitle}
-          </p>
-          <button
-            type="button"
-            onClick={onBack}
-            className="px-6 py-3 rounded-lg border border-white/30 text-white/80 hover:bg-white/10 active:bg-white/20 transition-colors"
-            style={{ fontSize: 'min(2vh, 3.5vw)' }}
-          >
-            {backLabel}
-          </button>
-        </div>
-      </div>
-    );
-  }
-
   const showConnectionError =
     connectionError != null &&
     connectionError !== '' &&
     (connectionErrorPolicy !== 'without-game-state' || !hasGameState);
 
-  if (showConnectionError) {
-    return <ConnectionErrorScreen error={connectionError} onBack={onBack} />;
-  }
-
-  return <>{children}</>;
+  return (
+    <>
+      {children}
+      {isDisplaced && (
+        <div
+          className="fixed inset-0 z-[230] flex items-center justify-center bg-black/65 px-[8%]"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="online-connection-displaced-title"
+        >
+          <div className="text-center max-w-md">
+            <p
+              id="online-connection-displaced-title"
+              className="text-white font-bold mb-4"
+              style={{ fontSize: 'min(2.5vh, 4.5vw)' }}
+            >
+              別のタブで接続されました
+            </p>
+            <p className="text-white/80 mb-6" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
+              {DISPLACED_COPY[displacedVariant].subtitle}
+            </p>
+            <button
+              type="button"
+              onClick={onBack}
+              className="px-6 py-3 rounded-lg border border-white/40 text-white/90 hover:bg-white/10 active:bg-white/20 transition-colors"
+              style={{ fontSize: 'min(2vh, 3.5vw)' }}
+            >
+              {DISPLACED_COPY[displacedVariant].backLabel}
+            </button>
+          </div>
+        </div>
+      )}
+      {!isDisplaced && showConnectionError && (
+        <div
+          className="fixed inset-0 z-[240] flex items-center justify-center bg-black/50 px-[5cqw]"
+          role="alertdialog"
+          aria-modal="true"
+          aria-label="接続エラー"
+        >
+          <ConnectionErrorPanel error={connectionError} onBack={onBack} />
+        </div>
+      )}
+    </>
+  );
 }
