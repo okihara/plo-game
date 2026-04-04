@@ -9,8 +9,9 @@
  *   cd server && npx tsx scripts/daily-quiz.ts --type board:outs    # アウツ問題を指定
  *   cd server && npx tsx scripts/daily-quiz.ts --type board:winner  # 勝敗問題を指定
  *   cd server && npx tsx scripts/daily-quiz.ts --type board:nuts    # ナッツ問題を指定
- *   cd server && npx tsx scripts/daily-quiz.ts --type board:handname # 役名問題を指定
- *   cd server && npx tsx scripts/daily-quiz.ts --type knowledge      # 知識問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board:handname  # 役名問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type knowledge       # 知識問題を指定
+ *   cd server && npx tsx scripts/daily-quiz.ts --type board:outs --min-outs 9  # 9枚以上のアウツ問題
  *   cd server && npx tsx scripts/daily-quiz.ts --answer              # 前日の正解を投稿
  *
  * 環境変数（.env または直接指定）:
@@ -26,6 +27,7 @@ import { existsSync, readFileSync, appendFileSync, mkdirSync, writeFileSync } fr
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { generateQuiz, parseQuizType } from '../src/modules/quiz/quizGenerator.js';
+import { setBoardQuizOptions } from '../src/modules/quiz/generators/boardQuiz.js';
 import { renderQuizImage, type QuizImageData } from '../src/modules/quiz/renderQuizImage.js';
 import { postTweet, getCredentialsFromEnv } from '../src/modules/quiz/twitterClient.js';
 import type { Quiz, QuizHistory } from '../src/modules/quiz/types.js';
@@ -85,11 +87,21 @@ async function main() {
   })() : undefined;
   const quizType = parsed?.type;
   const quizSubtype = parsed?.subtype;
+  const minOutsIndex = args.indexOf('--min-outs');
+  const minOuts = minOutsIndex !== -1 ? parseInt(args[minOutsIndex + 1], 10) : undefined;
+  if (minOuts !== undefined && (isNaN(minOuts) || minOuts < 1)) {
+    console.error('❌ --min-outs には正の整数を指定してください');
+    process.exit(1);
+  }
+  if (minOuts !== undefined) {
+    setBoardQuizOptions({ minOuts });
+  }
 
   const modeLabel = [
     dryRun && 'DRY RUN',
     answerMode && 'ANSWER MODE',
     typeRaw && `type=${typeRaw}`,
+    minOuts && `min-outs=${minOuts}`,
   ].filter(Boolean).join(', ');
   console.log(`=== Daily PLO Quiz ${modeLabel ? `(${modeLabel})` : ''} ===\n`);
 

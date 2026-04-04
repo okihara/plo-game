@@ -10,6 +10,8 @@ import { analyzeBoard } from '../../../shared/logic/ai/boardAnalysis.js';
 import { countOuts } from '../../../shared/logic/ai/equityEstimator.js';
 import type { Quiz, BoardQuizSubtype } from '../types.js';
 
+const ALL_SUITS: Suit[] = ['h', 'd', 'c', 's'];
+const ALL_RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
 const SUIT_EMOJI: Record<Suit, string> = { h: '♥️', d: '♦️', c: '♣️', s: '♠️' };
 
 function cardDisplay(card: Card): string {
@@ -128,19 +130,20 @@ function generateNutsQuiz(): Quiz | null {
   return null;
 }
 
+const HAND_NAMES_BY_RANK: Record<number, string> = {
+  1: 'ハイカード',
+  2: 'ワンペア',
+  3: 'ツーペア',
+  4: 'スリーカード',
+  5: 'ストレート',
+  6: 'フラッシュ',
+  7: 'フルハウス',
+  8: 'フォーカード',
+  9: 'ストレートフラッシュ',
+};
+
 /** パターン3: このハンドの役名は？ */
 function generateHandNameQuiz(): Quiz | null {
-  const HAND_NAMES_BY_RANK: Record<number, string> = {
-    1: 'ハイカード',
-    2: 'ワンペア',
-    3: 'ツーペア',
-    4: 'スリーカード',
-    5: 'ストレート',
-    6: 'フラッシュ',
-    7: 'フルハウス',
-    8: 'フォーカード',
-    9: 'ストレートフラッシュ',
-  };
 
   for (let attempt = 0; attempt < 50; attempt++) {
     const deck = shuffleDeck(createDeck());
@@ -179,6 +182,83 @@ function generateHandNameQuiz(): Quiz | null {
   return null;
 }
 
+interface OutCard {
+  card: Card;
+  handName: string;
+}
+
+/**
+ * アウツとなる具体的なカードと、それで完成する役名を列挙する。
+ * evaluatePLOHand はコミュニティ4-5枚に対応しているため、
+ * フロップ(3枚)でもターン(4枚)でもテストカード1枚追加で直接評価できる。
+ */
+export function findOutCards(holeCards: Card[], communityCards: Card[], currentHandRank: number): OutCard[] {
+  const usedKeys = new Set([
+    ...holeCards.map(c => `${c.rank}${c.suit}`),
+    ...communityCards.map(c => `${c.rank}${c.suit}`),
+  ]);
+  const outs: OutCard[] = [];
+
+  for (const rank of ALL_RANKS) {
+    for (const suit of ALL_SUITS) {
+      const key = `${rank}${suit}`;
+      if (usedKeys.has(key)) continue;
+
+      const testCommunity = [...communityCards, { rank, suit } as Card];
+      try {
+        const newHand = evaluatePLOHand(holeCards, testCommunity);
+        if (newHand.rank > currentHandRank) {
+          outs.push({ card: { rank, suit }, handName: HAND_NAMES_BY_RANK[newHand.rank] ?? newHand.name });
+        }
+      } catch { /* skip */ }
+    }
+  }
+  return outs;
+}
+
+
+/** アウツ問題の解説文を組み立てる */
+function buildOutsExplanation(
+  totalOuts: number,
+  outsResult: { flushOuts: number; straightOuts: number },
+  holeCards: Card[],
+  communityCards: Card[],
+  madeHandRank: number,
+): string {
+  const outCards = findOutCards(holeCards, communityCards, madeHandRank);
+
+  // 役名ごとにグループ化
+  const byHand = new Map<string, Card[]>();
+  for (const { card, handName } of outCards) {
+    const list = byHand.get(handName) ?? [];
+    list.push(card);
+    byHand.set(handName, list);
+  }
+  const outsDetail = [...byHand.entries()]
+    .map(([name, cards]) => `${name}: ${cards.map(cardDisplay).join(' ')}（${cards.length}枚）`)
+    .join('\n');
+
+  const lines = [
+    `正解は ${totalOuts}枚！`,
+    '',
+    outsDetail,
+  ];
+  return lines.join('\n');
+}
+
+/** ボード問題生成時のオプション */
+export interface BoardQuizOptions {
+  /** アウツ問題の最小アウツ数（デフォルト: 4） */
+  minOuts?: number;
+}
+
+let boardQuizOptions: BoardQuizOptions = {};
+
+/** ボード問題のオプションを設定する */
+export function setBoardQuizOptions(opts: BoardQuizOptions): void {
+  boardQuizOptions = opts;
+}
+
 /** パターン4: アウツは何枚？（フロップ/ターン） */
 function generateOutsQuiz(): Quiz | null {
   for (let attempt = 0; attempt < 100; attempt++) {
@@ -204,8 +284,9 @@ function generateOutsQuiz(): Quiz | null {
     const outsResult = countOuts(holeCards, communityCards, handEval.madeHandRank);
     const totalOuts = outsResult.totalOuts;
 
-    // 0枚や極端に多い場合はスキップ
-    if (totalOuts < 4 || totalOuts > 20) continue;
+    // 少なすぎ・多すぎはスキップ
+    const minOuts = boardQuizOptions.minOuts ?? 4;
+    if (totalOuts < minOuts || totalOuts > 20) continue;
 
     // 選択肢: 正解 ± ランダムオフセット
     const offsets = shuffle([-3, -1, 2, 4, -5, 3, 5, -2]).slice(0, 3);
@@ -239,7 +320,7 @@ function generateOutsQuiz(): Quiz | null {
       ].join('\n'),
       choices: allChoices,
       correctIndex,
-      explanation: `正解は ${totalOuts}枚！\n\nフラッシュアウツ: ${outsResult.flushOuts}枚\nストレートアウツ: ${outsResult.straightOuts}枚\n合計: ${totalOuts}枚（重複除く）`,
+      explanation: buildOutsExplanation(totalOuts, outsResult, holeCards, communityCards, handEval.madeHandRank),
     };
   }
   return null;
