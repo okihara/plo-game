@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { ConnectionErrorPanel } from './ConnectionErrorScreen';
+import { AlertDialogOverlay } from './AlertDialog';
 
 const DISPLACED_COPY = {
   play: {
@@ -16,15 +16,9 @@ export type OnlineConnectionDisplacedVariant = keyof typeof DISPLACED_COPY;
 
 type OnlineConnectionGateProps = {
   isDisplaced: boolean;
-  /** 別タブ接続時の説明文・戻るラベル（既定は play） */
   displacedVariant?: OnlineConnectionDisplacedVariant;
   connectionError: string | null;
-  /**
-   * always: 切断メッセージがあれば常にエラーダイアログ
-   * without-game-state: 観戦など、卓状態がまだないときだけ
-   */
   connectionErrorPolicy?: 'always' | 'without-game-state';
-  /** connectionErrorPolicy が without-game-state のときに使用 */
   hasGameState?: boolean;
   onBack: () => void;
   children: ReactNode;
@@ -47,47 +41,32 @@ export function OnlineConnectionGate({
     connectionError !== '' &&
     (connectionErrorPolicy !== 'without-game-state' || !hasGameState);
 
+  const copy = DISPLACED_COPY[displacedVariant];
+
+  const overlayProps = isDisplaced
+    ? {
+        title: '別のタブで接続されました' as const,
+        description: copy.subtitle,
+        primaryLabel: copy.backLabel,
+      }
+    : showConnectionError
+      ? {
+          title: 'エラー' as const,
+          description: connectionError as string,
+          primaryLabel: 'ロビーに戻る' as const,
+        }
+      : null;
+
   return (
     <>
       {children}
-      {isDisplaced && (
-        <div
-          className="fixed inset-0 z-[230] flex items-center justify-center bg-black/65 px-[8%]"
-          role="alertdialog"
-          aria-modal="true"
-          aria-labelledby="online-connection-displaced-title"
-        >
-          <div className="text-center max-w-md">
-            <p
-              id="online-connection-displaced-title"
-              className="text-white font-bold mb-4"
-              style={{ fontSize: 'min(2.5vh, 4.5vw)' }}
-            >
-              別のタブで接続されました
-            </p>
-            <p className="text-white/80 mb-6" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-              {DISPLACED_COPY[displacedVariant].subtitle}
-            </p>
-            <button
-              type="button"
-              onClick={onBack}
-              className="px-6 py-3 rounded-lg border border-white/40 text-white/90 hover:bg-white/10 active:bg-white/20 transition-colors"
-              style={{ fontSize: 'min(2vh, 3.5vw)' }}
-            >
-              {DISPLACED_COPY[displacedVariant].backLabel}
-            </button>
-          </div>
-        </div>
-      )}
-      {!isDisplaced && showConnectionError && (
-        <div
-          className="fixed inset-0 z-[240] flex items-center justify-center bg-black/50 px-[5cqw]"
-          role="alertdialog"
-          aria-modal="true"
-          aria-label="接続エラー"
-        >
-          <ConnectionErrorPanel error={connectionError} onBack={onBack} />
-        </div>
+      {overlayProps && (
+        <AlertDialogOverlay
+          title={overlayProps.title}
+          description={overlayProps.description}
+          primaryLabel={overlayProps.primaryLabel}
+          onPrimary={onBack}
+        />
       )}
     </>
   );
