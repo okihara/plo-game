@@ -3,8 +3,8 @@ import { getRankValue } from './deck';
 
 // PLOでは必ず2枚のホールカードと3枚のコミュニティカードを使う
 export function evaluatePLOHand(holeCards: Card[], communityCards: Card[]): HandRank {
-  if (holeCards.length !== 4 || communityCards.length !== 5) {
-    throw new Error('PLO requires 4 hole cards and 5 community cards');
+  if (holeCards.length !== 4 || (communityCards.length < 4 || communityCards.length > 5)) {
+    throw new Error('PLO requires 4 hole cards and 4-5 community cards');
   }
 
   let bestHand: HandRank = { rank: 0, name: '', highCards: [] };

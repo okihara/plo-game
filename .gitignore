@@ -9,6 +9,10 @@ dist
 
 # Font cache (downloaded at runtime)
 server/src/modules/ogp/fonts/
+server/src/modules/quiz/fonts/
+
+# Quiz data (history, preview images)
+server/data/
 
 # Generated TypeScript files in shared
 shared/types/*.js
