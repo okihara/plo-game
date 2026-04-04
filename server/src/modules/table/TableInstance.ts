@@ -54,6 +54,8 @@ export class TableInstance {
   private isRunOutInProgress = false;
   private showdownSentDuringRunOut = false;
   private _isHandInProgress = false;
+  /** 最初のオールイン発生時のコミュニティカード枚数（EV計算用） */
+  private allInStreetCardCount: number | null = null;
 
   public get isHandInProgress(): boolean {
     return this._isHandInProgress;
@@ -252,6 +254,8 @@ export class TableInstance {
     }
     // ランアウト検出用にカード枚数を保存
     const previousCardCount = this.gameState.communityCards.length;
+    // オールインEV計算用: アクション前のオールイン状態を保存
+    const hadAllInBefore = this.allInStreetCardCount !== null;
 
     // アクションを処理
     const result = this.actionController.handleAction(
@@ -269,6 +273,11 @@ export class TableInstance {
     }
 
     this.gameState = result.gameState;
+
+    // 新たにオールインしたプレイヤーがいれば、そのときのボード枚数を記録（最初の1回のみ）
+    if (!hadAllInBefore && this.gameState.players.some(p => p.isAllIn)) {
+      this.allInStreetCardCount = previousCardCount;
+    }
 
     // Check if hand is complete
     if (result.handComplete) {
@@ -665,6 +674,7 @@ export class TableInstance {
     if (playerCount < this.minPlayersToStart) return;
 
     this._isHandInProgress = true;
+    this.allInStreetCardCount = null;
     this.pendingEarlyFolds.clear(); // safety
 
     // HORSE: バリアントローテーション
@@ -701,6 +711,11 @@ export class TableInstance {
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
     this.lastDealerPosition = this.gameState.dealerPosition;
+
+    // ブラインド投入でオールインになったプレイヤーがいれば記録（プリフロップ = 0枚）
+    if (this.gameState.players.some(p => p.isAllIn)) {
+      this.allInStreetCardCount = 0;
+    }
 
     // ホール配布: 着席者へはソケットがある相手のみ。観戦者へはソケット無し席（CPU等）も含め全参加席分送る。
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
@@ -965,6 +980,25 @@ export class TableInstance {
 
     // Pending early fold のクリーンアップ（unseatForFastFoldで既にマーク済み）
     this.pendingEarlyFolds.clear();
+
+    // 部分オールイン時のEV計算: handleAllInRunOut を経由しなかった場合
+    // （例: Turnでオールインしたが他プレイヤーがアクティブのままリバーまで進んだケース）
+    if (!this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
+      try {
+        const priorBoard = this.gameState.communityCards.slice(0, this.allInStreetCardCount);
+        const allPots = calculateSidePots(this.gameState.players);
+        const totalBets = new Map<number, number>();
+        const allPlayerInfo = this.gameState.players.map(p => {
+          totalBets.set(p.id, p.totalBetThisRound);
+          return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
+        });
+        const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
+        this.historyRecorder.setAllInEVProfits(evProfits);
+        console.warn(`[Table ${this.id}] Partial all-in EV profits (board=${this.allInStreetCardCount} cards):`, Object.fromEntries(evProfits));
+      } catch (err) {
+        console.error(`[Table ${this.id}] Partial all-in EV calculation failed:`, err);
+      }
+    }
 
     // ハンドヒストリー保存 (fire-and-forget)
     // fire-and-forgetのため、非同期処理中に次のハンドで状態が上書きされないようスナップショットを取る
