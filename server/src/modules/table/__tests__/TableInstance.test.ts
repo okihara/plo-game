@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import type { Server } from 'socket.io';
+import type { Server, Socket } from 'socket.io';
 import { TableInstance } from '../TableInstance.js';
 import {
   createMockIO,
@@ -1416,6 +1416,184 @@ describe('TableInstance - オールイン・ランアウト', () => {
     // showdownはランアウト中に1回だけ送信される（handleHandComplete内で再送されない）
     const showdownEmits = getRoomEmits(io, 'game:showdown');
     expect(showdownEmits).toHaveLength(1);
+  });
+
+  it('ランアウト中の中間状態ではチップが分配前の値になっている', async () => {
+    const buyIn = 6;
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn,
+    });
+
+    const totalChips = buyIn * 3; // 全チップ合計は不変
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ショーダウン前待機 + ショーダウン後待機
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // フロップ表示後のstate取得
+    const allStates = getRoomEmits(io, 'game:state') as { state: { communityCards: unknown[]; pot: number; players: ({ chips: number } | null)[] } }[];
+    const flopState = allStates.find(s => s.state.communityCards.length === 3);
+    expect(flopState).toBeDefined();
+
+    // 中間状態ではポットが0より大きい（分配前）
+    expect(flopState!.state.pot).toBeGreaterThan(0);
+
+    // 中間状態のチップ合計 + ポット = 全チップ合計（保存量）
+    const chipsSum = flopState!.state.players
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .reduce((sum, p) => sum + p.chips, 0);
+    expect(chipsSum + flopState!.state.pot).toBe(totalChips);
+  });
+
+  it('ランアウト中の各ストリートで勝者のチップが増えていない', async () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 2,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ショーダウン前待機 + ショーダウン後待機
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // ターン表示
+    await vi.advanceTimersByTimeAsync(1500);
+
+    const allStates = getRoomEmits(io, 'game:state') as { state: { communityCards: unknown[]; pot: number; players: ({ chips: number } | null)[] } }[];
+
+    // フロップとターンの中間状態を取得
+    const intermediateStates = allStates.filter(s =>
+      s.state.communityCards.length >= 3 && s.state.communityCards.length <= 4
+    );
+
+    // 全ての中間状態でチップが同じ（ポット分配されていない）
+    for (let i = 1; i < intermediateStates.length; i++) {
+      const prev = intermediateStates[i - 1];
+      const curr = intermediateStates[i];
+      for (let j = 0; j < 6; j++) {
+        if (prev.state.players[j] && curr.state.players[j]) {
+          expect(curr.state.players[j]!.chips).toBe(prev.state.players[j]!.chips);
+        }
+      }
+      // ポットも中間状態では同じ
+      expect(curr.state.pot).toBe(prev.state.pot);
+    }
+  });
+
+  it('ランアウト完了後の最終stateでは勝者にチップが分配される', async () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // 全遅延を十分に進める
+    await vi.advanceTimersByTimeAsync(20000);
+
+    const allStates = getRoomEmits(io, 'game:state') as { state: { communityCards: unknown[]; pot: number; rake: number; players: ({ chips: number } | null)[] } }[];
+
+    // communityCards=5枚のstateから中間（pot大）と最終（チップ分配済み）を区別
+    const fiveCardStates = allStates.filter(s => s.state.communityCards.length === 5);
+    expect(fiveCardStates.length).toBeGreaterThanOrEqual(2); // 中間river + 最終
+
+    // 中間river state（potが分配前の値）
+    const intermediateRiver = fiveCardStates[0];
+    // 最終state（チップ分配済み → チップ合計が中間より大きい）
+    const finalBroadcast = fiveCardStates[fiveCardStates.length - 1];
+
+    const intermediateChips = intermediateRiver.state.players
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .reduce((sum, p) => sum + p.chips, 0);
+    const finalChips = finalBroadcast.state.players
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .reduce((sum, p) => sum + p.chips, 0);
+
+    // 最終stateのチップ合計は中間stateより多い（ポットが分配されたため）
+    expect(finalChips).toBeGreaterThan(intermediateChips);
+
+    // 最終stateで少なくとも1人がbuyIn以上のチップを持っている（勝者）
+    const playerChips = finalBroadcast.state.players
+      .filter((p): p is NonNullable<typeof p> => p !== null)
+      .map(p => p.chips);
+    expect(playerChips.some(c => c >= 6)).toBe(true);
+  });
+
+  it('ランアウト中の中間stateではwinnersが空', async () => {
+    const { table, io, odIds, sockets, seatMap } = setupRunningHand({
+      playerCount: 3,
+      blinds: '1/2',
+      buyIn: 6,
+    });
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ショーダウン前待機 + ショーダウン後待機
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    // フロップ→ターン→リバー
+    await vi.advanceTimersByTimeAsync(1500);
+    await vi.advanceTimersByTimeAsync(1500);
+
+    // hand_completeがまだ送信されていない（ランアウト中）
+    const handComplete = getRoomEmits(io, 'game:hand_complete');
+    expect(handComplete).toHaveLength(0);
+  });
+
+  it('3人ランアウトでサイドポットがある場合もチップ保存量が一致する', async () => {
+    // プレイヤーごとに異なるバイインでサイドポットを発生させる
+    const io = createMockIO();
+    const table = new TableInstance(io, '1/2', false);
+
+    const odIds: string[] = [];
+    const sockets: Socket[] = [];
+    const seatMap: number[] = [];
+
+    // 3人を異なるチップ量で着席
+    const buyIns = [4, 6, 8];
+    for (let i = 0; i < 3; i++) {
+      const odId = `player_${i}`;
+      const socket = createMockSocket();
+      const seat = table.seatPlayer(odId, `Player ${i}`, socket, buyIns[i]);
+      if (seat === null) throw new Error(`Failed to seat player ${i}`);
+      odIds.push(odId);
+      sockets.push(socket);
+      seatMap.push(seat);
+    }
+    table.triggerMaybeStartHand();
+
+    // 全チップ合計（ブラインド含む）
+    const totalChips = buyIns.reduce((s, b) => s + b, 0);
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ショーダウン前待機 + ショーダウン後待機
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    const allStates = getRoomEmits(io, 'game:state') as { state: { communityCards: unknown[]; pot: number; players: ({ chips: number } | null)[] } }[];
+
+    // ランアウト中間状態（ボードカード3〜4枚）でチップ保存量が一致
+    const intermediateStates = allStates.filter(s =>
+      s.state.communityCards.length >= 3 && s.state.communityCards.length < 5
+    );
+    expect(intermediateStates.length).toBeGreaterThan(0);
+
+    for (const s of intermediateStates) {
+      const chipsSum = s.state.players
+        .filter((p): p is NonNullable<typeof p> => p !== null)
+        .reduce((sum, p) => sum + p.chips, 0);
+      // チップ合計 + ポット = 全体のチップ（中間状態ではrake=0なので一致するはず）
+      expect(chipsSum + s.state.pot).toBe(totalChips);
+    }
   });
 
   it('ランアウト完了後に次のハンドが自動開始される', async () => {

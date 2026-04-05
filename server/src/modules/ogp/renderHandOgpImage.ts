@@ -76,6 +76,7 @@ interface HandOgpPlayer {
 interface HandOgpAction {
   position: string;
   playerName: string;
+  seatIndex: number;
   action: string;
   amount: number;
   street?: string;
@@ -146,8 +147,8 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
     runningPot += a.amount;
   }
 
-  // playerName → プレイヤー情報のマップ（アクションからホールカードを引く用）
-  const playerByName = new Map(data.players.map(p => [p.username, p]));
+  // seatPosition → プレイヤー情報のマップ（アクションからホールカードを引く用）
+  const playerBySeat = new Map(data.players.map(p => [p.seatPosition, p]));
 
   const elements: ReactNode[] = [];
   let prevStreet = '';
@@ -184,7 +185,7 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
     const actionLabel = ACTION_LABELS[a.action] || a.action;
     const actionColor = a.action === 'fold' ? '#777' : '#1a1a1a';
     const amountColor = a.action === 'allin' ? '#2d6a4f' : '#1a1a1a';
-    const player = playerByName.get(a.playerName);
+    const player = playerBySeat.get(a.seatIndex);
     const holeCards = isPreflop && player ? player.holeCards : [];
 
     elements.push(

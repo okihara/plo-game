@@ -134,6 +134,7 @@ export async function ogpRoutes(fastify: FastifyInstance) {
     const actions = (hand.actions as { seatIndex: number; action: string; amount: number; street?: string }[]).map(a => ({
       position: seatNameMap.get(a.seatIndex)?.position || '',
       playerName: seatNameMap.get(a.seatIndex)?.username || '',
+      seatIndex: a.seatIndex,
       action: a.action,
       amount: a.amount,
       street: a.street,

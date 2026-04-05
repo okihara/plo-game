@@ -73,6 +73,17 @@ function App() {
     setCurrentPath('/tournaments');
   };
 
+  const navigateWatchTable = (tableId: string, query?: { tournament?: string; invite?: string }) => {
+    const params = new URLSearchParams();
+    if (query?.tournament) params.set('tournament', query.tournament);
+    if (query?.invite) params.set('invite', query.invite);
+    const search = params.toString();
+    const pathname = `/watch/${encodeURIComponent(tableId)}`;
+    const full = search ? `${pathname}?${search}` : pathname;
+    window.history.pushState({}, '', full);
+    setCurrentPath(pathname);
+  };
+
   let page;
   if (currentPath === '/debug/elimination') {
     page = <EliminationDebug />;
@@ -108,6 +119,7 @@ function App() {
     const raw = currentPath.slice('/watch/'.length);
     const tableIdForWatch = raw.split('/')[0] || '';
     const inviteFromQuery = new URLSearchParams(window.location.search).get('invite') ?? undefined;
+    const tournamentIdFromQuery = new URLSearchParams(window.location.search).get('tournament') ?? undefined;
     page = !tableIdForWatch.trim() ? (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-black text-white px-[8%]">
         <p className="text-center mb-6 text-white/90" style={{ fontSize: 'min(2vh, 3.5vw)' }}>
@@ -126,6 +138,8 @@ function App() {
       <WatchGame
         tableId={tableIdForWatch}
         inviteCode={inviteFromQuery}
+        tournamentId={tournamentIdFromQuery}
+        onNavigateWatchTable={navigateWatchTable}
         onBack={goBackToLobby}
       />
     );

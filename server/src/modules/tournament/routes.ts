@@ -167,6 +167,15 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       };
     });
 
+    // 進行中トーナメントの卓ID一覧（観戦の卓切り替え用）。メモリに無い場合は空配列。
+    fastify.get<{ Params: { id: string } }>('/api/tournaments/:id/tables', async (request) => {
+      const tournament = tournamentManager.getTournament(request.params.id);
+      if (!tournament) {
+        return { tableIds: [] as string[] };
+      }
+      return { tableIds: tournament.getTableIdsSorted() };
+    });
+
     // 自分のトーナメント結果（認証必須）
     // メモリにあればそちらを優先、なければDBから読む
     fastify.get<{ Params: { id: string } }>('/api/tournaments/:id/my-result', async (request, reply) => {

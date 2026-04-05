@@ -301,15 +301,16 @@
       renderTournaments(d.tournaments ? d.tournaments.details : []);
     }
 
-    function spectateControl(t) {
+    function spectateControl(t, tournamentId) {
       if (!t.canSpectate) {
         return '<span class="admin-btn" style="opacity:0.45;cursor:default;pointer-events:none" title="Fast foldテーブルは観戦できません">観戦</span>';
       }
       var base = (window.adminClientAppUrl || '').replace(/\/$/, '');
       var path = '/watch/' + encodeURIComponent(t.id);
-      if (t.isPrivate && t.inviteCode) {
-        path += '?invite=' + encodeURIComponent(t.inviteCode);
-      }
+      var qs = [];
+      if (t.isPrivate && t.inviteCode) qs.push('invite=' + encodeURIComponent(t.inviteCode));
+      if (tournamentId) qs.push('tournament=' + encodeURIComponent(tournamentId));
+      if (qs.length) path += '?' + qs.join('&');
       var href = base + path;
       var title = 'クライアントで観戦を開く（CLIENT_URL）';
       if (base) title = 'クライアントで観戦を開く: ' + base;
@@ -437,7 +438,7 @@
                 (tbl.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
               '</span>' +
               '<span style="display:flex;align-items:center;gap:8px">' +
-                spectateControl(tbl) +
+                spectateControl(tbl, t.id) +
                 renderPendingAction(tbl) +
                 '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(tbl.pot) + '</span>' +
                 '<span style="color:#64748b">' + tbl.playerCount + '/6</span>' +
