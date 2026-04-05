@@ -3,7 +3,11 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { execSync } from 'child_process'
 
-const commitHash = execSync('git rev-parse --short HEAD').toString().trim()
+const commitHash = process.env.RAILWAY_GIT_COMMIT_SHA?.slice(0, 7)
+  ?? (() => {
+    try { return execSync('git rev-parse --short HEAD').toString().trim() }
+    catch { return 'unknown' }
+  })()
 
 export default defineConfig({
   plugins: [react()],
