@@ -37,6 +37,7 @@ async function awardPeriodRankingBadges(period: 'daily' | 'weekly'): Promise<voi
     JOIN "User" u ON hp."userId" = u."id"
     WHERE hp."userId" IS NOT NULL
       AND u."provider" != 'bot'
+      AND hh."tournamentId" IS NULL
       AND hh."createdAt" >= ${startDate}
       AND hh."createdAt" < ${endDate}
     GROUP BY hp."userId"
