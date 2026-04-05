@@ -122,36 +122,38 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   };
 
   const renderHomeTab = () => (
-    <div className="flex flex-col items-center px-[3cqw] py-[2cqw] h-full min-h-0 overflow-y-auto">
+    <div className="flex flex-col items-center h-full min-h-0 overflow-y-auto px-[1cqw]">
       {/* Logo & Title */}
-      <div className="mb-[1.5cqw] w-full">
+      <div className="mb-[1.5cqw] w-full bg-forest px-[3cqw] py-[2cqw] rounded-b-[2cqw] shadow-[0_8px_30px_rgba(29,58,39,0.5),0_4px_12px_rgba(0,0,0,0.3)]">
         <div className="flex items-center gap-[1.5cqw]">
-          <div className="w-[7cqw] h-[7cqw] rounded-full overflow-hidden border-[0.3cqw] border-cream-300/60 shrink-0">
+          <div className="w-[6cqw] h-[6cqw] rounded-full overflow-hidden border-[0.3cqw] border-white/30 shrink-0">
             <img
               src="/images/plo_baby.png"
               alt="Baby PLO"
               className="w-full h-full object-cover scale-125"
             />
           </div>
-          <h1 className="text-[5cqw] font-bold text-cream-800 tracking-tight leading-none">BabyPLO <span className="text-[3.0cqw] font-normal text-cream-600">ver.{__COMMIT_HASH__}</span></h1>
-          <button onClick={() => setShowSettings(true)} className="ml-auto text-cream-800 hover:text-cream-900 transition-colors shrink-0">
+          <h1 className="text-[5cqw] font-bold text-white tracking-tight leading-none">BabyPLO <span className="text-[3.0cqw] font-normal text-white/60">ver.{__COMMIT_HASH__}</span></h1>
+          <button onClick={() => setShowSettings(true)} className="ml-auto text-white/80 hover:text-white transition-colors shrink-0">
             <Settings className="w-[5cqw] h-[5cqw]" />
           </button>
         </div>
         {maintenance?.isActive && (
-          <div className="mt-[1.5cqw] w-full px-[2cqw] py-[1.5cqw] bg-cream-50 border border-cream-400 rounded-[2cqw] text-[3cqw] text-cream-800 leading-relaxed">
-            <p className="font-bold text-[3.5cqw] text-[#C0392B] text-center">メンテナンス中</p>
+          <div className="mt-[1.5cqw] w-full px-[2cqw] py-[1.5cqw] bg-white/10 border border-white/20 rounded-[2cqw] text-[3cqw] text-white/90 leading-relaxed">
+            <p className="font-bold text-[3.5cqw] text-[#FF6B6B] text-center">メンテナンス中</p>
             {maintenance.message && (
               <p className="mt-[0.5cqw] text-center">{maintenance.message}</p>
             )}
           </div>
         )}
         {announcement?.isActive && !maintenance?.isActive && (
-          <div className="mt-[1.5cqw] w-full px-[2cqw] py-[1.5cqw] bg-cream-50 border border-forest/20 rounded-[2cqw] text-[3cqw] text-cream-800 leading-relaxed">
+          <div className="mt-[1.5cqw] w-full px-[2cqw] py-[1.5cqw] bg-white/10 border border-white/20 rounded-[2cqw] text-[3cqw] text-white/90 leading-relaxed">
             <p className="mt-[0.5cqw] text-center whitespace-pre-line">{announcement.message}</p>
           </div>
         )}
-        {/* User Info or Login */}
+      </div>
+      {/* User Info or Login */}
+      <div className="mb-[1.5cqw] w-full px-[2cqw]">
         {loading ? (
           <div className="text-center text-cream-500 text-[4cqw] mb-[3cqw]">読み込み中...</div>
         ) : user ? (
@@ -195,7 +197,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             </button>
           </div>
         )}
-
       </div>
 
       {/* Main Content */}
