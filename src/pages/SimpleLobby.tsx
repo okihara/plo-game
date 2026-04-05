@@ -6,6 +6,7 @@ import { ProfileEditDialog } from '../components/ProfileEditDialog';
 import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { BottomNavigation, type LobbyTab } from '../components/BottomNavigation';
+import { TournamentList } from '../components/TournamentList';
 
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 import { WeeklyChampions } from '../components/WeeklyChampions';
@@ -14,7 +15,9 @@ interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
   onCreatePrivate: (blinds: string) => void;
   onJoinPrivate: (inviteCode: string) => void;
-  onTournaments?: () => void;
+  onJoinTournament: (tournamentId: string) => void;
+  onViewMyResult: (tournamentId: string) => void;
+  onViewResults: (tournamentId: string) => void;
 }
 
 interface TableOption {
@@ -37,7 +40,7 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTournaments }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults }: SimpleLobbyProps) {
   const { user, loading, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<LobbyTab>('home');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -112,10 +115,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
   };
 
   const handleTabChange = (tab: LobbyTab) => {
-    if (tab === 'tournament') {
-      onTournaments?.();
-      return;
-    }
     setActiveTab(tab);
   };
 
@@ -296,6 +295,14 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
     switch (activeTab) {
       case 'home':
         return renderHomeTab();
+      case 'tournament':
+        return (
+          <TournamentList
+            onJoinTournament={onJoinTournament}
+            onViewMyResult={onViewMyResult}
+            onViewResults={onViewResults}
+          />
+        );
       case 'history':
         return <HandHistoryPanel />;
       case 'ranking':

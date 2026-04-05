@@ -156,7 +156,9 @@ function App() {
         onPlayOnline={(selectedBlinds, fastFold, selectedVariant) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); setVariant(selectedVariant); }}
         onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
         onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
-        onTournaments={() => { window.history.pushState({}, '', '/tournaments'); setCurrentPath('/tournaments'); }}
+        onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
+        onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
+        onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
       />
     );
   }
