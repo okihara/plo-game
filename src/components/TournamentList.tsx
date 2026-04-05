@@ -179,23 +179,33 @@ function TournamentCard({
   const startContextStrong = isWaitingForStart;
 
   return (
-    <div className="bg-white rounded-[2.5cqw] border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)] overflow-hidden">
-      <div className="px-[4cqw] py-[3cqw] flex items-start justify-between gap-[2cqw] border-b border-cream-200">
-        <div className="flex items-center gap-[2cqw] min-w-0 flex-1">
-          <Trophy className="w-[4.5cqw] h-[4.5cqw] text-forest shrink-0 mt-[0.3cqw]" />
-          <span className="font-bold text-[5cqw] leading-snug truncate text-cream-900">{t.name}</span>
+    <div className={`rounded-[2.5cqw] overflow-hidden ${
+      isRunning
+        ? 'bg-forest-dark/5 border-[0.5cqw] border-forest shadow-[0_2px_12px_rgba(34,87,60,0.25)]'
+        : 'bg-white border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)]'
+    }`}>
+      <div className={`px-[4cqw] py-[3cqw] border-b ${
+        isRunning ? 'bg-forest text-white border-forest' : 'border-cream-200'
+      }`}>
+        <div className="flex items-center gap-[2cqw] min-w-0">
+          <Trophy className={`w-[4.5cqw] h-[4.5cqw] shrink-0 ${isRunning ? 'text-white' : 'text-forest'}`} />
+          <span className={`font-bold text-[5cqw] leading-snug truncate ${isRunning ? 'text-white' : 'text-cream-900'}`}>{t.name}</span>
         </div>
-        <div className="flex flex-col items-end gap-[1cqw] shrink-0">
-          <div className="flex flex-wrap items-center justify-end gap-[1.5cqw]">
-            {t.isRegistrationOpen && !isFinished && (
-              <span className="px-[1.8cqw] py-[0.35cqw] rounded-full text-[2.2cqw] font-semibold bg-forest/10 text-forest border border-forest/25">
-                参加可能
-              </span>
-            )}
-            <span className={`px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium text-white ${status.color}`}>
-              {status.text}
+        <div className="flex items-center gap-[1.5cqw] mt-[1.5cqw] pl-[6.5cqw]">
+          <span className={`px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium ${
+            isRunning ? 'bg-white text-forest' : `text-white ${status.color}`
+          }`}>
+            {status.text}
+          </span>
+          {t.isRegistrationOpen && !isFinished && (
+            <span className={`px-[1.8cqw] py-[0.35cqw] rounded-full text-[2.2cqw] font-semibold ${
+              isRunning
+                ? 'bg-white/20 text-white border border-white/40'
+                : 'bg-forest/10 text-forest border border-forest/25'
+            }`}>
+              参加可能
             </span>
-          </div>
+          )}
         </div>
       </div>
 
