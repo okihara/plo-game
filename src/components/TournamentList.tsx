@@ -91,7 +91,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
 
       {/* Header */}
       <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-300">
-        <Trophy className="w-[5cqw] h-[5cqw] text-forest shrink-0" />
+        <Trophy className="w-[5cqw] h-[5cqw] text-amber-500 shrink-0" />
         <h1 className="text-[4.5cqw] font-bold text-cream-900">トーナメント</h1>
       </div>
 
@@ -181,19 +181,19 @@ function TournamentCard({
   return (
     <div className={`rounded-[2.5cqw] overflow-hidden ${
       isRunning
-        ? 'bg-forest-dark/5 border-[0.5cqw] border-forest shadow-[0_2px_12px_rgba(34,87,60,0.25)]'
+        ? 'bg-amber-50 border-[0.5cqw] border-amber-500 shadow-[0_2px_12px_rgba(180,120,30,0.25)]'
         : 'bg-white border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)]'
     }`}>
       <div className={`px-[4cqw] py-[3cqw] border-b ${
-        isRunning ? 'bg-forest text-white border-forest' : 'border-cream-200'
+        isRunning ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-white border-amber-600' : 'border-cream-200'
       }`}>
         <div className="flex items-center gap-[2cqw] min-w-0">
-          <Trophy className={`w-[4.5cqw] h-[4.5cqw] shrink-0 ${isRunning ? 'text-white' : 'text-forest'}`} />
+          <Trophy className={`w-[4.5cqw] h-[4.5cqw] shrink-0 ${isRunning ? 'text-white' : 'text-amber-500'}`} />
           <span className={`font-bold text-[5cqw] leading-snug truncate ${isRunning ? 'text-white' : 'text-cream-900'}`}>{t.name}</span>
         </div>
         <div className="flex items-center gap-[1.5cqw] mt-[1.5cqw] pl-[6.5cqw]">
           <span className={`px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium ${
-            isRunning ? 'bg-white text-forest' : `text-white ${status.color}`
+            isRunning ? 'bg-white text-amber-700' : `text-white ${status.color}`
           }`}>
             {status.text}
           </span>
@@ -283,7 +283,7 @@ function TournamentCard({
               <button
                 type="button"
                 onClick={onViewMyResult}
-                className="flex-1 py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+                className="flex-1 py-[2.5cqw] bg-cream-900 hover:bg-cream-800 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
               >
                 自分の結果を見る
               </button>
@@ -291,7 +291,7 @@ function TournamentCard({
             <button
               type="button"
               onClick={onViewResults}
-              className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] rounded-[2cqw] text-[3cqw] font-bold transition-colors border-[0.4cqw] border-forest bg-cream-50 text-forest hover:bg-cream-100 active:bg-cream-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]`}
+              className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] rounded-[2cqw] text-[3cqw] font-bold transition-colors border-[0.4cqw] border-cream-800 bg-cream-50 text-cream-900 hover:bg-cream-100 active:bg-cream-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]`}
             >
               結果を見る
             </button>
@@ -308,7 +308,7 @@ function TournamentCard({
           <button
             type="button"
             onClick={onEnter}
-            className="w-full py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+            className="w-full py-[2.5cqw] bg-cream-900 hover:bg-cream-800 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
           >
             テーブルに入る
           </button>
@@ -317,7 +317,7 @@ function TournamentCard({
             type="button"
             onClick={onReenter}
             disabled={isReentering}
-            className="w-full py-[2.5cqw] bg-cream-800 hover:bg-cream-700 disabled:bg-cream-300 disabled:text-cream-500 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
+            className="w-full py-[2.5cqw] bg-cream-900 hover:bg-cream-800 disabled:bg-cream-300 disabled:text-cream-500 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
           >
             {isReentering ? (
               <>
@@ -333,7 +333,7 @@ function TournamentCard({
             type="button"
             onClick={onRegister}
             disabled={isRegistering}
-            className="w-full py-[2.5cqw] bg-forest hover:bg-forest-light disabled:bg-cream-300 disabled:text-cream-500 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
+            className="w-full py-[2.5cqw] bg-cream-900 hover:bg-cream-800 disabled:bg-cream-300 disabled:text-cream-500 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors flex items-center justify-center gap-[2cqw]"
           >
             {isRegistering ? (
               <>
