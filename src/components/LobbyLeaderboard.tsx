@@ -36,7 +36,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
 
   const sorted = [...rankings]
     .sort((a, b) => b.totalAllInEVProfit - a.totalAllInEVProfit)
-    .slice(0, 10);
+    .slice(0, 7);
 
   if (sorted.length === 0 && loaded) return null;
 
