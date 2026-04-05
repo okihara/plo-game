@@ -30,20 +30,42 @@ const PERIOD_LABELS: Record<Period, string> = {
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
-function formatPeriodRange(period: Period): string | null {
+/** weekOffset=0 → 今週, 1 → 先週, … */
+function getWeekRange(weekOffset: number): { monday: Date; sunday: Date } {
+  const now = new Date();
+  const monday = new Date(now);
+  const day = monday.getDay();
+  const diff = day === 0 ? 6 : day - 1;
+  monday.setDate(monday.getDate() - diff - 7 * weekOffset);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(sunday.getDate() + 6);
+  return { monday, sunday };
+}
+
+const MAX_WEEK_OFFSET = 8;
+
+function buildWeekOptions(): { value: number; label: string }[] {
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  const options: { value: number; label: string }[] = [];
+  for (let i = 0; i <= MAX_WEEK_OFFSET; i++) {
+    const { monday, sunday } = getWeekRange(i);
+    const label = i === 0
+      ? `今週 (${fmt(monday)}~${fmt(sunday)})`
+      : `${fmt(monday)}~${fmt(sunday)}`;
+    options.push({ value: i, label });
+  }
+  return options;
+}
+
+function formatPeriodRange(period: Period, weekOffset: number): string | null {
   if (period === 'all') return null;
   const now = new Date();
   const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAYS[d.getDay()]})`;
   if (period === 'daily') {
     return `${fmt(now)} — 朝3時リセット`;
   }
-  // 今週の月曜〜日曜
-  const monday = new Date(now);
-  const day = monday.getDay();
-  const diff = day === 0 ? 6 : day - 1;
-  monday.setDate(monday.getDate() - diff);
-  const sunday = new Date(monday);
-  sunday.setDate(sunday.getDate() + 6);
+  const { monday, sunday } = getWeekRange(weekOffset);
   return `${fmt(monday)} ~ ${fmt(sunday)}`;
 }
 
@@ -63,15 +85,16 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('profit');
   const [period, setPeriod] = useState<Period>('weekly');
+  const [weekOffset, setWeekOffset] = useState(0);
   const myRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
-    fetchRankings(period)
+    fetchRankings(period, period === 'weekly' ? weekOffset : 0)
       .then(setRankings)
       .catch(() => setRankings([]))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, weekOffset]);
 
   // ESCキーで閉じる
   useEffect(() => {
@@ -110,7 +133,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
             {(['daily', 'weekly', 'all'] as Period[]).map(p => (
               <button
                 key={p}
-                onClick={() => setPeriod(p)}
+                onClick={() => { setPeriod(p); if (p !== 'weekly') setWeekOffset(0); }}
                 className={`flex-1 py-[1.5cqw] text-[2.8cqw] font-bold rounded-[2cqw] border transition-all ${
                   period === p
                     ? 'bg-cream-900 text-white border-cream-900'
@@ -122,10 +145,25 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
             ))}
           </div>
 
+          {/* Week selector (weekly only) */}
+          {period === 'weekly' && (
+            <div className="mb-[2cqw]">
+              <select
+                value={weekOffset}
+                onChange={e => setWeekOffset(Number(e.target.value))}
+                className="w-full py-[1.5cqw] px-[2cqw] text-[2.8cqw] text-cream-800 bg-white border border-cream-300 rounded-[2cqw] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:5cqw_5cqw] bg-[right_1cqw_center] bg-no-repeat"
+              >
+                {buildWeekOptions().map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* Period range label */}
-          {formatPeriodRange(period) && (
+          {period !== 'weekly' && formatPeriodRange(period, weekOffset) && (
             <div className="text-center text-[2.5cqw] text-cream-500 mb-[2cqw]">
-              {formatPeriodRange(period)}
+              {formatPeriodRange(period, weekOffset)}
             </div>
           )}
 
