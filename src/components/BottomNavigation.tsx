@@ -18,8 +18,8 @@ const TABS: { id: LobbyTab; label: string; icon: typeof Home }[] = [
 
 export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomNavigationProps) {
   return (
-    <nav className="shrink-0 bg-white border-t border-cream-300 shadow-[0_-2px_10px_rgba(0,0,0,0.05)] pb-[env(safe-area-inset-bottom)]">
-      <div className="flex items-center justify-around h-[13cqw]">
+    <nav className="shrink-0 px-[3cqw] pb-[2cqw] pb-[max(2cqw,env(safe-area-inset-bottom))]">
+      <div className="flex items-center justify-around h-[12cqw] bg-white border border-cream-300 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
         {TABS.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           const isDisabled = !isLoggedIn && id !== 'home' && id !== 'tournament';
@@ -37,13 +37,10 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
                     : 'text-cream-500 active:text-cream-700'
               }`}
             >
-              <Icon className="w-[5cqw] h-[5cqw]" strokeWidth={isActive ? 2.5 : 2} />
-              <span className={`text-[2.2cqw] leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>
+              <Icon className="w-[5cqw] h-[5cqw]" strokeWidth={isActive ? 2.5 : 1.8} />
+              <span className={`text-[2cqw] leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>
                 {label}
               </span>
-              {isActive && (
-                <div className="w-[1cqw] h-[1cqw] rounded-full bg-forest mt-[0.2cqw]" />
-              )}
             </button>
           );
         })}
