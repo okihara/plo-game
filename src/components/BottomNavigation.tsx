@@ -29,11 +29,11 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
             return (
               <div key={id} className="relative flex-1 flex items-center justify-center h-full">
                 {/* 白いサークル背景 */}
-                <div className="absolute -top-[4cqw] w-[14cqw] h-[14cqw] bg-white rounded-full border border-cream-300 shadow-[0_2px_12px_rgba(0,0,0,0.12)]" />
+                <div className="absolute -top-[4cqw] w-[14cqw] h-[14cqw] bg-white rounded-full border border-cream-300 shadow-[0_2px_12px_rgba(0,0,0,0.12)] pointer-events-none" />
                 <button
                   onClick={() => !isDisabled && onTabChange(id)}
                   disabled={isDisabled}
-                  className={`relative z-10 flex flex-col items-center justify-center -mt-[4cqw] transition-colors ${
+                  className={`absolute -top-[4cqw] z-10 w-[14cqw] h-[14cqw] rounded-full flex flex-col items-center justify-center transition-colors ${
                     isDisabled
                       ? 'opacity-30 cursor-not-allowed'
                       : isActive

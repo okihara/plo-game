@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Pencil } from 'lucide-react';
+import { Pencil, Trophy } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { ProfileEditDialog } from '../components/ProfileEditDialog';
@@ -120,20 +120,17 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
 
   const renderHomeTab = () => (
     <div className="flex flex-col items-center px-[3cqw] py-[2cqw] h-full min-h-0 overflow-y-auto">
-      {/* Logo & Mascot */}
+      {/* Logo & Title */}
       <div className="mb-[1.5cqw] w-full">
-        <div className="flex items-center justify-center gap-[2.5cqw]">
-          <div className="w-[14cqw] h-[14cqw] rounded-full overflow-hidden shadow-[0_4px_20px_rgba(139,126,106,0.25)] border-[0.5cqw] border-cream-300/60 shrink-0">
+        <div className="flex items-center gap-[1.5cqw]">
+          <div className="w-[7cqw] h-[7cqw] rounded-full overflow-hidden border-[0.3cqw] border-cream-300/60 shrink-0">
             <img
               src="/images/plo_baby.png"
               alt="Baby PLO"
               className="w-full h-full object-cover scale-125"
             />
           </div>
-          <div>
-            <h1 className="text-[6cqw] font-bold text-cream-800 tracking-tight leading-none">BabyPLO <span className="text-[2.5cqw] font-normal text-cream-600">build {__COMMIT_HASH__}</span></h1>
-            <p className="text-[3cqw] text-cream-700 mt-[0.5cqw]">いつでも入って、いつでも抜ける<br />気軽に遊べるPLOアプリ</p>
-          </div>
+          <h1 className="text-[5cqw] font-bold text-cream-800 tracking-tight leading-none">BabyPLO <span className="text-[3.0cqw] font-normal text-cream-600">ver.{__COMMIT_HASH__}</span></h1>
         </div>
         {maintenance?.isActive && (
           <div className="mt-[1.5cqw] w-full px-[2cqw] py-[1.5cqw] bg-cream-50 border border-cream-400 rounded-[2cqw] text-[3cqw] text-cream-800 leading-relaxed">
@@ -214,6 +211,16 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         {/* Mini Leaderboard */}
         <LobbyLeaderboard userId={user?.id} onShowFull={() => setActiveTab('ranking')} />
 
+        {/* Tournament Button */}
+        <button
+          onClick={() => setActiveTab('tournament')}
+          className="w-full mt-[2cqw] py-[3cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)] text-white font-bold text-[4cqw] flex items-center justify-center gap-[2cqw]"
+        >
+          <Trophy className="w-[4.5cqw] h-[4.5cqw]" />
+          トーナメント
+          <svg className="w-[3.5cqw] h-[3.5cqw] text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
         {/* Tables - Fast Fold */}
         <div className="mt-[2cqw] space-y-[2cqw]">
           {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
@@ -251,11 +258,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
               </button>
             );
           })}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-[4cqw] mb-[16cqw] text-center text-cream-500 text-[2.8cqw]">
-          <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
         </div>
       </div>
     </div>
