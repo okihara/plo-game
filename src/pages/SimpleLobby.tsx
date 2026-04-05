@@ -129,8 +129,8 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
               />
             </div>
             <div>
-              <h1 className="text-[7cqw] font-bold text-cream-900 tracking-tight">BabyPLO</h1>
-              <p className="text-[3cqw] text-cream-600 mt-[0.5cqw]">いつでも入って、いつでも抜ける<br />気軽に遊べるPLOアプリ</p>
+              <h1 className="text-[6cqw] font-bold text-cream-800 tracking-tight leading-none">BabyPLO <span className="text-[2.5cqw] font-normal text-cream-600">build {__COMMIT_HASH__}</span></h1>
+              <p className="text-[3cqw] text-cream-700 mt-[0.5cqw]">いつでも入って、いつでも抜ける<br />気軽に遊べるPLOアプリ</p>
             </div>
           </div>
           {maintenance?.isActive && (
@@ -318,61 +318,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
             <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
           </div>
 
-          {/* Stud / Razz links */}
-          <div className="mt-[3cqw] flex justify-center gap-[4cqw] text-[3.2cqw]">
-            <button
-              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'stud')}
-              disabled={!user || !!maintenance?.isActive}
-              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Stud 4/8
-            </button>
-            <button
-              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'razz')}
-              disabled={!user || !!maintenance?.isActive}
-              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              Razz 4/8
-            </button>
-            <button
-              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'limit_2-7_triple_draw')}
-              disabled={!user || !!maintenance?.isActive}
-              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              2-7 TD 4/8
-            </button>
-            <button
-              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'no_limit_2-7_single_draw')}
-              disabled={!user || !!maintenance?.isActive}
-              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              2-7 SD (NL) 4/8
-            </button>
-            <button
-              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'limit_holdem')}
-              disabled={!user || !!maintenance?.isActive}
-              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              LHE 4/8
-            </button>
-            <button
-              onClick={() => user && !maintenance?.isActive && onPlayOnline('4/8', false, 'horse')}
-              disabled={!user || !!maintenance?.isActive}
-              className="text-cream-500 hover:text-cream-700 underline transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              HORSE 4/8
-            </button>
-          </div>
-
-          {/* Debug link */}
-          <div className="mt-[2cqw] text-center">
-            <a
-              href="/debug/player"
-              className="text-[2.5cqw] text-cream-400 hover:text-cream-600 underline transition-colors"
-            >
-              Debug: Player Component
-            </a>
-          </div>
         </div>
       </div>
 
