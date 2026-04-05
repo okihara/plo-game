@@ -145,56 +145,37 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             <p className="mt-[0.5cqw] text-center whitespace-pre-line">{announcement.message}</p>
           </div>
         )}
-      </div>
-
-      {/* User Info or Login */}
-      <div className="w-[94%]">
+        {/* User Info or Login */}
         {loading ? (
           <div className="text-center text-cream-500 text-[4cqw] mb-[3cqw]">読み込み中...</div>
         ) : user ? (
-          <div className="bg-white border border-cream-300 rounded-[3cqw] p-[3cqw] mb-[2.5cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-[2cqw]">
-                <div className="relative">
-                  {user.avatarUrl && (
-                    <img
-                      src={user.avatarUrl}
-                      alt={user.username}
-                      className="w-[11cqw] h-[11cqw] rounded-full border-[0.4cqw] border-cream-300 cursor-pointer hover:border-forest/50 transition-all"
-                      onClick={() => setActiveTab('profile')}
-                    />
-                  )}
-                </div>
-                <div>
-                  <div className="flex items-center gap-[1.5cqw]">
-                    <span className="text-[4.5cqw] text-cream-900 font-bold">{user.displayName || user.username}</span>
-                    <button
-                      onClick={() => setShowProfileEdit(true)}
-                      className="text-cream-700 hover:text-cream-900 transition-colors relative"
-                    >
-                      <Pencil className="w-[3.5cqw] h-[3.5cqw]" />
-                      <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[2cqw] px-[2cqw] py-[0.8cqw] bg-cream-900 text-white text-[2.5cqw] rounded-[1.5cqw] whitespace-nowrap animate-bounce-subtle">
-                        名前・アイコンを変更
-                        <span className="absolute top-full left-1/2 -translate-x-1/2 border-l-[1.2cqw] border-r-[1.2cqw] border-t-[1.2cqw] border-l-transparent border-r-transparent border-t-cream-900" />
-                      </span>
-                    </button>
-                  </div>
-                  <div className="flex items-center gap-[1.5cqw] mt-[0.5cqw]">
-                    <span className="text-[4cqw] font-bold text-forest">{user.balance}</span>
-                    <button
-                      onClick={handleClaimLoginBonus}
-                      disabled={claimingBonus || !user.loginBonusAvailable}
-                      className="px-[1.5cqw] py-[0.5cqw] text-[2.5cqw] bg-forest/10 text-forest font-bold rounded-[1cqw] hover:bg-forest/20 disabled:opacity-40 transition-all"
-                    >
-                      {claimingBonus ? '...' : user.loginBonusAvailable ? '1000まで補填' : '受取済み'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="flex items-center gap-[1.5cqw] mt-[1.5cqw]">
+            {user.avatarUrl && (
+              <img
+                src={user.avatarUrl}
+                alt={user.username}
+                className="w-[7cqw] h-[7cqw] rounded-full border-[0.3cqw] border-cream-300 cursor-pointer hover:border-forest/50 transition-all shrink-0"
+                onClick={() => setActiveTab('profile')}
+              />
+            )}
+            <span className="text-[3.5cqw] text-cream-900 font-bold truncate">{user.displayName || user.username}</span>
+            <button
+              onClick={() => setShowProfileEdit(true)}
+              className="text-cream-500 hover:text-cream-700 transition-colors shrink-0"
+            >
+              <Pencil className="w-[3cqw] h-[3cqw]" />
+            </button>
+            <span className="text-[3.5cqw] font-bold text-forest ml-auto shrink-0">{user.balance}</span>
+            <button
+              onClick={handleClaimLoginBonus}
+              disabled={claimingBonus || !user.loginBonusAvailable}
+              className="px-[1.5cqw] py-[0.3cqw] text-[2.8cqw] bg-forest/10 text-forest font-bold rounded-[1cqw] hover:bg-forest/20 disabled:opacity-40 transition-all shrink-0"
+            >
+              {claimingBonus ? '...' : user.loginBonusAvailable ? 'ログインボーナス' : '受取済み'}
+            </button>
           </div>
         ) : (
-          <div className="bg-white border border-cream-300 rounded-[3cqw] p-[3cqw] mb-[2.5cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
+          <div className="mt-[1.5cqw] bg-white border border-cream-300 rounded-[3cqw] p-[3cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
             <p className="text-[4cqw] text-cream-600 text-center mb-[2cqw]">ログインしてプレイ</p>
             <button
               onClick={handleLogin}
