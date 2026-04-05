@@ -34,7 +34,7 @@ interface HandSummary {
 
 
 interface HandHistoryPanelProps {
-  onClose: () => void;
+  onClose?: () => void;
 }
 
 export function MiniCard({ cardStr }: { cardStr: string }) {
@@ -157,7 +157,7 @@ function HandSummaryCard({
 
 type GameType = 'cash' | 'tournament';
 
-export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
+export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
   const { user } = useAuth();
   const [hands, setHands] = useState<HandSummary[]>([]);
   const [selectedHand, setSelectedHand] = useState<HandDetail | null>(null);
@@ -223,9 +223,11 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
       <div className="h-full light-bg flex items-center justify-center">
         <div className="text-center">
           <p className="text-cream-600 mb-[4cqw] text-[3cqw]">ログインするとハンド履歴を確認できます</p>
-          <button onClick={onClose} className="text-cream-500 hover:text-cream-700 transition-colors text-[3cqw]">
-            閉じる
-          </button>
+          {onClose && (
+            <button onClick={onClose} className="text-cream-500 hover:text-cream-700 transition-colors text-[3cqw]">
+              閉じる
+            </button>
+          )}
         </div>
       </div>
     );
@@ -237,9 +239,11 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps) {
         {/* ヘッダー */}
         <div className="sticky top-0 z-10 bg-white shadow-sm">
           <div className="border-b border-cream-300 px-[4cqw] py-[3cqw] flex items-center">
-            <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
-              &larr; 戻る
-            </button>
+            {onClose && (
+              <button onClick={onClose} className="text-cream-700 hover:text-cream-900 mr-[2.5cqw] text-[3cqw] font-medium transition-colors">
+                &larr; 戻る
+              </button>
+            )}
             <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">ハンド履歴</h1>
             <span className="ml-auto text-cream-600 text-[3cqw] font-medium">{total}件</span>
           </div>

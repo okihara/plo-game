@@ -42,7 +42,7 @@ export function WeeklyChampions() {
         onClick={() => setShowDialog(true)}
       >
         <div className="flex items-center justify-between mb-[1.5cqw]">
-          <span className="text-[3.2cqw] font-bold text-cream-900">最近のチャンピオン</span>
+          <span className="text-[3.2cqw] font-bold text-cream-900">最近の週間チャンピオン</span>
           <span className="text-[2.8cqw] text-cream-400">もっと見る &gt;</span>
         </div>
         <div className="grid grid-cols-3 gap-[1.5cqw]">

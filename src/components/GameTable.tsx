@@ -3,7 +3,7 @@ import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Volume2, VolumeOff, Copy, Check } from 'lucide-react';
+import { DoorOpen, Settings, History, Copy, Check } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
@@ -12,7 +12,7 @@ import { ProfilePopup } from './ProfilePopup';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from './HandHistoryPanel';
 import { BustedScreen } from './BustedScreen';
-import { isSoundEnabled, setSoundEnabled } from '../services/actionSound';
+import { SettingsPopup } from './SettingsPopup';
 import type { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import type { Card, Action, GameState } from '../logic/types';
 
@@ -95,16 +95,15 @@ export function GameTable({
   children,
   isSpectator = false,
 }: GameTableProps) {
-  const { settings, setUseBBNotation, setBigBlind } = useGameSettings();
+  const { settings, setBigBlind } = useGameSettings();
   const { user } = useAuth();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
-  const [analysisEnabled, setAnalysisEnabled] = useState(false);
-  const [showHandName, setShowHandName] = useState(true);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
+  const analysisEnabled = settings.analysisEnabled;
+  const showHandName = settings.showHandName;
+  const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
-  const [soundOn, setSoundOn] = useState(isSoundEnabled);
   const [inviteCopied, setInviteCopied] = useState(false);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
@@ -221,7 +220,7 @@ export function GameTable({
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className={`absolute top-0 left-0 right-0 ${showSettingsMenu ? 'z-[200]' : 'z-10'} h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]`}>
+          <div className="absolute top-0 left-0 right-0 z-10 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
             <button
               onClick={onBack}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
@@ -239,71 +238,13 @@ export function GameTable({
             {/* スペーサー */}
             <div className="flex-1" />
 
-            {/* サウンドトグル */}
+            {/* 設定ボタン */}
             <button
-              onClick={() => {
-                const next = !soundOn;
-                setSoundOn(next);
-                setSoundEnabled(next);
-              }}
+              onClick={() => setShowSettingsPopup(true)}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
             >
-              {soundOn
-                ? <Volume2 className="w-[5cqw] h-[5cqw]" />
-                : <VolumeOff className="w-[5cqw] h-[5cqw]" />}
+              <Settings className="w-[5cqw] h-[5cqw]" />
             </button>
-            {/* 設定ボタン */}
-            <div className="relative">
-              <button
-                onClick={() => setShowSettingsMenu(!showSettingsMenu)}
-                className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
-              >
-                <Settings className="w-[5cqw] h-[5cqw]" />
-              </button>
-              {showSettingsMenu && (
-                <div className="absolute top-full right-0 mt-1 bg-gray-800 rounded-lg shadow-lg py-2 z-50 whitespace-nowrap">
-                  <button
-                    onClick={() => {
-                      setAnalysisEnabled(!analysisEnabled);
-                      setShowSettingsMenu(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
-                  >
-                    <span>オープンハンド評価</span>
-                    <span className={analysisEnabled ? 'text-emerald-400' : 'text-gray-500'}>
-                      {analysisEnabled ? '✓' : ''}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowHandName(!showHandName);
-                      setShowSettingsMenu(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
-                  >
-                    <span>役名表示</span>
-                    <span className={showHandName ? 'text-emerald-400' : 'text-gray-500'}>
-                      {showHandName ? '✓' : ''}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => {
-                      setUseBBNotation(!settings.useBBNotation);
-                      setShowSettingsMenu(false);
-                    }}
-                    className="w-full px-4 py-3 text-left text-gray-200 hover:bg-gray-700 flex items-center justify-between"
-                    style={{ fontSize: 'min(1.6vh, 2.8vw)' }}
-                  >
-                    <span>bb表記</span>
-                    <span className={settings.useBBNotation ? 'text-emerald-400' : 'text-gray-500'}>
-                      {settings.useBBNotation ? '✓' : ''}
-                    </span>
-                  </button>
-                </div>
-              )}
-            </div> 
           </div>
       {/* バリアント + ブラインド（中央上部） */}
       <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
@@ -466,6 +407,11 @@ export function GameTable({
                 <HandHistoryPanel onClose={() => setShowHandHistory(false)} />
               </div>
             </div>
+          )}
+
+          {/* 設定ポップアップ */}
+          {showSettingsPopup && (
+            <SettingsPopup onClose={() => setShowSettingsPopup(false)} showLogout={false} />
           )}
 
           {/* 外部オーバーレイ（TournamentHUD等） */}

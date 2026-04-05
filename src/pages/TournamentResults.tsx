@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, Loader2, Trophy } from 'lucide-react';
+import { Loader2, Trophy } from 'lucide-react';
 import { formatChips } from '../utils/formatChips';
 import type { TournamentResult } from '@plo/shared';
 
@@ -113,12 +113,9 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
   ].filter((r): r is TournamentResult => r != null);
 
   return (
-    <div className="h-full w-full light-bg text-cream-900 flex flex-col min-h-0 overflow-hidden">
+    <div className="h-full w-full light-bg text-cream-900 flex flex-col min-h-0 overflow-hidden relative">
       {/* Header */}
       <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-300">
-        <button type="button" onClick={onBack} className="p-[1.5cqw] rounded-[2cqw] hover:bg-cream-200 transition-colors">
-          <ChevronLeft className="w-[5cqw] h-[5cqw]" />
-        </button>
         <Trophy className="w-[6cqw] h-[6cqw] text-forest shrink-0" />
         <h1 className="text-[5cqw] font-bold truncate">{data.name}</h1>
       </div>
@@ -195,6 +192,20 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
             </div>
           </div>
         )}
+
+        {/* Spacer for bottom button */}
+        <div className="h-[18cqw]" />
+      </div>
+
+      {/* Bottom back button */}
+      <div className="absolute bottom-0 left-0 right-0 z-50 px-[4cqw] pb-[max(3cqw,env(safe-area-inset-bottom))] pt-[2cqw] pointer-events-none">
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full py-[3cqw] bg-cream-900 text-white text-[3.5cqw] font-bold rounded-[2.5cqw] active:bg-cream-800 shadow-[0_4px_20px_rgba(0,0,0,0.2)] pointer-events-auto"
+        >
+          トーナメント一覧に戻る
+        </button>
       </div>
     </div>
   );

@@ -15,8 +15,8 @@ const MAX_DISPLAY_ALL = 30;
 const MAX_DISPLAY_PERIOD = 15;
 
 interface RankingPopupProps {
-  userId: string;
-  onClose: () => void;
+  userId?: string;
+  onClose?: () => void;
 }
 
 type Tab = 'profit' | 'winrate';
@@ -75,6 +75,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
 
   // ESCキーで閉じる
   useEffect(() => {
+    if (!onClose) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
@@ -241,14 +242,16 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
       </div>
 
       {/* Footer Button */}
-      <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
-        <button
-          onClick={onClose}
-          className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"
-        >
-          閉じる
-        </button>
-      </div>
+      {onClose && (
+        <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
+          <button
+            onClick={onClose}
+            className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
     </div>
   );
 }

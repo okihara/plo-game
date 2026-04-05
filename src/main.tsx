@@ -35,6 +35,7 @@ function App() {
   const [privateMode, setPrivateMode] = useState<PrivateMode | null>(null);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
+  const [lobbyInitialTab, setLobbyInitialTab] = useState<'home' | 'tournament'>('home');
 
   useEffect(() => {
     const handlePopState = () => setCurrentPath(window.location.pathname);
@@ -63,14 +64,16 @@ function App() {
     setVariant(undefined);
     setPrivateMode(null);
     setTournamentId(null);
+    setLobbyInitialTab('home');
     window.history.pushState({}, '', '/');
     setCurrentPath('/');
   };
 
   const goToTournaments = () => {
     setTournamentId(null);
-    window.history.pushState({}, '', '/tournaments');
-    setCurrentPath('/tournaments');
+    setLobbyInitialTab('tournament');
+    window.history.pushState({}, '', '/');
+    setCurrentPath('/');
   };
 
   const navigateWatchTable = (tableId: string, query?: { tournament?: string; invite?: string }) => {
@@ -156,7 +159,10 @@ function App() {
         onPlayOnline={(selectedBlinds, fastFold, selectedVariant) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); setVariant(selectedVariant); }}
         onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
         onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
-        onTournaments={() => { window.history.pushState({}, '', '/tournaments'); setCurrentPath('/tournaments'); }}
+        onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
+        onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
+        onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
+        initialTab={lobbyInitialTab}
       />
     );
   }
