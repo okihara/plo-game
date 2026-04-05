@@ -10,19 +10,45 @@ interface BottomNavigationProps {
 
 const TABS: { id: LobbyTab; label: string; icon: typeof Home }[] = [
   { id: 'home', label: 'ホーム', icon: Home },
-  { id: 'tournament', label: '大会', icon: Trophy },
-  { id: 'history', label: '履歴', icon: Clock },
   { id: 'ranking', label: 'ランキング', icon: BarChart3 },
+  { id: 'tournament', label: 'トナメ', icon: Trophy },
+  { id: 'history', label: 'ハンド履歴', icon: Clock },
   { id: 'profile', label: 'プロフィール', icon: User },
 ];
 
 export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomNavigationProps) {
   return (
-    <nav className="shrink-0 px-[3cqw] pb-[2cqw] pb-[max(2cqw,env(safe-area-inset-bottom))]">
-      <div className="flex items-center justify-around h-[12cqw] bg-white border border-cream-300 rounded-full shadow-[0_4px_16px_rgba(0,0,0,0.1)]">
+    <nav className="absolute bottom-0 left-0 right-0 z-50 px-[3cqw] pb-[max(2cqw,env(safe-area-inset-bottom))] pointer-events-none">
+      <div className="relative flex items-center justify-around h-[12cqw] bg-white border border-cream-300 rounded-full shadow-[0_4px_30px_rgba(0,0,0,0.25)] pointer-events-auto">
         {TABS.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           const isDisabled = !isLoggedIn && id !== 'home' && id !== 'tournament';
+          const isCenter = id === 'tournament';
+
+          if (isCenter) {
+            return (
+              <div key={id} className="relative flex-1 flex items-center justify-center h-full">
+                {/* 白いサークル背景 */}
+                <div className="absolute -top-[4cqw] w-[14cqw] h-[14cqw] bg-white rounded-full border border-cream-300 shadow-[0_2px_12px_rgba(0,0,0,0.12)]" />
+                <button
+                  onClick={() => !isDisabled && onTabChange(id)}
+                  disabled={isDisabled}
+                  className={`relative z-10 flex flex-col items-center justify-center -mt-[4cqw] transition-colors ${
+                    isDisabled
+                      ? 'opacity-30 cursor-not-allowed'
+                      : isActive
+                        ? 'text-forest'
+                        : 'text-cream-500 active:text-cream-700'
+                  }`}
+                >
+                  <Icon className="w-[6cqw] h-[6cqw]" strokeWidth={isActive ? 2.5 : 1.8} />
+                  <span className={`text-[2cqw] leading-none mt-[0.5cqw] ${isActive ? 'font-bold' : 'font-medium'}`}>
+                    {label}
+                  </span>
+                </button>
+              </div>
+            );
+          }
 
           return (
             <button

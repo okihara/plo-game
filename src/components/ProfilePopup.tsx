@@ -25,7 +25,7 @@ interface ProfilePopupProps {
   avatarId?: number;
   userId?: string;
   isSelf?: boolean;
-  onClose: () => void;
+  onClose?: () => void;
   onProfileUpdated?: () => void;
   twitterAvatarUrl?: string | null;
   useTwitterAvatar?: boolean;
@@ -117,6 +117,7 @@ export function ProfilePopup({
 
   // ESCキーで閉じる
   useEffect(() => {
+    if (!onClose) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showEditDialog) {
@@ -313,14 +314,16 @@ export function ProfilePopup({
       </div>
 
       {/* Close Button */}
-      <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
-        <button
-          onClick={onClose}
-          className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"
-        >
-          閉じる
-        </button>
-      </div>
+      {onClose && (
+        <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
+          <button
+            onClick={onClose}
+            className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"
+          >
+            閉じる
+          </button>
+        </div>
+      )}
 
       {/* Edit Dialog */}
       {showEditDialog && (

@@ -254,7 +254,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         <LobbyLeaderboard userId={user?.id} onShowFull={() => setActiveTab('ranking')} />
 
         {/* Footer */}
-        <div className="mt-[4cqw] mb-[2cqw] text-center text-cream-500 text-[2.8cqw]">
+        <div className="mt-[4cqw] mb-[16cqw] text-center text-cream-500 text-[2.8cqw]">
           <p>Powered by <a href="https://x.com/okkichan3" className="text-cream-600 hover:text-cream-700 underline transition-colors">@okkichan3</a></p>
         </div>
       </div>
@@ -283,7 +283,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         avatarUrl={user.avatarUrl}
         userId={user.id}
         isSelf
-        onClose={() => setActiveTab('home')}
         onProfileUpdated={refreshUser}
         twitterAvatarUrl={user.twitterAvatarUrl}
         useTwitterAvatar={user.useTwitterAvatar}
@@ -315,9 +314,9 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   };
 
   return (
-    <div className="h-full w-full light-bg relative flex flex-col overflow-hidden">
+    <div className="h-full w-full light-bg relative overflow-hidden">
       {/* Tab Content */}
-      <div className="flex-1 min-h-0 relative z-10">
+      <div className="h-full relative z-10">
         {renderTabContent()}
       </div>
 
