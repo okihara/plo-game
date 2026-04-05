@@ -208,8 +208,14 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
           </div>
         )}
 
+        {/* Weekly Champions */}
+        <WeeklyChampions />
+
+        {/* Mini Leaderboard */}
+        <LobbyLeaderboard userId={user?.id} onShowFull={() => setActiveTab('ranking')} />
+
         {/* Tables - Fast Fold */}
-        <div className="space-y-[2cqw]">
+        <div className="mt-[2cqw] space-y-[2cqw]">
           {TABLE_OPTIONS.filter(t => t.isFastFold).map((table) => {
             const count = playerCounts[`${table.blinds}-ff`] ?? 0;
             return (
@@ -246,12 +252,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             );
           })}
         </div>
-
-        {/* Weekly Champions */}
-        <WeeklyChampions />
-
-        {/* Mini Leaderboard */}
-        <LobbyLeaderboard userId={user?.id} onShowFull={() => setActiveTab('ranking')} />
 
         {/* Footer */}
         <div className="mt-[4cqw] mb-[16cqw] text-center text-cream-500 text-[2.8cqw]">
