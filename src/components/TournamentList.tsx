@@ -104,15 +104,15 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
       <div className="flex-1 min-h-0 overflow-y-auto">
         {isListLoading && (
           <div className="flex items-center justify-center py-[20cqw]">
-            <Loader2 className="w-[6cqw] h-[6cqw] animate-spin text-cream-500 shrink-0" />
-            <span className="ml-[2cqw] text-[3cqw] text-cream-500">読み込み中...</span>
+            <Loader2 className="w-[6cqw] h-[6cqw] animate-spin text-cream-700 shrink-0" />
+            <span className="ml-[2cqw] text-[3cqw] text-cream-700">読み込み中...</span>
           </div>
         )}
 
         {!isListLoading && (
           <div className="px-[4cqw] py-[4cqw] space-y-[3cqw] pb-[6cqw]">
             {tournaments.length === 0 && (
-              <div className="text-center py-[16cqw] text-[3cqw] text-cream-500">
+              <div className="text-center py-[16cqw] text-[3cqw] text-cream-700">
                 <Trophy className="w-[12cqw] h-[12cqw] mx-auto mb-[3cqw] opacity-30" />
                 <p>トーナメントはありません</p>
               </div>
@@ -183,7 +183,7 @@ function TournamentCard({
       <div className="px-[4cqw] py-[3cqw] flex items-start justify-between gap-[2cqw] border-b border-cream-200">
         <div className="flex items-center gap-[2cqw] min-w-0 flex-1">
           <Trophy className="w-[4.5cqw] h-[4.5cqw] text-forest shrink-0 mt-[0.3cqw]" />
-          <span className="font-bold text-[4cqw] leading-snug truncate">{t.name}</span>
+          <span className="font-bold text-[5cqw] leading-snug truncate text-cream-900">{t.name}</span>
         </div>
         <div className="flex flex-col items-end gap-[1cqw] shrink-0">
           <div className="flex flex-wrap items-center justify-end gap-[1.5cqw]">
@@ -201,22 +201,22 @@ function TournamentCard({
 
       <div className="px-[4cqw] pt-[3cqw] grid grid-cols-3 gap-x-[2cqw]">
         <div className="min-w-0">
-          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-500 truncate">バイイン</div>
+          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-700 truncate">バイイン</div>
           <div className="text-[4.2cqw] font-bold tabular-nums text-cream-900 leading-tight mt-[0.4cqw]">
             {t.buyIn.toLocaleString()}
           </div>
         </div>
         <div className="min-w-0 text-center">
-          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-500">参加</div>
+          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-700">参加</div>
           <div className="text-[4.2cqw] font-bold tabular-nums text-cream-900 leading-tight mt-[0.4cqw]">
             {t.registeredPlayers}
-            <span className="text-[2.8cqw] font-semibold text-cream-500">
+            <span className="text-[2.8cqw] font-semibold text-cream-700">
               /{t.maxPlayers}
             </span>
           </div>
         </div>
         <div className="min-w-0 text-right">
-          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-500 truncate">賞金</div>
+          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-700 truncate">賞金</div>
           <div className="text-[4.2cqw] font-bold tabular-nums text-forest leading-tight mt-[0.4cqw]">
             {t.prizePool.toLocaleString()}
           </div>
@@ -244,7 +244,7 @@ function TournamentCard({
         </div>
       )}
 
-      <div className="px-[4cqw] pt-[2.5cqw] pb-[3cqw] space-y-[1cqw] text-[2.6cqw] text-cream-600 border-b border-cream-100">
+      <div className="px-[4cqw] pt-[2.5cqw] pb-[3cqw] space-y-[1cqw] text-[2.6cqw] text-cream-700 border-b border-cream-100">
         <div className="flex justify-between gap-[3cqw]">
           <span>初期チップ</span>
           <span className="shrink-0 tabular-nums font-medium text-cream-800">
@@ -260,7 +260,7 @@ function TournamentCard({
           </div>
         )}
         {t.allowReentry && t.totalReentries > 0 && (
-          <div className="text-[2.4cqw] text-cream-500 pt-[0.2cqw]">
+          <div className="text-[2.4cqw] text-cream-700 pt-[0.2cqw]">
             Reentry 利用 {t.totalReentries}回
           </div>
         )}
@@ -287,11 +287,11 @@ function TournamentCard({
             </button>
           </div>
         ) : isWaitingForStart ? (
-          <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
+          <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">
             開始時刻をお待ちください
           </div>
         ) : !isLoggedIn ? (
-          <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
+          <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">
             ログインすると参加できます
           </div>
         ) : isRegistered ? (
@@ -335,7 +335,7 @@ function TournamentCard({
             )}
           </button>
         ) : (
-          <div className="text-center text-[3cqw] text-cream-500 py-[2cqw]">
+          <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">
             進行中（登録締切済み）
           </div>
         )}
