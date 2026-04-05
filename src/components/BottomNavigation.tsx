@@ -13,7 +13,7 @@ const TABS: { id: LobbyTab; label: string; icon: typeof Home }[] = [
   { id: 'ranking', label: 'ランキング', icon: BarChart3 },
   { id: 'tournament', label: 'トナメ', icon: Trophy },
   { id: 'history', label: 'ハンド履歴', icon: Clock },
-  { id: 'profile', label: 'プロフィール', icon: User },
+  { id: 'profile', label: 'Stats', icon: User },
 ];
 
 export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomNavigationProps) {
@@ -38,11 +38,11 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
                       ? 'opacity-30 cursor-not-allowed'
                       : isActive
                         ? 'text-forest'
-                        : 'text-cream-500 active:text-cream-700'
+                        : 'text-cream-600 active:text-cream-800'
                   }`}
                 >
-                  <Icon className="w-[6cqw] h-[6cqw]" strokeWidth={isActive ? 2.5 : 1.8} />
-                  <span className={`text-[2cqw] leading-none mt-[0.5cqw] ${isActive ? 'font-bold' : 'font-medium'}`}>
+                  <Icon className="w-[6.5cqw] h-[6.5cqw]" strokeWidth={isActive ? 2.5 : 2} />
+                  <span className={`text-[2.4cqw] leading-none mt-[0.5cqw] ${isActive ? 'font-bold' : 'font-semibold'}`}>
                     {label}
                   </span>
                 </button>
@@ -60,11 +60,11 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
                   ? 'opacity-30 cursor-not-allowed'
                   : isActive
                     ? 'text-forest'
-                    : 'text-cream-500 active:text-cream-700'
+                    : 'text-cream-600 active:text-cream-800'
               }`}
             >
-              <Icon className="w-[5cqw] h-[5cqw]" strokeWidth={isActive ? 2.5 : 1.8} />
-              <span className={`text-[2cqw] leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>
+              <Icon className="w-[6cqw] h-[6cqw]" strokeWidth={isActive ? 2.5 : 2} />
+              <span className={`text-[2.4cqw] leading-none ${isActive ? 'font-bold' : 'font-semibold'}`}>
                 {label}
               </span>
             </button>
