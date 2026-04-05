@@ -105,7 +105,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[3.2cqw] font-bold text-cream-900">オープンハンド評価</p>
-              <p className="text-[2.5cqw] text-cream-500">ショーダウン時にハンド評価を表示</p>
+              <p className="text-[2.5cqw] text-cream-500">プリフロップでハンドの強さを表示</p>
             </div>
             <button
               onClick={() => setAnalysisEnabled(!settings.analysisEnabled)}
