@@ -7,6 +7,7 @@ import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { BottomNavigation, type LobbyTab } from '../components/BottomNavigation';
 import { TournamentList } from '../components/TournamentList';
+import { SettingsPopup } from '../components/SettingsPopup';
 
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 import { WeeklyChampions } from '../components/WeeklyChampions';
@@ -18,6 +19,7 @@ interface SimpleLobbyProps {
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
+  initialTab?: LobbyTab;
 }
 
 interface TableOption {
@@ -40,10 +42,11 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults, initialTab = 'home' }: SimpleLobbyProps) {
   const { user, loading, refreshUser } = useAuth();
-  const [activeTab, setActiveTab] = useState<LobbyTab>('home');
+  const [activeTab, setActiveTab] = useState<LobbyTab>(initialTab);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   const [claimingBonus, setClaimingBonus] = useState(false);
   const [inviteCodeInput, setInviteCodeInput] = useState('');
@@ -131,7 +134,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             />
           </div>
           <h1 className="text-[5cqw] font-bold text-cream-800 tracking-tight leading-none">BabyPLO <span className="text-[3.0cqw] font-normal text-cream-600">ver.{__COMMIT_HASH__}</span></h1>
-          <button className="ml-auto text-cream-500 hover:text-cream-700 transition-colors shrink-0">
+          <button onClick={() => setShowSettings(true)} className="ml-auto text-cream-800 hover:text-cream-900 transition-colors shrink-0">
             <Settings className="w-[5cqw] h-[5cqw]" />
           </button>
         </div>
@@ -164,9 +167,13 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             <span className="text-[3.5cqw] text-cream-900 font-bold truncate">{user.displayName || user.username}</span>
             <button
               onClick={() => setShowProfileEdit(true)}
-              className="text-cream-500 hover:text-cream-700 transition-colors shrink-0"
+              className="text-cream-800 hover:text-cream-900 transition-colors shrink-0 relative"
             >
               <Pencil className="w-[3cqw] h-[3cqw]" />
+              <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-[1.5cqw] px-[2cqw] py-[0.6cqw] bg-cream-900 text-white text-[2.2cqw] rounded-[1.5cqw] whitespace-nowrap animate-bounce-subtle">
+                名前・アイコンを変更
+                <span className="absolute top-full left-1/2 -translate-x-1/2 border-l-[1cqw] border-r-[1cqw] border-t-[1cqw] border-l-transparent border-r-transparent border-t-cream-900" />
+              </span>
             </button>
             <span className="text-[3.5cqw] font-bold text-forest ml-auto shrink-0">{user.balance}</span>
             <button
@@ -189,6 +196,10 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
           </div>
         )}
 
+      </div>
+
+      {/* Main Content */}
+      <div className="w-[88%]">
         {/* Weekly Champions */}
         <WeeklyChampions />
 
@@ -332,6 +343,11 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         onTabChange={handleTabChange}
         isLoggedIn={!!user}
       />
+
+      {/* Settings Popup */}
+      {showSettings && (
+        <SettingsPopup onClose={() => setShowSettings(false)} />
+      )}
 
       {/* Profile Edit Dialog */}
       {showProfileEdit && user && (
