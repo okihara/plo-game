@@ -87,8 +87,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onTo
     fetchCounts();
     fetchMaintenance();
     fetchAnnouncement();
-    const interval = setInterval(() => { fetchCounts(); fetchMaintenance(); fetchAnnouncement(); }, 10000);
-    return () => clearInterval(interval);
   }, []);
 
   const handleClaimLoginBonus = async () => {
