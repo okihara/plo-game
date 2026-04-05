@@ -3,17 +3,42 @@ import type { Action } from '../logic/types';
 type SoundKey = Action | 'win' | 'lose' | 'deal' | 'myturn';
 
 const STORAGE_KEY = 'plo-sound-enabled';
+const VOLUME_KEY = 'plo-sound-volume';
 
-// デフォルトはオフ
-let enabled = localStorage.getItem(STORAGE_KEY) === 'true';
+// 音量レベル: 0=OFF, 1=低, 2=中, 3=高
+export type VolumeLevel = 0 | 1 | 2 | 3;
+const VOLUME_VALUES: Record<VolumeLevel, number> = { 0: 0, 1: 0.33, 2: 0.66, 3: 1.0 };
+
+function loadVolumeLevel(): VolumeLevel {
+  // 旧 enabled フラグとの互換: enabled=false なら 0, volume未設定+enabled=true なら 3
+  const stored = localStorage.getItem(VOLUME_KEY);
+  if (stored !== null) {
+    const v = Number(stored);
+    if (v >= 0 && v <= 3) return v as VolumeLevel;
+  }
+  const legacyEnabled = localStorage.getItem(STORAGE_KEY) === 'true';
+  return legacyEnabled ? 3 : 0;
+}
+
+let volumeLevel: VolumeLevel = loadVolumeLevel();
+
+export function getVolumeLevel(): VolumeLevel {
+  return volumeLevel;
+}
+
+export function setVolumeLevel(level: VolumeLevel) {
+  volumeLevel = level;
+  localStorage.setItem(VOLUME_KEY, String(level));
+  // 旧フラグも同期
+  localStorage.setItem(STORAGE_KEY, String(level > 0));
+}
 
 export function isSoundEnabled(): boolean {
-  return enabled;
+  return volumeLevel > 0;
 }
 
 export function setSoundEnabled(value: boolean) {
-  enabled = value;
-  localStorage.setItem(STORAGE_KEY, String(value));
+  setVolumeLevel(value ? 3 : 0);
 }
 
 const SOUND_FILES: Record<SoundKey, string> = {
@@ -91,7 +116,7 @@ async function preload() {
 preload();
 
 function play(key: SoundKey) {
-  if (!enabled) return;
+  if (volumeLevel === 0) return;
   const buffer = bufferCache.get(key);
   if (!buffer) return;
 
@@ -109,7 +134,10 @@ function play(key: SoundKey) {
 
   const source = ctx.createBufferSource();
   source.buffer = buffer;
-  source.connect(ctx.destination);
+  const gainNode = ctx.createGain();
+  gainNode.gain.value = VOLUME_VALUES[volumeLevel];
+  source.connect(gainNode);
+  gainNode.connect(ctx.destination);
   source.start(0);
 
   activeSources.set(key, source);

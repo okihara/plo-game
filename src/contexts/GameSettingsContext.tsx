@@ -3,12 +3,16 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 interface GameSettings {
   useBBNotation: boolean;
   bigBlind: number;
+  showHandName: boolean;
+  analysisEnabled: boolean;
 }
 
 interface GameSettingsContextValue {
   settings: GameSettings;
   setUseBBNotation: (value: boolean) => void;
   setBigBlind: (value: number) => void;
+  setShowHandName: (value: boolean) => void;
+  setAnalysisEnabled: (value: boolean) => void;
   formatChips: (amount: number) => string;
 }
 
@@ -41,14 +45,30 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
     const loaded = loadSettings();
     return loaded.useBBNotation ?? false;
   });
+  const [showHandName, setShowHandNameState] = useState(() => {
+    const loaded = loadSettings();
+    return loaded.showHandName ?? true;
+  });
+  const [analysisEnabled, setAnalysisEnabledState] = useState(() => {
+    const loaded = loadSettings();
+    return loaded.analysisEnabled ?? false;
+  });
   const [bigBlind, setBigBlind] = useState(100);
 
   useEffect(() => {
-    saveSettings({ useBBNotation });
-  }, [useBBNotation]);
+    saveSettings({ useBBNotation, showHandName, analysisEnabled });
+  }, [useBBNotation, showHandName, analysisEnabled]);
 
   const setUseBBNotation = (value: boolean) => {
     setUseBBNotationState(value);
+  };
+
+  const setShowHandName = (value: boolean) => {
+    setShowHandNameState(value);
+  };
+
+  const setAnalysisEnabled = (value: boolean) => {
+    setAnalysisEnabledState(value);
   };
 
   const formatChips = (amount: number): string => {
@@ -69,9 +89,11 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
   };
 
   const value: GameSettingsContextValue = {
-    settings: { useBBNotation, bigBlind },
+    settings: { useBBNotation, bigBlind, showHandName, analysisEnabled },
     setUseBBNotation,
     setBigBlind,
+    setShowHandName,
+    setAnalysisEnabled,
     formatChips,
   };
 

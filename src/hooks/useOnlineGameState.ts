@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
-import { playActionSound, playDealSound } from '../services/actionSound';
+import { playActionSound, playDealSound, playMyTurnSound } from '../services/actionSound';
 import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState } from '../logic/types';
 import { convertClientStateToGameState } from './onlineGameShared';
@@ -101,6 +101,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const prevCardCountRef = useRef(0);
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clientStateRef = useRef<ClientGameState | null>(null);
+  const mySeatRef = useRef<number | null>(null);
+  /** 直前の game:state で自分のターンだったか（重複再生防止） */
+  const wasMyTurnRef = useRef(false);
 
   // ショウダウン演出タイミング用Refs
   const showdownRevealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -218,6 +221,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   }, [clientState]);
 
   useEffect(() => {
+    mySeatRef.current = mySeat;
+  }, [mySeat]);
+
+  useEffect(() => {
     wsService.addListeners('game', {
       onConnected: () => {
         setIsConnected(true);
@@ -325,6 +332,13 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
             return prev;
           });
         }
+
+        // 自分のターンになった瞬間だけサウンド再生（重複防止）
+        const isMyTurn = state.currentPlayerSeat !== null && state.currentPlayerSeat === mySeatRef.current;
+        if (isMyTurn && !wasMyTurnRef.current) {
+          playMyTurnSound();
+        }
+        wasMyTurnRef.current = isMyTurn;
 
         prevStreetRef.current = state.currentStreet;
         prevCardCountRef.current = state.communityCards.length;
