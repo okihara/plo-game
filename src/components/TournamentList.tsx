@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTournamentState, TournamentLobbyInfo } from '../hooks/useTournamentState';
 import { useAuth } from '../contexts/AuthContext';
 import { Trophy, Clock, Loader2 } from 'lucide-react';
+import { AlertDialogOverlay } from './AlertDialog';
 
 interface TournamentListProps {
   onJoinTournament: (tournamentId: string) => void;
@@ -44,6 +45,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
 
   const [registering, setRegistering] = useState<string | null>(null);
   const [reentering, setReentering] = useState<string | null>(null);
+  const [entryError, setEntryError] = useState<string | null>(null);
 
   useEffect(() => {
     void refreshList();
@@ -62,6 +64,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     const result = await register(tournamentId);
     if (!result.success) {
       setRegistering(null);
+      setEntryError(result.error ?? '登録に失敗しました');
     }
   };
 
@@ -71,11 +74,21 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     const result = await reenter(tournamentId);
     if (!result.success) {
       setReentering(null);
+      setEntryError(result.error ?? 'リエントリーに失敗しました');
     }
   };
 
   return (
     <div className="h-full flex flex-col min-h-0">
+      {entryError && (
+        <AlertDialogOverlay
+          title="エントリー失敗"
+          description={entryError}
+          primaryLabel="OK"
+          onPrimary={() => setEntryError(null)}
+        />
+      )}
+
       {/* Header */}
       <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-300">
         <Trophy className="w-[5cqw] h-[5cqw] text-forest shrink-0" />
