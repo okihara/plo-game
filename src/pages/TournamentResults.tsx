@@ -28,14 +28,14 @@ const POSITION_COLORS: Record<number, { bg: string; border: string; text: string
 function PodiumCard({ result, size }: { result: TournamentResult; size: 'lg' | 'md' | 'sm' }) {
   const pos = result.position;
   const style = POSITION_COLORS[pos];
-  const avatarSize = size === 'lg' ? 'w-[22cqw] h-[22cqw]' : 'w-[17cqw] h-[17cqw]';
-  const medalSize = size === 'lg' ? 'text-[10cqw]' : 'text-[7cqw]';
-  const nameSize = size === 'lg' ? 'text-[4.5cqw]' : 'text-[4cqw]';
-  const prizeSize = size === 'lg' ? 'text-[5cqw]' : 'text-[4.2cqw]';
+  const avatarSize = size === 'lg' ? 'w-[18cqw] h-[18cqw]' : 'w-[14cqw] h-[14cqw]';
+  const medalSize = size === 'lg' ? 'text-[8cqw]' : 'text-[6cqw]';
+  const nameSize = size === 'lg' ? 'text-[3.5cqw]' : 'text-[3cqw]';
+  const prizeSize = size === 'lg' ? 'text-[4cqw]' : 'text-[3.5cqw]';
   const medal = pos === 1 ? '🥇' : pos === 2 ? '🥈' : '🥉';
 
   return (
-    <div className="flex flex-col items-center">
+    <div className="flex flex-col items-center w-[25cqw] min-w-0">
       {/* Medal */}
       <span className={`${medalSize} mb-[1cqw]`}>{medal}</span>
 
@@ -51,7 +51,7 @@ function PodiumCard({ result, size }: { result: TournamentResult; size: 'lg' | '
       </div>
 
       {/* Name */}
-      <span className={`${nameSize} font-bold text-cream-900 text-center truncate max-w-[30cqw]`}>
+      <span className={`${nameSize} font-bold text-cream-900 text-center truncate w-full`}>
         {result.odName}
       </span>
 
@@ -130,7 +130,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
         {/* Podium section */}
         {top3.length > 0 && (
           <div className="px-[4cqw] pt-[4cqw] pb-[3cqw]">
-            <div className="flex items-end justify-center gap-[6cqw]">
+            <div className="flex items-end justify-center gap-[6cqw] bg-white rounded-[2cqw] border border-cream-200 shadow-[0_2px_8px_rgba(139,126,106,0.12)] py-[3cqw] px-[2cqw]">
               {podiumOrder.map(r => (
                 <div
                   key={r.odId}
@@ -154,7 +154,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                 {rest.map((r) => (
                   <div
                     key={r.odId}
-                    className="flex items-center gap-[2.5cqw] py-[2.5cqw] px-[3cqw] rounded-[2cqw] hover:bg-cream-50"
+                    className="flex items-center gap-[2.5cqw] py-[2.5cqw] px-[3cqw] rounded-[2cqw] bg-white border border-cream-200 shadow-[0_2px_8px_rgba(139,126,106,0.12)]"
                   >
                     {/* Rank */}
                     <div className="w-[8cqw] text-center shrink-0">
