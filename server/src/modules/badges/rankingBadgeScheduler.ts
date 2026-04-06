@@ -91,11 +91,10 @@ async function awardPeriodRankingBadges(period: 'daily' | 'weekly'): Promise<voi
     });
     console.log(`[BadgeScheduler] Saved weekly snapshot for ${startDate.toISOString()} (${rankings.length} players)`);
 
-    // 1位（Bot除外）にバッジ付与
-    const topHuman = rows.find(r => r.provider !== 'bot');
-    if (topHuman) {
-      await awardRankingBadge(topHuman.userId, 'weekly_rank_1');
-      console.log(`[BadgeScheduler] Awarded weekly_rank_1 to ${topHuman.userId}`);
+    // 1位にバッジ付与
+    if (rows.length > 0) {
+      await awardRankingBadge(rows[0].userId, 'weekly_rank_1');
+      console.log(`[BadgeScheduler] Awarded weekly_rank_1 to ${rows[0].userId}`);
     } else {
       console.log('[BadgeScheduler] No qualifying players for weekly ranking badge');
     }
@@ -109,7 +108,6 @@ async function awardPeriodRankingBadges(period: 'daily' | 'weekly'): Promise<voi
       JOIN "HandHistory" hh ON hp."handHistoryId" = hh."id"
       JOIN "User" u ON hp."userId" = u."id"
       WHERE hp."userId" IS NOT NULL
-        AND u."provider" != 'bot'
         AND hh."tournamentId" IS NULL
         AND hh."createdAt" >= ${startDate}
         AND hh."createdAt" < ${endDate}
