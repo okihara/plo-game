@@ -96,13 +96,13 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
     <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative w-[92%] h-[90%] bg-white rounded-[4cqw] shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-[92%] max-h-[70%] bg-white rounded-[4cqw] shadow-2xl overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="px-[4cqw] pt-[4cqw] pb-[2cqw] border-b border-cream-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-[4cqw] font-bold text-cream-900">歴代チャンピオン</h2>
+            <h2 className="text-[4cqw] font-bold text-cream-900">過去の週間チャンピオン</h2>
             <button
               onClick={onClose}
               className="text-[5cqw] text-cream-700 hover:text-cream-900 leading-none"
