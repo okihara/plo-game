@@ -46,7 +46,7 @@ function todayLabel(): string {
 function HandStatRow({ label, hand }: { label: string; hand: HandSummaryForResult }) {
   return (
     <div className="flex items-center justify-between gap-[2cqw]">
-      <span className="text-cream-600 text-[2.6cqw] font-medium shrink-0">{label}</span>
+      <span className="text-cream-700 text-[2.6cqw] font-medium shrink-0">{label}</span>
       <div className="flex items-center gap-[0.5cqw]">
         {hand.holeCards.map((c, i) => (
           <MiniCard key={i} cardStr={c} />

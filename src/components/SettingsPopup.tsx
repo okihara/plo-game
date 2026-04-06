@@ -33,7 +33,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
           <h2 className="text-[4cqw] font-bold text-cream-900">設定</h2>
           <button
             onClick={onClose}
-            className="text-[5cqw] text-cream-400 hover:text-cream-700 leading-none"
+            className="text-[5cqw] text-cream-700 hover:text-cream-900 leading-none"
           >
             &times;
           </button>
@@ -46,7 +46,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
             <div className="flex items-center gap-[1.5cqw] mb-[1.5cqw]">
               <Volume2 className="w-[3.5cqw] h-[3.5cqw] text-cream-700" />
               <p className="text-[3.2cqw] font-bold text-cream-900">サウンド</p>
-              <span className="text-[2.5cqw] text-cream-500 ml-auto">{VOLUME_LABELS[volume]}</span>
+              <span className="text-[2.5cqw] text-cream-700 ml-auto">{VOLUME_LABELS[volume]}</span>
             </div>
             <div className="flex gap-[1.5cqw]">
               {([0, 1, 2, 3] as VolumeLevel[]).map(level => (
@@ -56,7 +56,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
                   className={`flex-1 h-[6cqw] rounded-[1.5cqw] text-[2.8cqw] font-bold transition-all ${
                     volume === level
                       ? 'bg-forest text-white'
-                      : 'bg-cream-100 text-cream-600 hover:bg-cream-200'
+                      : 'bg-cream-100 text-cream-700 hover:bg-cream-200'
                   }`}
                 >
                   {VOLUME_LABELS[level]}
@@ -69,7 +69,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[3.2cqw] font-bold text-cream-900">BB表記</p>
-              <p className="text-[2.5cqw] text-cream-500">チップをBB単位で表示</p>
+              <p className="text-[2.5cqw] text-cream-700">チップをBB単位で表示</p>
             </div>
             <button
               onClick={() => setUseBBNotation(!settings.useBBNotation)}
@@ -87,7 +87,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[3.2cqw] font-bold text-cream-900">役名表示</p>
-              <p className="text-[2.5cqw] text-cream-500">プレイ中に役名を表示</p>
+              <p className="text-[2.5cqw] text-cream-700">プレイ中に役名を表示</p>
             </div>
             <button
               onClick={() => setShowHandName(!settings.showHandName)}
@@ -105,7 +105,7 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[3.2cqw] font-bold text-cream-900">オープンハンド評価</p>
-              <p className="text-[2.5cqw] text-cream-500">プリフロップでハンドの強さを表示</p>
+              <p className="text-[2.5cqw] text-cream-700">プリフロップでハンドの強さを表示</p>
             </div>
             <button
               onClick={() => setAnalysisEnabled(!settings.analysisEnabled)}

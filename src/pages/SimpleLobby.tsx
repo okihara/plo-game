@@ -155,7 +155,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
       {/* User Info or Login */}
       <div className="mb-[1.5cqw] w-full px-[2cqw]">
         {loading ? (
-          <div className="text-center text-cream-500 text-[4cqw] mb-[3cqw]">読み込み中...</div>
+          <div className="text-center text-cream-700 text-[4cqw] mb-[3cqw]">読み込み中...</div>
         ) : user ? (
           <div className="flex items-center gap-[1.5cqw] mt-[1.5cqw]">
             {user.avatarUrl && (
@@ -188,7 +188,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
           </div>
         ) : (
           <div className="mt-[1.5cqw] bg-white border border-cream-300 rounded-[3cqw] p-[3cqw] shadow-[0_4px_16px_rgba(139,126,106,0.1)]">
-            <p className="text-[4cqw] text-cream-600 text-center mb-[2cqw]">ログインしてプレイ</p>
+            <p className="text-[4cqw] text-cream-700 text-center mb-[2cqw]">ログインしてプレイ</p>
             <button
               onClick={handleLogin}
               className="w-full py-[2.5cqw] px-[3cqw] text-[4cqw] bg-forest text-white rounded-[2cqw] hover:bg-forest-light transition-all font-bold flex items-center justify-center gap-[2cqw] shadow-[0_4px_20px_rgba(45,90,61,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_28px_rgba(45,90,61,0.5),inset_0_1px_0_rgba(255,255,255,0.25)] active:scale-[0.97] active:shadow-[0_2px_10px_rgba(45,90,61,0.3)]"
@@ -249,7 +249,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
                         <svg className="w-[4cqw] h-[4cqw] text-white/80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
                       </>
                     ) : (
-                      <span className="text-cream-500">準備中</span>
+                      <span className="text-cream-700">準備中</span>
                     )}
                   </div>
                 </div>
@@ -284,7 +284,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
       return (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <p className="text-cream-600 mb-[4cqw] text-[3.5cqw]">ログインするとプロフィールを確認できます</p>
+            <p className="text-cream-700 mb-[4cqw] text-[3.5cqw]">ログインするとプロフィールを確認できます</p>
             <button
               onClick={handleLogin}
               className="px-[6cqw] py-[2.5cqw] text-[3.5cqw] bg-forest text-white rounded-[2cqw] font-bold"
@@ -374,7 +374,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
 
             {/* 招待コードで参加 */}
             <div className="mb-[4cqw]">
-              <p className="text-[2.8cqw] text-cream-600 mb-[2cqw]">招待コードで参加</p>
+              <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">招待コードで参加</p>
               <div className="flex gap-[2cqw]">
                 <input
                   type="text"
@@ -396,7 +396,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
 
             {/* テーブル作成 */}
             <div className="border-t border-cream-200 pt-[4cqw]">
-              <p className="text-[2.8cqw] text-cream-600 mb-[2cqw]">新しいテーブルを作成</p>
+              <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">新しいテーブルを作成</p>
               <button
                 onClick={() => { onCreatePrivate('1/3'); setShowPrivateDialog(false); }}
                 disabled={!!maintenance?.isActive}
@@ -409,7 +409,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             {/* 閉じるボタン */}
             <button
               onClick={() => setShowPrivateDialog(false)}
-              className="mt-[4cqw] w-full py-[2.5cqw] text-[3cqw] text-cream-500 hover:text-cream-700 transition-colors"
+              className="mt-[4cqw] w-full py-[2.5cqw] text-[3cqw] text-cream-700 hover:text-cream-900 transition-colors"
             >
               閉じる
             </button>

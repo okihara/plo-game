@@ -181,7 +181,7 @@ export function ProfitChart({ points }: ProfitChartProps) {
 
         {/* Legend */}
         <div className="flex items-center justify-between mt-[1.5cqw]">
-          <span className="text-cream-500 text-[2.2cqw]">
+          <span className="text-cream-700 text-[2.2cqw]">
             {points.length} hands
           </span>
           <div className="flex items-center gap-[3cqw]">

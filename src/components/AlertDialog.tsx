@@ -36,7 +36,7 @@ export function AlertDialogCard({
       <h2 id={titleId} className="text-cream-900 font-bold mb-[2cqw]" style={{ fontSize: '5cqw' }}>
         {title}
       </h2>
-      <p className="text-cream-600 mb-[6cqw]" style={{ fontSize: '3.5cqw' }}>
+      <p className="text-cream-700 mb-[6cqw]" style={{ fontSize: '3.5cqw' }}>
         {description}
       </p>
       <button

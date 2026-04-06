@@ -108,7 +108,7 @@ function playerLabel(p: HandDetailPlayer, hideOpponentNames: boolean): string {
 function AnonymousAvatar({ className = '' }: { className?: string }) {
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-full bg-cream-300 border border-cream-500/30 text-cream-600 ${className}`}
+      className={`inline-flex items-center justify-center rounded-full bg-cream-300 border border-cream-500/30 text-cream-700 ${className}`}
       aria-hidden
     >
       <UserRound className="w-[55%] h-[55%]" strokeWidth={2.25} />
@@ -389,7 +389,7 @@ function ResultSection({
         <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
           <span className="text-cream-800 text-[3cqw] font-bold">Result</span>
           {hand.rakeAmount != null && hand.rakeAmount > 0 && (
-            <span className="text-cream-500 text-[2.5cqw] font-medium">Rake {hand.rakeAmount}</span>
+            <span className="text-cream-700 text-[2.5cqw] font-medium">Rake {hand.rakeAmount}</span>
           )}
           <span className="text-forest text-[3cqw] font-bold">{hand.potSize}</span>
         </div>
@@ -592,7 +592,7 @@ export function HandDetailDialog({
                 >
                   {copied
                     ? <Check className="w-[4cqw] h-[4cqw] text-forest" />
-                    : <Link className="w-[4cqw] h-[4cqw] text-cream-600" />}
+                    : <Link className="w-[4cqw] h-[4cqw] text-cream-700" />}
                   {copied ? 'コピーしました' : 'リンクをコピー'}
                 </button>
                 <button
@@ -602,7 +602,7 @@ export function HandDetailDialog({
                 >
                   {imageCopied
                     ? <Check className="w-[4cqw] h-[4cqw] text-forest" />
-                    : <Image className="w-[4cqw] h-[4cqw] text-cream-600" />}
+                    : <Image className="w-[4cqw] h-[4cqw] text-cream-700" />}
                   {imageLoading ? '生成中...' : imageCopied ? 'コピーしました' : '画像をコピー'}
                 </button>
                 <button
@@ -620,7 +620,7 @@ export function HandDetailDialog({
                 >
                   {psCopied
                     ? <Check className="w-[4cqw] h-[4cqw] text-forest" />
-                    : <FileText className="w-[4cqw] h-[4cqw] text-cream-600" />}
+                    : <FileText className="w-[4cqw] h-[4cqw] text-cream-700" />}
                   {psCopied ? 'コピーしました' : 'PokerStars形式でコピー'}
                 </button>
               </div>

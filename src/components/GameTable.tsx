@@ -267,7 +267,7 @@ export function GameTable({
               <>
                 <div className="fixed inset-0 z-[159]" onClick={() => setShowInvitePopover(false)} />
                 <div className="absolute top-full right-0 mt-1 z-[160] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw]">
-                  <p className="text-cream-600 mb-[1cqw]" style={{ fontSize: '2.5cqw' }}>招待コード</p>
+                  <p className="text-cream-700 mb-[1cqw]" style={{ fontSize: '2.5cqw' }}>招待コード</p>
                   <p className="font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw]" style={{ fontSize: '6cqw' }}>
                     {privateTableInfo.inviteCode}
                   </p>

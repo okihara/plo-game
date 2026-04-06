@@ -33,7 +33,7 @@ export function HandDetailPage({ handId, onBack }: HandDetailPageProps) {
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center light-bg">
-        <span className="text-cream-600 text-[3.5cqw]">読み込み中...</span>
+        <span className="text-cream-700 text-[3.5cqw]">読み込み中...</span>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export function HandDetailPage({ handId, onBack }: HandDetailPageProps) {
   if (error || !hand) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center light-bg gap-[4cqw]">
-        <span className="text-cream-600 text-[3.5cqw]">{error || 'ハンドが見つかりません'}</span>
+        <span className="text-cream-700 text-[3.5cqw]">{error || 'ハンドが見つかりません'}</span>
         <button
           onClick={onBack}
           className="text-forest text-[3cqw] font-semibold underline"

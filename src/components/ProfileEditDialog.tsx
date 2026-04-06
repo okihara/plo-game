@@ -113,7 +113,7 @@ export function ProfileEditDialog({
           {/* Close */}
           <button
             onClick={onClose}
-            className="absolute top-[3cqw] right-[3cqw] text-cream-400 hover:text-cream-900 text-[7cqw] leading-none z-10"
+            className="absolute top-[3cqw] right-[3cqw] text-cream-700 hover:text-cream-900 text-[7cqw] leading-none z-10"
           >
             ×
           </button>
@@ -122,7 +122,7 @@ export function ProfileEditDialog({
 
           {/* Name */}
           <div className="mb-[4cqw] shrink-0">
-            <label className="text-cream-600 text-[3cqw] mb-[1.5cqw] block">名前</label>
+            <label className="text-cream-700 text-[3cqw] mb-[1.5cqw] block">名前</label>
             <input
               ref={nameInputRef}
               value={editName}
@@ -139,7 +139,7 @@ export function ProfileEditDialog({
 
           {/* Avatar Selection (scrollable) */}
           <div className="mb-[4cqw] min-h-0 flex flex-col">
-            <label className="text-cream-600 text-[3cqw] mb-[2cqw] block shrink-0">アイコン</label>
+            <label className="text-cream-700 text-[3cqw] mb-[2cqw] block shrink-0">アイコン</label>
 
             <div className="overflow-y-auto min-h-0">
               {/* Twitter Avatar Option */}
@@ -182,7 +182,7 @@ export function ProfileEditDialog({
                 })}
               </div>
             </div>
-            <p className="text-cream-500 text-[2.5cqw] mt-[2cqw] shrink-0">次回着席時から反映</p>
+            <p className="text-cream-700 text-[2.5cqw] mt-[2cqw] shrink-0">次回着席時から反映</p>
           </div>
 
           {/* Save Button */}

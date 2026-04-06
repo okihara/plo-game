@@ -24,7 +24,7 @@ export function TournamentResultOverlay({ results, totalPlayers, prizePool, tour
         <div className="text-center mb-[5cqw]">
           <Trophy className="w-[10cqw] h-[10cqw] text-forest mx-auto mb-[2cqw]" />
           <h2 className="text-[4.5cqw] font-bold text-cream-900">{tournamentName ?? 'トーナメント結果'}</h2>
-          <p className="text-[3cqw] text-cream-600 mt-[1cqw]">
+          <p className="text-[3cqw] text-cream-700 mt-[1cqw]">
             {totalPlayers}人参加 / 賞金プール {formatChips(prizePool)}
           </p>
         </div>

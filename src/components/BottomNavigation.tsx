@@ -38,7 +38,7 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
                       ? 'opacity-30 cursor-not-allowed'
                       : isActive
                         ? 'text-forest'
-                        : 'text-cream-600 active:text-cream-800'
+                        : 'text-cream-700 active:text-cream-800'
                   }`}
                 >
                   <Icon className="w-[6.5cqw] h-[6.5cqw]" strokeWidth={isActive ? 2.5 : 2} />
