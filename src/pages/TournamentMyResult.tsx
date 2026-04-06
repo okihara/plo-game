@@ -59,7 +59,7 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full min-h-0 light-bg px-[4cqw]">
-        <p className="text-cream-600 text-[3.5cqw] mb-[4cqw]">{error}</p>
+        <p className="text-cream-700 text-[3.5cqw] mb-[4cqw]">{error}</p>
         <button
           type="button"
           onClick={onBack}
@@ -74,7 +74,7 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
   if (!result) {
     return (
       <div className="flex items-center justify-center h-full w-full min-h-0 light-bg">
-        <Loader2 className="w-[8cqw] h-[8cqw] animate-spin text-cream-400" />
+        <Loader2 className="w-[8cqw] h-[8cqw] animate-spin text-cream-700" />
       </div>
     );
   }

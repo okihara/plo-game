@@ -48,9 +48,9 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
       <div className="flex items-center justify-between mb-[1.5cqw]">
         <div>
           <span className="text-[3.2cqw] font-bold text-cream-900">週間ランキング</span>
-          <span className="text-[2.5cqw] text-cream-600 ml-[1.5cqw]">{getWeekRange()}</span>
+          <span className="text-[2.5cqw] text-cream-700 ml-[1.5cqw]">{getWeekRange()}</span>
         </div>
-        <span className="text-[2.8cqw] text-cream-400">もっと見る &gt;</span>
+        <span className="text-[2.8cqw] text-cream-700">もっと見る &gt;</span>
       </div>
       {!loaded ? (
         <div className="flex justify-center py-[3cqw]">
@@ -69,7 +69,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
               className={`flex items-center gap-[2cqw] ${isMe ? 'font-bold' : ''}`}
             >
               <span className="text-[3.5cqw] w-[5cqw] text-center shrink-0">
-                {i < 3 ? MEDALS[i] : <span className="text-[2.8cqw] font-bold text-cream-500">{i + 1}</span>}
+                {i < 3 ? MEDALS[i] : <span className="text-[2.8cqw] font-bold text-cream-700">{i + 1}</span>}
               </span>
               <div className="w-[5.5cqw] h-[5.5cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                 <img

@@ -28,23 +28,40 @@ const PERIOD_LABELS: Record<Period, string> = {
   all: '全期間',
 };
 
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
-
-function formatPeriodRange(period: Period): string | null {
-  if (period === 'all') return null;
+/** weekOffset=0 → 今週, 1 → 先週, … */
+function getWeekRange(weekOffset: number): { monday: Date; sunday: Date } {
   const now = new Date();
-  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAYS[d.getDay()]})`;
-  if (period === 'daily') {
-    return `${fmt(now)} — 朝3時リセット`;
-  }
-  // 今週の月曜〜日曜
   const monday = new Date(now);
   const day = monday.getDay();
   const diff = day === 0 ? 6 : day - 1;
-  monday.setDate(monday.getDate() - diff);
+  monday.setDate(monday.getDate() - diff - 7 * weekOffset);
+  monday.setHours(0, 0, 0, 0);
   const sunday = new Date(monday);
   sunday.setDate(sunday.getDate() + 6);
-  return `${fmt(monday)} ~ ${fmt(sunday)}`;
+  return { monday, sunday };
+}
+
+const MAX_WEEK_OFFSET = 8;
+
+function buildWeekOptions(): { value: number; label: string }[] {
+  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()}`;
+  const options: { value: number; label: string }[] = [];
+  for (let i = 0; i <= MAX_WEEK_OFFSET; i++) {
+    const { monday, sunday } = getWeekRange(i);
+    const label = i === 0
+      ? `今週 (${fmt(monday)}~${fmt(sunday)})`
+      : `${fmt(monday)}~${fmt(sunday)}`;
+    options.push({ value: i, label });
+  }
+  return options;
+}
+
+function formatPeriodRange(period: Period): string | null {
+  if (period === 'all') return null;
+  if (period === 'daily') {
+    return '毎日 0:00 ~ 24:00';
+  }
+  return '月曜 0:00 ~ 日曜 24:00';
 }
 
 export function formatProfit(value: number): string {
@@ -63,15 +80,16 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('profit');
   const [period, setPeriod] = useState<Period>('weekly');
+  const [weekOffset, setWeekOffset] = useState(0);
   const myRowRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setLoading(true);
-    fetchRankings(period)
+    fetchRankings(period, period === 'weekly' ? weekOffset : 0)
       .then(setRankings)
       .catch(() => setRankings([]))
       .finally(() => setLoading(false));
-  }, [period]);
+  }, [period, weekOffset]);
 
   // ESCキーで閉じる
   useEffect(() => {
@@ -110,11 +128,11 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
             {(['daily', 'weekly', 'all'] as Period[]).map(p => (
               <button
                 key={p}
-                onClick={() => setPeriod(p)}
+                onClick={() => { setPeriod(p); if (p !== 'weekly') setWeekOffset(0); }}
                 className={`flex-1 py-[1.5cqw] text-[2.8cqw] font-bold rounded-[2cqw] border transition-all ${
                   period === p
                     ? 'bg-cream-900 text-white border-cream-900'
-                    : 'bg-white text-cream-500 border-cream-300 hover:text-cream-700 hover:border-cream-400'
+                    : 'bg-white text-cream-700 border-cream-300 hover:text-cream-700 hover:border-cream-400'
                 }`}
               >
                 {PERIOD_LABELS[p]}
@@ -124,8 +142,23 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
 
           {/* Period range label */}
           {formatPeriodRange(period) && (
-            <div className="text-center text-[2.5cqw] text-cream-500 mb-[2cqw]">
-              {formatPeriodRange(period)}
+            <div className="text-center text-[2.5cqw] text-cream-700 mb-[2cqw]">
+              集計期間: {formatPeriodRange(period)}
+            </div>
+          )}
+
+          {/* Week selector (weekly only) */}
+          {period === 'weekly' && (
+            <div className="mb-[2cqw]">
+              <select
+                value={weekOffset}
+                onChange={e => setWeekOffset(Number(e.target.value))}
+                className="w-full py-[1.5cqw] px-[2cqw] text-[2.8cqw] text-cream-800 bg-white border border-cream-300 rounded-[2cqw] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:5cqw_5cqw] bg-[right_1cqw_center] bg-no-repeat"
+              >
+                {buildWeekOptions().map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           )}
 
@@ -136,7 +169,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
                 tab === 'profit'
                   ? 'bg-white text-cream-900 shadow-sm'
-                  : 'text-cream-500 hover:text-cream-700'
+                  : 'text-cream-700 hover:text-cream-700'
               }`}
             >
               Profit (EV)
@@ -146,7 +179,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
                 tab === 'winrate'
                   ? 'bg-white text-cream-900 shadow-sm'
-                  : 'text-cream-500 hover:text-cream-700'
+                  : 'text-cream-700 hover:text-cream-700'
               }`}
             >
               Winrate (EV)
@@ -157,10 +190,10 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           {loading ? (
             <div className="flex flex-col items-center py-[8cqw]">
               <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
-              <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
+              <p className="text-cream-700 text-[3cqw] mt-[2cqw]">読み込み中...</p>
             </div>
           ) : sorted.length === 0 ? (
-            <div className="text-center py-[8cqw] text-cream-500 text-[3cqw]">
+            <div className="text-center py-[8cqw] text-cream-700 text-[3cqw]">
               まだランキングデータがありません
             </div>
           ) : (
@@ -199,7 +232,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                           {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                         </span>
                       ) : (
-                        <span className="text-[3.2cqw] font-bold text-cream-500">{rank}</span>
+                        <span className="text-[3.2cqw] font-bold text-cream-700">{rank}</span>
                       )}
                     </div>
 
@@ -221,7 +254,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                     <div className="text-right shrink-0">
                       <span className={`text-[3.2cqw] font-bold ${valueColor}`}>{value}</span>
                       {tab === 'winrate' && (
-                        <div className="text-[2cqw] text-cream-500">{entry.handsPlayed.toLocaleString()}h</div>
+                        <div className="text-[2cqw] text-cream-700">{entry.handsPlayed.toLocaleString()}h</div>
                       )}
                     </div>
                   </div>
@@ -233,7 +266,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           {/* My rank */}
           {myRank > 0 && (
             <div className="py-[3cqw] border-t border-cream-200 text-center mt-[2cqw]">
-              <span className="text-[3cqw] text-cream-600">
+              <span className="text-[3cqw] text-cream-700">
                 あなたの順位: <span className="font-bold text-cream-900">{myRank}位</span> / {allSorted.length}人
               </span>
             </div>

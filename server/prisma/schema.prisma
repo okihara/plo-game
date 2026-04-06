@@ -185,6 +185,17 @@ model MaintenanceMode {
   updatedAt   DateTime  @updatedAt
 }
 
+// --- Weekly Ranking Snapshot ---
+
+model WeeklyRankingSnapshot {
+  id        String   @id @default(cuid())
+  weekStart DateTime @unique  // 週の開始日時 (月曜 JST 0:00 = UTC 15:00)
+  rankings  Json     // RankingEntry[] のJSON配列
+  createdAt DateTime @default(now())
+
+  @@index([weekStart])
+}
+
 // --- Tournament ---
 
 enum TournamentStatus {

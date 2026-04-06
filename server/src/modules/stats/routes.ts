@@ -108,6 +108,29 @@ export async function statsRoutes(fastify: FastifyInstance) {
 
     let result: { rankings: unknown[] };
 
+    // weekly + weekOffset>0: スナップショットがあればそれを返す
+    if (period === 'weekly' && weekOffset > 0) {
+      const JST_RESET_HOUR_UTC = 15; // UTC 15:00 = JST 0:00
+      const now = new Date();
+      const todayReset = new Date(now);
+      todayReset.setUTCHours(JST_RESET_HOUR_UTC, 0, 0, 0);
+      if (now < todayReset) {
+        todayReset.setUTCDate(todayReset.getUTCDate() - 1);
+      }
+      const jstDay = new Date(todayReset.getTime() + 9 * 60 * 60 * 1000);
+      const dayOfWeek = jstDay.getUTCDay();
+      const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+      const weekStart = new Date(todayReset);
+      weekStart.setUTCDate(weekStart.getUTCDate() - daysFromMonday - 7 * weekOffset);
+
+      const snapshot = await prisma.weeklyRankingSnapshot.findUnique({
+        where: { weekStart },
+      });
+      result = { rankings: snapshot ? snapshot.rankings as unknown[] : [] };
+      rankingsCache.set(cacheKey, { data: result, expiresAt: Date.now() + CACHE_TTL_MS });
+      return result;
+    }
+
     if (period === 'all') {
       // 全期間: PlayerStatsCacheから取得（高速）
       const caches = await prisma.playerStatsCache.findMany({
@@ -144,12 +167,12 @@ export async function statsRoutes(fastify: FastifyInstance) {
       // daily / weekly: Raw SQLでDB側集計
       const now = new Date();
       const startDate = new Date(now);
-      // JST 3:00 = UTC 18:00（前日）をリセット基準にする
-      const JST_RESET_HOUR_UTC = 18; // JST 3:00
+      // JST 0:00 = UTC 15:00 をリセット基準にする
+      const JST_RESET_HOUR_UTC_LIVE = 15; // JST 0:00
 
-      // 今日のリセット時刻（UTC 18:00）を求め、まだ到達していなければ前日に戻す
+      // 今日のリセット時刻（UTC 15:00）を求め、まだ到達していなければ前日に戻す
       const todayReset = new Date(now);
-      todayReset.setUTCHours(JST_RESET_HOUR_UTC, 0, 0, 0);
+      todayReset.setUTCHours(JST_RESET_HOUR_UTC_LIVE, 0, 0, 0);
       if (now < todayReset) {
         todayReset.setUTCDate(todayReset.getUTCDate() - 1);
       }
@@ -159,8 +182,7 @@ export async function statsRoutes(fastify: FastifyInstance) {
       if (period === 'daily') {
         startDate.setTime(todayReset.getTime());
       } else {
-        // 今週の月曜 JST 3:00（月曜始まり）
-        // todayReset（UTC 18:00）+ 9h = JST翌日3:00 なので、JST基準の曜日を求める
+        // 今週の月曜 JST 0:00（月曜始まり）
         const jstDay = new Date(todayReset.getTime() + 9 * 60 * 60 * 1000);
         const dayOfWeek = jstDay.getUTCDay(); // 0=日, 1=月, ..., 6=土
         const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;

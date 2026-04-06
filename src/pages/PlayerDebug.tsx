@@ -258,7 +258,7 @@ export function PlayerDebug() {
                   </label>
 
                   <div>
-                    <label className="text-sm text-cream-600 block mb-1">役名を表示</label>
+                    <label className="text-sm text-cream-700 block mb-1">役名を表示</label>
                     <select
                       value={handNameOption}
                       onChange={(e) => setHandNameOption(e.target.value)}
@@ -294,7 +294,7 @@ export function PlayerDebug() {
 
                   {showBet && (
                     <div className="ml-7 mt-2">
-                      <label className="text-sm text-cream-600 block mb-1">ベット額</label>
+                      <label className="text-sm text-cream-700 block mb-1">ベット額</label>
                       <input
                         type="number"
                         value={betAmount}
@@ -388,7 +388,7 @@ export function PlayerDebug() {
                 {/* Current State Info */}
                 <div className="mt-6 p-4 bg-cream-200 rounded text-sm space-y-2">
                   <div className="font-semibold text-cream-700 mb-3">現在の状態:</div>
-                  <div className="grid grid-cols-2 gap-2 text-cream-600">
+                  <div className="grid grid-cols-2 gap-2 text-cream-700">
                     <div>バリアント:</div>
                     <div className="text-cream-900 font-mono">{variant} ({getVariantConfig(variant).family})</div>
 

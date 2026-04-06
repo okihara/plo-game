@@ -43,7 +43,7 @@ export function WeeklyChampions() {
       >
         <div className="flex items-center justify-between mb-[1.5cqw]">
           <span className="text-[3.2cqw] font-bold text-cream-900">最近の週間チャンピオン</span>
-          <span className="text-[2.8cqw] text-cream-400">もっと見る &gt;</span>
+          <span className="text-[2.8cqw] text-cream-700">もっと見る &gt;</span>
         </div>
         <div className="grid grid-cols-3 gap-[1.5cqw]">
           {champions.map((c, i) => (
@@ -96,16 +96,16 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
     <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={onClose}>
       <div className="absolute inset-0 bg-black/50" />
       <div
-        className="relative w-[92%] h-[90%] bg-white rounded-[4cqw] shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-[92%] max-h-[70%] bg-white rounded-[4cqw] shadow-2xl overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="px-[4cqw] pt-[4cqw] pb-[2cqw] border-b border-cream-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-[4cqw] font-bold text-cream-900">歴代チャンピオン</h2>
+            <h2 className="text-[4cqw] font-bold text-cream-900">過去の週間チャンピオン</h2>
             <button
               onClick={onClose}
-              className="text-[5cqw] text-cream-400 hover:text-cream-700 leading-none"
+              className="text-[5cqw] text-cream-700 hover:text-cream-900 leading-none"
             >
               &times;
             </button>
@@ -119,7 +119,7 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
               <div className="w-[6cqw] h-[6cqw] border-[0.5cqw] border-cream-300 border-t-cream-600 rounded-full animate-spin" />
             </div>
           ) : allChampions.length === 0 ? (
-            <p className="text-center text-cream-500 text-[3cqw] py-[6cqw]">データがありません</p>
+            <p className="text-center text-cream-700 text-[3cqw] py-[6cqw]">データがありません</p>
           ) : (
             <div className="space-y-[2.5cqw]">
               {allChampions.map((c, i) => (

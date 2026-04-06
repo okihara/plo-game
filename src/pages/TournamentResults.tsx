@@ -87,7 +87,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center h-full w-full min-h-0 light-bg px-[4cqw]">
-        <p className="text-cream-600 text-[3.5cqw] mb-[4cqw]">{error}</p>
+        <p className="text-cream-700 text-[3.5cqw] mb-[4cqw]">{error}</p>
         <button type="button" onClick={onBack} className="px-[6cqw] py-[2.5cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3.5cqw] transition-colors">
           戻る
         </button>
@@ -98,7 +98,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
   if (!data) {
     return (
       <div className="flex items-center justify-center h-full w-full min-h-0 light-bg">
-        <Loader2 className="w-[8cqw] h-[8cqw] animate-spin text-cream-400" />
+        <Loader2 className="w-[8cqw] h-[8cqw] animate-spin text-cream-700" />
       </div>
     );
   }
@@ -121,7 +121,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
       </div>
 
       {/* Summary bar */}
-      <div className="shrink-0 px-[4cqw] py-[2cqw] flex items-center justify-between text-[4cqw] text-cream-600 border-b border-cream-200">
+      <div className="shrink-0 px-[4cqw] py-[2cqw] flex items-center justify-between text-[4cqw] text-cream-700 border-b border-cream-200">
         <span>参加者: {data.totalPlayers}人</span>
         <span>賞金プール: {formatChips(data.prizePool)}</span>
       </div>
@@ -158,7 +158,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                   >
                     {/* Rank */}
                     <div className="w-[8cqw] text-center shrink-0">
-                      <span className="text-[4.5cqw] font-bold text-cream-500">{r.position}</span>
+                      <span className="text-[4.5cqw] font-bold text-cream-700">{r.position}</span>
                     </div>
 
                     {/* Avatar + Name */}
@@ -175,14 +175,14 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                           {r.odName}
                         </span>
                         {r.reentries > 0 && (
-                          <span className="text-cream-500 text-[3cqw]">Reentry:{r.reentries}</span>
+                          <span className="text-cream-700 text-[3cqw]">Reentry:{r.reentries}</span>
                         )}
                       </div>
                     </div>
 
                     {/* Prize */}
                     <div className="text-right shrink-0">
-                      <span className={`text-[4.5cqw] font-bold ${r.prize > 0 ? 'text-forest' : 'text-cream-400'}`}>
+                      <span className={`text-[4.5cqw] font-bold ${r.prize > 0 ? 'text-forest' : 'text-cream-700'}`}>
                         {r.prize > 0 ? formatChips(r.prize) : '-'}
                       </span>
                     </div>

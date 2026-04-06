@@ -59,7 +59,7 @@ export function ProfitDisplay({ profit, size = 'normal' }: { profit: number; siz
   if (profit < 0) {
     return <span className={`text-[#C0392B] font-bold ${textSize}`}>-{Math.abs(profit)}</span>;
   }
-  return <span className={`text-cream-400 ${textSize}`}>0</span>;
+  return <span className={`text-cream-700 ${textSize}`}>0</span>;
 }
 
 function formatDate(dateStr: string): string {
@@ -144,7 +144,7 @@ function HandSummaryCard({
         ))}
         {hand.communityCards.length > 0 && (
           <>
-            <span className="text-cream-600 mx-[1.5cqw] text-[4cqw] font-light">|</span>
+            <span className="text-cream-700 mx-[1.5cqw] text-[4cqw] font-light">|</span>
             {hand.communityCards.map((c, i) => (
               <MiniCard key={`cc-${i}`} cardStr={c} />
             ))}
@@ -222,9 +222,9 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
     return (
       <div className="h-full light-bg flex items-center justify-center">
         <div className="text-center">
-          <p className="text-cream-600 mb-[4cqw] text-[3cqw]">ログインするとハンド履歴を確認できます</p>
+          <p className="text-cream-700 mb-[4cqw] text-[3cqw]">ログインするとハンド履歴を確認できます</p>
           {onClose && (
-            <button onClick={onClose} className="text-cream-500 hover:text-cream-700 transition-colors text-[3cqw]">
+            <button onClick={onClose} className="text-cream-700 hover:text-cream-900 transition-colors text-[3cqw]">
               閉じる
             </button>
           )}
@@ -245,7 +245,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
               </button>
             )}
             <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">ハンド履歴</h1>
-            <span className="ml-auto text-cream-600 text-[3cqw] font-medium">{total}件</span>
+            <span className="ml-auto text-cream-700 text-[3cqw] font-medium">{total}件</span>
           </div>
           <div className="flex border-b border-cream-300">
             {([['cash', 'キャッシュ'], ['tournament', 'トーナメント']] as const).map(([type, label]) => (
@@ -255,7 +255,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
                 className={`flex-1 py-[2.5cqw] text-[3cqw] font-semibold transition-colors ${
                   gameType === type
                     ? 'text-forest border-b-[0.5cqw] border-forest'
-                    : 'text-cream-500 hover:text-cream-700'
+                    : 'text-cream-700 hover:text-cream-900'
                 }`}
               >
                 {label}
@@ -269,7 +269,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
             <div className="w-[7cqw] h-[7cqw] border-[0.4cqw] border-cream-300 border-t-forest rounded-full animate-spin" />
           </div>
         ) : hands.length === 0 ? (
-          <div className="text-center text-cream-500 py-[20cqw] text-[3cqw]">
+          <div className="text-center text-cream-700 py-[20cqw] text-[3cqw]">
             まだハンド履歴がありません
           </div>
         ) : (
@@ -289,7 +289,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
-                  className="w-full py-[3cqw] text-cream-600 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-[2.5cqw] transition-all text-[3cqw] border border-cream-300 hover:border-cream-400"
+                  className="w-full py-[3cqw] text-cream-700 hover:text-cream-900 bg-white hover:bg-cream-50 rounded-[2.5cqw] transition-all text-[3cqw] border border-cream-300 hover:border-cream-400"
                 >
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>
