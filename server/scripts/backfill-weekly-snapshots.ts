@@ -76,9 +76,12 @@ async function main() {
   oldWeekStart.setUTCDate(oldWeekStart.getUTCDate() - 7); // 先週から開始
   let count = 0;
 
-  while (oldWeekStart >= oldest.createdAt) {
+  while (true) {
     const oldWeekEnd = new Date(oldWeekStart);
     oldWeekEnd.setUTCDate(oldWeekEnd.getUTCDate() + 7);
+
+    // 週の終わりが最古のハンドより前なら終了
+    if (oldWeekEnd <= oldest.createdAt) break;
 
     // 新基準のキーに変換
     const weekStart = toNewWeekStart(oldWeekStart);

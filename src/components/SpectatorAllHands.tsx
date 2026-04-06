@@ -1,6 +1,6 @@
 import type { Card as CardType, GameState } from '../logic/types';
 import { useGameSettings } from '../contexts/GameSettingsContext';
-import { MiniCard, PositionBadge } from './HandHistoryPanel';
+import { MiniCard, PositionBadge } from './HandHistoryUtils';
 
 function cardToHistoryStr(c: CardType): string {
   return `${c.rank}${c.suit}`;

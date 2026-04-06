@@ -8,7 +8,7 @@ import { toPokerStarsText } from '../utils/pokerStarsFormat';
 import { ProfilePopup } from './ProfilePopup';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
 
-import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryPanel';
+import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryUtils';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 

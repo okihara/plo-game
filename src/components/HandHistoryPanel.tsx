@@ -4,18 +4,10 @@ import { HandDetailDialog } from './HandDetailDialog';
 import type { HandDetail, HandDetailPlayer } from './HandDetailDialog';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
+import { MiniCard, ProfitDisplay, PositionBadge, getPositionName, parseBB } from './HandHistoryUtils';
+
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
-
-const SUIT_SYMBOLS: Record<string, string> = {
-  h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
-};
-const SUIT_BORDER_COLORS: Record<string, string> = {
-  h: 'border-red-500', d: 'border-blue-500', c: 'border-green-600', s: 'border-gray-700',
-};
-const SUIT_TEXT_COLORS: Record<string, string> = {
-  h: 'text-red-600', d: 'text-blue-600', c: 'text-green-700', s: 'text-gray-800',
-};
 
 interface HandSummary {
   id: string;
@@ -37,31 +29,6 @@ interface HandHistoryPanelProps {
   onClose?: () => void;
 }
 
-export function MiniCard({ cardStr }: { cardStr: string }) {
-  const rank = cardStr.slice(0, -1);
-  const suit = cardStr.slice(-1);
-  const symbol = SUIT_SYMBOLS[suit] || suit;
-  const borderColor = SUIT_BORDER_COLORS[suit] || 'border-gray-400';
-  const textColor = SUIT_TEXT_COLORS[suit] || 'text-gray-800';
-
-  return (
-    <span className={`inline-flex items-center justify-center bg-white ${textColor} border ${borderColor} rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
-      {rank}{symbol}
-    </span>
-  );
-}
-
-export function ProfitDisplay({ profit, size = 'normal' }: { profit: number; size?: 'normal' | 'large' }) {
-  const textSize = size === 'large' ? 'text-[3.5cqw]' : 'text-[3cqw]';
-  if (profit > 0) {
-    return <span className={`text-forest font-bold ${textSize}`}>+{profit}</span>;
-  }
-  if (profit < 0) {
-    return <span className={`text-[#C0392B] font-bold ${textSize}`}>-{Math.abs(profit)}</span>;
-  }
-  return <span className={`text-cream-700 ${textSize}`}>0</span>;
-}
-
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr);
   const month = d.getMonth() + 1;
@@ -71,43 +38,15 @@ function formatDate(dateStr: string): string {
   return `${month}/${day} ${hours}:${mins}`;
 }
 
-export function getPositionName(seatPosition: number, dealerPosition: number, allSeatPositions: number[]): string {
-  if (dealerPosition < 0) return '';
-  const sorted = [...allSeatPositions].sort((a, b) => {
-    const offsetA = (a - dealerPosition + 6) % 6;
-    const offsetB = (b - dealerPosition + 6) % 6;
-    return offsetA - offsetB;
-  });
-  const index = sorted.indexOf(seatPosition);
-  const count = sorted.length;
-  if (count <= 1) return '';
-  if (count === 2) return index === 0 ? 'SB' : 'BB';
-  const posMap: Record<number, string[]> = {
-    3: ['BTN', 'SB', 'BB'],
-    4: ['BTN', 'SB', 'BB', 'CO'],
-    5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
-    6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
-  };
-  const positions = posMap[count] || posMap[6]!;
-  return positions[index] || '';
-}
-
-
-export function PositionBadge({ position }: { position: string }) {
-  if (!position) return null;
-  return (
-    <span className="bg-cream-200 text-cream-800 text-[2.5cqw] font-bold w-[7cqw] text-center py-[0.5cqw] rounded-[0.8cqw] border border-cream-400 shrink-0 inline-block">
-      {position}
-    </span>
-  );
-}
 
 function HandSummaryCard({
   hand,
   onClick,
+  bb,
 }: {
   hand: HandSummary;
   onClick: () => void;
+  bb?: number;
 }) {
   return (
     <button
@@ -135,7 +74,7 @@ function HandSummaryCard({
             return name ? <span className="text-cream-800 text-[2.5cqw] font-medium">{name}</span> : null;
           })()}
         </div>
-        <ProfitDisplay profit={hand.profit} size="large" />
+        <ProfitDisplay profit={hand.profit} size="large" bb={bb} />
       </div>
       {/* Row 2: cards */}
       <div className="flex items-center gap-[0.6cqw]">
@@ -156,6 +95,7 @@ function HandSummaryCard({
 }
 
 type GameType = 'cash' | 'tournament';
+type DisplayUnit = 'chips' | 'bb';
 
 export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
   const { user } = useAuth();
@@ -167,8 +107,10 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [gameType, setGameType] = useState<GameType>('cash');
+  const [displayUnit, setDisplayUnit] = useState<DisplayUnit>('chips');
 
   const switchTab = (type: GameType) => {
+    if (type === gameType) return;
     setGameType(type);
     setHands([]);
     setTotal(0);
@@ -245,7 +187,19 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
               </button>
             )}
             <h1 className="text-cream-900 font-bold text-[4cqw] tracking-tight">ハンド履歴</h1>
-            <span className="ml-auto text-cream-700 text-[3cqw] font-medium">{total}件</span>
+            <div className="ml-auto flex items-center gap-[2cqw]">
+              <button
+                onClick={() => setDisplayUnit(u => u === 'chips' ? 'bb' : 'chips')}
+                className={`px-[2cqw] py-[0.8cqw] rounded-[1.2cqw] text-[2.5cqw] font-bold transition-colors ${
+                  displayUnit === 'bb'
+                    ? 'bg-cream-900 text-cream-100'
+                    : 'bg-cream-200 text-cream-700 active:bg-cream-300'
+                }`}
+              >
+                BB表示
+              </button>
+              <span className="text-cream-700 text-[3cqw] font-medium">{total}件</span>
+            </div>
           </div>
           <div className="flex border-b border-cream-300">
             {([['cash', 'キャッシュ'], ['tournament', 'トーナメント']] as const).map(([type, label]) => (
@@ -280,6 +234,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
                   key={hand.id}
                   hand={hand}
                   onClick={() => fetchHandDetail(hand.id)}
+                  bb={displayUnit === 'bb' ? parseBB(hand.blinds) : undefined}
                 />
               ))}
             </div>

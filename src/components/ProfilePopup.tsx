@@ -149,7 +149,7 @@ export function ProfilePopup({
 
   return (
     <div
-      className="absolute inset-0 bg-white z-[200] flex flex-col min-h-0"
+      className="absolute inset-0 bg-cream-200 z-[200] flex flex-col min-h-0"
     >
       <div className="@container w-full flex-1 min-h-0 overflow-y-auto overscroll-contain">
         <div className="px-[4cqw] pt-[3cqw] pb-[1.5cqw] relative">
@@ -261,7 +261,7 @@ export function ProfilePopup({
                     onClick={(e) => { e.stopPropagation(); setActiveBadge(v => v === badge.type ? null : badge.type); }}
                   >
                     <div className="relative w-[11cqw] h-[11cqw]">
-                      <div className="w-full h-full rounded-full bg-cream-100 border border-cream-300 overflow-hidden">
+                      <div className="w-full h-full rounded-full bg-white border border-cream-300 overflow-hidden">
                         <img src={badge.imageUrl} alt={badge.label} className="w-full h-full object-cover" />
                       </div>
                       {badge.count > 1 && (
@@ -305,7 +305,7 @@ export function ProfilePopup({
 
           {/* Profit Chart (self only) */}
           {isSelf && !loading && profitHistory.length >= 2 && (
-            <div className="bg-cream-100 rounded-[3cqw] p-[2.5cqw] mt-[1.5cqw]">
+            <div className="bg-white rounded-[3cqw] p-[2.5cqw] mt-[1.5cqw] border border-cream-200/90 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
               <ProfitChart points={profitHistory} />
             </div>
           )}
