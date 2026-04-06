@@ -45,6 +45,7 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
                   <span className={`text-[2.4cqw] leading-none mt-[0.5cqw] ${isActive ? 'font-bold' : 'font-semibold'}`}>
                     {label}
                   </span>
+                  {isActive && <span className="absolute bottom-[0.5cqw] w-[1.2cqw] h-[1.2cqw] rounded-full bg-forest" />}
                 </button>
               </div>
             );
@@ -67,6 +68,7 @@ export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomN
               <span className={`text-[2.4cqw] leading-none ${isActive ? 'font-bold' : 'font-semibold'}`}>
                 {label}
               </span>
+              {isActive && <span className="w-[1.2cqw] h-[1.2cqw] rounded-full bg-forest" />}
             </button>
           );
         })}
