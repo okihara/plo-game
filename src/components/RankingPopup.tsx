@@ -63,10 +63,9 @@ function formatPeriodRange(period: Period, weekOffset: number): string | null {
   const now = new Date();
   const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAYS[d.getDay()]})`;
   if (period === 'daily') {
-    return `${fmt(now)} — 朝3時リセット`;
+    return '毎日 0:00 ~ 24:00';
   }
-  const { monday, sunday } = getWeekRange(weekOffset);
-  return `${fmt(monday)} ~ ${fmt(sunday)}`;
+  return '月曜 0:00 ~ 日曜 24:00';
 }
 
 export function formatProfit(value: number): string {
@@ -137,13 +136,20 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                 className={`flex-1 py-[1.5cqw] text-[2.8cqw] font-bold rounded-[2cqw] border transition-all ${
                   period === p
                     ? 'bg-cream-900 text-white border-cream-900'
-                    : 'bg-white text-cream-500 border-cream-300 hover:text-cream-700 hover:border-cream-400'
+                    : 'bg-white text-cream-700 border-cream-300 hover:text-cream-700 hover:border-cream-400'
                 }`}
               >
                 {PERIOD_LABELS[p]}
               </button>
             ))}
           </div>
+
+          {/* Period range label */}
+          {formatPeriodRange(period, weekOffset) && (
+            <div className="text-center text-[2.5cqw] text-cream-700 mb-[2cqw]">
+              集計期間: {formatPeriodRange(period, weekOffset)}
+            </div>
+          )}
 
           {/* Week selector (weekly only) */}
           {period === 'weekly' && (
@@ -160,13 +166,6 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
             </div>
           )}
 
-          {/* Period range label */}
-          {period !== 'weekly' && formatPeriodRange(period, weekOffset) && (
-            <div className="text-center text-[2.5cqw] text-cream-500 mb-[2cqw]">
-              {formatPeriodRange(period, weekOffset)}
-            </div>
-          )}
-
           {/* Tabs */}
           <div className="flex mb-[3cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">
             <button
@@ -174,7 +173,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
                 tab === 'profit'
                   ? 'bg-white text-cream-900 shadow-sm'
-                  : 'text-cream-500 hover:text-cream-700'
+                  : 'text-cream-700 hover:text-cream-700'
               }`}
             >
               Profit (EV)
@@ -184,7 +183,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
                 tab === 'winrate'
                   ? 'bg-white text-cream-900 shadow-sm'
-                  : 'text-cream-500 hover:text-cream-700'
+                  : 'text-cream-700 hover:text-cream-700'
               }`}
             >
               Winrate (EV)
@@ -195,10 +194,10 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           {loading ? (
             <div className="flex flex-col items-center py-[8cqw]">
               <div className="w-[6cqw] h-[6cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
-              <p className="text-cream-500 text-[3cqw] mt-[2cqw]">読み込み中...</p>
+              <p className="text-cream-700 text-[3cqw] mt-[2cqw]">読み込み中...</p>
             </div>
           ) : sorted.length === 0 ? (
-            <div className="text-center py-[8cqw] text-cream-500 text-[3cqw]">
+            <div className="text-center py-[8cqw] text-cream-700 text-[3cqw]">
               まだランキングデータがありません
             </div>
           ) : (
@@ -237,7 +236,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                           {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
                         </span>
                       ) : (
-                        <span className="text-[3.2cqw] font-bold text-cream-500">{rank}</span>
+                        <span className="text-[3.2cqw] font-bold text-cream-700">{rank}</span>
                       )}
                     </div>
 
@@ -259,7 +258,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                     <div className="text-right shrink-0">
                       <span className={`text-[3.2cqw] font-bold ${valueColor}`}>{value}</span>
                       {tab === 'winrate' && (
-                        <div className="text-[2cqw] text-cream-500">{entry.handsPlayed.toLocaleString()}h</div>
+                        <div className="text-[2cqw] text-cream-700">{entry.handsPlayed.toLocaleString()}h</div>
                       )}
                     </div>
                   </div>
@@ -271,7 +270,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           {/* My rank */}
           {myRank > 0 && (
             <div className="py-[3cqw] border-t border-cream-200 text-center mt-[2cqw]">
-              <span className="text-[3cqw] text-cream-600">
+              <span className="text-[3cqw] text-cream-700">
                 あなたの順位: <span className="font-bold text-cream-900">{myRank}位</span> / {allSorted.length}人
               </span>
             </div>
