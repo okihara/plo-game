@@ -1,4 +1,4 @@
-import { MiniCard } from './HandHistoryPanel';
+import { MiniCard } from './HandHistoryUtils';
 
 export interface HandSummaryForResult {
   handId: string;
