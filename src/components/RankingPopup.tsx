@@ -28,8 +28,6 @@ const PERIOD_LABELS: Record<Period, string> = {
   all: '全期間',
 };
 
-const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
-
 /** weekOffset=0 → 今週, 1 → 先週, … */
 function getWeekRange(weekOffset: number): { monday: Date; sunday: Date } {
   const now = new Date();
@@ -58,10 +56,8 @@ function buildWeekOptions(): { value: number; label: string }[] {
   return options;
 }
 
-function formatPeriodRange(period: Period, weekOffset: number): string | null {
+function formatPeriodRange(period: Period): string | null {
   if (period === 'all') return null;
-  const now = new Date();
-  const fmt = (d: Date) => `${d.getMonth() + 1}/${d.getDate()} (${WEEKDAYS[d.getDay()]})`;
   if (period === 'daily') {
     return '毎日 0:00 ~ 24:00';
   }
@@ -145,9 +141,9 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           </div>
 
           {/* Period range label */}
-          {formatPeriodRange(period, weekOffset) && (
+          {formatPeriodRange(period) && (
             <div className="text-center text-[2.5cqw] text-cream-700 mb-[2cqw]">
-              集計期間: {formatPeriodRange(period, weekOffset)}
+              集計期間: {formatPeriodRange(period)}
             </div>
           )}
 
