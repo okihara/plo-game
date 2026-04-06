@@ -169,6 +169,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
   const [gameType, setGameType] = useState<GameType>('cash');
 
   const switchTab = (type: GameType) => {
+    if (type === gameType) return;
     setGameType(type);
     setHands([]);
     setTotal(0);
