@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Loader2, Trophy } from 'lucide-react';
 import { formatChips } from '../utils/formatChips';
+import { ordinalSuffix } from '../components/RankingUtils';
 import type { TournamentResult } from '@plo/shared';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
@@ -158,7 +159,7 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                   >
                     {/* Rank */}
                     <div className="w-[8cqw] text-center shrink-0">
-                      <span className="text-[4.5cqw] font-bold text-cream-700">{r.position}</span>
+                      <span className="text-[3.5cqw] font-bold text-cream-700">{r.position}<sup className="text-[2cqw]">{ordinalSuffix(r.position)}</sup></span>
                     </div>
 
                     {/* Avatar + Name */}

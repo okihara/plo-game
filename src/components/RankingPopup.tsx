@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { fetchRankings } from '../utils/rankingsCache';
-import { formatProfit, type RankingEntry } from './RankingUtils';
+import { formatProfit, ordinalSuffix, type RankingEntry } from './RankingUtils';
 
 const MAX_DISPLAY_ALL = 30;
 const MAX_DISPLAY_PERIOD = 15;
@@ -47,11 +47,9 @@ function buildWeekOptions(): { value: number; label: string }[] {
   return options;
 }
 
-function formatPeriodRange(period: Period): string | null {
-  if (period === 'all') return null;
-  if (period === 'daily') {
-    return '毎日 0:00 ~ 24:00';
-  }
+function formatPeriodRange(period: Period): string {
+  if (period === 'all') return '全期間の累計';
+  if (period === 'daily') return '毎日 0:00 ~ 24:00';
   return '月曜 0:00 ~ 日曜 24:00';
 }
 
@@ -128,29 +126,12 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           </div>
 
           {/* Period range label */}
-          {formatPeriodRange(period) && (
-            <div className="text-center text-[2.5cqw] text-cream-700 mb-[2cqw]">
-              集計期間: {formatPeriodRange(period)}
-            </div>
-          )}
-
-          {/* Week selector (weekly only) */}
-          {period === 'weekly' && (
-            <div className="mb-[2cqw]">
-              <select
-                value={weekOffset}
-                onChange={e => setWeekOffset(Number(e.target.value))}
-                className="w-full py-[1.5cqw] px-[2cqw] text-[2.8cqw] text-cream-800 bg-white border border-cream-300 rounded-[2cqw] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:5cqw_5cqw] bg-[right_1cqw_center] bg-no-repeat"
-              >
-                {buildWeekOptions().map(opt => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          <div className="text-center text-[2.5cqw] text-cream-700 mb-[2cqw]">
+            集計期間: {formatPeriodRange(period)}
+          </div>
 
           {/* Tabs */}
-          <div className="flex mb-[3cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">
+          <div className="flex mb-[2cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">
             <button
               onClick={() => setTab('profit')}
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
@@ -172,6 +153,21 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               Winrate (EV)
             </button>
           </div>
+
+          {/* Week selector (weekly only) */}
+          {period === 'weekly' && (
+            <div className="mb-[3cqw]">
+              <select
+                value={weekOffset}
+                onChange={e => setWeekOffset(Number(e.target.value))}
+                className="w-full py-[1.5cqw] px-[2cqw] text-[2.8cqw] text-cream-800 bg-white border border-cream-300 rounded-[2cqw] appearance-none bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22%236b7280%22%3E%3Cpath%20fill-rule%3D%22evenodd%22%20d%3D%22M5.23%207.21a.75.75%200%20011.06.02L10%2011.168l3.71-3.938a.75.75%200%20111.08%201.04l-4.25%204.5a.75.75%200%2001-1.08%200l-4.25-4.5a.75.75%200%2001.02-1.06z%22%20clip-rule%3D%22evenodd%22%2F%3E%3C%2Fsvg%3E')] bg-[length:5cqw_5cqw] bg-[right_1cqw_center] bg-no-repeat"
+              >
+                {buildWeekOptions().map(opt => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* List */}
           {loading ? (
@@ -214,13 +210,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                   >
                     {/* Rank */}
                     <div className="w-[7cqw] text-center shrink-0">
-                      {rank <= 3 ? (
-                        <span className="text-[4cqw]">
-                          {rank === 1 ? '🥇' : rank === 2 ? '🥈' : '🥉'}
-                        </span>
-                      ) : (
-                        <span className="text-[3.2cqw] font-bold text-cream-700">{rank}</span>
-                      )}
+                      <span className="text-[3.2cqw] font-bold text-cream-700">{rank}<sup className="text-[1.8cqw]">{ordinalSuffix(rank)}</sup></span>
                     </div>
 
                     {/* Avatar + Name */}
