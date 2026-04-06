@@ -85,7 +85,7 @@ export function PlayerStatsPanel({
     </div>
   ) : !stats ? (
     !showPlaceholderWhenEmpty ? null : (
-      <div className="rounded-[3cqw] border border-cream-200/90 bg-gradient-to-b from-cream-50 to-cream-100/80 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+      <div className="rounded-[3cqw] border border-cream-200/90 bg-gradient-to-b from-cream-50 to-cream-100/80 overflow-hidden shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
         <StatBlock>
           <StatRow label="総ハンド数" value="—" isPlaceholder emphasize />
           <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
@@ -114,7 +114,7 @@ export function PlayerStatsPanel({
       </div>
     )
   ) : (
-    <div className="rounded-[3cqw] border border-cream-200/90 bg-gradient-to-b from-cream-50 to-cream-100/80 overflow-hidden shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]">
+    <div className="rounded-[3cqw] border border-cream-200/90 bg-white overflow-hidden shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
       <StatBlock>
         <StatRow label="総ハンド数" value={stats.handsPlayed.toLocaleString()} emphasize />
         <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
