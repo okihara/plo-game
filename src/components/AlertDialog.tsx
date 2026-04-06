@@ -5,7 +5,7 @@ const CARD_CLASS =
   'text-center border border-cream-300 rounded-[4cqw] px-[8cqw] py-[10cqw] w-full max-w-[min(92vw,36rem)] shadow-[0_4px_24px_rgba(0,0,0,0.35)] bg-white';
 
 const PRIMARY_BUTTON_CLASS =
-  'w-full py-[3cqw] px-[6cqw] border border-cream-300 rounded-[3cqw] font-bold text-cream-700 hover:border-cream-400 transition-all';
+  'w-full py-[3cqw] px-[6cqw] border border-cream-300 rounded-[3cqw] font-bold text-cream-700 hover:border-cream-400 active:scale-95 active:bg-cream-100 transition-all';
 
 export type AlertDialogCardProps = {
   /** `aria-labelledby` / 見出しの id */
