@@ -231,7 +231,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                     <div className="text-right shrink-0">
                       <span className={`text-[3.2cqw] font-bold ${valueColor}`}>{value}</span>
                       {tab === 'winrate' && (
-                        <div className="text-[2cqw] text-cream-700">{entry.handsPlayed.toLocaleString()}h</div>
+                        <div className="text-[2cqw] text-cream-700">{entry.handsPlayed.toLocaleString()} hands</div>
                       )}
                     </div>
                   </div>

@@ -117,13 +117,13 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
     <div className="h-full w-full light-bg text-cream-900 flex flex-col min-h-0 overflow-hidden relative">
       {/* Header */}
       <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-300">
-        <Trophy className="w-[6cqw] h-[6cqw] text-forest shrink-0" />
+        <Trophy className="w-[6cqw] h-[6cqw] text-amber-500 shrink-0" />
         <h1 className="text-[5cqw] font-bold truncate">{data.name}</h1>
       </div>
 
       {/* Summary bar */}
       <div className="shrink-0 px-[4cqw] py-[2cqw] flex items-center justify-between text-[4cqw] text-cream-700 border-b border-cream-200">
-        <span>参加者: {data.totalPlayers}人</span>
+        <span>{data.totalPlayers} エントリー</span>
         <span>賞金プール: {formatChips(data.prizePool)}</span>
       </div>
 
