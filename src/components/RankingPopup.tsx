@@ -1,15 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { fetchRankings } from '../utils/rankingsCache';
-
-export interface RankingEntry {
-  userId: string;
-  username: string;
-  avatarUrl: string | null;
-  isBot: boolean;
-  handsPlayed: number;
-  totalAllInEVProfit: number;
-  winCount: number;
-}
+import { formatProfit, type RankingEntry } from './RankingUtils';
 
 const MAX_DISPLAY_ALL = 30;
 const MAX_DISPLAY_PERIOD = 15;
@@ -64,10 +55,6 @@ function formatPeriodRange(period: Period): string | null {
   return '月曜 0:00 ~ 日曜 24:00';
 }
 
-export function formatProfit(value: number): string {
-  const formatted = Math.abs(value).toLocaleString();
-  return value >= 0 ? `+${formatted}` : `-${formatted}`;
-}
 
 function formatWinrate(evProfit: number, hands: number): string {
   if (hands === 0) return '0.0';
@@ -116,7 +103,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
 
   return (
     <div
-      className="absolute inset-0 bg-white z-[200] flex flex-col"
+      className="absolute inset-0 z-[200] bg-cream-200 flex flex-col"
     >
       <div className="@container w-full flex-1 overflow-y-auto min-h-0">
         <div className="px-[4cqw] pt-[4cqw] pb-[2cqw]">
@@ -168,8 +155,8 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               onClick={() => setTab('profit')}
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
                 tab === 'profit'
-                  ? 'bg-white text-cream-900 shadow-sm'
-                  : 'text-cream-700 hover:text-cream-700'
+                  ? 'bg-cream-900 text-white shadow-sm'
+                  : 'text-cream-700'
               }`}
             >
               Profit (EV)
@@ -178,8 +165,8 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
               onClick={() => setTab('winrate')}
               className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
                 tab === 'winrate'
-                  ? 'bg-white text-cream-900 shadow-sm'
-                  : 'text-cream-700 hover:text-cream-700'
+                  ? 'bg-cream-900 text-white shadow-sm'
+                  : 'text-cream-700'
               }`}
             >
               Winrate (EV)
@@ -219,10 +206,10 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                   <div
                     key={entry.userId}
                     ref={isMe ? myRowRef : undefined}
-                    className={`flex items-center gap-[2cqw] py-[2cqw] px-[2.5cqw] rounded-[2cqw] ${
+                    className={`flex items-center gap-[2cqw] py-[2cqw] px-[2.5cqw] rounded-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] ${
                       isMe
                         ? 'bg-forest/10 border border-forest/30'
-                        : 'hover:bg-cream-50'
+                        : 'bg-white border border-cream-200'
                     }`}
                   >
                     {/* Rank */}

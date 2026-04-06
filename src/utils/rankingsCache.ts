@@ -1,4 +1,4 @@
-import type { RankingEntry } from '../components/RankingPopup';
+import type { RankingEntry } from '../components/RankingUtils';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const CACHE_TTL_MS = 60_000;

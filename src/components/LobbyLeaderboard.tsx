@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { RankingEntry } from './RankingPopup';
-import { formatProfit } from './RankingPopup';
+import { formatProfit, type RankingEntry } from './RankingUtils';
 import { fetchRankings } from '../utils/rankingsCache';
 const MEDALS = ['🥇', '🥈', '🥉'];
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
