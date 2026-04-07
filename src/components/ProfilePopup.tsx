@@ -152,7 +152,7 @@ export function ProfilePopup({
       className="absolute inset-0 bg-cream-200 z-[200] flex flex-col min-h-0"
     >
       <div className="@container w-full flex-1 min-h-0 overflow-y-auto overscroll-contain">
-        <div className="px-[4cqw] pt-[3cqw] pb-[1.5cqw] relative">
+        <div className={`px-[4cqw] pt-[3cqw] ${onClose ? 'pb-[1.5cqw]' : 'pb-[18cqw]'} relative`}>
 
           {/* Avatar + Name */}
           <div className="flex items-center gap-[3cqw] mb-[1.5cqw]">

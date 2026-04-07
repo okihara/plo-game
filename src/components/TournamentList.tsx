@@ -110,7 +110,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
         )}
 
         {!isListLoading && (
-          <div className="px-[4cqw] py-[4cqw] space-y-[3cqw] pb-[6cqw]">
+          <div className="px-[4cqw] py-[4cqw] space-y-[3cqw] pb-[18cqw]">
             {tournaments.length === 0 && (
               <div className="text-center py-[16cqw] text-[3cqw] text-cream-700">
                 <Trophy className="w-[12cqw] h-[12cqw] mx-auto mb-[3cqw] opacity-30" />
