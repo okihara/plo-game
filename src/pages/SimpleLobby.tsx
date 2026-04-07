@@ -54,10 +54,30 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showPrivateDialog, setShowPrivateDialog] = useState(false);
+  const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string }>({ status: 'none' });
 
 
   useEffect(() => {
     const apiBase = import.meta.env.VITE_SERVER_URL || '';
+    const fetchTournaments = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/tournaments`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json() as { tournaments?: { status: string; scheduledStartTime?: string }[] };
+        const list = data.tournaments ?? [];
+        const running = list.find(t => ['running', 'starting', 'final_table', 'heads_up'].includes(t.status));
+        const waiting = list.find(t => t.status === 'waiting' && t.scheduledStartTime);
+        if (running) {
+          setTournamentSummary({ status: 'running' });
+        } else if (waiting?.scheduledStartTime) {
+          const d = new Date(waiting.scheduledStartTime);
+          const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          setTournamentSummary({ status: 'scheduled', time });
+        } else {
+          setTournamentSummary({ status: 'none' });
+        }
+      } catch { /* ignore */ }
+    };
     const fetchCounts = async () => {
       try {
         const res = await fetch(`${apiBase}/api/lobby/tables`);
@@ -88,6 +108,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         }
       } catch { /* ignore */ }
     };
+    fetchTournaments();
     fetchCounts();
     fetchMaintenance();
     fetchAnnouncement();
@@ -125,7 +146,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
     <div className="flex flex-col items-center h-full min-h-0 overflow-y-auto px-[1cqw]">
       {/* Logo & Title */}
       <div className="mb-[1.5cqw] w-full bg-forest px-[3cqw] py-[2cqw] rounded-b-[2cqw] shadow-[0_8px_30px_rgba(29,58,39,0.5),0_4px_12px_rgba(0,0,0,0.3)]">
-        <div className="flex items-center gap-[1.5cqw]">
+        <div className="flex items-center gap-[1cqw]">
           <div className="w-[6cqw] h-[6cqw] rounded-full overflow-hidden border-[0.3cqw] border-white/30 shrink-0">
             <img
               src="/images/plo_baby.png"
@@ -157,7 +178,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         {loading ? (
           <div className="text-center text-cream-700 text-[4cqw] mb-[3cqw]">読み込み中...</div>
         ) : user ? (
-          <div className="flex items-center gap-[1.5cqw] mt-[1.5cqw]">
+          <div className="flex items-center gap-[1cqw] mt-[1.5cqw]">
             {user.avatarUrl && (
               <img
                 src={user.avatarUrl}
@@ -212,10 +233,15 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
           {/* Tournament Button */}
           <button
             onClick={() => setActiveTab('tournament')}
-            className="flex-1 h-[34cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)] text-white font-bold text-[4cqw] flex flex-col items-center justify-center gap-[2cqw]"
+            className="flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw]"
           >
             <Trophy className="w-[6cqw] h-[6cqw]" />
             <span>トーナメント</span>
+            <span className="text-[2.8cqw] font-normal text-white/80">
+              {tournamentSummary.status === 'running' ? '進行中' :
+               tournamentSummary.status === 'scheduled' ? `開催予定 ${tournamentSummary.time} から` :
+               ''}
+            </span>
           </button>
 
           {/* Fast Fold Button */}
@@ -226,7 +252,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
                 key={table.id}
                 onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                 disabled={!table.enabled || !!maintenance?.isActive || !user}
-                className={`flex-1 h-[34cqw] px-[3cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] flex flex-col items-center justify-center gap-[2cqw] ${
+                className={`flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] flex flex-col items-center gap-[1cqw] ${
                   table.enabled && !maintenance?.isActive && user
                     ? 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 shadow-[0_4px_12px_rgba(45,90,61,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
                     : 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 opacity-50 cursor-not-allowed'
@@ -234,7 +260,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
               >
                 <Zap className="w-[6cqw] h-[6cqw]" />
                 <span className="text-[4cqw] font-bold text-white">リングをプレイ</span>
-                <span className="text-[3cqw] text-white/80">Fast Fold · {table.blindsLabel}</span>
+                <span className="text-[3cqw] text-white/80">Fast Fold - {table.blindsLabel} - buy-in:{table.buyIn}</span>
                 <span className="text-[2.8cqw] text-white/60">{count}人プレイ中</span>
               </button>
             );
