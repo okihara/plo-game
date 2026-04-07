@@ -240,7 +240,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
             </div>
 
             {hands.length < total && (
-              <div className="px-[4cqw] pb-[6cqw]">
+              <div className="px-[4cqw] pb-[18cqw]">
                 <button
                   onClick={() => fetchHands(offset + PAGE_SIZE, true)}
                   disabled={loadingMore}
@@ -249,6 +249,9 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
                   {loadingMore ? '読み込み中...' : 'もっと読む'}
                 </button>
               </div>
+            )}
+            {hands.length >= total && (
+              <div className="pb-[18cqw]" />
             )}
           </>
         )}
