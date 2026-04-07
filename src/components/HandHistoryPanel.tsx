@@ -202,7 +202,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
             </div>
           </div>
           <div className="flex border-b border-cream-300">
-            {([['cash', 'キャッシュ'], ['tournament', 'トーナメント']] as const).map(([type, label]) => (
+            {([['cash', 'リング'], ['tournament', 'トーナメント']] as const).map(([type, label]) => (
               <button
                 key={type}
                 onClick={() => switchTab(type)}

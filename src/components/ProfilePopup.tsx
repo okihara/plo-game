@@ -155,7 +155,7 @@ export function ProfilePopup({
         <div className={`px-[4cqw] pt-[3cqw] ${onClose ? 'pb-[1.5cqw]' : 'pb-[18cqw]'} relative`}>
 
           {/* Avatar + Name */}
-          <div className="flex items-center gap-[3cqw] mb-[1.5cqw]">
+          <div className="flex items-center gap-[3cqw] mb-[3cqw]">
             <div className="w-[12cqw] h-[12cqw] rounded-full bg-gradient-to-br from-cream-200 to-cream-300 border-[0.6cqw] border-cream-300 overflow-hidden shrink-0">
               {avatarImage ? (
                 <img src={avatarImage} alt={name} className="w-full h-full object-cover" />
@@ -231,7 +231,7 @@ export function ProfilePopup({
 
           {/* Label Note */}
           {!isSelf && userId && label && onLabelChange && (
-            <div className="mb-[1.5cqw] flex gap-[1.5cqw]">
+            <div className="mb-[3cqw] flex gap-[1.5cqw]">
               <input
                 type="text"
                 value={labelNote}
@@ -252,7 +252,7 @@ export function ProfilePopup({
 
           {/* Badges */}
           {badges.length > 0 && (
-            <div className="relative mb-[1.5cqw]">
+            <div className="relative mb-[3cqw] bg-white rounded-[3cqw] p-[2.5cqw] border border-cream-200/90 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
               <div className="flex gap-[2cqw]">
                 {badges.map((badge) => (
                   <div
@@ -305,7 +305,7 @@ export function ProfilePopup({
 
           {/* Profit Chart (self only) */}
           {isSelf && !loading && profitHistory.length >= 2 && (
-            <div className="bg-white rounded-[3cqw] p-[2.5cqw] mt-[1.5cqw] border border-cream-200/90 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
+            <div className="bg-white rounded-[3cqw] p-[2.5cqw] mt-[3cqw] border border-cream-200/90 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
               <ProfitChart points={profitHistory} />
             </div>
           )}

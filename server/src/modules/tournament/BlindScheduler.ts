@@ -86,6 +86,13 @@ export class BlindScheduler {
     return this.getLevelStartAt(idx + 1);
   }
 
+  /**
+   * 指定レベルの開始タイムスタンプを取得（公開版）
+   */
+  getLevelStartTimestamp(levelIndex: number): number {
+    return this.getLevelStartAt(levelIndex);
+  }
+
   isStarted(): boolean {
     return this.startedAt > 0;
   }
