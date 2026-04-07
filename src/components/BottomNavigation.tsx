@@ -19,7 +19,7 @@ const TABS: { id: LobbyTab; label: string; icon: typeof Home }[] = [
 export function BottomNavigation({ activeTab, onTabChange, isLoggedIn }: BottomNavigationProps) {
   return (
     <nav className="absolute bottom-0 left-0 right-0 z-50 px-[3cqw] pb-[max(2cqw,env(safe-area-inset-bottom))] pointer-events-none">
-      <div className="relative flex items-center justify-around h-[12cqw] bg-white border border-cream-300 rounded-full shadow-[0_4px_50px_rgba(0,0,0,1)] pointer-events-auto">
+      <div className="relative flex items-center justify-around h-[12cqw] bg-white border border-cream-300 rounded-full shadow-[0_4px_40px_rgba(0,0,0,0.8)] pointer-events-auto">
         {TABS.map(({ id, label, icon: Icon }) => {
           const isActive = activeTab === id;
           const isDisabled = !isLoggedIn && id !== 'home' && id !== 'tournament';
