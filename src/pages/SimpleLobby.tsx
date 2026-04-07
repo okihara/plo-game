@@ -54,7 +54,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showPrivateDialog, setShowPrivateDialog] = useState(false);
-  const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string }>({ status: 'none' });
+  const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string; isRegistrationOpen?: boolean; deadlineTime?: string }>({ status: 'none' });
 
 
   useEffect(() => {
@@ -63,12 +63,17 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
       try {
         const res = await fetch(`${apiBase}/api/tournaments`, { credentials: 'include' });
         if (!res.ok) return;
-        const data = await res.json() as { tournaments?: { status: string; scheduledStartTime?: string }[] };
+        const data = await res.json() as { tournaments?: { status: string; scheduledStartTime?: string; isRegistrationOpen: boolean; registrationDeadlineAt?: string }[] };
         const list = data.tournaments ?? [];
         const running = list.find(t => ['running', 'starting', 'final_table', 'heads_up'].includes(t.status));
         const waiting = list.find(t => t.status === 'waiting' && t.scheduledStartTime);
         if (running) {
-          setTournamentSummary({ status: 'running' });
+          let deadlineTime: string | undefined;
+          if (running.registrationDeadlineAt) {
+            const d = new Date(running.registrationDeadlineAt);
+            deadlineTime = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+          }
+          setTournamentSummary({ status: 'running', isRegistrationOpen: running.isRegistrationOpen, deadlineTime });
         } else if (waiting?.scheduledStartTime) {
           const d = new Date(waiting.scheduledStartTime);
           const time = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
@@ -228,6 +233,21 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         {/* Mini Leaderboard */}
         <LobbyLeaderboard userId={user?.id} onShowFull={() => setActiveTab('ranking')} />
 
+        {/* X Follow Banner */}
+        <a
+          href="https://x.com/babyplo_"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-[3cqw] w-full flex items-center gap-[2cqw] px-[3cqw] py-[2.5cqw] bg-cream-900 rounded-[2.5cqw] text-white hover:bg-cream-800 active:scale-[0.98] transition-all"
+        >
+          <svg className="w-[5cqw] h-[5cqw] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+          <div className="flex-1 min-w-0">
+            <p className="text-[3cqw] font-bold leading-tight">公式Xアカウントをフォロー</p>
+            <p className="text-[2.5cqw] text-white/70">最新情報やイベント告知をお届けします</p>
+          </div>
+          <svg className="w-[3.5cqw] h-[3.5cqw] text-white/60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </a>
+
         {/* Tournament & Fast Fold - Side by Side */}
         <div className="mt-[2cqw] flex gap-[2cqw]">
           {/* Tournament Button */}
@@ -238,9 +258,12 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             <Trophy className="w-[6cqw] h-[6cqw]" />
             <span>トーナメント</span>
             <span className="text-[2.8cqw] font-normal text-white/80">
-              {tournamentSummary.status === 'running' ? '進行中' :
-               tournamentSummary.status === 'scheduled' ? `開催予定 ${tournamentSummary.time} から` :
-               ''}
+              {tournamentSummary.status === 'running'
+                ? tournamentSummary.isRegistrationOpen
+                  ? `進行中（${tournamentSummary.deadlineTime ? `${tournamentSummary.deadlineTime} まで受付` : 'エントリー受付中'}）`
+                  : '進行中（エントリー締切）'
+                : tournamentSummary.status === 'scheduled' ? `開催予定 ${tournamentSummary.time} から`
+                : ''}
             </span>
           </button>
 
@@ -266,21 +289,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             );
           })}
         </div>
-
-        {/* X Follow Banner */}
-        <a
-          href="https://x.com/babyplo_"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="mt-[3cqw] w-full flex items-center gap-[2cqw] px-[3cqw] py-[2.5cqw] bg-cream-900 rounded-[2.5cqw] text-white hover:bg-cream-800 active:scale-[0.98] transition-all"
-        >
-          <svg className="w-[5cqw] h-[5cqw] shrink-0" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-          <div className="flex-1 min-w-0">
-            <p className="text-[3cqw] font-bold leading-tight">公式Xアカウントをフォロー</p>
-            <p className="text-[2.5cqw] text-white/70">最新情報やイベント告知をお届けします</p>
-          </div>
-          <svg className="w-[3.5cqw] h-[3.5cqw] text-white/60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
-        </a>
 
         {/* Spacer for bottom nav */}
         <div className="h-[16cqw]" />

@@ -64,6 +64,7 @@ export interface TournamentLobbyInfo {
   maxReentries: number;
   totalReentries: number;       // 実際に行われたリエントリー数
   reentryDeadlineLevel: number;
+  registrationDeadlineAt?: string; // ISO string — エントリー締切時刻
 }
 
 // --- Tournament Result ---
