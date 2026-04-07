@@ -104,7 +104,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
       className="absolute inset-0 z-[200] bg-cream-200 flex flex-col"
     >
       <div className="@container w-full flex-1 overflow-y-auto min-h-0">
-        <div className="px-[4cqw] pt-[4cqw] pb-[2cqw]">
+        <div className={`px-[4cqw] pt-[4cqw] ${onClose ? 'pb-[2cqw]' : 'pb-[18cqw]'}`}>
           {/* Header */}
           <h2 className="text-[5cqw] font-bold text-cream-900 mb-[3cqw]">ランキング</h2>
 
@@ -253,7 +253,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
 
       {/* Footer Button */}
       {onClose && (
-        <div className="@container w-full shrink-0 px-[4cqw] pb-[4cqw] pt-[1cqw]">
+        <div className="@container w-full shrink-0 px-[4cqw] pb-[18cqw] pt-[1cqw]">
           <button
             onClick={onClose}
             className="w-full py-[3cqw] bg-cream-900 text-white text-[4cqw] font-bold rounded-[3cqw] active:bg-cream-800"

@@ -143,18 +143,23 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             include: { user: { select: { username: true, displayName: true, avatarUrl: true } } },
             orderBy: { position: 'asc' },
           },
-          _count: { select: { registrations: true } },
+          registrations: { select: { reentryCount: true } },
         },
       });
       if (!dbTournament) {
         return reply.status(404).send({ error: 'Tournament not found' });
       }
 
+      // リエントリー込みの総エントリー数
+      const totalEntries = dbTournament.registrations.reduce(
+        (sum, r) => sum + 1 + r.reentryCount, 0
+      );
+
       return {
         tournamentId: dbTournament.id,
         name: dbTournament.name,
         status: dbTournament.status.toLowerCase(),
-        totalPlayers: dbTournament._count.registrations,
+        totalPlayers: totalEntries,
         prizePool: dbTournament.prizePool,
         results: dbTournament.results.map(r => ({
           odId: r.userId,
