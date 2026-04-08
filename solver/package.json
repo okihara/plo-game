@@ -1,0 +1,20 @@
+{
+  "name": "@plo/solver",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "enumerate": "tsx src/enumerate.ts",
+    "equity": "tsx src/testEquity.ts",
+    "tree": "tsx src/gameTree.ts",
+    "solve": "tsx src/solve.ts"
+  },
+  "dependencies": {
+    "@plo/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0"
+  }
+}
