@@ -106,7 +106,16 @@ export function useTournamentState() {
   const [canReenterTournamentId, setCanReenterTournamentId] = useState<string | null>(null);
   const [myFinishedTournamentIds, setMyFinishedTournamentIds] = useState<Set<string>>(new Set());
 
+  // ref で二重送信を同期的にブロックする。
+  // setState は非同期反映のため、連打時に disabled が間に合わず
+  // 同一ユーザーの並行リクエストが飛んでサーバー側の race condition を突く可能性がある。
+  const reenteringRef = useRef(false);
+
   const reenter = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
+    if (reenteringRef.current) {
+      return { success: false, error: 'リエントリー処理中です' };
+    }
+    reenteringRef.current = true;
     try {
       const res = await fetch(`${API_BASE}/api/tournaments/${tournamentId}/reenter`, {
         method: 'POST',
@@ -121,6 +130,8 @@ export function useTournamentState() {
       return { success: true };
     } catch {
       return { success: false, error: '通信エラーが発生しました' };
+    } finally {
+      reenteringRef.current = false;
     }
   }, []);
 
