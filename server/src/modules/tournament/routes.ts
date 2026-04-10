@@ -3,6 +3,7 @@ import { TournamentManager } from './TournamentManager.js';
 import { createTournamentFromConfig } from './socket.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
+import { maskName } from '../../shared/utils.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
@@ -140,7 +141,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         where: { id: request.params.id },
         include: {
           results: {
-            include: { user: { select: { username: true, displayName: true, avatarUrl: true } } },
+            include: { user: { select: { username: true, displayName: true, avatarUrl: true, nameMasked: true } } },
             orderBy: { position: 'asc' },
           },
           registrations: { select: { reentryCount: true } },
@@ -163,7 +164,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         prizePool: dbTournament.prizePool,
         results: dbTournament.results.map(r => ({
           odId: r.userId,
-          odName: r.user.displayName || r.user.username,
+          odName: r.user.displayName || (r.user.nameMasked ? maskName(r.user.username) : r.user.username),
           position: r.position,
           prize: r.prize,
           reentries: r.reentries,
