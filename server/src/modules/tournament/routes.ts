@@ -4,6 +4,16 @@ import { createTournamentFromConfig } from './socket.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
+import {
+  TOURNAMENT_RANKING_POINTS,
+  getTournamentRankingPoints,
+  TournamentRankingEntry,
+} from '@plo/shared';
+import { maskName } from '../../shared/utils.js';
+
+// 全体トーナメントランキングのキャッシュ（60秒TTL）
+const rankingCache = new Map<string, { data: unknown; expiresAt: number }>();
+const RANKING_CACHE_TTL_MS = 60_000;
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
 async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -121,6 +131,107 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       }
 
       return { tournaments, myTournamentId, canReenterTournamentId, myFinishedTournamentIds };
+    });
+
+    // 全体トーナメントランキング（公開）
+    // 各トーナメントの上位 N 人にポイントを付与し、ユーザーごとに合算して降順で返す。
+    fastify.get('/api/tournaments/rankings', async (request) => {
+      const { limit: limitStr } = request.query as { limit?: string };
+      const limit = Math.max(1, Math.min(200, parseInt(limitStr || '100', 10) || 100));
+
+      const cacheKey = `tournament-rankings:${limit}`;
+      const cached = rankingCache.get(cacheKey);
+      if (cached && Date.now() < cached.expiresAt) {
+        return cached.data;
+      }
+
+      // 終了済みトーナメントの入賞圏内（position <= ポイント付与対象人数）の結果のみ取得
+      const maxPointsPosition = TOURNAMENT_RANKING_POINTS.length;
+      const rows = await prisma.tournamentResult.findMany({
+        where: {
+          position: { gte: 1, lte: maxPointsPosition },
+          tournament: { status: 'COMPLETED' },
+        },
+        select: {
+          userId: true,
+          position: true,
+          user: {
+            select: {
+              id: true,
+              username: true,
+              displayName: true,
+              avatarUrl: true,
+              nameMasked: true,
+              provider: true,
+            },
+          },
+        },
+      });
+
+      // userId ごとにポイント合算
+      const aggregated = new Map<string, {
+        userId: string;
+        username: string;
+        displayName: string | null;
+        avatarUrl: string | null;
+        nameMasked: boolean;
+        provider: string;
+        totalPoints: number;
+        tournamentsCashed: number;
+        firstPlaces: number;
+      }>();
+
+      for (const row of rows) {
+        const points = getTournamentRankingPoints(row.position);
+        if (points === 0) continue;
+
+        let entry = aggregated.get(row.userId);
+        if (!entry) {
+          entry = {
+            userId: row.userId,
+            username: row.user.username,
+            displayName: row.user.displayName,
+            avatarUrl: row.user.avatarUrl,
+            nameMasked: row.user.nameMasked,
+            provider: row.user.provider,
+            totalPoints: 0,
+            tournamentsCashed: 0,
+            firstPlaces: 0,
+          };
+          aggregated.set(row.userId, entry);
+        }
+        entry.totalPoints += points;
+        entry.tournamentsCashed += 1;
+        if (row.position === 1) entry.firstPlaces += 1;
+      }
+
+      // ソート: ポイント降順 → 優勝回数降順 → 入賞回数降順
+      const sorted = Array.from(aggregated.values()).sort((a, b) => {
+        if (b.totalPoints !== a.totalPoints) return b.totalPoints - a.totalPoints;
+        if (b.firstPlaces !== a.firstPlaces) return b.firstPlaces - a.firstPlaces;
+        return b.tournamentsCashed - a.tournamentsCashed;
+      });
+
+      const rankings: TournamentRankingEntry[] = sorted.slice(0, limit).map((entry, idx) => ({
+        rank: idx + 1,
+        userId: entry.userId,
+        username: entry.displayName
+          ? entry.displayName
+          : (entry.nameMasked ? maskName(entry.username) : entry.username),
+        avatarUrl: entry.avatarUrl,
+        isBot: entry.provider === 'bot',
+        totalPoints: entry.totalPoints,
+        tournamentsCashed: entry.tournamentsCashed,
+        firstPlaces: entry.firstPlaces,
+      }));
+
+      const result = {
+        rankings,
+        pointsTable: [...TOURNAMENT_RANKING_POINTS],
+      };
+
+      rankingCache.set(cacheKey, { data: result, expiresAt: Date.now() + RANKING_CACHE_TTL_MS });
+      return result;
     });
 
     // トーナメント詳細（公開）

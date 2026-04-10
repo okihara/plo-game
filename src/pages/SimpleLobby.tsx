@@ -19,6 +19,7 @@ interface SimpleLobbyProps {
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
+  onViewTournamentRanking: () => void;
   initialTab?: LobbyTab;
 }
 
@@ -42,7 +43,7 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults, initialTab = 'home' }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults, onViewTournamentRanking, initialTab = 'home' }: SimpleLobbyProps) {
   const { user, loading, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<LobbyTab>(initialTab);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
@@ -335,6 +336,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             onJoinTournament={onJoinTournament}
             onViewMyResult={onViewMyResult}
             onViewResults={onViewResults}
+            onViewRanking={onViewTournamentRanking}
           />
         );
       case 'history':

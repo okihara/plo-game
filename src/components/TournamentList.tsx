@@ -8,6 +8,7 @@ interface TournamentListProps {
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
+  onViewRanking?: () => void;
 }
 
 function formatTime(isoString?: string): string {
@@ -29,7 +30,7 @@ function statusLabel(status: string): { text: string; color: string } {
   }
 }
 
-export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults }: TournamentListProps) {
+export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults, onViewRanking }: TournamentListProps) {
   const { user } = useAuth();
   const {
     tournaments,
@@ -93,6 +94,16 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
       <div className="shrink-0 flex items-center gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-300">
         <Trophy className="w-[5cqw] h-[5cqw] text-amber-500 shrink-0" />
         <h1 className="text-[4.5cqw] font-bold text-cream-900">トーナメント</h1>
+        {onViewRanking && (
+          <button
+            type="button"
+            onClick={onViewRanking}
+            className="ml-auto flex items-center gap-[1cqw] px-[2.5cqw] py-[1.2cqw] rounded-[2cqw] bg-cream-100 hover:bg-cream-200 border border-cream-300 text-cream-800 text-[2.8cqw] font-bold transition-colors shrink-0"
+          >
+            <Trophy className="w-[3.5cqw] h-[3.5cqw] text-amber-500" />
+            総合ランキング
+          </button>
+        )}
       </div>
 
       {error && (

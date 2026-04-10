@@ -9,6 +9,7 @@ import { PlayerDebug } from './pages/PlayerDebug';
 import { EliminationDebug } from './pages/EliminationDebug';
 import { TournamentMyResult } from './pages/TournamentMyResult';
 import { TournamentResults } from './pages/TournamentResults';
+import { TournamentRanking } from './pages/TournamentRanking';
 import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
@@ -100,12 +101,15 @@ function App() {
     page = (
       <HandHistory onBack={goBackToLobby} />
     );
+  } else if (currentPath === '/tournaments/rankings') {
+    page = <TournamentRanking onBack={goToTournaments} />;
   } else if (currentPath === '/tournaments') {
     page = (
       <TournamentLobby
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
         onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
         onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
+        onViewRanking={() => { window.history.pushState({}, '', '/tournaments/rankings'); setCurrentPath('/tournaments/rankings'); }}
         onBack={goBackToLobby}
       />
     );
@@ -162,6 +166,7 @@ function App() {
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
         onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
         onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
+        onViewTournamentRanking={() => { window.history.pushState({}, '', '/tournaments/rankings'); setCurrentPath('/tournaments/rankings'); }}
         initialTab={lobbyInitialTab}
       />
     );
