@@ -84,10 +84,9 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
     return (
       <div className="relative h-full w-full min-h-0 light-bg flex flex-col items-center justify-center px-[6cqw]">
         <div className="bg-white rounded-[2cqw] shadow-[0_4px_24px_rgba(0,0,0,0.12)] w-full max-w-[88cqw] px-[6cqw] py-[10cqw] text-center">
-          <div className="text-cream-700 text-[3.5cqw] mb-[3cqw] tracking-wider">- - -</div>
-          <div className="text-cream-900 font-bold text-[4.5cqw] mb-[2cqw]">集計中</div>
+          <div className="text-red-600 font-black text-[6cqw] mb-[2cqw]">Busted</div>
           <div className="text-cream-700 text-[3.2cqw] leading-relaxed">
-            レイト登録締切後に順位が確定します
+            順位はレイト登録締切後に確定します
           </div>
           {result.tournamentName && (
             <div className="text-cream-700 text-[3cqw] mt-[4cqw] border-t border-cream-300 pt-[3cqw]">
