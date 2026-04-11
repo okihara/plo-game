@@ -420,7 +420,8 @@ describe('TournamentInstance', () => {
       expect(tournament.getPlayer('player_3')?.finishPosition).toBe(3);
     });
 
-    it('バスト通知が個人・全体に送信される', () => {
+    it('バスト通知が個人・全体に送信される（レイト登録中はposition=null）', () => {
+      // registrationLevels: 2 (デフォルト) → level 1 なのでレイト登録中
       const tournament = new TournamentInstance(io, createTestConfig());
       const { sockets } = startAndEnterNPlayers(tournament, 3);
 
@@ -430,11 +431,11 @@ describe('TournamentInstance', () => {
         { odId: 'player_1', seatIndex: 1, chips: 2000 },
       ]);
 
-      // 個人通知 (tournament:eliminated)
+      // 個人通知 (tournament:eliminated) — レイト登録中はposition=null
       expect(sockets[2].emit).toHaveBeenCalledWith(
         'tournament:eliminated',
         expect.objectContaining({
-          position: 3,
+          position: null,
           totalPlayers: 3,
         })
       );
