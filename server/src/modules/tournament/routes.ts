@@ -333,11 +333,16 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         return reply.status(400).send({ error: 'トーナメントの登録受付は終了しています' });
       }
 
-      // 既に登録済みならスキップ
+      // 既に登録済みの場合
       const existing = await prisma.tournamentRegistration.findUnique({
         where: { tournamentId_userId: { tournamentId, userId } },
       });
       if (existing) {
+        // eliminated 状態ならリエントリーAPIを使うべき
+        const player = tournament.getPlayer(userId);
+        if (player?.status === 'eliminated') {
+          return reply.status(400).send({ error: 'リエントリーから再参加してください' });
+        }
         return { success: true, tournamentId };
       }
 

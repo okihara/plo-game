@@ -332,7 +332,7 @@ function TournamentCard({
               <>リエントリー ({t.buyIn.toLocaleString()} chips)</>
             )}
           </button>
-        ) : t.isRegistrationOpen ? (
+        ) : t.isRegistrationOpen && !isEliminated ? (
           <button
             type="button"
             onClick={onRegister}
@@ -348,7 +348,7 @@ function TournamentCard({
               <>参加登録 ({t.buyIn.toLocaleString()} chips)</>
             )}
           </button>
-        ) : isEliminated && !t.isRegistrationOpen ? (
+        ) : isEliminated ? (
           <button
             type="button"
             onClick={onViewMyResult}
