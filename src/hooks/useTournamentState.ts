@@ -143,7 +143,8 @@ export function useTournamentState() {
       onTournamentState: (state) => {
         setTournamentState(state);
         // 再接続時: tournament:state が来た = このトーナメントに参加中
-        if (state.tournamentId) {
+        // ただし myTableId がない（eliminated等）場合はセットしない
+        if (state.tournamentId && state.myTableId) {
           setRegisteredTournamentId(state.tournamentId);
         }
       },
