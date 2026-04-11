@@ -420,7 +420,8 @@ describe('TournamentInstance', () => {
       expect(tournament.getPlayer('player_3')?.finishPosition).toBe(3);
     });
 
-    it('バスト通知が個人・全体に送信される', () => {
+    it('バスト通知が個人・全体に送信される（レイト登録中はposition=null）', () => {
+      // registrationLevels: 2 (デフォルト) → level 1 なのでレイト登録中
       const tournament = new TournamentInstance(io, createTestConfig());
       const { sockets } = startAndEnterNPlayers(tournament, 3);
 
@@ -430,11 +431,11 @@ describe('TournamentInstance', () => {
         { odId: 'player_1', seatIndex: 1, chips: 2000 },
       ]);
 
-      // 個人通知 (tournament:eliminated)
+      // 個人通知 (tournament:eliminated) — レイト登録中はposition=null
       expect(sockets[2].emit).toHaveBeenCalledWith(
         'tournament:eliminated',
         expect.objectContaining({
-          position: 3,
+          position: null,
           totalPlayers: 3,
         })
       );
@@ -445,6 +446,98 @@ describe('TournamentInstance', () => {
         (args: unknown[]) => args[0] === 'tournament:player_eliminated'
       );
       expect(eliminatedCalls.length).toBeGreaterThan(0);
+
+      // 全体通知もposition=null
+      const eliminatedData = eliminatedCalls[0][1] as { position: number | null };
+      expect(eliminatedData.position).toBeNull();
+    });
+
+    it('レイト登録締切後のバスト通知はpositionが数値で送信される', () => {
+      // registrationLevels: 1 → level 1 で登録可、level 2 以降は締切
+      const tournament = new TournamentInstance(io, createTestConfig({ registrationLevels: 1 }));
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
+
+      // 5分経過 → level 2 に進む（registrationLevels: 1 を超過）
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      // 個人通知: 締切後なのでposition=3（数値）
+      expect(sockets[2].emit).toHaveBeenCalledWith(
+        'tournament:eliminated',
+        expect.objectContaining({
+          position: 3,
+          totalPlayers: 3,
+        })
+      );
+
+      // 全体通知も数値
+      const roomEmit = (io.to as ReturnType<typeof vi.fn>).mock.results[0]?.value?.emit;
+      const eliminatedCalls = roomEmit.mock.calls.filter(
+        (args: unknown[]) => args[0] === 'tournament:player_eliminated'
+      );
+      expect(eliminatedCalls.length).toBeGreaterThan(0);
+      const eliminatedData = eliminatedCalls[0][1] as { position: number | null };
+      expect(eliminatedData.position).toBe(3);
+    });
+
+    it('レイト登録中の内部finishPositionは正しく保持される', () => {
+      // レイト登録中でも内部順位は計算・保持される（トーナメント完了時に使うため）
+      const tournament = new TournamentInstance(io, createTestConfig());
+      startAndEnterNPlayers(tournament, 3);
+
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      // 通知ではnullだが、内部のfinishPositionは正しい値を保持
+      expect(tournament.getPlayer('player_2')?.finishPosition).toBe(3);
+    });
+
+    it('レイト登録境界: 締切レベルちょうどではまだ登録中', () => {
+      // registrationLevels: 2 → level 2 まで登録可能
+      const tournament = new TournamentInstance(io, createTestConfig({ registrationLevels: 2 }));
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
+
+      // 5分経過 → level 2（registrationLevels: 2 以内 → まだ登録中）
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      expect(sockets[2].emit).toHaveBeenCalledWith(
+        'tournament:eliminated',
+        expect.objectContaining({ position: null })
+      );
+    });
+
+    it('レイト登録境界: 締切レベルを1超えるとpositionが送信される', () => {
+      // registrationLevels: 2 → level 3 で締切後
+      const tournament = new TournamentInstance(io, createTestConfig({ registrationLevels: 2 }));
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
+
+      // 10分経過 → level 3（registrationLevels: 2 を超過）
+      vi.advanceTimersByTime(10 * 60 * 1000);
+
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      expect(sockets[2].emit).toHaveBeenCalledWith(
+        'tournament:eliminated',
+        expect.objectContaining({ position: 3 })
+      );
     });
 
     it('onHandSettled でプレイヤーチップが同期される', () => {
@@ -1276,6 +1369,107 @@ describe('TournamentInstance', () => {
       expect(info.registeredPlayers).toBe(3);
       expect(info.maxPlayers).toBe(18);
       expect(info.prizePool).toBe(300);
+    });
+  });
+
+  // ============================================
+  // リエントリー
+  // ============================================
+
+  describe('リエントリー', () => {
+    function createReentryTournament(overrides?: Partial<TournamentConfig>) {
+      return new TournamentInstance(io, createTestConfig({
+        allowReentry: true,
+        maxReentries: 1,
+        reentryDeadlineLevel: 3,
+        ...overrides,
+      }));
+    }
+
+    it('canReenter: eliminatedプレイヤーがリエントリー可能', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+
+      expect(tournament.getPlayer(odIds[0])?.status).toBe('eliminated');
+      expect(tournament.canReenter(odIds[0])).toBe(true);
+    });
+
+    it('canReenter: リエントリー上限に達したら不可', () => {
+      const tournament = createReentryTournament({ maxReentries: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // 1回目のバスト → リエントリー
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(true);
+      const socket = createMockSocket();
+      const result = tournament.enterPlayer(odIds[0], 'Player 0', socket);
+      expect(result.success).toBe(true);
+      expect(tournament.getPlayer(odIds[0])?.reentryCount).toBe(1);
+
+      // 2回目のバスト → リエントリー不可
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('canReenter: allowReentry=false なら不可', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        allowReentry: false,
+      }));
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('canReenter: reentryDeadlineLevel を超えたら不可', () => {
+      const tournament = createReentryTournament({ reentryDeadlineLevel: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // レベル2に進める
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('canReenter: playingプレイヤーは不可', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      expect(tournament.getPlayer(odIds[0])?.status).toBe('playing');
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('enterPlayer: eliminatedプレイヤーがリエントリーでチップ復活・テーブル着席', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+
+      const socket = createMockSocket();
+      const result = tournament.enterPlayer(odIds[0], 'Player 0', socket);
+      expect(result.success).toBe(true);
+
+      const player = tournament.getPlayer(odIds[0])!;
+      expect(player.status).toBe('playing');
+      expect(player.chips).toBe(1500); // startingChips
+      expect(player.reentryCount).toBe(1);
+      expect(player.tableId).not.toBeNull();
+    });
+
+    it('enterPlayer: リエントリー上限に達したプレイヤーは拒否', () => {
+      const tournament = createReentryTournament({ maxReentries: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // 1回目: バスト → リエントリー成功
+      simulateBust(tournament, odIds[0], 100);
+      tournament.enterPlayer(odIds[0], 'Player 0', createMockSocket());
+
+      // 2回目: バスト → リエントリー拒否
+      simulateBust(tournament, odIds[0], 100);
+      const result = tournament.enterPlayer(odIds[0], 'Player 0', createMockSocket());
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('上限');
     });
   });
 });

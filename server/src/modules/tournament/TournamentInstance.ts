@@ -654,9 +654,9 @@ export class TournamentInstance {
       // 賞金チェック（既に計算済みの this.prizes を参照）
       const prize = this.getPrizeForPosition(player.finishPosition);
 
-      // 個人通知
+      // 個人通知（レイト登録中は順位未確定のためnull）
       bust.socket?.emit('tournament:eliminated', {
-        position: player.finishPosition,
+        position: this.isRegistrationOpen() ? null : player.finishPosition,
         totalPlayers: this.getTotalEntries(),
         prizeAmount: prize,
       });
@@ -669,7 +669,7 @@ export class TournamentInstance {
         odId: bust.odId,
         odName: player.odName,
         displayName: eliminatedDisplayName,
-        position: player.finishPosition,
+        position: this.isRegistrationOpen() ? null : player.finishPosition,
         playersRemaining: remaining,
       });
 

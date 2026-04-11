@@ -118,8 +118,13 @@ export function registerTournamentHandlers(
         }
         player = tournament.getPlayer(odId)!;
       } else {
-        // リエントリーしていない eliminated → 状態だけ送信
+        // リエントリーしていない eliminated → ソケット更新のみ（ルーム参加しない）
         player.socket = socket;
+        // eliminated かつリエントリー不可の場合はエラーを返す
+        if (!tournament.canReenter(odId)) {
+          socket.emit('tournament:error', { message: 'リエントリー上限に達しています' });
+          return;
+        }
         socket.join(`tournament:${data.tournamentId}`);
       }
     } else {
