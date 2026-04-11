@@ -333,11 +333,16 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         return reply.status(400).send({ error: 'トーナメントの登録受付は終了しています' });
       }
 
-      // 既に登録済みならスキップ
+      // 既に登録済みの場合
       const existing = await prisma.tournamentRegistration.findUnique({
         where: { tournamentId_userId: { tournamentId, userId } },
       });
       if (existing) {
+        // eliminated 状態ならリエントリーAPIを使うべき
+        const player = tournament.getPlayer(userId);
+        if (player?.status === 'eliminated') {
+          return reply.status(400).send({ error: 'リエントリーから再参加してください' });
+        }
         return { success: true, tournamentId };
       }
 
@@ -391,8 +396,19 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
 
       const buyIn = tournament.config.buyIn;
 
+      const maxReentries = tournament.config.maxReentries;
+
       try {
         await prisma.$transaction(async (tx) => {
+          // DBの reentryCount で上限チェック（メモリとの不整合を防止）
+          const reg = await tx.tournamentRegistration.findUnique({
+            where: { tournamentId_userId: { tournamentId, userId } },
+            select: { reentryCount: true },
+          });
+          if (!reg || reg.reentryCount >= maxReentries) {
+            throw new Error('REENTRY_LIMIT_REACHED');
+          }
+
           const updated = await tx.bankroll.updateMany({
             where: { userId, balance: { gte: buyIn } },
             data: { balance: { decrement: buyIn } },
@@ -409,9 +425,12 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           });
         });
       } catch (err) {
-        const message = err instanceof Error && err.message === 'INSUFFICIENT_BALANCE'
+        const msg = err instanceof Error ? err.message : '';
+        const message = msg === 'INSUFFICIENT_BALANCE'
           ? '残高が不足しています'
-          : 'リエントリーに失敗しました';
+          : msg === 'REENTRY_LIMIT_REACHED'
+            ? 'リエントリー上限に達しています'
+            : 'リエントリーに失敗しました';
         return reply.status(400).send({ error: message });
       }
 
