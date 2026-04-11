@@ -1371,4 +1371,105 @@ describe('TournamentInstance', () => {
       expect(info.prizePool).toBe(300);
     });
   });
+
+  // ============================================
+  // リエントリー
+  // ============================================
+
+  describe('リエントリー', () => {
+    function createReentryTournament(overrides?: Partial<TournamentConfig>) {
+      return new TournamentInstance(io, createTestConfig({
+        allowReentry: true,
+        maxReentries: 1,
+        reentryDeadlineLevel: 3,
+        ...overrides,
+      }));
+    }
+
+    it('canReenter: eliminatedプレイヤーがリエントリー可能', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+
+      expect(tournament.getPlayer(odIds[0])?.status).toBe('eliminated');
+      expect(tournament.canReenter(odIds[0])).toBe(true);
+    });
+
+    it('canReenter: リエントリー上限に達したら不可', () => {
+      const tournament = createReentryTournament({ maxReentries: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // 1回目のバスト → リエントリー
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(true);
+      const socket = createMockSocket();
+      const result = tournament.enterPlayer(odIds[0], 'Player 0', socket);
+      expect(result.success).toBe(true);
+      expect(tournament.getPlayer(odIds[0])?.reentryCount).toBe(1);
+
+      // 2回目のバスト → リエントリー不可
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('canReenter: allowReentry=false なら不可', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        allowReentry: false,
+      }));
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('canReenter: reentryDeadlineLevel を超えたら不可', () => {
+      const tournament = createReentryTournament({ reentryDeadlineLevel: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // レベル2に進める
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('canReenter: playingプレイヤーは不可', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      expect(tournament.getPlayer(odIds[0])?.status).toBe('playing');
+      expect(tournament.canReenter(odIds[0])).toBe(false);
+    });
+
+    it('enterPlayer: eliminatedプレイヤーがリエントリーでチップ復活・テーブル着席', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+
+      const socket = createMockSocket();
+      const result = tournament.enterPlayer(odIds[0], 'Player 0', socket);
+      expect(result.success).toBe(true);
+
+      const player = tournament.getPlayer(odIds[0])!;
+      expect(player.status).toBe('playing');
+      expect(player.chips).toBe(1500); // startingChips
+      expect(player.reentryCount).toBe(1);
+      expect(player.tableId).not.toBeNull();
+    });
+
+    it('enterPlayer: リエントリー上限に達したプレイヤーは拒否', () => {
+      const tournament = createReentryTournament({ maxReentries: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // 1回目: バスト → リエントリー成功
+      simulateBust(tournament, odIds[0], 100);
+      tournament.enterPlayer(odIds[0], 'Player 0', createMockSocket());
+
+      // 2回目: バスト → リエントリー拒否
+      simulateBust(tournament, odIds[0], 100);
+      const result = tournament.enterPlayer(odIds[0], 'Player 0', createMockSocket());
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('上限');
+    });
+  });
 });
