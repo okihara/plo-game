@@ -37,6 +37,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     isListLoading,
     registeredTournamentId,
     canReenterTournamentId,
+    myEliminatedTournamentId,
     myFinishedTournamentIds,
     register,
     reenter,
@@ -128,6 +129,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                 isReentering={reentering === t.id}
                 isLoggedIn={!!user}
                 hasParticipated={myFinishedTournamentIds.has(t.id)}
+                isEliminated={myEliminatedTournamentId === t.id}
                 onRegister={() => handleRegister(t.id)}
                 onReenter={() => handleReenter(t.id)}
                 onEnter={() => onJoinTournament(t.id)}
@@ -150,6 +152,7 @@ function TournamentCard({
   isReentering,
   isLoggedIn,
   hasParticipated,
+  isEliminated,
   onRegister,
   onReenter,
   onEnter,
@@ -163,6 +166,7 @@ function TournamentCard({
   isReentering: boolean;
   isLoggedIn: boolean;
   hasParticipated: boolean;
+  isEliminated: boolean;
   onRegister: () => void;
   onReenter: () => void;
   onEnter: () => void;
@@ -343,6 +347,14 @@ function TournamentCard({
             ) : (
               <>参加登録 ({t.buyIn.toLocaleString()} chips)</>
             )}
+          </button>
+        ) : isEliminated && !t.isRegistrationOpen ? (
+          <button
+            type="button"
+            onClick={onViewMyResult}
+            className="w-full py-[2.5cqw] bg-cream-900 hover:bg-cream-800 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+          >
+            自分の結果を見る
           </button>
         ) : (
           <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">

@@ -69,12 +69,14 @@ export function useTournamentState() {
         tournaments?: TournamentLobbyInfo[];
         myTournamentId?: string | null;
         canReenterTournamentId?: string | null;
+        myEliminatedTournamentId?: string | null;
         myFinishedTournamentIds?: string[];
       };
       setTournaments(data.tournaments ?? []);
       // DB参加記録に基づいて参加状態を更新
       setRegisteredTournamentId(data.myTournamentId ?? null);
       setCanReenterTournamentId(data.canReenterTournamentId ?? null);
+      setMyEliminatedTournamentId(data.myEliminatedTournamentId ?? null);
       setMyFinishedTournamentIds(new Set(data.myFinishedTournamentIds ?? []));
     } catch {
       if (isFirst) setTournaments([]);
@@ -104,6 +106,7 @@ export function useTournamentState() {
   }, []);
 
   const [canReenterTournamentId, setCanReenterTournamentId] = useState<string | null>(null);
+  const [myEliminatedTournamentId, setMyEliminatedTournamentId] = useState<string | null>(null);
   const [myFinishedTournamentIds, setMyFinishedTournamentIds] = useState<Set<string>>(new Set());
 
   const reenter = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
@@ -224,6 +227,7 @@ export function useTournamentState() {
     // Registration
     registeredTournamentId,
     canReenterTournamentId,
+    myEliminatedTournamentId,
     myFinishedTournamentIds,
     register,
     reenter,

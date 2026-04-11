@@ -7,7 +7,7 @@ const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 interface MyResultData {
   tournamentName: string;
-  position: number;
+  position: number | null;
   totalPlayers: number;
   prizeAmount: number;
   playerName?: string;
@@ -75,6 +75,33 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
     return (
       <div className="flex items-center justify-center h-full w-full min-h-0 light-bg">
         <Loader2 className="w-[8cqw] h-[8cqw] animate-spin text-cream-700" />
+      </div>
+    );
+  }
+
+  // レイト登録中は順位未確定 → プレイスカードではなく「集計中」表示
+  if (result.position === null) {
+    return (
+      <div className="relative h-full w-full min-h-0 light-bg flex flex-col items-center justify-center px-[6cqw]">
+        <div className="bg-white rounded-[2cqw] shadow-[0_4px_24px_rgba(0,0,0,0.12)] w-full max-w-[88cqw] px-[6cqw] py-[10cqw] text-center">
+          <div className="text-[6cqw] mb-[3cqw]">⏳</div>
+          <div className="text-cream-900 font-bold text-[4.5cqw] mb-[2cqw]">集計中</div>
+          <div className="text-cream-700 text-[3.2cqw] leading-relaxed">
+            レイト登録締切後に順位が確定します
+          </div>
+          {result.tournamentName && (
+            <div className="text-cream-700 text-[3cqw] mt-[4cqw] border-t border-cream-300 pt-[3cqw]">
+              {result.tournamentName}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onBack}
+          className="w-full max-w-[88cqw] mt-[4cqw] py-[3cqw] bg-forest hover:bg-forest-light text-white rounded-[2cqw] font-bold text-[3.5cqw] transition-colors shadow-[0_4px_20px_rgba(45,90,61,0.3)]"
+        >
+          トーナメント一覧に戻る
+        </button>
       </div>
     );
   }
