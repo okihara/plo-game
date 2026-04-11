@@ -77,6 +77,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       // オプショナル認証: ログイン済みならDB参加記録を返す
       let myTournamentId: string | null = null;
       let canReenterTournamentId: string | null = null;
+      let myEliminatedTournamentId: string | null = null;
       try {
         await request.jwtVerify();
         const { userId } = request.user as { userId: string };
@@ -97,6 +98,9 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             } else if (t?.canReenter(userId)) {
               // eliminated かつリエントリー可能
               canReenterTournamentId = reg.tournamentId;
+            } else {
+              // eliminated かつリエントリー不可（締切後）
+              myEliminatedTournamentId = reg.tournamentId;
             }
           }
         }
@@ -121,7 +125,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         // 未認証
       }
 
-      return { tournaments, myTournamentId, canReenterTournamentId, myFinishedTournamentIds };
+      return { tournaments, myTournamentId, canReenterTournamentId, myEliminatedTournamentId, myFinishedTournamentIds };
     });
 
     // トーナメント詳細（公開）
@@ -202,7 +206,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           const prize = memTournament.getPrizeForPosition(player.finishPosition);
           return {
             tournamentName: memTournament.config.name,
-            position: player.finishPosition,
+            position: memTournament.isRegistrationOpen() ? null : player.finishPosition,
             totalPlayers: memTournament.getTotalEntries(),
             prizeAmount: prize,
             playerName: player.displayName ?? player.odName,

@@ -81,7 +81,7 @@ export interface TournamentResult {
 // --- Elimination Info (sent to the eliminated player) ---
 
 export interface TournamentEliminationInfo {
-  position: number;
+  position: number | null;   // レイト登録中はnull（順位未確定）
   totalPlayers: number;
   prizeAmount: number;
 }
@@ -92,7 +92,7 @@ export interface TournamentPlayerEliminatedData {
   odId: string;
   odName: string;
   displayName: string | null;
-  position: number;
+  position: number | null;   // レイト登録中はnull
   playersRemaining: number;
 }
 
