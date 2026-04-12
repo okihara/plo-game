@@ -48,6 +48,18 @@ npm run dev
 npm run dev:server
 ```
 
+### 本番DBの参照・集計（接続URLを会話に載せない）
+
+PostgreSQL の接続文字列（`DATABASE_URL`、Railway の URL など）は **チャット・プロンプトに貼らない**。本番へ問い合わせるときは次のパターンに従う。
+
+1. **秘密の置き場**: 開発者のマシン上の `server/.env` にだけ本番用 URL を置く（リポジトリにコミットしない）。
+2. **環境変数名**: 既存スクリプトと同じ **`DATABASE_PROD_PUBLIC_URL`** を使う。アプリの `DATABASE_URL` とは別名にして、本番専用であることを明示する。
+3. **実装**: `server/scripts/<名前>.ts` を用意し、先頭で `dotenv` により `server/.env` を読み込む（`join(__dirname, '..', '.env')` など）。`process.argv` に `--prod` があるときだけ `PrismaClient` の `datasources.db.url` を `process.env.DATABASE_PROD_PUBLIC_URL` に差し替える。ローカル Docker の DB は `--prod` なしで既定の `DATABASE_URL` を使う。
+4. **実行**: エージェントはターミナルで `cd server && npx tsx scripts/<名前>.ts --prod` を実行する（リモート DB にはネットワーク権限が必要なことがある）。**接続文字列をコマンドライン引数や `echo` で出力しない。**
+5. **参考**: `server/scripts/count-low-bank-nonbot.ts`、`server/scripts/bot-icon-spread.ts`
+
+新規の本番集計・メンテ作業は、この形でスクリプト化してから実行すると、URL を LLM に渡さずに済む。
+
 ## Tech Stack
 
 ### フロントエンド
