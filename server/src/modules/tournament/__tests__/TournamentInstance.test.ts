@@ -1472,4 +1472,95 @@ describe('TournamentInstance', () => {
       expect(result.error).toContain('上限');
     });
   });
+
+  // ============================================
+  // チップ総量の保存則
+  // ============================================
+
+  describe('チップ総量の保存則', () => {
+    it('優勝者のチップが参加人数×スターティングチップと一致する', () => {
+      const startingChips = 1500;
+      const numPlayers = 6;
+      const tournament = new TournamentInstance(io, createTestConfig({
+        startingChips,
+        maxPlayers: 18,
+      }));
+
+      const { odIds } = startAndEnterNPlayers(tournament, numPlayers);
+      const totalChips = numPlayers * startingChips; // 9000
+
+      // プレイヤーを1人ずつ脱落させる（player_5 → player_1 の順）
+      // 脱落者のチップは勝者 player_0 に集まる
+      let winnerChips = startingChips;
+      for (let i = numPlayers - 1; i >= 1; i--) {
+        const loserChips = startingChips; // 各プレイヤーの初期チップ
+        simulateBust(tournament, odIds[i], loserChips);
+        winnerChips += loserChips;
+
+        // 残りプレイヤーのチップ配分を構築
+        const remainingSeatChips = [];
+        for (let j = 0; j < i; j++) {
+          if (j === 0) {
+            remainingSeatChips.push({ odId: odIds[j], seatIndex: j, chips: winnerChips });
+          } else {
+            remainingSeatChips.push({ odId: odIds[j], seatIndex: j, chips: startingChips });
+          }
+        }
+        simulateHandSettled(tournament, remainingSeatChips);
+      }
+
+      // 検証: トーナメントが完了していること
+      expect(tournament.getStatus()).toBe('completed');
+
+      // 検証: 優勝者のチップが参加人数×スターティングチップと一致
+      const winner = tournament.getPlayer(odIds[0]);
+      expect(winner).toBeDefined();
+      expect(winner!.finishPosition).toBe(1);
+      expect(winner!.chips).toBe(totalChips);
+    });
+
+    it('リエントリー込みでも優勝者のチップが総エントリー数×スターティングチップと一致する', () => {
+      const startingChips = 1500;
+      const tournament = new TournamentInstance(io, createTestConfig({
+        startingChips,
+        maxPlayers: 18,
+        allowReentry: true,
+        maxReentries: 2,
+        reentryDeadlineLevel: 4,
+      }));
+
+      // 3人参加
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // player_2 がバスト → リエントリー（合計エントリー4回分）
+      simulateBust(tournament, odIds[2], startingChips);
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: startingChips * 2 },
+        { odId: odIds[1], seatIndex: 1, chips: startingChips },
+      ]);
+      tournament.enterPlayer(odIds[2], 'Player 2', createMockSocket());
+
+      const totalEntries = tournament.getTotalEntries(); // 4
+      const totalChips = totalEntries * startingChips;   // 6000
+
+      // player_2 再びバスト
+      simulateBust(tournament, odIds[2], startingChips);
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: startingChips * 3 },
+        { odId: odIds[1], seatIndex: 1, chips: startingChips },
+      ]);
+
+      // player_1 バスト → player_0 が優勝
+      simulateBust(tournament, odIds[1], startingChips);
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: totalChips },
+      ]);
+
+      expect(tournament.getStatus()).toBe('completed');
+
+      const winner = tournament.getPlayer(odIds[0]);
+      expect(winner!.finishPosition).toBe(1);
+      expect(winner!.chips).toBe(totalChips);
+    });
+  });
 });
