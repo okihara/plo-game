@@ -19,6 +19,7 @@ export interface HandDetailPlayer {
   seatPosition: number;
   holeCards: string[];
   finalHand: string | null;
+  startChips: number;
   profit: number;
   isCurrentUser: boolean;
 }

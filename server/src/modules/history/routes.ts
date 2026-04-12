@@ -76,23 +76,120 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // ユーザーが参加したトーナメント一覧（プルダウン用）
+  fastify.get('/tournaments', async (request: FastifyRequest) => {
+    const { userId } = request.user as { userId: string };
+
+    // ユーザーのハンド履歴から重複なしの tournamentId を取得
+    const rows = await prisma.handHistory.findMany({
+      where: {
+        NOT: { tournamentId: null },
+        players: { some: { userId } },
+      },
+      distinct: ['tournamentId'],
+      select: { tournamentId: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const tournamentIds = rows
+      .map(r => r.tournamentId)
+      .filter((id): id is string => id !== null);
+
+    if (tournamentIds.length === 0) return { tournaments: [] };
+
+    // Tournament テーブルから名前等を取得
+    const tournaments = await prisma.tournament.findMany({
+      where: { id: { in: tournamentIds } },
+      select: { id: true, name: true, startedAt: true, completedAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return { tournaments };
+  });
+
+  // トーナメント全ハンド履歴エクスポート
+  fastify.get('/tournaments/:tournamentId/export', async (request: FastifyRequest, reply) => {
+    const { userId } = request.user as { userId: string };
+    const { tournamentId } = request.params as { tournamentId: string };
+
+    const hands = await prisma.handHistory.findMany({
+      where: {
+        tournamentId,
+        players: { some: { userId } },
+      },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        players: {
+          select: {
+            userId: true,
+            username: true,
+            seatPosition: true,
+            holeCards: true,
+            finalHand: true,
+            startChips: true,
+            profit: true,
+            user: {
+              select: { username: true, displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (hands.length === 0) {
+      return reply.code(404).send({ error: 'No hands found' });
+    }
+
+    const formatted = hands.map(hand => ({
+      id: hand.id,
+      handNumber: hand.handNumber,
+      blinds: hand.blinds,
+      communityCards: hand.communityCards,
+      potSize: hand.potSize,
+      rakeAmount: hand.rakeAmount,
+      winners: hand.winners,
+      actions: hand.actions,
+      dealerPosition: hand.dealerPosition,
+      createdAt: hand.createdAt,
+      players: hand.players.map(p => {
+        const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
+        return {
+          userId: p.userId,
+          username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
+          avatarUrl: p.user?.avatarUrl ?? null,
+          seatPosition: p.seatPosition,
+          holeCards: p.holeCards,
+          finalHand: p.finalHand,
+          startChips: p.startChips,
+          profit: p.profit,
+          isCurrentUser: p.userId === userId,
+        };
+      }),
+    }));
+
+    return { hands: formatted };
+  });
+
   // ハンド一覧取得（ページネーション付き）
   fastify.get('/', async (request: FastifyRequest) => {
     const { userId } = request.user as { userId: string };
-    const { limit = 20, offset = 0, gameType } = request.query as {
+    const { limit = 20, offset = 0, gameType, tournamentId } = request.query as {
       limit?: number;
       offset?: number;
       gameType?: 'cash' | 'tournament';
+      tournamentId?: string;
     };
 
     const take = Math.min(Number(limit), 50);
     const skip = Number(offset);
 
-    const tournamentFilter = gameType === 'cash'
-      ? { tournamentId: null }
-      : gameType === 'tournament'
-        ? { NOT: { tournamentId: null } }
-        : {};
+    const tournamentFilter = tournamentId
+      ? { tournamentId }
+      : gameType === 'cash'
+        ? { tournamentId: null }
+        : gameType === 'tournament'
+          ? { NOT: { tournamentId: null } }
+          : {};
 
     const [playerHands, total] = await Promise.all([
       prisma.handHistoryPlayer.findMany({

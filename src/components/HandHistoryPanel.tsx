@@ -5,6 +5,7 @@ import type { HandDetail, HandDetailPlayer } from './HandDetailDialog';
 import { evaluateCurrentHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName, parseBB } from './HandHistoryUtils';
+import { toPokerStarsText } from '../utils/pokerStarsFormat';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 const PAGE_SIZE = 20;
@@ -22,6 +23,13 @@ interface HandSummary {
   dealerPosition: number;
   createdAt: string;
   players: HandDetailPlayer[];
+}
+
+interface TournamentOption {
+  id: string;
+  name: string;
+  startedAt: string | null;
+  completedAt: string | null;
 }
 
 
@@ -108,22 +116,82 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
   const [offset, setOffset] = useState(0);
   const [gameType, setGameType] = useState<GameType>('cash');
   const [displayUnit, setDisplayUnit] = useState<DisplayUnit>('chips');
+  const [tournaments, setTournaments] = useState<TournamentOption[]>([]);
+  const [selectedTournamentId, setSelectedTournamentId] = useState<string>('');
 
   const switchTab = (type: GameType) => {
     if (type === gameType) return;
     setGameType(type);
+    setSelectedTournamentId('');
     setHands([]);
     setTotal(0);
     setOffset(0);
   };
 
+  const [exporting, setExporting] = useState(false);
+
+  const selectTournament = (tournamentId: string) => {
+    setSelectedTournamentId(tournamentId);
+    setHands([]);
+    setTotal(0);
+    setOffset(0);
+  };
+
+  const exportTournamentHands = async () => {
+    if (!selectedTournamentId) return;
+    setExporting(true);
+    try {
+      const res = await fetch(
+        `${API_BASE}/api/history/tournaments/${selectedTournamentId}/export`,
+        { credentials: 'include' }
+      );
+      if (!res.ok) return;
+      const data = await res.json();
+      const text = (data.hands as HandDetail[]).map(h => toPokerStarsText(h)).join('\n\n\n');
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const tournament = tournaments.find(t => t.id === selectedTournamentId);
+      a.href = url;
+      a.download = `${tournament?.name ?? 'tournament'}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Failed to export:', err);
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  // トーナメントタブ選択時にトーナメント一覧を取得
+  useEffect(() => {
+    if (!user || gameType !== 'tournament') return;
+    (async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/history/tournaments`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        setTournaments(data.tournaments);
+      } catch (err) {
+        console.error('Failed to fetch tournaments:', err);
+      }
+    })();
+  }, [user, gameType]);
+
   const fetchHands = async (offsetVal: number, append = false) => {
     if (!append) setLoading(true);
     else setLoadingMore(true);
 
+    const params = new URLSearchParams({
+      limit: String(PAGE_SIZE),
+      offset: String(offsetVal),
+      gameType,
+    });
+    if (selectedTournamentId) params.set('tournamentId', selectedTournamentId);
+
     try {
       const res = await fetch(
-        `${API_BASE}/api/history?limit=${PAGE_SIZE}&offset=${offsetVal}&gameType=${gameType}`,
+        `${API_BASE}/api/history?${params}`,
         { credentials: 'include' }
       );
       if (!res.ok) return;
@@ -158,7 +226,7 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
   useEffect(() => {
     if (user) fetchHands(0);
     else setLoading(false);
-  }, [user, gameType]);
+  }, [user, gameType, selectedTournamentId]);
 
   if (!user) {
     return (
@@ -216,6 +284,30 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
               </button>
             ))}
           </div>
+          {gameType === 'tournament' && tournaments.length > 0 && (
+            <div className="px-[4cqw] py-[2cqw] border-b border-cream-300 flex items-center gap-[2cqw]">
+              <select
+                value={selectedTournamentId}
+                onChange={e => selectTournament(e.target.value)}
+                className="flex-1 min-w-0 bg-white border border-cream-300 rounded-[2cqw] px-[3cqw] py-[2cqw] text-[3cqw] text-cream-900 appearance-none"
+                style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'12\' height=\'12\' viewBox=\'0 0 12 12\'%3E%3Cpath fill=\'%23666\' d=\'M6 8L1 3h10z\'/%3E%3C/svg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center' }}
+              >
+                <option value="">すべてのトーナメント</option>
+                {tournaments.map(t => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+              {selectedTournamentId && (
+                <button
+                  onClick={exportTournamentHands}
+                  disabled={exporting}
+                  className="shrink-0 px-[3cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] text-[2.8cqw] font-semibold transition-colors hover:bg-forest/90 active:bg-forest/80 disabled:opacity-50"
+                >
+                  {exporting ? '...' : 'Export'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {loading ? (

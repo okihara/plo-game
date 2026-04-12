@@ -53,7 +53,7 @@ export function toPokerStarsText(hand: HandDetail): string {
   lines.push(`Table 'PLO Game' 6-max Seat #${dealerPosition + 1} is the button`);
 
   for (const p of sortedPlayers) {
-    lines.push(`Seat ${p.seatPosition + 1}: ${p.username}`);
+    lines.push(`Seat ${p.seatPosition + 1}: ${p.username} (${p.startChips} in chips)`);
   }
 
   // ブラインド投稿
