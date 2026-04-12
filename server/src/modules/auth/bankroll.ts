@@ -2,8 +2,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 
 const DAILY_BONUS = 1000;
-const LOGIN_BONUS_TARGET = 1000;
-const REFILL_TARGET_BALANCE = 5000;
+const LOGIN_BONUS_TARGET = 3000;
 const DEBUG_ADD_AMOUNT = 10000;
 
 // バイイン引き落とし（着席直前に呼ばれる）
@@ -190,7 +189,6 @@ export async function bankrollRoutes(fastify: FastifyInstance) {
       return { success: false, message: 'Bankroll not found' };
     }
 
-    // Only allow refill if balance is below login-bonus threshold
     if (bankroll.balance >= LOGIN_BONUS_TARGET) {
       return {
         success: false,
@@ -199,11 +197,11 @@ export async function bankrollRoutes(fastify: FastifyInstance) {
       };
     }
 
-    const refillAmount = REFILL_TARGET_BALANCE - bankroll.balance;
+    const refillAmount = LOGIN_BONUS_TARGET - bankroll.balance;
 
     const updated = await prisma.bankroll.update({
       where: { userId },
-      data: { balance: REFILL_TARGET_BALANCE },
+      data: { balance: LOGIN_BONUS_TARGET },
     });
 
     await prisma.transaction.create({
