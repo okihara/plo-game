@@ -459,6 +459,9 @@ export class TournamentInstance {
           this.finalizeBustedPlayers();
         }
       },
+      onPlayerFolded: (odId, seatIndex) => {
+        this.onPlayerFolded(odId, seatIndex);
+      },
     };
 
     const table = new TableInstance(this.io, blindsStr, false, {
@@ -743,6 +746,77 @@ export class TournamentInstance {
   // ============================================
   // Private: Table Balancing
   // ============================================
+
+  /**
+   * フォールド時のテーブルバランスチェック。
+   * フォールド済みプレイヤーはハンドに不参加なので、即座に移動できる。
+   * unseatForFastFold を使い、席情報はハンド終了まで表示用に残す。
+   */
+  private onPlayerFolded(odId: string, _seatIndex: number): void {
+    const player = this.players.get(odId);
+    if (!player || !player.tableId) return;
+
+    // テーブルが1つ以下ならバランス不要
+    if (this.tables.size <= 1) return;
+
+    const fromTableId = player.tableId;
+    const fromTable = this.tables.get(fromTableId);
+    if (!fromTable) return;
+
+    // 現在のテーブル人数情報を取得（getPlayerCount は leftForFastFold を除外済み）
+    const tableInfos = Array.from(this.tables.entries()).map(([tableId, table]) => ({
+      tableId,
+      playerCount: table.getPlayerCount(),
+    }));
+
+    // フォールドしたプレイヤーのテーブルが最も人数が多いか確認
+    const fromInfo = tableInfos.find(t => t.tableId === fromTableId);
+    if (!fromInfo) return;
+
+    const minTable = tableInfos.reduce((min, t) => t.playerCount < min.playerCount ? t : min);
+
+    // 差が2未満ならバランス不要
+    if (fromInfo.playerCount - minTable.playerCount < 2) return;
+
+    // 移動先が自分のテーブルなら不要
+    if (minTable.tableId === fromTableId) return;
+
+    const toTable = this.tables.get(minTable.tableId);
+    if (!toTable) return;
+
+    // unseatForFastFold でハンド中でも安全に離席（席情報は表示用に残る）
+    const unseatResult = fromTable.unseatForFastFold(odId);
+    if (!unseatResult) return;
+
+    // トラッキング更新
+    this.untrackPlayerFromTable(odId, fromTableId);
+
+    // 移動通知
+    player.socket?.emit('tournament:table_move', {
+      fromTableId,
+      toTableId: minTable.tableId,
+      reason: 'テーブルバランス調整',
+    });
+
+    // 新テーブルに着席
+    const seatIndex = this.seatPlayerAtTable(player, toTable, unseatResult.chips);
+
+    if (seatIndex !== null) {
+      player.socket?.emit('tournament:table_assigned', {
+        tableId: minTable.tableId,
+        tournamentId: this.id,
+      });
+
+      toTable.triggerMaybeStartHand();
+    } else {
+      // 着席失敗: 元テーブルに再着席（unseatForFastFold 済みなのでハンド後に処理される）
+      console.error(`[Tournament ${this.id}] Failed to move folded player ${odId} to ${minTable.tableId}`);
+      this.seatPlayerAtTable(player, fromTable, unseatResult.chips);
+      this.trackPlayerAtTable(odId, fromTableId);
+    }
+
+    console.log(`[Tournament ${this.id}] Moved folded player ${odId} from ${fromTableId} to ${minTable.tableId}`);
+  }
 
   private checkAndExecuteBalance(): void {
     const tableInfos = Array.from(this.tables.entries()).map(([tableId, table]) => ({

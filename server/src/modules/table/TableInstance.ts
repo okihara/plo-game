@@ -279,6 +279,16 @@ export class TableInstance {
       this.allInStreetCardCount = previousCardCount;
     }
 
+    // フォールド時のコールバック（ハンド継続中のみ）
+    // トーナメント: テーブルバランスをチェックし、フォールド済みプレイヤーを即移動
+    // leftForFastFold: leaveTable/unseatPlayer 経由の管理上フォールドは除外
+    if (action === 'fold' && !result.handComplete && this.lifecycleCallbacks.onPlayerFolded) {
+      const seat = this.playerManager.getSeat(seatIndex);
+      if (seat && !seat.leftForFastFold) {
+        this.lifecycleCallbacks.onPlayerFolded(odId, seatIndex);
+      }
+    }
+
     // Check if hand is complete
     if (result.handComplete) {
       const finalCardCount = this.gameState.communityCards.length;
