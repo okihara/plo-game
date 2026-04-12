@@ -459,6 +459,9 @@ export class TournamentInstance {
           this.finalizeBustedPlayers();
         }
       },
+      onPlayerFolded: (odId, seatIndex) => {
+        this.onPlayerFolded(odId, seatIndex);
+      },
     };
 
     const table = new TableInstance(this.io, blindsStr, false, {
@@ -743,6 +746,69 @@ export class TournamentInstance {
   // ============================================
   // Private: Table Balancing
   // ============================================
+
+  /**
+   * フォールド時のテーブルバランスチェック。
+   * フォールド済みプレイヤーはハンドに不参加なので、即座に移動できる。
+   * unseatForFastFold を使い、席情報はハンド終了まで表示用に残す。
+   */
+  private onPlayerFolded(odId: string, _seatIndex: number): void {
+    const player = this.players.get(odId);
+    if (!player || !player.tableId) return;
+
+    const fromTableId = player.tableId;
+    const fromTable = this.tables.get(fromTableId);
+    if (!fromTable) return;
+
+    // TableBalancer に移動判定を委譲
+    const tableInfos = Array.from(this.tables.entries()).map(([tableId, table]) => ({
+      tableId,
+      playerCount: table.getPlayerCount(),
+    }));
+
+    const toTableId = TableBalancer.shouldMoveFoldedPlayer(fromTableId, tableInfos);
+    if (!toTableId) return;
+
+    const toTable = this.tables.get(toTableId);
+    if (!toTable) return;
+
+    // unseatForFastFold でハンド中でも安全に離席（席情報は表示用に残る）
+    // keepInRoom: 元テーブルのルームに残し、ショーダウン等の演出を受信し続ける
+    // ハンド終了時に pendingRoomLeaves で自動的にルーム離脱される
+    const unseatResult = fromTable.unseatForFastFold(odId, { keepInRoom: true });
+    if (!unseatResult) return;
+
+    // トラッキング更新
+    this.untrackPlayerFromTable(odId, fromTableId);
+
+    // 移動通知
+    player.socket?.emit('tournament:table_move', {
+      fromTableId,
+      toTableId,
+      reason: 'テーブルバランス調整',
+    });
+
+    // 新テーブルに着席
+    const seatIndex = this.seatPlayerAtTable(player, toTable, unseatResult.chips);
+
+    if (seatIndex !== null) {
+      player.socket?.emit('tournament:table_assigned', {
+        tableId: toTableId,
+        tournamentId: this.id,
+      });
+
+      toTable.triggerMaybeStartHand();
+      console.log(`[Tournament ${this.id}] Moved folded player ${odId} from ${fromTableId} to ${toTableId}`);
+    } else {
+      // 着席失敗: 元テーブルに再着席を試みる。
+      // unseatForFastFold で元席は leftForFastFold マーク済みのため元の席番号には戻れず
+      // 別の空き席に座る。元席はハンド終了時に unseatPlayer で自動クリーンアップされる。
+      // トーナメントでは定員管理されているため着席失敗は実質発生しない。
+      console.error(`[Tournament ${this.id}] Failed to move folded player ${odId} to ${toTableId}`);
+      this.seatPlayerAtTable(player, fromTable, unseatResult.chips);
+      this.trackPlayerAtTable(odId, fromTableId);
+    }
+  }
 
   private checkAndExecuteBalance(): void {
     const tableInfos = Array.from(this.tables.entries()).map(([tableId, table]) => ({

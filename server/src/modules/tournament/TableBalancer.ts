@@ -50,6 +50,32 @@ export class TableBalancer {
    * @param getPlayerIds テーブルIDからプレイヤーodIdリストを取得する関数
    * @returns 実行すべき移動アクション（ハンド中のテーブルは移動元から除外）
    */
+  /**
+   * フォールド済みプレイヤーを即移動すべきか判定する。
+   * ハンド中でもフォールド済みなので安全に移動できる前提。
+   *
+   * @param fromTableId フォールドしたプレイヤーがいるテーブル
+   * @param tables 各テーブルのプレイヤー数（getPlayerCount: leftForFastFold 除外済み）
+   * @returns 移動先テーブルID（移動不要なら null）
+   */
+  static shouldMoveFoldedPlayer(
+    fromTableId: string,
+    tables: { tableId: string; playerCount: number }[],
+  ): string | null {
+    if (tables.length <= 1) return null;
+
+    const fromInfo = tables.find(t => t.tableId === fromTableId);
+    if (!fromInfo) return null;
+
+    const minTable = tables.reduce((min, t) => t.playerCount < min.playerCount ? t : min);
+
+    // 差が2未満 or 移動先が自テーブルならバランス不要
+    if (fromInfo.playerCount - minTable.playerCount < 2) return null;
+    if (minTable.tableId === fromTableId) return null;
+
+    return minTable.tableId;
+  }
+
   static checkBalance(
     tables: TablePlayerInfo[],
     getPlayerIds: (tableId: string) => string[],
