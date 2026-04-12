@@ -64,6 +64,8 @@ export class TableInstance {
 
   // ファストフォールド: 手番が来るまで保留するフォールド (seatIndex → odId)
   private pendingEarlyFolds: Map<number, string> = new Map();
+  // keepInRoom で離席したソケット（ハンド終了時にまとめてルーム離脱させる）
+  private pendingRoomLeaves: Socket[] = [];
 
   /** 観戦者（着席なし・socket.id → Socket） */
   private spectators: Map<string, Socket> = new Map();
@@ -214,7 +216,8 @@ export class TableInstance {
 
   // ファストフォールド用: フォールド済みプレイヤーを静かに離席させる
   // table:left は送信しない（table:change を代わりに送るため）
-  public unseatForFastFold(odId: string): { odId: string; chips: number; socket: Socket | null } | null {
+  // keepInRoom: true の場合、ソケットをルームに残す（トーナメント移動時に元テーブルの演出を受信し続けるため）
+  public unseatForFastFold(odId: string, options?: { keepInRoom?: boolean }): { odId: string; chips: number; socket: Socket | null } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
@@ -229,9 +232,13 @@ export class TableInstance {
 
     const socket = seat.socket ?? null;
 
-    // ソケットをルームから離脱
+    // ソケットをルームから離脱（keepInRoom 指定時はハンド終了まで遅延）
     if (socket) {
-      socket.leave(this.roomName);
+      if (options?.keepInRoom) {
+        this.pendingRoomLeaves.push(socket);
+      } else {
+        socket.leave(this.roomName);
+      }
     }
 
     // 席情報は残してFastFold移動済みマーク（ハンド終了まで表示用に保持）
@@ -277,6 +284,16 @@ export class TableInstance {
     // 新たにオールインしたプレイヤーがいれば、そのときのボード枚数を記録（最初の1回のみ）
     if (!hadAllInBefore && this.gameState.players.some(p => p.isAllIn)) {
       this.allInStreetCardCount = previousCardCount;
+    }
+
+    // フォールド時のコールバック（ハンド継続中のみ）
+    // トーナメント: テーブルバランスをチェックし、フォールド済みプレイヤーを即移動
+    // leftForFastFold: leaveTable/unseatPlayer 経由の管理上フォールドは除外
+    if (action === 'fold' && !result.handComplete && this.lifecycleCallbacks.onPlayerFolded) {
+      const seat = this.playerManager.getSeat(seatIndex);
+      if (seat && !seat.leftForFastFold) {
+        this.lifecycleCallbacks.onPlayerFolded(odId, seatIndex);
+      }
     }
 
     // Check if hand is complete
@@ -1099,6 +1116,12 @@ export class TableInstance {
     // ショーダウン時はカードを確認する時間を長めに取る
     const delay = wasShowdown ? TABLE_CONSTANTS.NEXT_HAND_SHOWDOWN_DELAY_MS : TABLE_CONSTANTS.NEXT_HAND_DELAY_MS;
     await new Promise(resolve => setTimeout(resolve, delay));
+
+    // ハンド中に keepInRoom で離席したソケットをまとめてルーム離脱
+    for (const socket of this.pendingRoomLeaves) {
+      socket.leave(this.roomName);
+    }
+    this.pendingRoomLeaves = [];
 
     // Remove busted players and players who left during hand
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {

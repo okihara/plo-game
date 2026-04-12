@@ -30,6 +30,12 @@ export interface TableLifecycleCallbacks {
    * - トーナメント: pendingBusts の一括順位確定・フェーズ遷移を実行
    */
   onBustsProcessed?: () => void;
+
+  /**
+   * プレイヤーがフォールドした時のコールバック（ハンド継続中のみ）
+   * - トーナメント: テーブルバランスをチェックし、フォールド済みプレイヤーを即移動
+   */
+  onPlayerFolded?: (odId: string, seatIndex: number) => void;
 }
 
 export interface SeatInfo {
