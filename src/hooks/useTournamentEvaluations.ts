@@ -19,6 +19,8 @@ export interface TournamentEvalEligibleMeta {
   reentries: number;
   handCount: number;
   latestEvaluationAt: string | null;
+  /** サーバー上で生成処理中（DB の PENDING）。ページを閉じても判別可能 */
+  evaluationPending?: boolean;
 }
 
 export function useTournamentEvaluations(enabled: boolean) {

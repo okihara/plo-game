@@ -211,6 +211,7 @@ enum TournamentStatus {
 }
 
 enum TournamentEvaluationStatus {
+  PENDING
   COMPLETED
   FAILED
 }

@@ -55,50 +55,63 @@ export function TournamentEvaluationPopup({
     };
   }, [open, tournamentId]);
 
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, onClose]);
+
   if (!open || typeof document === 'undefined') return null;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-[4cqw]">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
-        aria-label="閉じる"
-        onClick={onClose}
-      />
-      <div
-        className="relative w-full max-w-lg max-h-[85dvh] sm:max-h-[80vh] flex flex-col bg-white rounded-t-[3cqw] sm:rounded-[2.5cqw] shadow-xl border border-cream-300 overflow-hidden"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="tournament-eval-popup-title"
-      >
-        <div className="shrink-0 flex items-center justify-between gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-200 bg-cream-50">
-          <h2 id="tournament-eval-popup-title" className="text-[3.5cqw] font-bold text-cream-900 truncate pr-[2cqw]">
-            AIレビューβ — {title}
-          </h2>
-          <button
-            type="button"
-            onClick={onClose}
-            className="shrink-0 px-[3cqw] py-[1.5cqw] text-[3cqw] font-semibold text-cream-700 hover:text-cream-900 rounded-[1.5cqw] hover:bg-cream-200/80"
-          >
-            閉じる
-          </button>
-        </div>
-        <div className="flex-1 min-h-0 overflow-y-auto light-scrollbar px-[4cqw] py-[3cqw]">
-          {loading && (
-            <div className="flex justify-center py-[12cqw]">
-              <div className="w-[7cqw] h-[7cqw] border-[0.4cqw] border-cream-300 border-t-forest rounded-full animate-spin" />
-            </div>
-          )}
-          {error && !loading && <p className="text-red-700 text-[3cqw]">{error}</p>}
-          {!loading && !error && markdown && (
-            <div className="text-cream-900 text-[3cqw] whitespace-pre-wrap leading-relaxed">{markdown}</div>
-          )}
-          {!loading && !error && !markdown && (
-            <p className="text-cream-600 text-[3cqw]">表示できる内容がありません</p>
-          )}
-        </div>
+  const viewport = document.getElementById('plo-viewport');
+  if (!viewport) return null;
+
+  const shell = (
+    <div
+      className="absolute inset-0 z-[280] flex flex-col light-bg min-h-0 h-full"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tournament-eval-popup-title"
+    >
+      <div className="shrink-0 sticky top-0 bg-white border-b border-cream-300 px-[4cqw] py-[3cqw] z-10 shadow-sm">
+        <h2
+          id="tournament-eval-popup-title"
+          className="text-cream-900 font-bold text-[4cqw] tracking-tight leading-snug truncate"
+        >
+          AIレビューβ — {title}
+        </h2>
       </div>
-    </div>,
-    document.body
+
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain light-scrollbar px-[4cqw] py-[3cqw] pb-[4cqw]">
+        {loading && (
+          <div className="flex flex-col items-center justify-center py-[12cqw]">
+            <div className="w-[7cqw] h-[7cqw] border-[0.4cqw] border-cream-300 border-t-forest rounded-full animate-spin" />
+            <p className="text-cream-700 text-[3cqw] mt-[3cqw]">読み込み中…</p>
+          </div>
+        )}
+        {error && !loading && <p className="text-red-700 text-[3cqw] leading-relaxed">{error}</p>}
+        {!loading && !error && markdown && (
+          <div className="text-cream-900 text-[3cqw] whitespace-pre-wrap leading-relaxed">{markdown}</div>
+        )}
+        {!loading && !error && !markdown && (
+          <p className="text-cream-600 text-[3cqw]">表示できる内容がありません</p>
+        )}
+      </div>
+
+      <div className="shrink-0 border-t border-cream-300 bg-white px-[4cqw] pt-[1.8cqw] pb-[max(1.8cqw,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(139,126,106,0.08)]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="w-full py-[2cqw] rounded-[2cqw] bg-forest text-white text-[3.2cqw] font-bold shadow-sm active:scale-[0.99] transition-transform"
+        >
+          閉じる
+        </button>
+      </div>
+    </div>
   );
+
+  return createPortal(shell, viewport);
 }

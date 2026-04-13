@@ -107,8 +107,12 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ tournamentId }),
       });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
       if (!res.ok) {
+        if (res.status === 409 && data.code === 'EVAL_ALREADY_GENERATING') {
+          await refreshEvalMeta();
+          return;
+        }
         let msg = '生成に失敗しました';
         if (res.status === 429) msg = '本日の生成回数に達しました（日本時間で翌日に再試行できます）';
         else if (res.status === 503) msg = 'AIレビューβは現在利用できません';
@@ -194,7 +198,9 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                   onViewResults={() => onViewResults(t.id)}
                   evalEligibleMeta={evalMeta}
                   evalQuota={evalQuota}
-                  isEvalGenerating={generatingEvalTournamentId === t.id}
+                  isEvalGenerating={
+                    generatingEvalTournamentId === t.id || evalMeta?.evaluationPending === true
+                  }
                   evalErrorMessage={evalSubmitError?.tournamentId === t.id ? evalSubmitError.message : null}
                   onEvalGenerate={() => handleEvalGenerate(t.id)}
                   onEvalViewResult={() => setEvalViewPopup({ id: t.id, title: t.name })}
@@ -417,7 +423,7 @@ function TournamentCard({
                         disabled
                         className="w-full py-[2.2cqw] rounded-[2cqw] text-[2.8cqw] font-semibold bg-cream-100 text-cream-500"
                       >
-                        {!evalQuota?.llmConfigured ? 'AIレビューβは利用できません' : '本日の生成は済みです'}
+                        {!evalQuota?.llmConfigured ? 'AIレビューβは利用できません' : 'AIレビューβ(本日使用済)'}
                       </button>
                     )}
                   </>

@@ -1,9 +1,14 @@
+import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import { fetchTournamentHandsForUser } from '../history/tournamentHandsForUser.js';
 import { getJstDateString } from './jstDate.js';
 import { generateTournamentEvaluationMarkdown } from './callEvalLlm.js';
+import {
+  expireStalePendingEvaluationsForUser,
+  isEvaluationPendingFresh,
+} from './stalePendingEvaluations.js';
 
 export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
   fastify.addHook('preHandler', async (request, reply) => {
@@ -32,6 +37,8 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
 
   fastify.get('/eligible', async (request: FastifyRequest) => {
     const { userId } = request.user as { userId: string };
+
+    await expireStalePendingEvaluationsForUser(prisma, userId);
 
     const results = await prisma.tournamentResult.findMany({
       where: { userId },
@@ -82,6 +89,18 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
     });
     const latestEvalAt = new Map(latestEvals.map(e => [e.tournamentId, e.createdAt]));
 
+    const pendingRows = await prisma.tournamentUserEvaluation.findMany({
+      where: {
+        userId,
+        tournamentId: { in: tournamentIds },
+        status: 'PENDING',
+      },
+      select: { tournamentId: true, createdAt: true },
+    });
+    const pendingFreshByTournament = new Set(
+      pendingRows.filter(p => isEvaluationPendingFresh(p.createdAt)).map(p => p.tournamentId)
+    );
+
     const tournaments = completed
       .map(r => {
         const handCount = handCountByTournament.get(r.tournamentId) ?? 0;
@@ -96,6 +115,7 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
           reentries: r.reentries,
           handCount,
           latestEvaluationAt: latestEvalAt.get(r.tournamentId)?.toISOString() ?? null,
+          evaluationPending: pendingFreshByTournament.has(r.tournamentId),
         };
       })
       .filter((t): t is NonNullable<typeof t> => t !== null)
@@ -186,6 +206,40 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
       return reply.code(400).send({ error: 'No hand history for this tournament' });
     }
 
+    const pendingOutcome = await prisma.$transaction(
+      async tx => {
+        await expireStalePendingEvaluationsForUser(tx, userId);
+        const existingPending = await tx.tournamentUserEvaluation.findFirst({
+          where: { userId, tournamentId, status: 'PENDING' },
+          orderBy: { createdAt: 'desc' },
+          select: { id: true, createdAt: true },
+        });
+        if (existingPending && isEvaluationPendingFresh(existingPending.createdAt)) {
+          return { kind: 'conflict' as const };
+        }
+        const row = await tx.tournamentUserEvaluation.create({
+          data: {
+            userId,
+            tournamentId,
+            status: 'PENDING',
+            promptVersion: '2',
+          },
+        });
+        return { kind: 'created' as const, pendingRow: row };
+      },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
+    );
+
+    if (pendingOutcome.kind === 'conflict') {
+      return reply.code(409).send({
+        error: 'Evaluation is already being generated',
+        code: 'EVAL_ALREADY_GENERATING',
+        tournamentId,
+      });
+    }
+
+    const { pendingRow } = pendingOutcome;
+
     let markdown: string;
     let model: string;
     let promptVersion: string;
@@ -204,6 +258,13 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
     } catch (e) {
       const message = e instanceof Error ? e.message : 'LLM request failed';
       console.error('[tournamentEvaluation] LLM error:', message);
+      await prisma.tournamentUserEvaluation.update({
+        where: { id: pendingRow.id },
+        data: {
+          status: 'FAILED',
+          errorMessage: message.slice(0, 2000),
+        },
+      });
       return reply.code(502).send({ error: 'Failed to generate evaluation', detail: message });
     }
 
@@ -222,19 +283,26 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
         if (updated.count === 0) {
           throw new Error('QUOTA_RACE');
         }
-        await tx.tournamentUserEvaluation.create({
+        await tx.tournamentUserEvaluation.update({
+          where: { id: pendingRow.id },
           data: {
-            userId,
-            tournamentId,
             status: 'COMPLETED',
             content: { markdown },
             model,
             promptVersion,
+            errorMessage: null,
           },
         });
       });
     } catch (e) {
       if (e instanceof Error && e.message === 'QUOTA_RACE') {
+        await prisma.tournamentUserEvaluation.update({
+          where: { id: pendingRow.id },
+          data: {
+            status: 'FAILED',
+            errorMessage: 'Daily evaluation limit reached while saving',
+          },
+        });
         return reply.code(429).send({
           error: 'Daily evaluation limit reached',
           code: 'EVAL_DAILY_LIMIT',
@@ -242,6 +310,13 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
         });
       }
       console.error('[tournamentEvaluation] persist error:', e);
+      await prisma.tournamentUserEvaluation.update({
+        where: { id: pendingRow.id },
+        data: {
+          status: 'FAILED',
+          errorMessage: 'Failed to save evaluation',
+        },
+      });
       return reply.code(500).send({ error: 'Failed to save evaluation' });
     }
 
