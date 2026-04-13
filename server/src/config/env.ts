@@ -13,6 +13,9 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
   ADMIN_SECRET: z.string().optional(),
+  /** トーナメントAI評価（OpenAI Chat Completions）。未設定時は生成APIは503。 */
+  TOURNAMENT_EVAL_OPENAI_API_KEY: z.string().optional(),
+  TOURNAMENT_EVAL_MODEL: z.string().default('gpt-4o-mini'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -25,6 +25,7 @@ import { announcementRoutes } from './modules/announcement/routes.js';
 import { startRankingBadgeScheduler } from './modules/badges/rankingBadgeScheduler.js';
 import { ogpRoutes } from './modules/ogp/routes.js';
 import { tournamentRoutes } from './modules/tournament/routes.js';
+import { tournamentEvaluationRoutes } from './modules/tournamentEvaluation/routes.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -67,6 +68,7 @@ fastify.get('/health', async () => {
 await fastify.register(authRoutes, { prefix: '/api/auth' });
 await fastify.register(bankrollRoutes, { prefix: '/api/bankroll' });
 await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
+await fastify.register(tournamentEvaluationRoutes, { prefix: '/api/tournament-evaluations' });
 await fastify.register(publicHandHistoryRoutes, { prefix: '/api/hand' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
 await fastify.register(labelRoutes, { prefix: '/api/labels' });
