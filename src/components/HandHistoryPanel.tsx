@@ -32,26 +32,6 @@ interface TournamentOption {
   completedAt: string | null;
 }
 
-interface EvalQuota {
-  timezone: string;
-  jstDate: string;
-  canGenerateToday: boolean;
-  llmConfigured: boolean;
-}
-
-interface EligibleTournamentMeta {
-  id: string;
-  name: string;
-  completedAt: string | null;
-  buyIn: number;
-  position: number;
-  prize: number;
-  reentries: number;
-  handCount: number;
-  latestEvaluationAt: string | null;
-}
-
-
 interface HandHistoryPanelProps {
   onClose?: () => void;
 }
@@ -149,14 +129,6 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
 
   const [exporting, setExporting] = useState(false);
 
-  const [evalQuota, setEvalQuota] = useState<EvalQuota | null>(null);
-  const [evalEligible, setEvalEligible] = useState<EligibleTournamentMeta[]>([]);
-  const [evalMarkdown, setEvalMarkdown] = useState<string | null>(null);
-  const [evalLoadingMeta, setEvalLoadingMeta] = useState(false);
-  const [evalLoadingSaved, setEvalLoadingSaved] = useState(false);
-  const [evalGenerating, setEvalGenerating] = useState(false);
-  const [evalError, setEvalError] = useState<string | null>(null);
-
   const selectTournament = (tournamentId: string) => {
     setSelectedTournamentId(tournamentId);
     setHands([]);
@@ -204,85 +176,6 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
       }
     })();
   }, [user, gameType]);
-
-  useEffect(() => {
-    if (!user || gameType !== 'tournament') {
-      setEvalQuota(null);
-      setEvalEligible([]);
-      setEvalMarkdown(null);
-      setEvalError(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setEvalLoadingMeta(true);
-      setEvalError(null);
-      try {
-        const [qRes, eRes] = await Promise.all([
-          fetch(`${API_BASE}/api/tournament-evaluations/quota`, { credentials: 'include' }),
-          fetch(`${API_BASE}/api/tournament-evaluations/eligible`, { credentials: 'include' }),
-        ]);
-        if (cancelled) return;
-        if (qRes.ok) {
-          const q = (await qRes.json()) as EvalQuota;
-          setEvalQuota(q);
-        } else {
-          setEvalQuota(null);
-        }
-        if (eRes.ok) {
-          const e = (await eRes.json()) as { tournaments: EligibleTournamentMeta[] };
-          setEvalEligible(e.tournaments);
-        } else {
-          setEvalEligible([]);
-        }
-      } catch (err) {
-        console.error('Failed to fetch tournament evaluation meta:', err);
-        if (!cancelled) setEvalError('評価情報の取得に失敗しました');
-      } finally {
-        if (!cancelled) setEvalLoadingMeta(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, gameType]);
-
-  useEffect(() => {
-    if (!user || gameType !== 'tournament' || !selectedTournamentId) {
-      setEvalMarkdown(null);
-      return;
-    }
-    const meta = evalEligible.some(t => t.id === selectedTournamentId);
-    if (!meta) {
-      setEvalMarkdown(null);
-      return;
-    }
-    let cancelled = false;
-    (async () => {
-      setEvalLoadingSaved(true);
-      try {
-        const res = await fetch(
-          `${API_BASE}/api/tournament-evaluations/by-tournament/${encodeURIComponent(selectedTournamentId)}`,
-          { credentials: 'include' }
-        );
-        if (cancelled) return;
-        if (res.ok) {
-          const data = (await res.json()) as { content?: { markdown?: string } };
-          setEvalMarkdown(data.content?.markdown ?? null);
-        } else {
-          setEvalMarkdown(null);
-        }
-      } catch (err) {
-        console.error('Failed to load saved evaluation:', err);
-        if (!cancelled) setEvalMarkdown(null);
-      } finally {
-        if (!cancelled) setEvalLoadingSaved(false);
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [user, gameType, selectedTournamentId, evalEligible]);
 
   const fetchHands = async (offsetVal: number, append = false) => {
     if (!append) setLoading(true);
@@ -414,99 +307,6 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
               )}
             </div>
           )}
-          {gameType === 'tournament' &&
-            selectedTournamentId &&
-            evalEligible.some(t => t.id === selectedTournamentId) && (
-              <div className="px-[4cqw] py-[3cqw] border-b border-cream-300 bg-cream-50/90 space-y-[2cqw]">
-                <div className="flex items-center justify-between gap-[2cqw]">
-                  <h2 className="text-cream-900 font-bold text-[3.2cqw]">トーナメント評価（AI）</h2>
-                  <button
-                    type="button"
-                    disabled={
-                      evalGenerating ||
-                      evalLoadingMeta ||
-                      !evalQuota?.canGenerateToday ||
-                      !evalQuota?.llmConfigured
-                    }
-                    onClick={async () => {
-                      if (!selectedTournamentId) return;
-                      setEvalGenerating(true);
-                      setEvalError(null);
-                      try {
-                        const res = await fetch(`${API_BASE}/api/tournament-evaluations/generate`, {
-                          method: 'POST',
-                          credentials: 'include',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ tournamentId: selectedTournamentId }),
-                        });
-                        const data = (await res.json().catch(() => ({}))) as {
-                          content?: { markdown?: string };
-                          error?: string;
-                          code?: string;
-                        };
-                        if (!res.ok) {
-                          if (res.status === 429) {
-                            setEvalError('本日の生成回数に達しました（日本時間で翌日に再試行できます）');
-                          } else if (res.status === 503) {
-                            setEvalError('サーバーで評価用AIが設定されていません');
-                          } else {
-                            setEvalError(data.error ?? '生成に失敗しました');
-                          }
-                          return;
-                        }
-                        setEvalMarkdown(data.content?.markdown ?? null);
-                        const qRes = await fetch(`${API_BASE}/api/tournament-evaluations/quota`, {
-                          credentials: 'include',
-                        });
-                        if (qRes.ok) setEvalQuota((await qRes.json()) as EvalQuota);
-                        const eRes = await fetch(`${API_BASE}/api/tournament-evaluations/eligible`, {
-                          credentials: 'include',
-                        });
-                        if (eRes.ok) {
-                          const e = (await eRes.json()) as { tournaments: EligibleTournamentMeta[] };
-                          setEvalEligible(e.tournaments);
-                        }
-                      } catch (err) {
-                        console.error('generate evaluation:', err);
-                        setEvalError('生成リクエストに失敗しました');
-                      } finally {
-                        setEvalGenerating(false);
-                      }
-                    }}
-                    className="shrink-0 px-[3cqw] py-[1.8cqw] bg-forest text-white rounded-[2cqw] text-[2.6cqw] font-semibold disabled:opacity-45 disabled:pointer-events-none hover:bg-forest/90"
-                  >
-                    {evalGenerating ? '生成中…' : '今日の1回を使って生成'}
-                  </button>
-                </div>
-                {evalLoadingMeta && (
-                  <p className="text-cream-600 text-[2.5cqw]">読み込み中…</p>
-                )}
-                {!evalLoadingMeta && evalQuota && (
-                  <p className="text-cream-700 text-[2.5cqw] leading-relaxed">
-                    {evalQuota.canGenerateToday
-                      ? '日本時間の暦日ごとに1回だけ生成できます。未使用でも翌日に繰り越されません。'
-                      : `本日（JST ${evalQuota.jstDate}）の生成は済みです。明日また生成できます。`}
-                    {!evalQuota.llmConfigured && ' ※現在サーバー側でAIキーが未設定のため生成できません。'}
-                  </p>
-                )}
-                {evalError && <p className="text-red-700 text-[2.6cqw]">{evalError}</p>}
-                {evalLoadingSaved && !evalMarkdown && (
-                  <p className="text-cream-600 text-[2.5cqw]">保存済みの評価を読み込み中…</p>
-                )}
-                {evalMarkdown && (
-                  <div className="bg-white border border-cream-300 rounded-[2.5cqw] p-[3cqw] max-h-[55cqw] overflow-y-auto light-scrollbar">
-                    <div className="text-cream-900 text-[2.8cqw] whitespace-pre-wrap leading-relaxed">
-                      {evalMarkdown}
-                    </div>
-                  </div>
-                )}
-                {!evalLoadingSaved && !evalMarkdown && !evalGenerating && (
-                  <p className="text-cream-600 text-[2.5cqw]">
-                    まだこのトーナメントの評価がありません。上のボタンで生成できます。
-                  </p>
-                )}
-              </div>
-            )}
         </div>
 
         {loading ? (
