@@ -32,7 +32,6 @@ interface TournamentOption {
   completedAt: string | null;
 }
 
-
 interface HandHistoryPanelProps {
   onClose?: () => void;
 }

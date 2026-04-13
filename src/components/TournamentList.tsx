@@ -1,8 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useTournamentState, TournamentLobbyInfo } from '../hooks/useTournamentState';
+import {
+  useTournamentEvaluations,
+  type TournamentEvalEligibleMeta,
+  type TournamentEvalQuota,
+} from '../hooks/useTournamentEvaluations';
 import { useAuth } from '../contexts/AuthContext';
 import { Trophy, Clock, Loader2 } from 'lucide-react';
 import { AlertDialogOverlay } from './AlertDialog';
+import { TournamentEvaluationPopup } from './TournamentEvaluationPopup';
+
+const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 interface TournamentListProps {
   onJoinTournament: (tournamentId: string) => void;
@@ -47,10 +55,20 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
   const [registering, setRegistering] = useState<string | null>(null);
   const [reentering, setReentering] = useState<string | null>(null);
   const [entryError, setEntryError] = useState<string | null>(null);
+  const [generatingEvalTournamentId, setGeneratingEvalTournamentId] = useState<string | null>(null);
+  const [evalViewPopup, setEvalViewPopup] = useState<{ id: string; title: string } | null>(null);
+  const [evalSubmitError, setEvalSubmitError] = useState<{ tournamentId: string; message: string } | null>(null);
+
+  const { quota: evalQuota, eligible: evalEligible, loading: evalMetaLoading, refresh: refreshEvalMeta } =
+    useTournamentEvaluations(!!user);
 
   useEffect(() => {
     void refreshList();
   }, [refreshList]);
+
+  useEffect(() => {
+    if (user) void refreshEvalMeta();
+  }, [user, refreshEvalMeta]);
 
   useEffect(() => {
     if (registeredTournamentId) {
@@ -79,8 +97,48 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     }
   };
 
+  const handleEvalGenerate = async (tournamentId: string) => {
+    setEvalSubmitError(null);
+    setGeneratingEvalTournamentId(tournamentId);
+    try {
+      const res = await fetch(`${API_BASE}/api/tournament-evaluations/generate`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tournamentId }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+      if (!res.ok) {
+        if (
+          res.status === 409 &&
+          (data.code === 'EVAL_ALREADY_GENERATING' || data.code === 'EVAL_BUSY_OTHER_TOURNAMENT')
+        ) {
+          await refreshEvalMeta();
+          return;
+        }
+        let msg = '生成に失敗しました';
+        if (res.status === 429) msg = '本日の生成回数に達しました（日本時間で翌日に再試行できます）';
+        else if (res.status === 503) msg = 'AIレビューβは現在利用できません';
+        else if (typeof data.error === 'string') msg = data.error;
+        setEvalSubmitError({ tournamentId, message: msg });
+        return;
+      }
+      await refreshEvalMeta();
+    } catch {
+      setEvalSubmitError({ tournamentId, message: '通信エラーが発生しました' });
+    } finally {
+      setGeneratingEvalTournamentId(null);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col min-h-0">
+      <TournamentEvaluationPopup
+        open={evalViewPopup !== null}
+        tournamentId={evalViewPopup?.id ?? null}
+        title={evalViewPopup?.title ?? ''}
+        onClose={() => setEvalViewPopup(null)}
+      />
       {entryError && (
         <AlertDialogOverlay
           title="エントリー失敗"
@@ -119,24 +177,43 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
               </div>
             )}
 
-            {tournaments.map((t) => (
-              <TournamentCard
-                key={t.id}
-                tournament={t}
-                isRegistered={registeredTournamentId === t.id}
-                isRegistering={registering === t.id}
-                canReenter={canReenterTournamentId === t.id}
-                isReentering={reentering === t.id}
-                isLoggedIn={!!user}
-                hasParticipated={myFinishedTournamentIds.has(t.id)}
-                isEliminated={myEliminatedTournamentId === t.id}
-                onRegister={() => handleRegister(t.id)}
-                onReenter={() => handleReenter(t.id)}
-                onEnter={() => onJoinTournament(t.id)}
-                onViewMyResult={() => onViewMyResult(t.id)}
-                onViewResults={() => onViewResults(t.id)}
-              />
-            ))}
+            {tournaments.map((t) => {
+              const evalMeta: TournamentEvalEligibleMeta | null | undefined = !user
+                ? null
+                : evalMetaLoading
+                  ? undefined
+                  : evalEligible.find((e) => e.id === t.id) ?? null;
+              const evalGenerateBlockedElsewhere =
+                (generatingEvalTournamentId !== null && generatingEvalTournamentId !== t.id) ||
+                evalEligible.some((e) => e.id !== t.id && e.evaluationPending === true);
+              return (
+                <TournamentCard
+                  key={t.id}
+                  tournament={t}
+                  isRegistered={registeredTournamentId === t.id}
+                  isRegistering={registering === t.id}
+                  canReenter={canReenterTournamentId === t.id}
+                  isReentering={reentering === t.id}
+                  isLoggedIn={!!user}
+                  hasParticipated={myFinishedTournamentIds.has(t.id)}
+                  isEliminated={myEliminatedTournamentId === t.id}
+                  onRegister={() => handleRegister(t.id)}
+                  onReenter={() => handleReenter(t.id)}
+                  onEnter={() => onJoinTournament(t.id)}
+                  onViewMyResult={() => onViewMyResult(t.id)}
+                  onViewResults={() => onViewResults(t.id)}
+                  evalEligibleMeta={evalMeta}
+                  evalQuota={evalQuota}
+                  isEvalGenerating={
+                    generatingEvalTournamentId === t.id || evalMeta?.evaluationPending === true
+                  }
+                  evalGenerateBlockedElsewhere={evalGenerateBlockedElsewhere}
+                  evalErrorMessage={evalSubmitError?.tournamentId === t.id ? evalSubmitError.message : null}
+                  onEvalGenerate={() => handleEvalGenerate(t.id)}
+                  onEvalViewResult={() => setEvalViewPopup({ id: t.id, title: t.name })}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -158,6 +235,13 @@ function TournamentCard({
   onEnter,
   onViewMyResult,
   onViewResults,
+  evalEligibleMeta,
+  evalQuota,
+  isEvalGenerating,
+  evalGenerateBlockedElsewhere,
+  evalErrorMessage,
+  onEvalGenerate,
+  onEvalViewResult,
 }: {
   tournament: TournamentLobbyInfo;
   isRegistered: boolean;
@@ -172,6 +256,14 @@ function TournamentCard({
   onEnter: () => void;
   onViewMyResult: () => void;
   onViewResults: () => void;
+  evalEligibleMeta: TournamentEvalEligibleMeta | null | undefined;
+  evalQuota: TournamentEvalQuota | null;
+  isEvalGenerating: boolean;
+  /** 別トナメで生成リクエスト中（ローカル or サーバー PENDING） */
+  evalGenerateBlockedElsewhere: boolean;
+  evalErrorMessage: string | null;
+  onEvalGenerate: () => void;
+  onEvalViewResult: () => void;
 }) {
   const status = statusLabel(t.status);
   const isRunning = t.status !== 'waiting' && t.status !== 'completed' && t.status !== 'cancelled';
@@ -282,23 +374,80 @@ function TournamentCard({
 
       <div className="px-[4cqw] pb-[4cqw] pt-[1cqw]">
         {isFinished ? (
-          <div className="flex gap-[2cqw]">
-            {hasParticipated && (
+          <div className="space-y-[2cqw]">
+            <div className="flex gap-[2cqw]">
+              {hasParticipated && (
+                <button
+                  type="button"
+                  onClick={onViewMyResult}
+                  className="flex-1 py-[2.5cqw] bg-cream-900 hover:bg-cream-800 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+                >
+                  自分の結果を見る
+                </button>
+              )}
               <button
                 type="button"
-                onClick={onViewMyResult}
-                className="flex-1 py-[2.5cqw] bg-cream-900 hover:bg-cream-800 text-white rounded-[2cqw] font-bold text-[3cqw] transition-colors"
+                onClick={onViewResults}
+                className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] rounded-[2cqw] text-[3cqw] font-bold transition-colors border-[0.4cqw] border-cream-800 bg-cream-50 text-cream-900 hover:bg-cream-100 active:bg-cream-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]`}
               >
-                自分の結果を見る
+                結果を見る
               </button>
+            </div>
+            {isLoggedIn && t.status === 'completed' && evalEligibleMeta !== null && (
+              <div className="pt-[1cqw] border-t border-cream-100">
+                {evalEligibleMeta === undefined ? (
+                  <div className="py-[2cqw] text-center text-[2.6cqw] text-cream-500">AIレビューβ…</div>
+                ) : (
+                  <>
+                    {evalErrorMessage && (
+                      <p className="text-red-700 text-[2.5cqw] mb-[1.5cqw] leading-snug">{evalErrorMessage}</p>
+                    )}
+                    {isEvalGenerating ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-cream-200 text-cream-600 flex items-center justify-center gap-[2cqw]"
+                      >
+                        <Loader2 className="w-[4cqw] h-[4cqw] animate-spin shrink-0" />
+                        AIレビューβを生成中
+                      </button>
+                    ) : evalEligibleMeta.latestEvaluationAt ? (
+                      <button
+                        type="button"
+                        onClick={onEvalViewResult}
+                        className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-forest text-white hover:bg-forest/90 transition-colors"
+                      >
+                        AIレビューβの結果を閲覧
+                      </button>
+                    ) : evalGenerateBlockedElsewhere ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-[2.2cqw] rounded-[2cqw] text-[2.8cqw] font-semibold bg-cream-100 text-cream-500"
+                      >
+                        別のトーナメントでAIレビューβを生成中
+                      </button>
+                    ) : evalQuota?.canGenerateToday && evalQuota?.llmConfigured ? (
+                      <button
+                        type="button"
+                        onClick={onEvalGenerate}
+                        className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-cream-800 text-white hover:bg-cream-700 transition-colors"
+                      >
+                        AIレビューβを生成（1日1回）
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-[2.2cqw] rounded-[2cqw] text-[2.8cqw] font-semibold bg-cream-100 text-cream-500"
+                      >
+                        {!evalQuota?.llmConfigured ? 'AIレビューβは利用できません' : 'AIレビューβ(本日使用済)'}
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             )}
-            <button
-              type="button"
-              onClick={onViewResults}
-              className={`${hasParticipated ? 'flex-1' : 'w-full'} py-[2.5cqw] rounded-[2cqw] text-[3cqw] font-bold transition-colors border-[0.4cqw] border-cream-800 bg-cream-50 text-cream-900 hover:bg-cream-100 active:bg-cream-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.65)]`}
-            >
-              結果を見る
-            </button>
           </div>
         ) : isWaitingForStart ? (
           <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">

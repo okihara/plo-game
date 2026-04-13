@@ -31,6 +31,9 @@ model User {
   receivedLabels PlayerLabel[]  @relation("LabelTarget")
   tournamentRegistrations TournamentRegistration[]
   tournamentResults       TournamentResult[]
+  /// トーナメントAI評価の日次クォータ消費日（Asia/Tokyo の YYYY-MM-DD）。成功時のみ更新。
+  tournamentEvalConsumedJstDate String?
+  tournamentEvaluations         TournamentUserEvaluation[]
 
   @@unique([provider, providerId])
   @@index([email])
@@ -207,6 +210,32 @@ enum TournamentStatus {
   CANCELLED
 }
 
+enum TournamentEvaluationStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+model TournamentUserEvaluation {
+  id             String                       @id @default(cuid())
+  userId         String
+  tournamentId   String
+  status         TournamentEvaluationStatus
+  /// 生成結果（例: { markdown: string }）
+  content        Json?
+  errorMessage   String?
+  model          String?
+  promptVersion  String                       @default("1")
+  createdAt      DateTime                     @default(now())
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
+
+  @@index([userId, tournamentId, createdAt])
+  @@index([userId])
+  @@index([tournamentId])
+}
+
 model Tournament {
   id                     String           @id @default(cuid())
   name                   String
@@ -229,6 +258,7 @@ model Tournament {
 
   registrations TournamentRegistration[]
   results       TournamentResult[]
+  userEvaluations TournamentUserEvaluation[]
 
   @@index([status])
   @@index([scheduledStartTime])

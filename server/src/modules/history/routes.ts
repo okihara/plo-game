@@ -2,6 +2,7 @@ import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { maskName, MASKED_PLAYER_NAME, generateShareToken, verifyShareToken } from '../../shared/utils.js';
 import { env } from '../../config/env.js';
+import { fetchTournamentHandsForUser } from './tournamentHandsForUser.js';
 
 // 公開用ハンド詳細API（認証不要、シェアリンク用）
 export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
@@ -112,60 +113,11 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
     const { userId } = request.user as { userId: string };
     const { tournamentId } = request.params as { tournamentId: string };
 
-    const hands = await prisma.handHistory.findMany({
-      where: {
-        tournamentId,
-        players: { some: { userId } },
-      },
-      orderBy: { createdAt: 'asc' },
-      include: {
-        players: {
-          select: {
-            userId: true,
-            username: true,
-            seatPosition: true,
-            holeCards: true,
-            finalHand: true,
-            startChips: true,
-            profit: true,
-            user: {
-              select: { username: true, displayName: true, avatarUrl: true, useTwitterAvatar: true, nameMasked: true },
-            },
-          },
-        },
-      },
-    });
+    const formatted = await fetchTournamentHandsForUser(prisma, tournamentId, userId);
 
-    if (hands.length === 0) {
+    if (formatted.length === 0) {
       return reply.code(404).send({ error: 'No hands found' });
     }
-
-    const formatted = hands.map(hand => ({
-      id: hand.id,
-      handNumber: hand.handNumber,
-      blinds: hand.blinds,
-      communityCards: hand.communityCards,
-      potSize: hand.potSize,
-      rakeAmount: hand.rakeAmount,
-      winners: hand.winners,
-      actions: hand.actions,
-      dealerPosition: hand.dealerPosition,
-      createdAt: hand.createdAt,
-      players: hand.players.map(p => {
-        const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
-        return {
-          userId: p.userId,
-          username: p.user?.displayName ? p.user.displayName : ((p.userId !== userId && p.user?.nameMasked) ? maskName(rawName) : rawName),
-          avatarUrl: p.user?.avatarUrl ?? null,
-          seatPosition: p.seatPosition,
-          holeCards: p.holeCards,
-          finalHand: p.finalHand,
-          startChips: p.startChips,
-          profit: p.profit,
-          isCurrentUser: p.userId === userId,
-        };
-      }),
-    }));
 
     return { hands: formatted };
   });
