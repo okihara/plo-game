@@ -20,7 +20,7 @@ const isProd = process.argv.includes('--prod');
 const tIdx = process.argv.indexOf('--tournament');
 const tournamentIdArg = tIdx >= 0 ? process.argv[tIdx + 1] : undefined;
 const handsIdx = process.argv.indexOf('--hands');
-const handsLimit = handsIdx >= 0 ? Number(process.argv[handsIdx + 1]) : 30;
+const handsLimit = handsIdx >= 0 ? Number(process.argv[handsIdx + 1]) :50;
 
 if (isProd) {
   if (!process.env.DATABASE_PROD_PUBLIC_URL) {
