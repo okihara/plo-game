@@ -85,7 +85,7 @@ export function TournamentEvaluationPopup({
         </h2>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain light-scrollbar px-[4cqw] py-[3cqw] pb-[4cqw]">
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain light-scrollbar bg-white px-[4cqw] py-[3cqw] pb-[4cqw]">
         {loading && (
           <div className="flex flex-col items-center justify-center py-[12cqw]">
             <div className="w-[7cqw] h-[7cqw] border-[0.4cqw] border-cream-300 border-t-forest rounded-full animate-spin" />
