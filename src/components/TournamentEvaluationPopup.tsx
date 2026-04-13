@@ -73,7 +73,7 @@ export function TournamentEvaluationPopup({
       >
         <div className="shrink-0 flex items-center justify-between gap-[2cqw] px-[4cqw] py-[3cqw] border-b border-cream-200 bg-cream-50">
           <h2 id="tournament-eval-popup-title" className="text-[3.5cqw] font-bold text-cream-900 truncate pr-[2cqw]">
-            AI評価 — {title}
+            AIレビューβ — {title}
           </h2>
           <button
             type="button"

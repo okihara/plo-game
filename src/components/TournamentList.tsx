@@ -111,7 +111,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
       if (!res.ok) {
         let msg = '生成に失敗しました';
         if (res.status === 429) msg = '本日の生成回数に達しました（日本時間で翌日に再試行できます）';
-        else if (res.status === 503) msg = 'AI評価は現在利用できません';
+        else if (res.status === 503) msg = 'AIレビューβは現在利用できません';
         else if (typeof data.error === 'string') msg = data.error;
         setEvalSubmitError({ tournamentId, message: msg });
         return;
@@ -380,7 +380,7 @@ function TournamentCard({
             {isLoggedIn && t.status === 'completed' && evalEligibleMeta !== null && (
               <div className="pt-[1cqw] border-t border-cream-100">
                 {evalEligibleMeta === undefined ? (
-                  <div className="py-[2cqw] text-center text-[2.6cqw] text-cream-500">AI評価…</div>
+                  <div className="py-[2cqw] text-center text-[2.6cqw] text-cream-500">AIレビューβ…</div>
                 ) : (
                   <>
                     {evalErrorMessage && (
@@ -393,7 +393,7 @@ function TournamentCard({
                         className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-cream-200 text-cream-600 flex items-center justify-center gap-[2cqw]"
                       >
                         <Loader2 className="w-[4cqw] h-[4cqw] animate-spin shrink-0" />
-                        生成中
+                        AIレビューβを生成中
                       </button>
                     ) : evalEligibleMeta.latestEvaluationAt ? (
                       <button
@@ -401,7 +401,7 @@ function TournamentCard({
                         onClick={onEvalViewResult}
                         className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-forest text-white hover:bg-forest/90 transition-colors"
                       >
-                        結果を閲覧
+                        AIレビューβの結果を閲覧
                       </button>
                     ) : evalQuota?.canGenerateToday && evalQuota?.llmConfigured ? (
                       <button
@@ -409,7 +409,7 @@ function TournamentCard({
                         onClick={onEvalGenerate}
                         className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-cream-800 text-white hover:bg-cream-700 transition-colors"
                       >
-                        1日一回生成
+                        AIレビューβを生成（1日1回）
                       </button>
                     ) : (
                       <button
@@ -417,7 +417,7 @@ function TournamentCard({
                         disabled
                         className="w-full py-[2.2cqw] rounded-[2cqw] text-[2.8cqw] font-semibold bg-cream-100 text-cream-500"
                       >
-                        {!evalQuota?.llmConfigured ? 'AI評価は利用できません' : '本日の生成は済みです'}
+                        {!evalQuota?.llmConfigured ? 'AIレビューβは利用できません' : '本日の生成は済みです'}
                       </button>
                     )}
                   </>
