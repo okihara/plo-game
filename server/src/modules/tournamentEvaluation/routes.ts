@@ -209,13 +209,20 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
     const pendingOutcome = await prisma.$transaction(
       async tx => {
         await expireStalePendingEvaluationsForUser(tx, userId);
-        const existingPending = await tx.tournamentUserEvaluation.findFirst({
-          where: { userId, tournamentId, status: 'PENDING' },
-          orderBy: { createdAt: 'desc' },
-          select: { id: true, createdAt: true },
+        const userPendings = await tx.tournamentUserEvaluation.findMany({
+          where: { userId, status: 'PENDING' },
+          select: { tournamentId: true, createdAt: true },
         });
-        if (existingPending && isEvaluationPendingFresh(existingPending.createdAt)) {
-          return { kind: 'conflict' as const };
+        const fresh = userPendings.filter(p => isEvaluationPendingFresh(p.createdAt));
+        if (fresh.length > 0) {
+          const sameTournament = fresh.find(p => p.tournamentId === tournamentId);
+          if (sameTournament) {
+            return { kind: 'conflict' as const };
+          }
+          return {
+            kind: 'other_busy' as const,
+            busyTournamentId: fresh[0]!.tournamentId,
+          };
         }
         const row = await tx.tournamentUserEvaluation.create({
           data: {
@@ -235,6 +242,13 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
         error: 'Evaluation is already being generated',
         code: 'EVAL_ALREADY_GENERATING',
         tournamentId,
+      });
+    }
+    if (pendingOutcome.kind === 'other_busy') {
+      return reply.code(409).send({
+        error: 'Another tournament evaluation is in progress',
+        code: 'EVAL_BUSY_OTHER_TOURNAMENT',
+        busyTournamentId: pendingOutcome.busyTournamentId,
       });
     }
 

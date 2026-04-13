@@ -109,7 +109,10 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
       });
       const data = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
       if (!res.ok) {
-        if (res.status === 409 && data.code === 'EVAL_ALREADY_GENERATING') {
+        if (
+          res.status === 409 &&
+          (data.code === 'EVAL_ALREADY_GENERATING' || data.code === 'EVAL_BUSY_OTHER_TOURNAMENT')
+        ) {
           await refreshEvalMeta();
           return;
         }
@@ -180,6 +183,9 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                 : evalMetaLoading
                   ? undefined
                   : evalEligible.find((e) => e.id === t.id) ?? null;
+              const evalGenerateBlockedElsewhere =
+                (generatingEvalTournamentId !== null && generatingEvalTournamentId !== t.id) ||
+                evalEligible.some((e) => e.id !== t.id && e.evaluationPending === true);
               return (
                 <TournamentCard
                   key={t.id}
@@ -201,6 +207,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                   isEvalGenerating={
                     generatingEvalTournamentId === t.id || evalMeta?.evaluationPending === true
                   }
+                  evalGenerateBlockedElsewhere={evalGenerateBlockedElsewhere}
                   evalErrorMessage={evalSubmitError?.tournamentId === t.id ? evalSubmitError.message : null}
                   onEvalGenerate={() => handleEvalGenerate(t.id)}
                   onEvalViewResult={() => setEvalViewPopup({ id: t.id, title: t.name })}
@@ -231,6 +238,7 @@ function TournamentCard({
   evalEligibleMeta,
   evalQuota,
   isEvalGenerating,
+  evalGenerateBlockedElsewhere,
   evalErrorMessage,
   onEvalGenerate,
   onEvalViewResult,
@@ -251,6 +259,8 @@ function TournamentCard({
   evalEligibleMeta: TournamentEvalEligibleMeta | null | undefined;
   evalQuota: TournamentEvalQuota | null;
   isEvalGenerating: boolean;
+  /** 別トナメで生成リクエスト中（ローカル or サーバー PENDING） */
+  evalGenerateBlockedElsewhere: boolean;
   evalErrorMessage: string | null;
   onEvalGenerate: () => void;
   onEvalViewResult: () => void;
@@ -408,6 +418,14 @@ function TournamentCard({
                         className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold bg-forest text-white hover:bg-forest/90 transition-colors"
                       >
                         AIレビューβの結果を閲覧
+                      </button>
+                    ) : evalGenerateBlockedElsewhere ? (
+                      <button
+                        type="button"
+                        disabled
+                        className="w-full py-[2.2cqw] rounded-[2cqw] text-[2.8cqw] font-semibold bg-cream-100 text-cream-500"
+                      >
+                        別のトーナメントでAIレビューβを生成中
                       </button>
                     ) : evalQuota?.canGenerateToday && evalQuota?.llmConfigured ? (
                       <button
