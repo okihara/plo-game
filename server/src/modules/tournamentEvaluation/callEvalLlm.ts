@@ -1,14 +1,54 @@
+import {
+  toPokerStarsHandText,
+  type PokerStarsHandAction,
+  type PokerStarsHandInput,
+} from '@plo/shared';
 import { env } from '../../config/env.js';
 import type { TournamentHandExport } from '../history/tournamentHandsForUser.js';
 
-const SYSTEM_PROMPT = `あなたはPot Limit Omahaのトーナメントコーチです。渡されたJSONには、あるユーザーが参加した1トーナメントの公式結果と、保存された全ハンド履歴（アクション・ボード・損益・ホールカードは本人分のみ、その他は表示名のみ等）が含まれます。
-次を満たす日本語のMarkdownで回答してください。
-- 全体の流れとスタック推移の印象
-- 良かった判断・改善できそうな局面（具体ハンド番号や状況に言及）
-- トーナメント形式（ICMは簡単に触れる程度でよい）を意識した一言
-煽りや人格攻撃はしない。根拠のない断定は避け、推測は推測と書く。`;
+const SYSTEM_PROMPT = `あなたはPot Limit Omahaのトーナメントコーチです。ユーザーは1トーナメントに参加し、公式結果（JSONの概要）と、全ハンドがPokerStars形式のテキストで渡されます。
+PokerStars形式では、本人（isCurrentUser=true のプレイヤー）のホールカードは Dealt to やショーダウンで分かります。他プレイヤーの伏せカードは通常表示されません。
+日本語のMarkdownでレビューしてください`;
 
-const PROMPT_VERSION = '1';
+const PROMPT_VERSION = '2';
+
+function normalizeActions(raw: unknown): PokerStarsHandAction[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((a): a is Record<string, unknown> => a !== null && typeof a === 'object')
+    .map(a => ({
+      seatIndex: Number(a.seatIndex),
+      odId: typeof a.odId === 'string' ? a.odId : undefined,
+      odName: String(a.odName ?? ''),
+      action: String(a.action ?? ''),
+      amount: Number(a.amount ?? 0),
+      street: typeof a.street === 'string' ? a.street : undefined,
+    }));
+}
+
+function exportHandToPokerStarsInput(hand: TournamentHandExport): PokerStarsHandInput {
+  return {
+    id: hand.id,
+    handNumber: hand.handNumber,
+    blinds: hand.blinds,
+    communityCards: hand.communityCards,
+    potSize: hand.potSize,
+    rakeAmount: hand.rakeAmount,
+    winners: hand.winners,
+    actions: normalizeActions(hand.actions),
+    dealerPosition: hand.dealerPosition,
+    createdAt: hand.createdAt,
+    players: hand.players.map(p => ({
+      username: p.username,
+      seatPosition: p.seatPosition,
+      startChips: p.startChips,
+      holeCards: p.holeCards,
+      finalHand: p.finalHand,
+      profit: p.profit,
+      isCurrentUser: p.isCurrentUser,
+    })),
+  };
+}
 
 export async function generateTournamentEvaluationMarkdown(input: {
   tournamentName: string;
@@ -24,8 +64,8 @@ export async function generateTournamentEvaluationMarkdown(input: {
   }
 
   const model = env.TOURNAMENT_EVAL_MODEL;
-  const userPayload = JSON.stringify({
-    tournament: {
+  const tournamentMeta = JSON.stringify(
+    {
       name: input.tournamentName,
       buyIn: input.buyIn,
       result: {
@@ -34,8 +74,19 @@ export async function generateTournamentEvaluationMarkdown(input: {
         reentries: input.reentries,
       },
     },
-    hands: input.hands,
-  });
+    null,
+    0
+  );
+
+  const handsPokerStars = input.hands
+    .map(h => toPokerStarsHandText(exportHandToPokerStarsInput(h)))
+    .join('\n\n\n----------\n\n\n');
+
+  const userContent =
+    '## トーナメント概要（JSON）\n```json\n' +
+    tournamentMeta +
+    '\n```\n\n## 全ハンド（PokerStars形式）\n' +
+    handsPokerStars;
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',
@@ -51,9 +102,7 @@ export async function generateTournamentEvaluationMarkdown(input: {
         {
           role: 'user',
           content:
-            '以下のJSONを解釈し、上記方針で評価を書いてください。\n```json\n' +
-            userPayload +
-            '\n```',
+            '以下を解釈し、上記方針で評価を書いてください。\n\n' + userContent,
         },
       ],
     }),

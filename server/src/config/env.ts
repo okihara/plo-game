@@ -15,7 +15,7 @@ const envSchema = z.object({
   ADMIN_SECRET: z.string().optional(),
   /** トーナメントAI評価（OpenAI Chat Completions）。未設定時は生成APIは503。 */
   TOURNAMENT_EVAL_OPENAI_API_KEY: z.string().optional(),
-  TOURNAMENT_EVAL_MODEL: z.string().default('gpt-4o-mini'),
+  TOURNAMENT_EVAL_MODEL: z.string().default('gpt-5.4'),
 });
 
 export type Env = z.infer<typeof envSchema>;
