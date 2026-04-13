@@ -98,7 +98,6 @@ export async function generateTournamentEvaluationMarkdown(input: {
     },
     body: JSON.stringify({
       model,
-      temperature: 0.5,
       max_completion_tokens: 10000,
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
