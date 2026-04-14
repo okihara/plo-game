@@ -802,6 +802,15 @@ export class TournamentInstance {
     const toTable = this.tables.get(toTableId);
     if (!fromTable || !toTable) return;
 
+    // 0チップのプレイヤーは bust 確定（onPlayerBusted が遅延実行される前の状態）なので移動しない。
+    // onHandSettled → checkAndExecuteBalance の時点では status はまだ 'playing' だが、
+    // seat.chips と player.chips は既に 0 に同期されている。ここで移動すると別テーブルに
+    // 0チップ着席してしまうため早期リターンする。
+    const fromChips = fromTable.getPlayerChips(odId);
+    if (fromChips === 0 || player.chips === 0) {
+      return;
+    }
+
     // テーブル移動通知（切断中は通知スキップ）
     player.socket?.emit('tournament:table_move', {
       fromTableId,

@@ -40,7 +40,7 @@ export const PLAYERS_PER_TABLE = 6;
 export const TOURNAMENT_DISCONNECT_GRACE_MS = 2 * 60 * 1000; // 2分
 
 // デフォルトバイイン
-export const DEFAULT_BUY_IN = 3000;
+export const DEFAULT_BUY_IN = 1000;
 
 // 最小参加者数
 export const DEFAULT_MIN_PLAYERS = 3;

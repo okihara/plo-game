@@ -1224,7 +1224,87 @@ describe('TournamentInstance', () => {
       expect(result.error).toContain('上限');
     });
 
-    it('リエントリー成功でチップがリセットされプライズプールが増える', () => {
+// バグ候補再現: onHandSettled 内の checkAndExecuteBalance が
+    // busted player（まだ status='playing', tablePlayerMap に存在, seat.chips=0）を
+    // 0チップで別テーブルに移動してしまう
+    it('バスト直後のバランス調整で busted player が0チップで他テーブルに移動しない', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        allowReentry: true,
+        maxReentries: 2,
+        startingChips: 1500,
+        playersPerTable: 4,
+        maxPlayers: 20,
+      }));
+
+      tournament.start();
+
+      // 9人参加（バランサーが発動する人数構成を狙う）
+      const odIds: string[] = [];
+      for (let i = 0; i < 9; i++) {
+        const odId = `player_${i}`;
+        odIds.push(odId);
+        tournament.enterPlayer(odId, `P${i}`, createMockSocket());
+      }
+
+      const tables = (tournament as any).tables as Map<string, any>;
+      const tableIds = Array.from(tables.keys());
+      expect(tableIds.length).toBeGreaterThanOrEqual(2);
+
+      // オーバーウェイトなテーブル（プレイヤー多い方）を特定
+      const tableInfos = tableIds.map(tid => ({
+        tid,
+        count: tables.get(tid).getPlayerCount(),
+      })).sort((a, b) => b.count - a.count);
+      const overweightTableId = tableInfos[0].tid;
+      const overweightTable = tables.get(overweightTableId);
+
+      // tablePlayerMap の最後のプレイヤー = バランサーが移動対象に選ぶプレイヤー
+      const tablePlayerMap = (tournament as any).tablePlayerMap as Map<string, Set<string>>;
+      const playerIds = Array.from(tablePlayerMap.get(overweightTableId)!);
+      const victimOdId = playerIds[playerIds.length - 1];
+
+      // victim がバスト直前の状態を作る:
+      // 1. TableInstance 側 seat.chips = 0（finalizeHand L1077 が行う処理）
+      const pm = (overweightTable as any).playerManager;
+      const victimSeatIndex = pm.findSeatByOdId(victimOdId);
+      pm.updateChips(victimSeatIndex, 0);
+
+      // 2. gameState.isHandComplete=true（getPlayerChips が seat.chips を返すように）
+      (overweightTable as any).gameState = {
+        isHandComplete: true,
+        players: Array(6).fill(null).map((_, i) => ({
+          chips: i === victimSeatIndex ? 0 : 1500,
+        })),
+      };
+      (overweightTable as any)._isHandInProgress = false;
+
+      // 3. onHandSettled を発火（seatChips に victim の chips=0 を含める）
+      const settledChips = playerIds.map(odId => {
+        const si = pm.findSeatByOdId(odId);
+        const chips = odId === victimOdId ? 0 : 1500;
+        return { odId, seatIndex: si, chips };
+      });
+      (tournament as any).onHandSettled(settledChips);
+
+      // ---- 検証: victim が別テーブルに 0チップで着席していないか ----
+      const victimLocations: Array<{ tableId: string; seatChips: number }> = [];
+      for (const [tid, t] of tables.entries()) {
+        const tpm = (t as any).playerManager;
+        const seats = tpm.getSeats();
+        for (const s of seats) {
+          if (s?.odId === victimOdId) {
+            victimLocations.push({ tableId: tid, seatChips: s.chips });
+          }
+        }
+      }
+
+      const movedToOtherTableAtZero = victimLocations.filter(
+        v => v.tableId !== overweightTableId && v.seatChips === 0
+      );
+      expect(movedToOtherTableAtZero).toHaveLength(0);
+    });
+
+it('リエントリー成功でチップがリセットされプライズプールが増える', () => {
       const tournament = new TournamentInstance(io, createTestConfig({
         allowReentry: true,
         maxReentries: 2,
