@@ -29,7 +29,7 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const [byStatus, consumedQuotaUserList, pendingRows] = await Promise.all([
+  const [byStatus, consumedQuotaUserList, pendingRows, byUser] = await Promise.all([
     prisma.tournamentUserEvaluation.groupBy({
       by: ['status'],
       _count: { _all: true },
@@ -56,6 +56,10 @@ async function main() {
       },
       orderBy: { createdAt: 'desc' },
     }),
+    prisma.tournamentUserEvaluation.groupBy({
+      by: ['userId', 'status'],
+      _count: { _all: true },
+    }),
   ]);
 
   console.log('--- TournamentUserEvaluation（件数・ステータス別）---');
@@ -72,6 +76,35 @@ async function main() {
     console.log(
       `  userId=${u.id} | ${name} | lastConsumedJstDate=${u.tournamentEvalConsumedJstDate}`
     );
+  }
+
+  const userIds = Array.from(new Set(byUser.map((r) => r.userId)));
+  const usersForCount = await prisma.user.findMany({
+    where: { id: { in: userIds } },
+    select: { id: true, username: true, displayName: true },
+  });
+  const userMap = new Map(usersForCount.map((u) => [u.id, u]));
+
+  type UserUsage = { userId: string; name: string; total: number; byStatus: Record<string, number> };
+  const usageByUser = new Map<string, UserUsage>();
+  for (const row of byUser) {
+    const u = userMap.get(row.userId);
+    const name = u ? u.displayName || u.username : '(unknown)';
+    const entry = usageByUser.get(row.userId) ?? { userId: row.userId, name, total: 0, byStatus: {} };
+    entry.byStatus[row.status] = (entry.byStatus[row.status] ?? 0) + row._count._all;
+    entry.total += row._count._all;
+    usageByUser.set(row.userId, entry);
+  }
+  const usageList = Array.from(usageByUser.values()).sort((a, b) => b.total - a.total);
+
+  console.log('--- ユーザー別の利用回数（多い順）---');
+  console.log(`  人数: ${usageList.length}`);
+  for (const u of usageList) {
+    const breakdown = Object.entries(u.byStatus)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([s, c]) => `${s}=${c}`)
+      .join(', ');
+    console.log(`  ${u.total}回 | userId=${u.userId} | ${u.name} | ${breakdown}`);
   }
 
   console.log('--- 現在 PENDING の行 ---');
