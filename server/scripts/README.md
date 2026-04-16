@@ -55,6 +55,40 @@
 | `postflop-nutrank1-debug.ts`      | ナッツでフォールドしてしまうケースを調査                                               |
 
 
+## トーナメント
+
+
+| スクリプト                        | 説明                                               |
+| ---------------------------- | ------------------------------------------------ |
+| `rank-points-ranking.ts`     | RP（ランクポイント）の通算ランキングを集計。順位×エントリー数でRP付与、Bot除外     |
+| `render-rp-ranking.py`       | `rank-points-ranking.ts --tsv` の出力を PNG 画像に整形    |
+
+### RPランキングの出し方
+
+```bash
+# テキスト表示（デフォルト TOP 30）
+cd server && npx tsx scripts/rank-points-ranking.ts --prod
+
+# 件数指定
+cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=50
+
+# 画像として出力（SNS投稿用）
+cd server && npx tsx scripts/rank-points-ranking.ts --prod --image=/tmp/rp-ranking.png
+
+# TSV のみ出力（画像化の中間形式・確認用）
+cd server && npx tsx scripts/rank-points-ranking.ts --prod --tsv
+```
+
+付与ルール:
+
+- 対象: `status=COMPLETED` のトナメ（`TournamentResult` が2件以上）
+- エントリー数 N = 結果行数（Bot含む、リエントリーは最終順位のみ）
+- 付与人数: N≤6→3 / ≤18→6 / ≤27→9 / ≤54→15 / ≤100→25 / ≤200→40 / それ以上→`ceil(N*0.20)`
+- RP = `round(100 × 0.05^((pos-1)/(pc-1)) × √(N/9))`、1位のみ ×1.3 ボーナス
+- Bot（`User.provider='bot'`）はランキングから除外
+- 名前は `displayName` を優先、未設定かつ `nameMasked=true` なら `maskName()` で伏字化
+
+
 ## インフラ・ユーティリティ
 
 

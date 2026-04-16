@@ -433,7 +433,7 @@ export class TournamentInstance {
       totalReentries: this.getTotalReentries(),
       reentryDeadlineLevel: this.config.reentryDeadlineLevel,
       registrationDeadlineAt: this.blindScheduler.isStarted()
-        ? new Date(this.blindScheduler.getLevelStartTimestamp(this.config.reentryDeadlineLevel + 1)).toISOString()
+        ? new Date(this.blindScheduler.getLevelStartTimestamp(this.config.registrationLevels)).toISOString()
         : undefined,
     };
   }

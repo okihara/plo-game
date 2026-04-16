@@ -338,13 +338,13 @@
 
         return '<div class="table-card">' +
           '<div class="table-header">' +
-            '<div class="table-title"><span style="color:#64748b;font-weight:400;font-size:10px">' + t.id.slice(0,8) + '</span> ' +
+            '<div style="flex:0 0 auto;margin-right:8px">' + spectateControl(t) + '</div>' +
+            '<div class="table-title" style="flex:1 1 auto"><span style="color:#64748b;font-weight:400;font-size:10px">' + t.id.slice(0,8) + '</span> ' +
               '<span class="badge" style="background:#6366f1">' + (variantLabels[t.variant] || t.variant || 'PLO') + '</span> ' + t.blinds +
               (t.isFastFold ? ' <span class="badge badge-ff">FF</span>' : '') +
               (t.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
             '</div>' +
             '<div style="display:flex;align-items:center;gap:8px">' +
-              spectateControl(t) +
               renderPendingAction(t) +
               '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(t.pot) + '</span>' +
               '<span style="color:#64748b">' + t.playerCount + '/' + t.maxPlayers + '</span>' +
@@ -433,12 +433,12 @@
           var variantLabels = { plo:'PLO', stud:'Stud', razz:'Razz' };
           var street = tbl.currentStreet ? (streetLabels[tbl.currentStreet] || tbl.currentStreet) : '待機';
           return '<div style="background:#0f172a;border-radius:6px;padding:6px 8px;margin-bottom:3px">' +
-            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;font-size:11px">' +
-              '<span style="color:#64748b">' + tbl.id.slice(0,8) +
+            '<div style="display:flex;align-items:center;margin-bottom:4px;font-size:11px;gap:8px">' +
+              '<span style="flex:0 0 auto">' + spectateControl(tbl, t.id) + '</span>' +
+              '<span style="color:#64748b;flex:1 1 auto">' + tbl.id.slice(0,8) +
                 (tbl.isHandInProgress ? ' <span class="badge badge-active">' + street + '</span>' : ' <span class="badge badge-waiting">待機</span>') +
               '</span>' +
               '<span style="display:flex;align-items:center;gap:8px">' +
-                spectateControl(tbl, t.id) +
                 renderPendingAction(tbl) +
                 '<span style="color:#fbbf24;font-weight:600">Pot ' + formatChips(tbl.pot) + '</span>' +
                 '<span style="color:#64748b">' + tbl.playerCount + '/6</span>' +
