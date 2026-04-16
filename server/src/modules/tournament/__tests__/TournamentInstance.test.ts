@@ -114,12 +114,8 @@ function simulateBust(
   chipsAtHandStart: number
 ): void {
   const player = tournament.getPlayer(odId);
-  if (player) {
-    // onPlayerBusted 呼び出し前にチップを設定（実際はハンド開始時の値）
-    player.chips = chipsAtHandStart;
-  }
   const socket = player?.socket ?? null;
-  (tournament as any).onPlayerBusted(odId, 0, socket);
+  (tournament as any).onPlayerBusted(odId, 0, socket, chipsAtHandStart);
 }
 
 function simulateHandSettled(
@@ -418,6 +414,36 @@ describe('TournamentInstance', () => {
       // 同チップなので同順位
       expect(tournament.getPlayer('player_2')?.finishPosition).toBe(3);
       expect(tournament.getPlayer('player_3')?.finishPosition).toBe(3);
+    });
+
+    it('onHandSettled が先に player.chips=0 にしてから onPlayerBusted が呼ばれても順位が正しく付く', () => {
+      // TableInstance の実際のコールバック順序:
+      //   1. onHandSettled(seatChips) → バスト者は chips=0 に同期
+      //   2. onPlayerBusted(..., chipsAtHandStart) → pendingBusts に蓄積
+      //   3. onBustsProcessed → finalizeBustedPlayers で順位確定
+      // この順序で呼ばれても、引数で渡された chipsAtHandStart を使って
+      // ハンド開始時チップの多い方が上位になることを検証する。
+      const tournament = new TournamentInstance(io, createTestConfig());
+      startAndEnterNPlayers(tournament, 4);
+
+      // 1. onHandSettled: バスト者の chips も 0 で上書きされる
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+        { odId: 'player_1', seatIndex: 1, chips: 3000 },
+        { odId: 'player_2', seatIndex: 2, chips: 0 },
+        { odId: 'player_3', seatIndex: 3, chips: 0 },
+      ]);
+
+      // 2. onPlayerBusted: この時点で player.chips は既に 0
+      simulateBust(tournament, 'player_2', 500);
+      simulateBust(tournament, 'player_3', 300);
+
+      // 3. onBustsProcessed 相当
+      (tournament as any).finalizeBustedPlayers();
+
+      // chipsAtHandStart が異なるので別順位になる（player.chips を見ていたら両方同順位になる）
+      expect(tournament.getPlayer('player_2')?.finishPosition).toBe(3);
+      expect(tournament.getPlayer('player_3')?.finishPosition).toBe(4);
     });
 
     it('バスト通知が個人・全体に送信される（レイト登録中はposition=null）', () => {

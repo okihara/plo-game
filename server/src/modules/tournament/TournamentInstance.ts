@@ -447,8 +447,8 @@ export class TournamentInstance {
     const blindsStr = `${currentLevel.smallBlind}/${currentLevel.bigBlind}`;
 
     const callbacks: TableLifecycleCallbacks = {
-      onPlayerBusted: (odId, seatIndex, socket) => {
-        this.onPlayerBusted(odId, seatIndex, socket);
+      onPlayerBusted: (odId, seatIndex, socket, chipsAtHandStart) => {
+        this.onPlayerBusted(odId, seatIndex, socket, chipsAtHandStart);
         return true; // TableInstanceにunseatを任せる
       },
       onHandSettled: (seatChips) => {
@@ -562,12 +562,14 @@ export class TournamentInstance {
    * ハンド中に複数人がバストする可能性があるため、ここでは蓄積のみ。
    * 実際の順位確定・フェーズ遷移は onHandSettled で一括処理する。
    */
-  private onPlayerBusted(odId: string, _seatIndex: number, socket: Socket | null): void {
+  private onPlayerBusted(
+    odId: string,
+    _seatIndex: number,
+    socket: Socket | null,
+    chipsAtHandStart: number
+  ): void {
     const player = this.players.get(odId);
     if (!player) return;
-
-    // ハンド開始時のチップ（同時バストの順位決定に使用）
-    const chipsAtHandStart = player.chips;
 
     // ステータスを即座に eliminated に変更（getPlayersRemaining に反映）
     player.status = 'eliminated';

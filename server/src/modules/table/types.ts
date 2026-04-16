@@ -14,9 +14,15 @@ export interface TableLifecycleCallbacks {
    * プレイヤーがバスト（チップ0）した時の処理
    * - キャッシュゲーム: table:busted通知 → unseat → cashOut
    * - トーナメント: 順位記録 → リバイ提示 or 脱落処理
+   * @param chipsAtHandStart 当該ハンド開始時のチップ（同時バスト時の順位決定に使用）
    * @returns true: TableInstanceがunseatPlayerを呼ぶ, false: 呼び出し側が管理
    */
-  onPlayerBusted: (odId: string, seatIndex: number, socket: Socket | null) => boolean;
+  onPlayerBusted: (
+    odId: string,
+    seatIndex: number,
+    socket: Socket | null,
+    chipsAtHandStart: number
+  ) => boolean;
 
   /**
    * ハンド完了後のチップ精算処理

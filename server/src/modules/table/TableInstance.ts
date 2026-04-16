@@ -88,7 +88,7 @@ export class TableInstance {
 
     // デフォルト: キャッシュゲーム用コールバック（table:busted通知 → unseat）
     this.lifecycleCallbacks = options?.lifecycleCallbacks ?? {
-      onPlayerBusted: (_odId, _seatIndex, socket) => {
+      onPlayerBusted: (_odId, _seatIndex, socket, _chipsAtHandStart) => {
         socket?.emit('table:busted', { message: 'チップがなくなりました' });
         return true; // TableInstanceがunseatPlayerを呼ぶ
       },
@@ -1101,6 +1101,7 @@ export class TableInstance {
     await new Promise(resolve => setTimeout(resolve, delay));
 
     // Remove busted players and players who left during hand
+    const startChipsBySeat = this.historyRecorder.getStartChips();
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
       if (!seat) continue;
@@ -1108,7 +1109,13 @@ export class TableInstance {
         this.playerManager.unseatPlayer(i);
       } else if (seat.chips <= 0) {
         // コールバックでバスト処理を委譲（キャッシュ/トーナメントで挙動が異なる）
-        const shouldUnseat = this.lifecycleCallbacks.onPlayerBusted(seat.odId, i, seat.socket);
+        const chipsAtHandStart = startChipsBySeat.get(i) ?? 0;
+        const shouldUnseat = this.lifecycleCallbacks.onPlayerBusted(
+          seat.odId,
+          i,
+          seat.socket,
+          chipsAtHandStart
+        );
         if (shouldUnseat) {
           this.unseatPlayer(seat.odId);
         }
