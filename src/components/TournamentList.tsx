@@ -190,6 +190,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                 <TournamentCard
                   key={t.id}
                   tournament={t}
+                  winner={t.winner ?? null}
                   isRegistered={registeredTournamentId === t.id}
                   isRegistering={registering === t.id}
                   canReenter={canReenterTournamentId === t.id}

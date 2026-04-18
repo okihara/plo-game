@@ -39,29 +39,46 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         include: {
           _count: { select: { registrations: true } },
           registrations: { select: { reentryCount: true } },
+          results: {
+            where: { position: 1 },
+            take: 1,
+            include: {
+              user: { select: { username: true, displayName: true, avatarUrl: true, nameMasked: true } },
+            },
+          },
         },
         orderBy: { completedAt: 'desc' },
         take: 20,
       });
 
-      const completedTournaments: TournamentLobbyInfo[] = dbCompleted.map(t => ({
-        id: t.id,
-        name: t.name,
-        status: t.status.toLowerCase() as TournamentStatus,
-        buyIn: t.buyIn,
-        startingChips: t.startingChips,
-        registeredPlayers: t._count.registrations,
-        maxPlayers: t.maxPlayers,
-        currentBlindLevel: 0,
-        prizePool: t.prizePool,
-        scheduledStartTime: t.scheduledStartTime?.toISOString(),
-        startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
-        isRegistrationOpen: false,
-        allowReentry: t.allowReentry,
-        maxReentries: t.maxReentries,
-        totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
-        reentryDeadlineLevel: t.reentryDeadlineLevel,
-      }));
+      const completedTournaments: TournamentLobbyInfo[] = dbCompleted.map(t => {
+        const top = t.results[0];
+        const winner = t.status === 'COMPLETED' && top
+          ? {
+              displayName: top.user.displayName || (top.user.nameMasked ? maskName(top.user.username) : top.user.username),
+              avatarUrl: top.user.avatarUrl,
+            }
+          : null;
+        return {
+          id: t.id,
+          name: t.name,
+          status: t.status.toLowerCase() as TournamentStatus,
+          buyIn: t.buyIn,
+          startingChips: t.startingChips,
+          registeredPlayers: t._count.registrations,
+          maxPlayers: t.maxPlayers,
+          currentBlindLevel: 0,
+          prizePool: t.prizePool,
+          scheduledStartTime: t.scheduledStartTime?.toISOString(),
+          startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
+          isRegistrationOpen: false,
+          allowReentry: t.allowReentry,
+          maxReentries: t.maxReentries,
+          totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
+          reentryDeadlineLevel: t.reentryDeadlineLevel,
+          winner,
+        };
+      });
 
       // アクティブ（waiting含む）を先頭、その後に終了済みを開始時刻降順
       const finishedStatuses = new Set(['completed', 'cancelled']);
