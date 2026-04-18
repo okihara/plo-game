@@ -323,7 +323,7 @@ export function TournamentCard({
             </div>
           )}
           <div className="min-w-0 flex-1">
-            <div className="text-[2.4cqw] font-semibold text-amber-700 uppercase tracking-widest">優勝</div>
+            <div className="text-[4cqw] font-bold text-amber-700 tracking-wide">1st</div>
             <div className="text-[4.8cqw] font-bold text-cream-900 truncate leading-tight mt-[0.3cqw]">
               {winner.displayName}
             </div>
@@ -339,42 +339,36 @@ export function TournamentCard({
               {t.currentBlindLevel}
             </span>
           </div>
-          {showLateDeadline && (
+          {showLateDeadline ? (
             <div className="text-right shrink-0">
               <div className="text-[2.2cqw] text-cream-700 uppercase tracking-wide">レイト締切</div>
               <div className="text-[3.8cqw] font-bold text-cream-900 tabular-nums leading-tight">
                 {formatTime(t.registrationDeadlineAt)}
               </div>
             </div>
-          )}
+          ) : !t.isRegistrationOpen ? (
+            <div className="text-[3cqw] font-bold text-cream-700 shrink-0">締切済み</div>
+          ) : null}
         </div>
       )}
 
       {t.status === 'waiting' && (
-        <div className="mx-[4cqw] mb-[2cqw] p-[3cqw] rounded-[2.5cqw] bg-cream-50 border border-cream-200 grid grid-cols-2 gap-[2cqw]">
-          <div className="min-w-0">
-            <div className="text-[2.3cqw] uppercase tracking-wide text-cream-700">BUY-IN</div>
-            <div className="text-[6cqw] font-bold text-cream-900 tabular-nums leading-tight mt-[0.3cqw]">
-              {t.buyIn.toLocaleString()}
-            </div>
+        <div className="mx-[4cqw] mb-[2cqw] p-[3cqw] rounded-[2.5cqw] bg-cream-50 border border-cream-200">
+          <div className="text-[2.3cqw] tracking-wide text-cream-700 flex items-center gap-[1cqw]">
+            <Clock className="w-[2.6cqw] h-[2.6cqw] opacity-70" />
+            <span>{isWaitingForStart ? '開始予定' : '開始'}</span>
           </div>
-          <div className="text-right min-w-0">
-            <div className="text-[2.3cqw] uppercase tracking-wide text-cream-700 flex items-center justify-end gap-[1cqw]">
-              <Clock className="w-[2.6cqw] h-[2.6cqw] opacity-70" />
-              <span>{isWaitingForStart ? '開始予定' : '開始'}</span>
-            </div>
-            <div className="text-[5cqw] font-bold text-cream-900 tabular-nums leading-tight mt-[0.3cqw]">
-              {formatTime(t.scheduledStartTime)}
-            </div>
+          <div className="text-[6cqw] font-bold text-cream-900 tabular-nums leading-tight mt-[0.3cqw]">
+            {formatTime(t.scheduledStartTime)}
           </div>
         </div>
       )}
 
       {/* Tier 2: コンパクトな主要情報 */}
       <div className="px-[4cqw] flex items-baseline gap-[3.5cqw] text-[3cqw] flex-wrap">
-        {isRunning && (
+        {!isFinished && (
           <div>
-            <span className="text-cream-600">BUY </span>
+            <span className="text-cream-600">エントリー費 </span>
             <span className="font-semibold tabular-nums text-cream-900">{t.buyIn.toLocaleString()}</span>
           </div>
         )}
