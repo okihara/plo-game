@@ -135,9 +135,9 @@
             <button type="button" class="time-preset" onclick="setTimeOffset(15)">15分後</button>
             <button type="button" class="time-preset" onclick="setTimeOffset(30)">30分後</button>
             <button type="button" class="time-preset" onclick="setTimeOffset(60)">1時間後</button>
-            <button type="button" class="time-preset" onclick="setTimeToday(20,0)">今日 20:00</button>
-            <button type="button" class="time-preset" onclick="setTimeToday(21,0)">今日 21:00</button>
-            <button type="button" class="time-preset" onclick="setTimeToday(22,0)">今日 22:00</button>
+            <button type="button" class="time-preset day-preset" data-h="20" data-m="0" onclick="setTimeToday(20,0)"></button>
+            <button type="button" class="time-preset day-preset" data-h="21" data-m="0" onclick="setTimeToday(21,0)"></button>
+            <button type="button" class="time-preset day-preset" data-h="22" data-m="0" onclick="setTimeToday(22,0)"></button>
           </div>
         </div>
         <div class="form-group" id="requiredCountGroup" style="display:none">
@@ -207,6 +207,21 @@
       if (d < new Date()) d.setDate(d.getDate() + 1); // 過ぎていたら翌日
       document.getElementById('scheduledStartTime').value = toLocalDatetime(d);
     }
+    function refreshDayPresetLabels() {
+      var now = new Date();
+      document.querySelectorAll('.day-preset').forEach(function (btn) {
+        var h = parseInt(btn.dataset.h, 10);
+        var m = parseInt(btn.dataset.m, 10);
+        var d = new Date();
+        d.setHours(h, m, 0, 0);
+        var isTomorrow = d < now;
+        var hh = String(h).padStart(2, '0');
+        var mm = String(m).padStart(2, '0');
+        btn.textContent = (isTomorrow ? '明日 ' : '今日 ') + hh + ':' + mm;
+      });
+    }
+    refreshDayPresetLabels();
+    setInterval(refreshDayPresetLabels, 60000);
 
     async function createTournament() {
       var body = {
