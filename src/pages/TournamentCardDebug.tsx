@@ -200,7 +200,6 @@ export function TournamentCardDebug() {
           evalErrorMessage={null}
           onEvalGenerate={() => console.log('[debug] onEvalGenerate')}
           onEvalViewResult={() => console.log('[debug] onEvalViewResult')}
-          onWatchFinalTable={() => console.log('[debug] onWatchFinalTable')}
         />
       </div>
     </div>
