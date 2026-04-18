@@ -17,7 +17,7 @@ CARD_BG     = (255, 255, 255)
 HEADER_BG   = (45, 90, 61)      # forest DEFAULT
 HEADER_FG   = (250, 248, 245)   # cream-100
 TEXT        = (26, 26, 26)      # cream-900
-SUB_TEXT    = (107, 94, 74)     # cream-700
+SUB_TEXT    = (74, 63, 48)      # cream-800（cream-700以下は薄すぎるため使用しない）
 BORDER      = (232, 224, 212)   # cream-300
 GOLD        = (212, 175, 55)
 SILVER      = (170, 170, 170)
@@ -47,19 +47,19 @@ subtitle = meta.get("subtitle", "")
 # ---- レイアウト ----
 W = 900
 PAD = 40
-ROW_H = 44
-HEADER_H = 56
-TITLE_H = 130
-FOOTER_H = 50
+ROW_H = 54
+HEADER_H = 64
+TITLE_H = 140
+FOOTER_H = 56
 H = TITLE_H + HEADER_H + ROW_H * len(rows) + FOOTER_H + PAD
 
 img = Image.new("RGB", (W, H), BG)
 d = ImageDraw.Draw(img)
 
 # ---- タイトル ----
-d.text((PAD, 30), title, font=f(32, True), fill=ACCENT)
+d.text((PAD, 28), title, font=f(36, True), fill=ACCENT)
 if subtitle:
-    d.text((PAD, 78), subtitle, font=f(18), fill=SUB_TEXT)
+    d.text((PAD, 84), subtitle, font=f(20), fill=SUB_TEXT)
 
 # ---- カード本体 ----
 card_x = PAD
@@ -72,12 +72,12 @@ d.rounded_rectangle([card_x, card_y, card_x + card_w, card_y + card_h],
 # 列定義: (label, x_left, align)  align: 'l' or 'r' or 'c'
 COLS = [
     ("順位", 24,   "c", 60),
-    ("名前", 100,  "l", 240),
-    ("RP",   360,  "r", 90),
-    ("出場", 470,  "r", 70),
-    ("優勝", 550,  "r", 70),
-    ("RP圏", 630,  "r", 70),
-    ("最高", 710,  "r", 70),
+    ("名前", 100,  "l", 190),
+    ("RP",   300,  "r", 100),
+    ("出場", 410,  "r", 80),
+    ("RP圏", 500,  "r", 80),
+    ("優勝", 590,  "r", 80),
+    ("最高", 680,  "r", 80),
 ]
 
 # ---- ヘッダ ----
@@ -87,7 +87,7 @@ d.rounded_rectangle([card_x, card_y, card_x + card_w, card_y + HEADER_H],
 d.rectangle([card_x, card_y + 12, card_x + card_w, card_y + HEADER_H], fill=HEADER_BG)
 
 for label, x, align, w in COLS:
-    fnt = f(18, True)
+    fnt = f(20, True)
     bbox = d.textbbox((0, 0), label, font=fnt)
     tw = bbox[2] - bbox[0]
     if align == "r":
@@ -96,7 +96,7 @@ for label, x, align, w in COLS:
         tx = card_x + x + (w - tw) // 2
     else:
         tx = card_x + x
-    d.text((tx, card_y + 16), label, font=fnt, fill=HEADER_FG)
+    d.text((tx, card_y + 19), label, font=fnt, fill=HEADER_FG)
 
 # ---- 行 ----
 for i, row in enumerate(rows):
@@ -112,24 +112,24 @@ for i, row in enumerate(rows):
     rank, name, rp, ent, win, itm, best = row
     rank_int = int(rank)
 
-    cells = [rank, name, rp, ent, win, itm, best]
+    cells = [rank, name, rp, ent, itm, win, best]
     for (label, x, align, cw), val in zip(COLS, cells):
         if label == "順位":
             # メダル丸
             cx = card_x + x + cw // 2
             cy = y + ROW_H // 2
-            r = 14
+            r = 17
             color = None
             if rank_int == 1: color = GOLD
             elif rank_int == 2: color = SILVER
             elif rank_int == 3: color = BRONZE
             if color:
                 d.ellipse([cx - r, cy - r, cx + r, cy + r], fill=color)
-                fnt = f(14, True)
+                fnt = f(17, True)
                 fg = (255, 255, 255)
             else:
-                fnt = f(16, True)
-                fg = SUB_TEXT
+                fnt = f(18, True)
+                fg = TEXT
             bbox = d.textbbox((0, 0), val, font=fnt)
             tw = bbox[2] - bbox[0]
             th = bbox[3] - bbox[1]
@@ -137,16 +137,16 @@ for i, row in enumerate(rows):
             continue
 
         if label == "RP":
-            fnt = f(18, True)
+            fnt = f(22, True)
             fg = ACCENT
         elif label == "名前":
-            fnt = f(17, True)
+            fnt = f(20, True)
             fg = TEXT
         else:
-            fnt = f(15)
-            fg = SUB_TEXT
+            fnt = f(22)
+            fg = TEXT
             if label == "優勝" and val != "0":
-                fnt = f(15, True)
+                fnt = f(22, True)
                 fg = GOLD
 
         bbox = d.textbbox((0, 0), val, font=fnt)
@@ -163,7 +163,7 @@ for i, row in enumerate(rows):
 # ---- フッター ----
 footer = meta.get("footer", "")
 if footer:
-    d.text((PAD, H - FOOTER_H + 8), footer, font=f(14), fill=SUB_TEXT)
+    d.text((PAD, H - FOOTER_H + 10), footer, font=f(16), fill=SUB_TEXT)
 
 img.save(OUT_PATH)
 print(f"saved: {OUT_PATH}", file=sys.stderr)
