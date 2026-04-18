@@ -7,6 +7,7 @@ import { TournamentGame } from './pages/TournamentGame';
 import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { EliminationDebug } from './pages/EliminationDebug';
+import { TournamentCardDebug } from './pages/TournamentCardDebug';
 import { TournamentMyResult } from './pages/TournamentMyResult';
 import { TournamentResults } from './pages/TournamentResults';
 import { HandHistory } from './pages/HandHistory';
@@ -90,6 +91,8 @@ function App() {
   let page;
   if (currentPath === '/debug/elimination') {
     page = <EliminationDebug />;
+  } else if (currentPath === '/debug/tournament-card') {
+    page = <TournamentCardDebug />;
   } else if (currentPath.startsWith('/hand/')) {
     const handId = currentPath.replace('/hand/', '');
     page = <HandDetailPage handId={handId} onBack={goBackToLobby} />;

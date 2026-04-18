@@ -221,8 +221,9 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
   );
 }
 
-function TournamentCard({
+export function TournamentCard({
   tournament: t,
+  winner,
   isRegistered,
   isRegistering,
   canReenter,
@@ -244,6 +245,8 @@ function TournamentCard({
   onEvalViewResult,
 }: {
   tournament: TournamentLobbyInfo;
+  /** 完了トナメの優勝者。displayName はサーバー側でマスク済みを想定。 */
+  winner?: { displayName: string; avatarUrl?: string | null } | null;
   isRegistered: boolean;
   isRegistering: boolean;
   canReenter: boolean;
@@ -269,106 +272,131 @@ function TournamentCard({
   const isRunning = t.status !== 'waiting' && t.status !== 'completed' && t.status !== 'cancelled';
   const isFinished = t.status === 'completed' || t.status === 'cancelled';
   const isWaitingForStart = t.status === 'waiting' && t.scheduledStartTime && new Date(t.scheduledStartTime) > new Date();
-
-  const showStartContext =
-    !isFinished && !isRunning && (t.scheduledStartTime || t.startedAt);
-  const startContextStrong = isWaitingForStart;
+  const showLateDeadline = Boolean(
+    isRunning &&
+      t.isRegistrationOpen &&
+      t.registrationDeadlineAt &&
+      new Date(t.registrationDeadlineAt) > new Date(),
+  );
+  const showWinnerHero = t.status === 'completed' && !!winner;
 
   return (
-    <div className={`rounded-[2.5cqw] overflow-hidden ${
-      isRunning
-        ? 'bg-amber-50 border-[0.5cqw] border-amber-500 shadow-[0_2px_12px_rgba(180,120,30,0.25)]'
-        : 'bg-white border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)]'
-    }`}>
-      <div className={`px-[4cqw] py-[3cqw] border-b ${
-        isRunning ? 'bg-gradient-to-b from-amber-500 to-amber-600 text-white border-amber-600' : 'border-cream-200'
-      }`}>
-        <div className="flex items-center gap-[2cqw] min-w-0">
-          <Trophy className={`w-[4.5cqw] h-[4.5cqw] shrink-0 ${isRunning ? 'text-white' : 'text-amber-500'}`} />
-          <span className={`font-bold text-[5cqw] leading-snug truncate ${isRunning ? 'text-white' : 'text-cream-900'}`}>{t.name}</span>
+    <div
+      className={`rounded-[3cqw] overflow-hidden bg-white border border-cream-300 shadow-[0_2px_10px_rgba(139,126,106,0.15)] ${
+        isRunning ? 'ring-[0.4cqw] ring-amber-400' : ''
+      }`}
+    >
+      {/* Header: 名前 + ステータスバッジ */}
+      <div className="px-[4cqw] pt-[3cqw] pb-[2cqw]">
+        <div className="flex items-start gap-[2cqw] min-w-0">
+          <Trophy className="w-[4.5cqw] h-[4.5cqw] shrink-0 text-amber-500 mt-[0.4cqw]" />
+          <span className="font-bold text-[4.8cqw] leading-tight text-cream-900 truncate flex-1 min-w-0">
+            {t.name}
+          </span>
         </div>
-        <div className="flex items-center gap-[1.5cqw] mt-[1.5cqw] pl-[6.5cqw]">
-          <span className={`px-[2cqw] py-[0.5cqw] rounded-full text-[2.5cqw] font-medium ${
-            isRunning ? 'bg-white text-amber-700' : `text-white ${status.color}`
-          }`}>
+        <div className="mt-[1.5cqw] pl-[6.5cqw] flex items-center gap-[1.5cqw]">
+          <span
+            className={`px-[1.8cqw] py-[0.4cqw] rounded-full text-[2.4cqw] font-medium text-white ${status.color}`}
+          >
             {status.text}
           </span>
           {t.isRegistrationOpen && !isFinished && (
-            <span className={`px-[1.8cqw] py-[0.35cqw] rounded-full text-[2.2cqw] font-semibold ${
-              isRunning
-                ? 'bg-white/20 text-white border border-white/40'
-                : 'bg-forest/10 text-forest border border-forest/25'
-            }`}>
+            <span className="px-[1.8cqw] py-[0.4cqw] rounded-full text-[2.3cqw] font-semibold bg-forest/10 text-forest border border-forest/25">
               参加可能
             </span>
           )}
         </div>
       </div>
 
-      <div className="px-[4cqw] pt-[3cqw] grid grid-cols-3 gap-x-[2cqw]">
-        <div className="min-w-0">
-          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-700 truncate">バイイン</div>
-          <div className="text-[4.2cqw] font-bold tabular-nums text-cream-900 leading-tight mt-[0.4cqw]">
-            {t.buyIn.toLocaleString()}
+      {/* Tier 1: state 別 hero */}
+      {showWinnerHero && winner && (
+        <div className="mx-[4cqw] mb-[2cqw] p-[3cqw] rounded-[2.5cqw] bg-gradient-to-br from-amber-50 to-amber-100 border border-amber-300 flex items-center gap-[3cqw]">
+          {winner.avatarUrl ? (
+            <img
+              src={winner.avatarUrl}
+              alt=""
+              className="w-[13cqw] h-[13cqw] rounded-full object-cover border-[0.4cqw] border-amber-400 shrink-0"
+            />
+          ) : (
+            <div className="w-[13cqw] h-[13cqw] rounded-full bg-amber-200 border-[0.4cqw] border-amber-400 flex items-center justify-center text-[6cqw] shrink-0">
+              🏆
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="text-[4cqw] font-bold text-amber-700 tracking-wide">1st</div>
+            <div className="text-[4.8cqw] font-bold text-cream-900 truncate leading-tight mt-[0.3cqw]">
+              {winner.displayName}
+            </div>
           </div>
         </div>
-        <div className="min-w-0 text-center">
-          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-700">参加</div>
-          <div className="text-[4.2cqw] font-bold tabular-nums text-cream-900 leading-tight mt-[0.4cqw]">
-            {t.registeredPlayers}
-            <span className="text-[2.8cqw] font-semibold text-cream-700">
-              /{t.maxPlayers}
+      )}
+
+      {isRunning && (
+        <div className="mx-[4cqw] mb-[2cqw] p-[3cqw] rounded-[2.5cqw] bg-amber-50 border border-amber-300 flex items-end justify-between gap-[2cqw]">
+          <div className="flex items-baseline gap-[1.5cqw] min-w-0">
+            <span className="text-[2.8cqw] text-amber-800 font-semibold">ブラインド Lv.</span>
+            <span className="text-[8cqw] font-bold text-amber-700 tabular-nums leading-none">
+              {t.currentBlindLevel}
             </span>
           </div>
-        </div>
-        <div className="min-w-0 text-right">
-          <div className="text-[2.2cqw] uppercase tracking-wide text-cream-700 truncate">賞金</div>
-          <div className="text-[4.2cqw] font-bold tabular-nums text-forest leading-tight mt-[0.4cqw]">
-            {t.prizePool.toLocaleString()}
-          </div>
-        </div>
-      </div>
-
-      {(isRunning || showStartContext) && (
-        <div className="px-[4cqw] pt-[2.5cqw]">
-          {isRunning ? (
-            <div className="flex items-center justify-center text-[3cqw] font-semibold text-cream-800 bg-cream-100 rounded-[1.5cqw] px-[2.5cqw] py-[1.8cqw]">
-              ブラインド Lv.{t.currentBlindLevel}
+          {showLateDeadline ? (
+            <div className="text-right shrink-0">
+              <div className="text-[2.2cqw] text-cream-700 uppercase tracking-wide">レイト締切</div>
+              <div className="text-[3.8cqw] font-bold text-cream-900 tabular-nums leading-tight">
+                {formatTime(t.registrationDeadlineAt)}
+              </div>
             </div>
-          ) : showStartContext ? (
-            <div
-              className={`flex items-center justify-center gap-[1.5cqw] text-[3cqw] font-semibold text-cream-800 rounded-[1.5cqw] px-[2.5cqw] py-[1.8cqw] ${
-                startContextStrong
-                  ? 'bg-cream-100 ring-1 ring-cream-300/80'
-                  : 'bg-cream-50'
-              }`}
-            >
-              <Clock className="w-[3.5cqw] h-[3.5cqw] shrink-0 opacity-80" />
-              開始 {formatTime(t.startedAt ?? t.scheduledStartTime)}
-            </div>
+          ) : !t.isRegistrationOpen ? (
+            <div className="text-[3cqw] font-bold text-cream-700 shrink-0">締切済み</div>
           ) : null}
         </div>
       )}
 
-      <div className="px-[4cqw] pt-[2.5cqw] pb-[3cqw] space-y-[1cqw] text-[2.6cqw] text-cream-700 border-b border-cream-100">
-        <div className="flex justify-between gap-[3cqw]">
-          <span>初期チップ</span>
-          <span className="shrink-0 tabular-nums font-medium text-cream-800">
-            {t.startingChips.toLocaleString()}
-          </span>
+      {t.status === 'waiting' && (
+        <div className="mx-[4cqw] mb-[2cqw] p-[3cqw] rounded-[2.5cqw] bg-cream-50 border border-cream-200">
+          <div className="text-[2.3cqw] tracking-wide text-cream-700 flex items-center gap-[1cqw]">
+            <Clock className="w-[2.6cqw] h-[2.6cqw] opacity-70" />
+            <span>{isWaitingForStart ? '開始予定' : '開始'}</span>
+          </div>
+          <div className="text-[6cqw] font-bold text-cream-900 tabular-nums leading-tight mt-[0.3cqw]">
+            {formatTime(t.scheduledStartTime)}
+          </div>
         </div>
-        {t.allowReentry && (
-          <div className="flex justify-between gap-[3cqw]">
-            <span className="shrink-0">リエントリー</span>
-            <span className="text-right font-medium text-cream-800">
-              最大 {t.maxReentries}回（Lv.{t.reentryDeadlineLevel}まで）
-            </span>
+      )}
+
+      {/* Tier 2: コンパクトな主要情報 */}
+      <div className="px-[4cqw] flex items-baseline gap-[3.5cqw] text-[3cqw] flex-wrap">
+        {!isFinished && (
+          <div>
+            <span className="text-cream-600">エントリー費 </span>
+            <span className="font-semibold tabular-nums text-cream-900">{t.buyIn.toLocaleString()}</span>
           </div>
         )}
-        {t.allowReentry && t.totalReentries > 0 && (
-          <div className="text-[2.4cqw] text-cream-700 pt-[0.2cqw]">
-            Reentry 利用 {t.totalReentries}回
+        {t.status !== 'cancelled' && (
+          <div>
+            <span className="text-cream-600">賞金 </span>
+            <span className="font-semibold tabular-nums text-forest">{t.prizePool.toLocaleString()}</span>
           </div>
+        )}
+        <div>
+          <span className="text-cream-600">参加 </span>
+          <span className="font-semibold tabular-nums text-cream-900">{t.registeredPlayers}</span>
+          <span className="text-cream-600">/{t.maxPlayers}</span>
+        </div>
+      </div>
+
+      {/* Tier 3: 詳細（小） */}
+      <div className="px-[4cqw] pt-[1cqw] pb-[2cqw] text-[2.8cqw] text-cream-700 flex flex-wrap gap-x-[3cqw] gap-y-[0.3cqw]">
+        <span>
+          初期 <span className="tabular-nums font-medium text-cream-800">{t.startingChips.toLocaleString()}</span>
+        </span>
+        {t.allowReentry && (
+          <span>
+            Reentry 最大{t.maxReentries}回 (Lv.{t.reentryDeadlineLevel})
+          </span>
+        )}
+        {t.allowReentry && t.totalReentries > 0 && (
+          <span>利用 {t.totalReentries}回</span>
         )}
       </div>
 
