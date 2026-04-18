@@ -65,6 +65,8 @@ export interface TournamentLobbyInfo {
   totalReentries: number;       // 実際に行われたリエントリー数
   reentryDeadlineLevel: number;
   registrationDeadlineAt?: string; // ISO string — エントリー締切時刻
+  /** 完了トナメの優勝者（position=1）。displayName はサーバー側でマスク済み。 */
+  winner?: { displayName: string; avatarUrl: string | null } | null;
 }
 
 // --- Tournament Result ---
