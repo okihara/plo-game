@@ -144,6 +144,15 @@ export async function getUserBadges(userId: string): Promise<{ type: string; awa
   });
 }
 
+/** ウィークリーチャンピオン（weekly_rank_1）バッジを保有しているか（過去1回でもあればtrue） */
+export async function hasWeeklyChampionBadge(userId: string): Promise<boolean> {
+  const existing = await prisma.badge.findFirst({
+    where: { userId, type: 'weekly_rank_1' },
+    select: { id: true },
+  });
+  return !!existing;
+}
+
 // --- 表示用グルーピング ---
 
 export interface DisplayBadge {

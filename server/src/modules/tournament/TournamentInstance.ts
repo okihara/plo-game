@@ -134,6 +134,7 @@ export class TournamentInstance {
       avatarId?: number;
       avatarUrl?: string | null;
       nameMasked?: boolean;
+      hasWeeklyChampion?: boolean;
     }
   ): { success: boolean; error?: string } {
     const existingPlayer = this.players.get(odId);
@@ -178,6 +179,7 @@ export class TournamentInstance {
       registeredAt: new Date(),
       eliminatedAt: null,
       nameMasked: options?.nameMasked ?? true,
+      hasWeeklyChampion: options?.hasWeeklyChampion ?? false,
     };
 
     this.players.set(odId, player);
@@ -493,7 +495,8 @@ export class TournamentInstance {
       undefined,
       options,
       player.nameMasked,
-      player.displayName
+      player.displayName,
+      player.hasWeeklyChampion
     );
 
     if (seatIndex === null) {
