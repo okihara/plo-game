@@ -67,6 +67,9 @@ export interface GameTableProps {
 
   /** 観戦モード: アクション・自分のホール非表示、席の基準はディーラー */
   isSpectator?: boolean;
+
+  /** トーナメントプレイ中（プロフィールのスタッツタブ初期値をトナメにする等） */
+  isTournament?: boolean;
 }
 
 export function GameTable({
@@ -94,6 +97,7 @@ export function GameTable({
   notice: externalNotice,
   children,
   isSpectator = false,
+  isTournament = false,
 }: GameTableProps) {
   const { settings, setBigBlind } = useGameSettings();
   const { user } = useAuth();
@@ -393,6 +397,7 @@ export function GameTable({
               label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
               onLabelChange={setLabel}
               onLabelRemove={removeLabel}
+              defaultMode={isTournament ? 'tournament' : 'cash'}
             />
           )}
 
