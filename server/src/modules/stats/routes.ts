@@ -13,12 +13,26 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
     const { userId } = request.params as { userId: string };
 
-    const [cache, tournamentCache, rawBadges, user] = await Promise.all([
+    const [cache, tournamentCache, tournamentResults, rawBadges, user] = await Promise.all([
       prisma.playerStatsCache.findUnique({ where: { userId } }),
       prisma.tournamentStatsCache.findUnique({ where: { userId } }),
+      prisma.tournamentResult.findMany({
+        where: { userId },
+        select: {
+          prize: true,
+          reentries: true,
+          tournament: { select: { buyIn: true } },
+        },
+      }),
       getUserBadges(userId),
       prisma.user.findUnique({ where: { id: userId }, select: { username: true, displayName: true, nameMasked: true } }),
     ]);
+
+    const tournamentsPlayed = tournamentResults.length;
+    const tournamentBankrollProfit = tournamentResults.reduce(
+      (sum, r) => sum + r.prize - r.tournament.buyIn * (1 + r.reentries),
+      0,
+    );
 
     const badges = groupBadgesForDisplay(rawBadges);
     const displayName = user
@@ -46,7 +60,16 @@ export async function statsRoutes(fastify: FastifyInstance) {
     });
 
     const stats = cache && cache.handsPlayed > 0 ? toStats(cache) : null;
-    const tournamentStats = tournamentCache && tournamentCache.handsPlayed > 0 ? toStats(tournamentCache) : null;
+    const tournamentStats: (PlayerStats & { tournamentsPlayed: number }) | null =
+      tournamentCache && tournamentCache.handsPlayed > 0
+        ? {
+            ...toStats(tournamentCache),
+            // トーナメントの実収支はバンクロール視点の賞金収支で上書き
+            totalProfit: tournamentBankrollProfit,
+            totalAllInEVProfit: tournamentBankrollProfit,
+            tournamentsPlayed,
+          }
+        : null;
 
     return {
       stats,
