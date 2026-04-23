@@ -184,12 +184,14 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
         },
       });
 
-      // スタッツキャッシュ更新 (fire-and-forget) — トーナメントではスキップ
-      if (!this.tournamentId) {
-        updatePlayerStats(gameState, seats, this.startChips, this.allInEVProfits).catch(err =>
-          console.error('Stats cache update failed:', err)
-        );
-      }
+      // スタッツキャッシュ更新 (fire-and-forget) — tournamentIdの有無でキャッシュ先を切替
+      updatePlayerStats(
+        gameState,
+        seats,
+        this.startChips,
+        this.allInEVProfits,
+        this.tournamentId != null,
+      ).catch(err => console.error('Stats cache update failed:', err));
     } catch (error) {
       console.error('Failed to save hand history:', error);
     }
