@@ -48,6 +48,7 @@ export class StateTransformer {
         hasActed: true,
         isConnected: false,
         cards: toProtocolHoleCards(player),
+        hasWeeklyChampion: seat.hasWeeklyChampion,
       };
     }
 
@@ -67,6 +68,7 @@ export class StateTransformer {
         hasActed: true,
         isConnected: seat.socket?.connected ?? false,
         cards: [],
+        hasWeeklyChampion: seat.hasWeeklyChampion,
       };
     }
 
@@ -84,6 +86,7 @@ export class StateTransformer {
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
       cards: toProtocolHoleCards(player),
+      hasWeeklyChampion: seat.hasWeeklyChampion,
     };
   }
 

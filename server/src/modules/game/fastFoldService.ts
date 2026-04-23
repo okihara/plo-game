@@ -16,8 +16,9 @@ function movePlayerToNewTable(params: {
   nameMasked: boolean;
   sourceTable: TableInstance;
   tableManager: TableManager;
+  hasWeeklyChampion?: boolean;
 }): void {
-  const { odId, odName, displayName, socket, chips, avatarUrl, nameMasked, sourceTable, tableManager } = params;
+  const { odId, odName, displayName, socket, chips, avatarUrl, nameMasked, sourceTable, tableManager, hasWeeklyChampion } = params;
 
   tableManager.removePlayerFromTracking(odId);
 
@@ -45,7 +46,8 @@ function movePlayerToNewTable(params: {
     odId, odName, socket, chips, avatarUrl, undefined,
     { skipJoinedEmit: true },
     nameMasked,
-    displayName
+    displayName,
+    hasWeeklyChampion
   );
 
   if (seatNumber !== null) {
@@ -80,6 +82,7 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
         nameMasked: p.nameMasked,
         sourceTable: table,
         tableManager,
+        hasWeeklyChampion: p.hasWeeklyChampion,
       });
     }
   };
@@ -120,7 +123,7 @@ export async function handleFastFoldMove(
     return;
   }
 
-  // 3. 新テーブルへ移動
+  // 3. 新テーブルへ移動（hasWeeklyChampion は前テーブルの席情報から引き継ぐ）
   movePlayerToNewTable({
     odId,
     odName: user.username,
@@ -131,5 +134,6 @@ export async function handleFastFoldMove(
     nameMasked: user.nameMasked,
     sourceTable: currentTable,
     tableManager,
+    hasWeeklyChampion: unseatResult.hasWeeklyChampion,
   });
 }

@@ -5,6 +5,7 @@ import { TournamentConfig } from './types.js';
 import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { prisma } from '../../config/database.js';
+import { hasWeeklyChampionBadge } from '../badges/badgeService.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -83,10 +84,12 @@ export function registerTournamentHandlers(
       if (!user) return;
 
       const statusBefore = tournament.getStatus();
+      const weeklyChamp = await hasWeeklyChampionBadge(odId);
       const result = tournament.enterPlayer(odId, user.username, socket, {
         displayName: user.displayName,
         avatarUrl: user.avatarUrl,
         nameMasked: user.nameMasked,
+        hasWeeklyChampion: weeklyChamp,
       });
       if (!result.success) {
         socket.emit('tournament:error', { message: result.error ?? '参加に失敗しました' });

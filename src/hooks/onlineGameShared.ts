@@ -40,6 +40,7 @@ export function convertOnlinePlayerToPlayer(
     avatarId: online.avatarId,
     avatarUrl: online.avatarUrl,
     odId: online.odId,
+    hasWeeklyChampion: online.hasWeeklyChampion,
   };
 }
 

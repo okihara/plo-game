@@ -53,6 +53,7 @@ export interface TournamentPlayer {
   registeredAt: Date;
   eliminatedAt: Date | null;
   nameMasked: boolean;
+  hasWeeklyChampion?: boolean;
 }
 
 // --- Player Move (server only) ---
