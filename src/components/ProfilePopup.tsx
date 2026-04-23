@@ -318,6 +318,7 @@ export function ProfilePopup({
             stats={mode === 'cash' ? stats : tournamentStats}
             showPlaceholderWhenEmpty
             mode={mode}
+            hideTournamentProfit={!isSelf}
           />
 
           {/* No Stats Notice */}

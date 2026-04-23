@@ -31,6 +31,8 @@ interface PlayerStatsPanelProps {
   showPlaceholderWhenEmpty?: boolean;
   /** 'tournament' のとき実収支は賞金ベース。Win Rate/EV は非表示 */
   mode?: 'cash' | 'tournament';
+  /** tournament モードで「トナメ収支」を非表示にする（他人のプロフィール閲覧時など） */
+  hideTournamentProfit?: boolean;
 }
 
 const statInfo: Record<string, { desc: string; formula: string }> = {
@@ -79,8 +81,10 @@ export function PlayerStatsPanel({
   stats,
   showPlaceholderWhenEmpty = false,
   mode = 'cash',
+  hideTournamentProfit = false,
 }: PlayerStatsPanelProps) {
   const isTournament = mode === 'tournament';
+  const showTournamentProfit = isTournament && !hideTournamentProfit;
   const evProfit = stats ? stats.totalAllInEVProfit ?? stats.totalProfit : 0;
   const evWinRate = stats && stats.handsPlayed > 0 ? evProfit / stats.handsPlayed : 0;
 
@@ -96,21 +100,25 @@ export function PlayerStatsPanel({
       <div className="rounded-[3cqw] border border-cream-200/90 bg-gradient-to-b from-cream-50 to-cream-100/80 overflow-hidden shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
         <StatBlock>
           <StatRow label="総ハンド数" value="—" isPlaceholder emphasize />
-          <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
-            {isTournament ? (
-              <>
-                <StatRow label="トナメ数" value="—" isPlaceholder dense />
-                <StatRow label="トナメ収支" value="—" isPlaceholder dense />
-              </>
-            ) : (
-              <>
-                <StatRow label="実収支" value="—" isPlaceholder dense />
-                <StatRow label="Win Rate" value="—" isPlaceholder dense />
-                <StatRow label="収支 (EV)" value="—" isPlaceholder dense />
-                <StatRow label="Win Rate (EV)" value="—" isPlaceholder dense />
-              </>
-            )}
-          </div>
+          {isTournament && !showTournamentProfit ? (
+            <StatRow label="トナメ数" value="—" isPlaceholder dense />
+          ) : (
+            <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
+              {isTournament ? (
+                <>
+                  <StatRow label="トナメ数" value="—" isPlaceholder dense />
+                  <StatRow label="トナメ収支" value="—" isPlaceholder dense />
+                </>
+              ) : (
+                <>
+                  <StatRow label="実収支" value="—" isPlaceholder dense />
+                  <StatRow label="Win Rate" value="—" isPlaceholder dense />
+                  <StatRow label="収支 (EV)" value="—" isPlaceholder dense />
+                  <StatRow label="Win Rate (EV)" value="—" isPlaceholder dense />
+                </>
+              )}
+            </div>
+          )}
         </StatBlock>
         <StatBlock>
           <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
@@ -134,50 +142,58 @@ export function PlayerStatsPanel({
     <div className="rounded-[3cqw] border border-cream-200/90 bg-white overflow-hidden shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
       <StatBlock>
         <StatRow label="総ハンド数" value={stats.handsPlayed.toLocaleString()} emphasize />
-        <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
-          {isTournament ? (
-            <>
-              <StatRow
-                label="トナメ数"
-                value={(stats.tournamentsPlayed ?? 0).toLocaleString()}
-                dense
-              />
-              <StatRow
-                label="トナメ収支"
-                value={formatProfit(stats.totalProfit)}
-                valueClass={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
-                dense
-              />
-            </>
-          ) : (
-            <>
-              <StatRow
-                label="実収支"
-                value={formatProfit(stats.totalProfit)}
-                valueClass={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
-                dense
-              />
-              <StatRow
-                label="Win Rate"
-                value={formatRate(stats.winRate)}
-                valueClass={stats.winRate >= 0 ? 'text-forest' : 'text-[#C0392B]'}
-                dense
-              />
-              <StatRow
-                label="収支 (EV)"
-                value={formatProfit(evProfit)}
-                valueClass={evProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
-                dense
-              />
-              <StatRow
-                label="Win Rate (EV)"
-                value={formatRate(evWinRate)}
-                valueClass={evProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
-                dense
-              />
-            </>
-          )}
-        </div>
+        {isTournament && !showTournamentProfit ? (
+          <StatRow
+            label="トナメ数"
+            value={(stats.tournamentsPlayed ?? 0).toLocaleString()}
+            dense
+          />
+        ) : (
+          <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
+            {isTournament ? (
+              <>
+                <StatRow
+                  label="トナメ数"
+                  value={(stats.tournamentsPlayed ?? 0).toLocaleString()}
+                  dense
+                />
+                <StatRow
+                  label="トナメ収支"
+                  value={formatProfit(stats.totalProfit)}
+                  valueClass={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
+                  dense
+                />
+              </>
+            ) : (
+              <>
+                <StatRow
+                  label="実収支"
+                  value={formatProfit(stats.totalProfit)}
+                  valueClass={stats.totalProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
+                  dense
+                />
+                <StatRow
+                  label="Win Rate"
+                  value={formatRate(stats.winRate)}
+                  valueClass={stats.winRate >= 0 ? 'text-forest' : 'text-[#C0392B]'}
+                  dense
+                />
+                <StatRow
+                  label="収支 (EV)"
+                  value={formatProfit(evProfit)}
+                  valueClass={evProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
+                  dense
+                />
+                <StatRow
+                  label="Win Rate (EV)"
+                  value={formatRate(evWinRate)}
+                  valueClass={evProfit >= 0 ? 'text-forest' : 'text-[#C0392B]'}
+                  dense
+                />
+              </>
+            )}
+          </div>
+        )}
       </StatBlock>
       <StatBlock>
         <div className="grid grid-cols-2 gap-x-[2cqw] gap-y-[0.4cqw]">
