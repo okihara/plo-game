@@ -317,6 +317,7 @@ export function ProfilePopup({
             loading={loading}
             stats={mode === 'cash' ? stats : tournamentStats}
             showPlaceholderWhenEmpty
+            mode={mode}
           />
 
           {/* No Stats Notice */}
