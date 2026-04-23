@@ -156,6 +156,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
             notice={blindChangeNotice}
             maintenanceStatus={maintenanceStatus}
             announcementStatus={announcementStatus}
+            isTournament
           >
             {tournamentState && (
               <TournamentHUD tournamentState={tournamentState} lastEliminated={lastEliminated} />

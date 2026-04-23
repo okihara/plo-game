@@ -33,6 +33,8 @@ interface ProfilePopupProps {
   label?: PlayerLabel;
   onLabelChange?: (targetUserId: string, color: string, note: string) => void;
   onLabelRemove?: (targetUserId: string) => void;
+  /** 初期表示するスタッツのモード（未指定なら 'cash'） */
+  defaultMode?: 'cash' | 'tournament';
 }
 
 // avatarIdから画像パスを生成
@@ -53,10 +55,11 @@ export function ProfilePopup({
   label,
   onLabelChange,
   onLabelRemove,
+  defaultMode = 'cash',
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStatsDisplay | null>(null);
   const [tournamentStats, setTournamentStats] = useState<PlayerStatsDisplay | null>(null);
-  const [mode, setMode] = useState<'cash' | 'tournament'>('cash');
+  const [mode, setMode] = useState<'cash' | 'tournament'>(defaultMode);
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const badgeTooltipRef = useRef<HTMLDivElement>(null);
