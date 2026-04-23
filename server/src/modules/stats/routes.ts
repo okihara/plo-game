@@ -13,8 +13,9 @@ export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
     const { userId } = request.params as { userId: string };
 
-    const [cache, rawBadges, user] = await Promise.all([
+    const [cache, tournamentCache, rawBadges, user] = await Promise.all([
       prisma.playerStatsCache.findUnique({ where: { userId } }),
+      prisma.tournamentStatsCache.findUnique({ where: { userId } }),
       getUserBadges(userId),
       prisma.user.findUnique({ where: { id: userId }, select: { username: true, displayName: true, nameMasked: true } }),
     ]);
@@ -24,30 +25,37 @@ export async function statsRoutes(fastify: FastifyInstance) {
       ? (user.displayName || (user.nameMasked ? maskName(user.username) : user.username))
       : null;
 
-    if (!cache || cache.handsPlayed === 0) {
-      return { stats: null, handsAnalyzed: 0, badges, displayName };
-    }
-
     const pct = (num: number, denom: number) => denom > 0 ? (num / denom) * 100 : 0;
 
-    const stats: PlayerStats = {
-      handsPlayed: cache.handsPlayed,
-      winRate: cache.handsPlayed > 0 ? cache.totalProfit / cache.handsPlayed : 0,
-      totalProfit: cache.totalProfit,
-      totalAllInEVProfit: cache.totalAllInEVProfit,
-      vpip: pct(cache.vpipCount, cache.detailedHands),
-      pfr: pct(cache.pfrCount, cache.detailedHands),
-      threeBet: pct(cache.threeBetCount, cache.threeBetOpportunity),
-      fourBet: pct(cache.fourBetCount, cache.fourBetOpportunity),
-      afq: pct(cache.aggressiveActions, cache.totalPostflopActions),
-      cbet: pct(cache.cbetCount, cache.cbetOpportunity),
-      foldToCbet: pct(cache.foldToCbetCount, cache.facedCbetCount),
-      foldTo3Bet: pct(cache.foldTo3BetCount, cache.faced3BetCount),
-      wtsd: pct(cache.wtsdCount, cache.sawFlopCount),
-      wsd: pct(cache.wsdCount, cache.wtsdCount),
-    };
+    type CacheRow = NonNullable<typeof cache>;
+    const toStats = (c: CacheRow): PlayerStats => ({
+      handsPlayed: c.handsPlayed,
+      winRate: c.handsPlayed > 0 ? c.totalProfit / c.handsPlayed : 0,
+      totalProfit: c.totalProfit,
+      totalAllInEVProfit: c.totalAllInEVProfit,
+      vpip: pct(c.vpipCount, c.detailedHands),
+      pfr: pct(c.pfrCount, c.detailedHands),
+      threeBet: pct(c.threeBetCount, c.threeBetOpportunity),
+      fourBet: pct(c.fourBetCount, c.fourBetOpportunity),
+      afq: pct(c.aggressiveActions, c.totalPostflopActions),
+      cbet: pct(c.cbetCount, c.cbetOpportunity),
+      foldToCbet: pct(c.foldToCbetCount, c.facedCbetCount),
+      foldTo3Bet: pct(c.foldTo3BetCount, c.faced3BetCount),
+      wtsd: pct(c.wtsdCount, c.sawFlopCount),
+      wsd: pct(c.wsdCount, c.wtsdCount),
+    });
 
-    return { stats, handsAnalyzed: cache.handsPlayed, badges, displayName };
+    const stats = cache && cache.handsPlayed > 0 ? toStats(cache) : null;
+    const tournamentStats = tournamentCache && tournamentCache.handsPlayed > 0 ? toStats(tournamentCache) : null;
+
+    return {
+      stats,
+      tournamentStats,
+      handsAnalyzed: cache?.handsPlayed ?? 0,
+      tournamentHandsAnalyzed: tournamentCache?.handsPlayed ?? 0,
+      badges,
+      displayName,
+    };
   });
 
   // 収支推移データ（グラフ用）

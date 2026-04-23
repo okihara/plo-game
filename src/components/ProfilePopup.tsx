@@ -55,6 +55,8 @@ export function ProfilePopup({
   onLabelRemove,
 }: ProfilePopupProps) {
   const [stats, setStats] = useState<PlayerStatsDisplay | null>(null);
+  const [tournamentStats, setTournamentStats] = useState<PlayerStatsDisplay | null>(null);
+  const [mode, setMode] = useState<'cash' | 'tournament'>('cash');
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const badgeTooltipRef = useRef<HTMLDivElement>(null);
@@ -110,6 +112,7 @@ export function ProfilePopup({
     }
     Promise.all(fetches).then(([statsData, historyData]) => {
       if (statsData?.stats) setStats(statsData.stats);
+      if (statsData?.tournamentStats) setTournamentStats(statsData.tournamentStats);
       if (statsData?.badges) setBadges(statsData.badges);
       if (historyData?.points) setProfitHistory(historyData.points);
     }).finally(() => setLoading(false));
@@ -290,21 +293,43 @@ export function ProfilePopup({
             </div>
           )}
 
+          {/* Mode Tabs */}
+          <div className="flex gap-[1.5cqw] mb-[2cqw]">
+            {(['cash', 'tournament'] as const).map(m => {
+              const active = mode === m;
+              return (
+                <button
+                  key={m}
+                  onClick={() => setMode(m)}
+                  className={`flex-1 py-[1.8cqw] text-[3cqw] font-semibold rounded-[2cqw] border transition-colors ${
+                    active
+                      ? 'bg-cream-900 text-white border-cream-900'
+                      : 'bg-white text-cream-800 border-cream-300 active:bg-cream-100'
+                  }`}
+                >
+                  {m === 'cash' ? 'キャッシュ' : 'トーナメント'}
+                </button>
+              );
+            })}
+          </div>
+
           <PlayerStatsPanel
             loading={loading}
-            stats={stats}
+            stats={mode === 'cash' ? stats : tournamentStats}
             showPlaceholderWhenEmpty
           />
 
           {/* No Stats Notice */}
-          {!loading && !stats && (
+          {!loading && (mode === 'cash' ? !stats : !tournamentStats) && (
             <p className="text-cream-800 text-[2.5cqw] text-center mt-[1cqw]">
-              スタッツはハンドをプレイすると表示されます
+              {mode === 'cash'
+                ? 'スタッツはハンドをプレイすると表示されます'
+                : 'トーナメントに参加すると表示されます'}
             </p>
           )}
 
-          {/* Profit Chart (self only) */}
-          {isSelf && !loading && profitHistory.length >= 2 && (
+          {/* Profit Chart (self only, cash mode only) */}
+          {isSelf && mode === 'cash' && !loading && profitHistory.length >= 2 && (
             <div className="bg-white rounded-[3cqw] p-[2.5cqw] mt-[3cqw] border border-cream-200/90 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
               <ProfitChart points={profitHistory} />
             </div>

@@ -19,6 +19,7 @@ export async function updatePlayerStats(
   seats: (SeatInfo | null)[],
   startChips: Map<number, number>,
   allInEVProfits?: Map<number, number> | null,
+  isTournament: boolean = false,
 ): Promise<void> {
   const actions = gameState.handHistory.map(a => ({
     seatIndex: a.playerId,
@@ -65,39 +66,46 @@ export async function updatePlayerStats(
       playerInfos, allInEVProfit,
     );
 
+    const updateData = {
+      handsPlayed: { increment: inc.handsPlayed },
+      winCount: { increment: inc.winCount },
+      totalProfit: { increment: inc.totalProfit },
+      totalAllInEVProfit: { increment: inc.totalAllInEVProfit },
+      detailedHands: { increment: inc.detailedHands },
+      vpipCount: { increment: inc.vpipCount },
+      pfrCount: { increment: inc.pfrCount },
+      threeBetCount: { increment: inc.threeBetCount },
+      threeBetOpportunity: { increment: inc.threeBetOpportunity },
+      foldTo3BetCount: { increment: inc.foldTo3BetCount },
+      faced3BetCount: { increment: inc.faced3BetCount },
+      fourBetCount: { increment: inc.fourBetCount },
+      fourBetOpportunity: { increment: inc.fourBetOpportunity },
+      aggressiveActions: { increment: inc.aggressiveActions },
+      totalPostflopActions: { increment: inc.totalPostflopActions },
+      cbetCount: { increment: inc.cbetCount },
+      cbetOpportunity: { increment: inc.cbetOpportunity },
+      foldToCbetCount: { increment: inc.foldToCbetCount },
+      facedCbetCount: { increment: inc.facedCbetCount },
+      sawFlopCount: { increment: inc.sawFlopCount },
+      wtsdCount: { increment: inc.wtsdCount },
+      wsdCount: { increment: inc.wsdCount },
+    };
+    const upsertArgs = {
+      where: { userId: seat.odId },
+      create: { userId: seat.odId, ...inc },
+      update: updateData,
+    };
     upserts.push(
-      prisma.playerStatsCache.upsert({
-        where: { userId: seat.odId },
-        create: { userId: seat.odId, ...inc },
-        update: {
-          handsPlayed: { increment: inc.handsPlayed },
-          winCount: { increment: inc.winCount },
-          totalProfit: { increment: inc.totalProfit },
-          totalAllInEVProfit: { increment: inc.totalAllInEVProfit },
-          detailedHands: { increment: inc.detailedHands },
-          vpipCount: { increment: inc.vpipCount },
-          pfrCount: { increment: inc.pfrCount },
-          threeBetCount: { increment: inc.threeBetCount },
-          threeBetOpportunity: { increment: inc.threeBetOpportunity },
-          foldTo3BetCount: { increment: inc.foldTo3BetCount },
-          faced3BetCount: { increment: inc.faced3BetCount },
-          fourBetCount: { increment: inc.fourBetCount },
-          fourBetOpportunity: { increment: inc.fourBetOpportunity },
-          aggressiveActions: { increment: inc.aggressiveActions },
-          totalPostflopActions: { increment: inc.totalPostflopActions },
-          cbetCount: { increment: inc.cbetCount },
-          cbetOpportunity: { increment: inc.cbetOpportunity },
-          foldToCbetCount: { increment: inc.foldToCbetCount },
-          facedCbetCount: { increment: inc.facedCbetCount },
-          sawFlopCount: { increment: inc.sawFlopCount },
-          wtsdCount: { increment: inc.wtsdCount },
-          wsdCount: { increment: inc.wsdCount },
-        },
-      })
+      isTournament
+        ? prisma.tournamentStatsCache.upsert(upsertArgs)
+        : prisma.playerStatsCache.upsert(upsertArgs)
     );
   }
 
   const results = await Promise.all(upserts);
+
+  // バッジはキャッシュゲームのみでトラッキング
+  if (isTournament) return;
 
   // バッジチェック (fire-and-forget)
   for (const result of results) {
