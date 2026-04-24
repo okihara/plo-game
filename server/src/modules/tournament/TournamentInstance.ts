@@ -198,6 +198,9 @@ export class TournamentInstance {
     // テーブルに着席
     this.seatPlayerAtAvailableTable(player);
 
+    // レイト登録直後に人数差が開いている場合は、その場で再調整する。
+    this.checkAndExecuteBalance();
+
     this.broadcastTournamentState();
     return { success: true };
   }
@@ -238,6 +241,9 @@ export class TournamentInstance {
 
     // 空きのあるテーブルに着席
     this.seatPlayerAtAvailableTable(player);
+
+    // リエントリーで短卓が発生した場合、次のハンド完了まで待たせない。
+    this.checkAndExecuteBalance();
 
     this.broadcastTournamentState();
     return { success: true };

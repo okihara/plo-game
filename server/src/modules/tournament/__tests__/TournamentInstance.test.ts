@@ -197,6 +197,32 @@ describe('TournamentInstance', () => {
       expect(result.success).toBe(false);
       expect(result.error).toContain('定員');
     });
+
+    it('レイト登録で新テーブルができた直後に即時バランス調整する', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+      }));
+
+      startAndEnterNPlayers(tournament, 6);
+
+      const tablesBefore = (tournament as any).tables as Map<string, any>;
+      for (const table of tablesBefore.values()) {
+        table._isHandInProgress = false;
+        table.gameState = null;
+      }
+
+      const result = tournament.enterPlayer('late_player', 'Late Player', createMockSocket());
+      expect(result.success).toBe(true);
+
+      const tablesAfter = (tournament as any).tables as Map<string, any>;
+      const playerCounts = Array.from(tablesAfter.values())
+        .map((table: any) => table.getPlayerCount())
+        .sort((a, b) => a - b);
+
+      expect(tournament.getTableCount()).toBe(2);
+      expect(playerCounts).toEqual([2, 5]);
+    });
   });
 
   // ============================================
