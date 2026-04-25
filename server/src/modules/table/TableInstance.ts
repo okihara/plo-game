@@ -495,15 +495,16 @@ export class TableInstance {
   }
 
   /** 観戦者へ着席者と同タイミングでホールを席単位で送る */
-  private emitHoleCardsToSpectators(seatIndex: number): void {
-    if (this.spectators.size === 0 || !this.gameState) return;
-    const player = this.gameState.players[seatIndex] ?? null;
-    const cards = player?.holeCards ?? [];
-    if (cards.length === 0) return;
-    const payload = { seatIndex, cards };
-    for (const sock of this.spectators.values()) {
-      sock.emit('game:hole_cards', payload);
-    }
+  private emitHoleCardsToSpectators(_seatIndex: number): void {
+    // 一旦、観戦モードでの全員カード送信は無効化
+    // if (this.spectators.size === 0 || !this.gameState) return;
+    // const player = this.gameState.players[_seatIndex] ?? null;
+    // const cards = player?.holeCards ?? [];
+    // if (cards.length === 0) return;
+    // const payload = { seatIndex: _seatIndex, cards };
+    // for (const sock of this.spectators.values()) {
+    //   sock.emit('game:hole_cards', payload);
+    // }
   }
 
   public addSpectator(socket: Socket): { ok: true } | { ok: false; message: string } {
