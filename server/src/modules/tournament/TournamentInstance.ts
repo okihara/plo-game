@@ -467,6 +467,9 @@ export class TournamentInstance {
           this.finalizeBustedPlayers();
         }
       },
+      onHandPresentationComplete: () => {
+        this.onHandPresentationComplete();
+      },
     };
 
     const table = new TableInstance(this.io, blindsStr, false, {
@@ -569,7 +572,7 @@ export class TournamentInstance {
   /**
    * TableInstance からのバスト通知。
    * ハンド中に複数人がバストする可能性があるため、ここでは蓄積のみ。
-   * 実際の順位確定・フェーズ遷移は onHandSettled で一括処理する。
+   * 実際の順位確定・フェーズ遷移は onBustsProcessed で一括処理する。
    */
   private onPlayerBusted(
     odId: string,
@@ -595,12 +598,12 @@ export class TournamentInstance {
     player.tableId = null;
     player.seatIndex = null;
 
-    // バスト情報を蓄積（onHandSettled で一括順位計算）
+    // バスト情報を蓄積（onBustsProcessed で一括順位計算）
     this.pendingBusts.push({ odId, socket, chipsAtHandStart });
   }
 
   /**
-   * ハンド完了時: チップ同期 → バストプレイヤーの順位一括確定 → フェーズ遷移
+   * ハンド完了時: チップ同期のみを行う
    */
   private onHandSettled(seatChips: { odId: string; seatIndex: number; chips: number }[]): void {
     // ハンド間でブラインドレベル変更を検知
@@ -613,12 +616,12 @@ export class TournamentInstance {
         player.chips = chips;
       }
     }
+  }
 
-    // バストプレイヤーの順位を一括確定
-    if (this.pendingBusts.length > 0) {
-      this.finalizeBustedPlayers();
-    }
-
+  /**
+   * ハンド結果の表示待ち完了後: テーブル移動やファイナルテーブル形成を実行
+   */
+  private onHandPresentationComplete(): void {
     // ペンディングのファイナルテーブル形成
     if (this.pendingFinalTable) {
       this.scheduleFormFinalTable();
@@ -861,7 +864,7 @@ export class TournamentInstance {
 
   /**
    * ファイナルテーブル形成をスケジュール。
-   * ハンド中のテーブルがあれば onHandSettled で再試行する。
+   * ハンド中のテーブルがあれば結果表示完了後に再試行する。
    */
   private scheduleFormFinalTable(): void {
     const anyHandInProgress = Array.from(this.tables.values()).some(t => t.isHandInProgress);

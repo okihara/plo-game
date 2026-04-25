@@ -1129,6 +1129,11 @@ export class TableInstance {
       this.lifecycleCallbacks.onBustsProcessed();
     }
 
+    // 結果表示の待ち時間が終わってから、テーブル移動など卓外の調整を許可する。
+    if (this.lifecycleCallbacks.onHandPresentationComplete) {
+      this.lifecycleCallbacks.onHandPresentationComplete();
+    }
+
     this.pendingStartHand = false;
 
     // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）

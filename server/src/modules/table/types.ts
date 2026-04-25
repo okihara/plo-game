@@ -36,6 +36,12 @@ export interface TableLifecycleCallbacks {
    * - トーナメント: pendingBusts の一括順位確定・フェーズ遷移を実行
    */
   onBustsProcessed?: () => void;
+
+  /**
+   * ハンド結果の表示待ちが終わった後のコールバック
+   * - トーナメント: テーブルバランス調整やファイナルテーブル形成を実行
+   */
+  onHandPresentationComplete?: () => void;
 }
 
 export interface SeatInfo {
