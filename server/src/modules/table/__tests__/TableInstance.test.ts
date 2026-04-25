@@ -1694,7 +1694,9 @@ describe('TableInstance - 観戦', () => {
     expect(table.getSpectatorCount()).toBe(0);
   });
 
-  it('観戦ソケットにも着席者と同タイミングで席付き game:hole_cards（protocol）が送られる', () => {
+  // 観戦者への全員ホールカード送信は emitHoleCardsToSpectators 本体をコメントアウトして
+  // 一旦無効化しているため、対応するテストもスキップ。再有効化時に .skip を外す。
+  it.skip('観戦ソケットにも着席者と同タイミングで席付き game:hole_cards（protocol）が送られる', () => {
     const spec = createMockSocket('spectator_sock');
     expect(table.addSpectator(spec).ok).toBe(true);
     const { sockets } = seatNPlayers(table, 3, 600);
