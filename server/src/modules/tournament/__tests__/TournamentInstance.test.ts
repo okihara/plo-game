@@ -680,6 +680,9 @@ describe('TournamentInstance', () => {
 
       expect(tournament.getTableCount()).toBe(2);
 
+      // レイト登録締切後（registrationLevels=2 を超えるためlevel 3へ）
+      vi.advanceTimersByTime(10 * 60 * 1000);
+
       // 4人バスト → 残り6人 → playersPerTable(6)以下でfinal_table形成
       simulateBust(tournament, 'player_6', 300);
       simulateBust(tournament, 'player_7', 300);
@@ -814,6 +817,9 @@ describe('TournamentInstance', () => {
       }));
       startAndEnterNPlayers(tournament, 10);
 
+      // レイト登録締切後にバストでFT形成
+      vi.advanceTimersByTime(10 * 60 * 1000);
+
       // 4人バスト → 残り6人
       for (let i = 6; i < 10; i++) {
         simulateBust(tournament, `player_${i}`, 300);
@@ -847,6 +853,9 @@ describe('TournamentInstance', () => {
       }));
       startAndEnterNPlayers(tournament, 10);
 
+      // レイト登録締切後にバストでFT形成
+      vi.advanceTimersByTime(10 * 60 * 1000);
+
       for (let i = 6; i < 10; i++) {
         simulateBust(tournament, `player_${i}`, 300);
       }
@@ -865,6 +874,52 @@ describe('TournamentInstance', () => {
         (args: unknown[]) => args[0] === 'tournament:final_table'
       );
       expect(ftCalls.length).toBeGreaterThan(0);
+    });
+
+    it('レイト登録中はFT形成されず、締切後のレベル変更で形成される', () => {
+      // registrationLevels: 2 → level 1,2 中はFT形成しない
+      const tournament = new TournamentInstance(io, createTestConfig({
+        playersPerTable: 6,
+        minPlayers: 2,
+        registrationLevels: 2,
+      }));
+      startAndEnterNPlayers(tournament, 10);
+
+      expect(tournament.getTableCount()).toBe(2);
+
+      // レイト登録中(level 1)に4人バスト → 残り6人だがFT形成しない
+      for (let i = 6; i < 10; i++) {
+        simulateBust(tournament, `player_${i}`, 300);
+      }
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+        { odId: 'player_3', seatIndex: 3, chips: 2000 },
+        { odId: 'player_4', seatIndex: 4, chips: 2000 },
+        { odId: 'player_5', seatIndex: 5, chips: 2000 },
+      ]);
+
+      // レイト登録中なのでFT形成されない
+      expect(tournament.getStatus()).toBe('running');
+      expect(tournament.getTableCount()).toBe(2);
+
+      // 10分経過 → level 3（registrationLevels: 2 を超過、レイト締切後）
+      vi.advanceTimersByTime(10 * 60 * 1000);
+      // 何らかのトリガーでblindScheduler.tickが呼ばれる必要がある
+      // 実運用ではonHandSettled経由で発火するため、ハンド完了を再現
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2000 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+        { odId: 'player_2', seatIndex: 2, chips: 2000 },
+        { odId: 'player_3', seatIndex: 3, chips: 2000 },
+        { odId: 'player_4', seatIndex: 4, chips: 2000 },
+        { odId: 'player_5', seatIndex: 5, chips: 2000 },
+      ]);
+
+      // レイト締切後はFT形成される
+      expect(tournament.getStatus()).toBe('final_table');
+      expect(tournament.getTableCount()).toBe(1);
     });
   });
 
@@ -901,6 +956,9 @@ describe('TournamentInstance', () => {
 
       expect(tournament.getTableCount()).toBe(2);
 
+      // レイト登録締切後にバストを進める
+      vi.advanceTimersByTime(10 * 60 * 1000);
+
       // 8人バスト → 残り2人
       for (let i = 2; i < 10; i++) {
         simulateBust(tournament, `player_${i}`, 300);
@@ -924,6 +982,9 @@ describe('TournamentInstance', () => {
         minPlayers: 2,
       }));
       startAndEnterNPlayers(tournament, 10);
+
+      // レイト登録締切後にバストでFT形成
+      vi.advanceTimersByTime(10 * 60 * 1000);
 
       // 5人バスト → 残り5人 → final_table
       for (let i = 5; i < 10; i++) {

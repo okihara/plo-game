@@ -717,6 +717,9 @@ export class TournamentInstance {
         this.broadcastTournamentState();
       }
     } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
+      // レイト登録中はFT形成を保留（バランス調整も行わず、現状維持）。
+      // 締切後は onBlindLevelUp で改めてFT形成判定が走る。
+      if (this.isRegistrationOpen()) return;
       this.scheduleFormFinalTable();
     } else {
       this.checkAndExecuteBalance();
@@ -743,6 +746,17 @@ export class TournamentInstance {
     });
 
     console.log(`[Tournament ${this.id}] Blind level up: ${blindsStr}`);
+
+    // レイト登録締切後、既にFT形成条件を満たしていれば形成する
+    // (バスト等で残り <= PLAYERS_PER_TABLE になっても登録中は handlePhaseTransition で
+    //  スキップされるため、ここで catch-up する)
+    if (!this.isRegistrationOpen()) {
+      const remaining = this.getPlayersRemaining();
+      if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
+        this.scheduleFormFinalTable();
+      }
+    }
+
     this.broadcastTournamentState();
   }
 
