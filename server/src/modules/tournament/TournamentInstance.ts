@@ -420,6 +420,7 @@ export class TournamentInstance {
   }
 
   public getLobbyInfo() {
+    const isFt = this.status === 'final_table' || this.status === 'heads_up';
     return {
       id: this.id,
       name: this.config.name,
@@ -443,6 +444,7 @@ export class TournamentInstance {
       registrationDeadlineAt: this.blindScheduler.isStarted()
         ? new Date(this.blindScheduler.getLevelStartTimestamp(this.config.registrationLevels)).toISOString()
         : undefined,
+      finalTableId: isFt ? Array.from(this.tables.keys())[0] : undefined,
     };
   }
 

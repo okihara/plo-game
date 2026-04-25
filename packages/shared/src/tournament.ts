@@ -67,6 +67,8 @@ export interface TournamentLobbyInfo {
   registrationDeadlineAt?: string; // ISO string — エントリー締切時刻
   /** 完了トナメの優勝者（position=1）。displayName はサーバー側でマスク済み。 */
   winner?: { displayName: string; avatarUrl: string | null } | null;
+  /** ファイナルテーブル(または heads_up)中のテーブルID。観戦リンク表示用。 */
+  finalTableId?: string;
 }
 
 // --- Tournament Result ---
