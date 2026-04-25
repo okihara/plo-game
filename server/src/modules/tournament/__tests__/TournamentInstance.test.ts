@@ -129,6 +129,10 @@ function simulateHandSettled(
     table._isHandInProgress = false;
   }
   (tournament as any).onHandSettled(seatChips);
+  if ((tournament as any).pendingBusts.length > 0) {
+    (tournament as any).finalizeBustedPlayers();
+  }
+  (tournament as any).onHandPresentationComplete();
 }
 
 // ============================================
@@ -1009,6 +1013,35 @@ describe('TournamentInstance', () => {
 
       return { tournament, odIds, sockets, tables, tablePlayerMap, tableAId, tableBId, tableAPlayers, tableBPlayers };
     }
+
+    it('onHandSettledではテーブル移動せず、結果表示完了後にpending moveを実行する', () => {
+      const { tournament, tableAPlayers, tableAId, tableBId, tables } = setup2Tables(io);
+      const targetPlayer = tableAPlayers[0];
+      const socket = tournament.getPlayer(targetPlayer)?.socket;
+
+      for (const table of tables.values()) {
+        table._isHandInProgress = false;
+      }
+
+      const pendingMoves = (tournament as any).pendingMoves as any[];
+      pendingMoves.push({
+        odId: targetPlayer,
+        fromTableId: tableAId,
+        toTableId: tableBId,
+      });
+
+      (tournament as any).onHandSettled([
+        { odId: targetPlayer, seatIndex: 0, chips: 1500 },
+      ]);
+
+      expect(tournament.getPlayer(targetPlayer)?.tableId).toBe(tableAId);
+      expect(socket?.emit).not.toHaveBeenCalledWith('tournament:table_move', expect.any(Object));
+
+      (tournament as any).onHandPresentationComplete();
+
+      expect(tournament.getPlayer(targetPlayer)?.tableId).toBe(tableBId);
+      expect(socket?.emit).toHaveBeenCalledWith('tournament:table_move', expect.any(Object));
+    });
 
     it('バスト済みプレイヤーのpending moveはスキップされる', () => {
       const { tournament, tableAPlayers, tableAId, tableBId } = setup2Tables(io);

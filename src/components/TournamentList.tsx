@@ -16,6 +16,7 @@ interface TournamentListProps {
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
+  onWatchFinalTable: (tournamentId: string, tableId: string) => void;
 }
 
 function formatTime(isoString?: string): string {
@@ -37,7 +38,7 @@ function statusLabel(status: string): { text: string; color: string } {
   }
 }
 
-export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults }: TournamentListProps) {
+export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable }: TournamentListProps) {
   const { user } = useAuth();
   const {
     tournaments,
@@ -203,6 +204,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                   onEnter={() => onJoinTournament(t.id)}
                   onViewMyResult={() => onViewMyResult(t.id)}
                   onViewResults={() => onViewResults(t.id)}
+                  onWatchFinalTable={t.finalTableId ? () => onWatchFinalTable(t.id, t.finalTableId!) : undefined}
                   evalEligibleMeta={evalMeta}
                   evalQuota={evalQuota}
                   isEvalGenerating={
@@ -237,6 +239,7 @@ export function TournamentCard({
   onEnter,
   onViewMyResult,
   onViewResults,
+  onWatchFinalTable,
   evalEligibleMeta,
   evalQuota,
   isEvalGenerating,
@@ -260,6 +263,8 @@ export function TournamentCard({
   onEnter: () => void;
   onViewMyResult: () => void;
   onViewResults: () => void;
+  /** FT中(または heads_up)のときのみ渡す。undefined の時はボタン非表示。 */
+  onWatchFinalTable?: () => void;
   evalEligibleMeta: TournamentEvalEligibleMeta | null | undefined;
   evalQuota: TournamentEvalQuota | null;
   isEvalGenerating: boolean;
@@ -401,7 +406,7 @@ export function TournamentCard({
         )}
       </div>
 
-      <div className="px-[4cqw] pb-[4cqw] pt-[1cqw]">
+      <div className="px-[4cqw] pb-[4cqw] pt-[1cqw] space-y-[2cqw]">
         {isFinished ? (
           <div className="space-y-[2cqw]">
             <div className="flex gap-[2cqw]">
@@ -538,6 +543,15 @@ export function TournamentCard({
           <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">
             進行中（登録締切済み）
           </div>
+        )}
+        {onWatchFinalTable && (
+          <button
+            type="button"
+            onClick={onWatchFinalTable}
+            className="w-full py-[2.2cqw] rounded-[2cqw] text-[3cqw] font-bold border-[0.4cqw] border-cream-800 bg-cream-50 text-cream-900 hover:bg-cream-100 active:bg-cream-200 transition-colors"
+          >
+            FT観戦
+          </button>
         )}
       </div>
     </div>

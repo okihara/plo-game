@@ -5,10 +5,11 @@ interface TournamentLobbyProps {
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
+  onWatchFinalTable: (tournamentId: string, tableId: string) => void;
   onBack: () => void;
 }
 
-export function TournamentLobby({ onJoinTournament, onViewMyResult, onViewResults, onBack }: TournamentLobbyProps) {
+export function TournamentLobby({ onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, onBack }: TournamentLobbyProps) {
   return (
     <div className="h-full w-full light-bg text-cream-900 flex flex-col min-h-0 overflow-hidden">
       <div className="shrink-0 flex items-center px-[4cqw] py-[3cqw] border-b border-cream-300">
@@ -26,6 +27,7 @@ export function TournamentLobby({ onJoinTournament, onViewMyResult, onViewResult
           onJoinTournament={onJoinTournament}
           onViewMyResult={onViewMyResult}
           onViewResults={onViewResults}
+          onWatchFinalTable={onWatchFinalTable}
         />
       </div>
     </div>
