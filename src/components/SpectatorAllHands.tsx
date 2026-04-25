@@ -15,7 +15,7 @@ function cardsTitle(cards: CardType[]): string {
 function SpectatorFaceDownMini() {
   return (
     <span
-      className="inline-flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-800 text-white/75 border border-slate-400 rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm"
+      className="inline-flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-800 text-white/75 border-[0.3cqw] border-slate-400 rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm"
       aria-hidden
     >
       ?
@@ -59,11 +59,8 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat }: SpectatorAllHa
   if (rows.length === 0) return null;
 
   return (
-    <div
-      className="@container w-full flex-shrink-0 px-[2cqw] pt-[9cqw] pb-[2cqw]"
-      style={{ scrollbarGutter: 'stable' }}
-    >
-      <div className="rounded-[2cqw] bg-black border border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[1.4cqw] h-[42cqw]">
+    <div className="@container w-full flex-shrink-0 overflow-y-auto py-[4cqw]">
+      <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[50cqw] overflow-hidden">
         {rows.map(({ p, seatIndex }) => {
           const cards = holeCardsBySeat.has(seatIndex)
             ? (holeCardsBySeat.get(seatIndex) ?? [])

@@ -109,6 +109,7 @@ function App() {
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
         onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
         onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
+        onWatchFinalTable={(tId, tableId) => navigateWatchTable(tableId, { tournament: tId })}
         onBack={goBackToLobby}
       />
     );
@@ -165,6 +166,7 @@ function App() {
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
         onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
         onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
+        onWatchFinalTable={(tId, tableId) => navigateWatchTable(tableId, { tournament: tId })}
         initialTab={lobbyInitialTab}
       />
     );

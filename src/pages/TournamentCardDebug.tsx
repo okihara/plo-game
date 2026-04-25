@@ -103,6 +103,7 @@ const presets: Preset[] = [
       totalReentries: 10,
       startedAt: new Date(Date.now() - 150 * 60 * 1000).toISOString(),
       isRegistrationOpen: false,
+      finalTableId: 'debug-ft-table',
     },
     isLoggedIn: true,
   },
@@ -200,6 +201,7 @@ export function TournamentCardDebug() {
           evalErrorMessage={null}
           onEvalGenerate={() => console.log('[debug] onEvalGenerate')}
           onEvalViewResult={() => console.log('[debug] onEvalViewResult')}
+          onWatchFinalTable={current.tournament.finalTableId ? () => console.log('[debug] onWatchFinalTable') : undefined}
         />
       </div>
     </div>

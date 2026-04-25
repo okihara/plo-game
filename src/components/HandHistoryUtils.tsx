@@ -16,7 +16,7 @@ export function MiniCard({ cardStr }: { cardStr: string }) {
   const textColor = SUIT_TEXT_COLORS[suit] || 'text-gray-800';
 
   return (
-    <span className={`inline-flex items-center justify-center bg-white ${textColor} border ${borderColor} rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
+    <span className={`inline-flex items-center justify-center bg-white ${textColor} border-[0.3cqw] ${borderColor} rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
       {rank}{symbol}
     </span>
   );

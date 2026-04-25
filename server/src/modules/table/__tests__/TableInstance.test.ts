@@ -358,6 +358,40 @@ describe('TableInstance - アクション処理', () => {
     expect(lastComplete.winners[0].amount).toBeGreaterThan(0);
   });
 
+  it('結果表示待ちが終わってからonHandPresentationCompleteを呼ぶ', async () => {
+    const io = createMockIO();
+    const onHandSettled = vi.fn();
+    const onHandPresentationComplete = vi.fn();
+    const table = new TableInstance(io, '1/2', false, {
+      gameMode: 'tournament',
+      lifecycleCallbacks: {
+        onPlayerBusted: vi.fn(() => true),
+        onHandSettled,
+        onHandPresentationComplete,
+      },
+    });
+    const { odIds, sockets, seatMap } = seatNPlayers(table, 3);
+    table.triggerMaybeStartHand();
+
+    for (let i = 0; i < 2; i++) {
+      const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+      expect(current).not.toBeNull();
+      table.handleAction(current!.odId, 'fold', 0);
+    }
+
+    expect(onHandSettled).not.toHaveBeenCalled();
+    expect(onHandPresentationComplete).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(onHandSettled).toHaveBeenCalledTimes(1);
+    expect(onHandPresentationComplete).not.toHaveBeenCalled();
+
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(onHandPresentationComplete).toHaveBeenCalledTimes(1);
+  });
+
   it('全員fold後に次のハンドが自動開始される', async () => {
     const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, blinds: '1/2' });
 
@@ -1660,7 +1694,9 @@ describe('TableInstance - 観戦', () => {
     expect(table.getSpectatorCount()).toBe(0);
   });
 
-  it('観戦ソケットにも着席者と同タイミングで席付き game:hole_cards（protocol）が送られる', () => {
+  // 観戦者への全員ホールカード送信は emitHoleCardsToSpectators 本体をコメントアウトして
+  // 一旦無効化しているため、対応するテストもスキップ。再有効化時に .skip を外す。
+  it.skip('観戦ソケットにも着席者と同タイミングで席付き game:hole_cards（protocol）が送られる', () => {
     const spec = createMockSocket('spectator_sock');
     expect(table.addSpectator(spec).ok).toBe(true);
     const { sockets } = seatNPlayers(table, 3, 600);
