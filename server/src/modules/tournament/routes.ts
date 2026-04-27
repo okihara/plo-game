@@ -1,4 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify';
+import type { Prisma } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
 import { createTournamentFromConfig } from './socket.js';
 import { prisma } from '../../config/database.js';
@@ -24,61 +25,77 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
   return async function (fastify: FastifyInstance) {
     const { tournamentManager } = deps;
 
+    // 完了済みトーナメント取得用のクエリ include 句（mapDbCompleted と対）
+    const completedInclude = {
+      _count: { select: { registrations: true } },
+      registrations: { select: { reentryCount: true } },
+      results: {
+        where: { position: 1 },
+        take: 1,
+        include: {
+          user: { select: { username: true, displayName: true, avatarUrl: true, nameMasked: true } },
+        },
+      },
+    } as const;
+
+    type DbCompletedRow = Prisma.TournamentGetPayload<{ include: typeof completedInclude }>;
+
+    function mapDbCompleted(t: DbCompletedRow): TournamentLobbyInfo {
+      const top = t.results[0];
+      const winner = t.status === 'COMPLETED' && top
+        ? {
+            displayName: top.user.displayName || (top.user.nameMasked ? maskName(top.user.username) : top.user.username),
+            avatarUrl: top.user.avatarUrl,
+          }
+        : null;
+      return {
+        id: t.id,
+        name: t.name,
+        status: t.status.toLowerCase() as TournamentStatus,
+        buyIn: t.buyIn,
+        startingChips: t.startingChips,
+        registeredPlayers: t._count.registrations,
+        maxPlayers: t.maxPlayers,
+        currentBlindLevel: 0,
+        prizePool: t.prizePool,
+        scheduledStartTime: t.scheduledStartTime?.toISOString(),
+        startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
+        isRegistrationOpen: false,
+        allowReentry: t.allowReentry,
+        maxReentries: t.maxReentries,
+        totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
+        reentryDeadlineLevel: t.reentryDeadlineLevel,
+        winner,
+      };
+    }
+
+    const COMPLETED_PAGE_SIZE = 20;
+    const COMPLETED_MAX_PAGE_SIZE = 50;
+
     // トーナメント一覧（公開、認証済みなら参加中トーナメントIDも返す）
     fastify.get('/api/tournaments', async (request) => {
       // メモリ上のアクティブトーナメント
       const activeTournaments = tournamentManager.getActiveTournaments();
       const activeIds = new Set(activeTournaments.map(t => t.id));
 
-      // DBから終了済みトーナメントを取得（新しい順、最大20件）
+      // DBから終了済みトーナメントを取得（新しい順、最大20件＋次ページ判定用に+1）
       const dbCompleted = await prisma.tournament.findMany({
         where: {
           status: { in: ['COMPLETED', 'CANCELLED'] },
           id: { notIn: [...activeIds] },
+          completedAt: { not: null },
         },
-        include: {
-          _count: { select: { registrations: true } },
-          registrations: { select: { reentryCount: true } },
-          results: {
-            where: { position: 1 },
-            take: 1,
-            include: {
-              user: { select: { username: true, displayName: true, avatarUrl: true, nameMasked: true } },
-            },
-          },
-        },
+        include: completedInclude,
         orderBy: { completedAt: 'desc' },
-        take: 20,
+        take: COMPLETED_PAGE_SIZE + 1,
       });
 
-      const completedTournaments: TournamentLobbyInfo[] = dbCompleted.map(t => {
-        const top = t.results[0];
-        const winner = t.status === 'COMPLETED' && top
-          ? {
-              displayName: top.user.displayName || (top.user.nameMasked ? maskName(top.user.username) : top.user.username),
-              avatarUrl: top.user.avatarUrl,
-            }
-          : null;
-        return {
-          id: t.id,
-          name: t.name,
-          status: t.status.toLowerCase() as TournamentStatus,
-          buyIn: t.buyIn,
-          startingChips: t.startingChips,
-          registeredPlayers: t._count.registrations,
-          maxPlayers: t.maxPlayers,
-          currentBlindLevel: 0,
-          prizePool: t.prizePool,
-          scheduledStartTime: t.scheduledStartTime?.toISOString(),
-          startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
-          isRegistrationOpen: false,
-          allowReentry: t.allowReentry,
-          maxReentries: t.maxReentries,
-          totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
-          reentryDeadlineLevel: t.reentryDeadlineLevel,
-          winner,
-        };
-      });
+      const hasMoreCompleted = dbCompleted.length > COMPLETED_PAGE_SIZE;
+      const completedRows = hasMoreCompleted ? dbCompleted.slice(0, COMPLETED_PAGE_SIZE) : dbCompleted;
+      const completedNextCursor = hasMoreCompleted
+        ? completedRows[completedRows.length - 1].completedAt?.toISOString() ?? null
+        : null;
+      const completedTournaments: TournamentLobbyInfo[] = completedRows.map(mapDbCompleted);
 
       // アクティブ（waiting含む）を先頭、その後に終了済みを開始時刻降順
       const finishedStatuses = new Set(['completed', 'cancelled']);
@@ -142,8 +159,71 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         // 未認証
       }
 
-      return { tournaments, myTournamentId, canReenterTournamentId, myEliminatedTournamentId, myFinishedTournamentIds };
+      return {
+        tournaments,
+        myTournamentId,
+        canReenterTournamentId,
+        myEliminatedTournamentId,
+        myFinishedTournamentIds,
+        completedNextCursor,
+      };
     });
+
+    // 完了済みトーナメントのページング取得（カーソル方式：completedAt < before）
+    fastify.get<{ Querystring: { before?: string; limit?: string } }>(
+      '/api/tournaments/completed',
+      async (request) => {
+        const beforeRaw = request.query.before;
+        const before = beforeRaw ? new Date(beforeRaw) : null;
+        if (before && Number.isNaN(before.getTime())) {
+          return { tournaments: [], nextCursor: null, myFinishedTournamentIds: [] };
+        }
+
+        const parsedLimit = parseInt(request.query.limit ?? '', 10);
+        const limit = Math.max(
+          1,
+          Math.min(COMPLETED_MAX_PAGE_SIZE, Number.isFinite(parsedLimit) && parsedLimit > 0 ? parsedLimit : COMPLETED_PAGE_SIZE),
+        );
+
+        const activeIds = new Set(tournamentManager.getActiveTournaments().map(t => t.id));
+
+        const dbRows = await prisma.tournament.findMany({
+          where: {
+            status: { in: ['COMPLETED', 'CANCELLED'] },
+            id: { notIn: [...activeIds] },
+            completedAt: before ? { lt: before } : { not: null },
+          },
+          include: completedInclude,
+          orderBy: { completedAt: 'desc' },
+          take: limit + 1,
+        });
+
+        const hasMore = dbRows.length > limit;
+        const rows = hasMore ? dbRows.slice(0, limit) : dbRows;
+        const nextCursor = hasMore
+          ? rows[rows.length - 1].completedAt?.toISOString() ?? null
+          : null;
+        const tournaments = rows.map(mapDbCompleted);
+
+        let myFinishedTournamentIds: string[] = [];
+        try {
+          await request.jwtVerify();
+          const { userId } = request.user as { userId: string };
+          const ids = rows.map(r => r.id);
+          if (ids.length > 0) {
+            const regs = await prisma.tournamentRegistration.findMany({
+              where: { userId, tournamentId: { in: ids } },
+              select: { tournamentId: true },
+            });
+            myFinishedTournamentIds = regs.map(r => r.tournamentId);
+          }
+        } catch {
+          // 未認証
+        }
+
+        return { tournaments, nextCursor, myFinishedTournamentIds };
+      },
+    );
 
     // トーナメント詳細（公開）
     // メモリにあれば進行中状態を返し、なければDBから取得（終了済み含む）
