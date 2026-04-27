@@ -16,6 +16,8 @@ const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 export function useTournamentState() {
   const [tournaments, setTournaments] = useState<TournamentLobbyInfo[]>([]);
   const [isListLoading, setIsListLoading] = useState(true);
+  const [completedNextCursor, setCompletedNextCursor] = useState<string | null>(null);
+  const [isLoadingMoreCompleted, setIsLoadingMoreCompleted] = useState(false);
   const initialListFetchedRef = useRef(false);
   const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
   const [registeredTournamentId, setRegisteredTournamentId] = useState<string | null>(null);
@@ -71,8 +73,10 @@ export function useTournamentState() {
         canReenterTournamentId?: string | null;
         myEliminatedTournamentId?: string | null;
         myFinishedTournamentIds?: string[];
+        completedNextCursor?: string | null;
       };
       setTournaments(data.tournaments ?? []);
+      setCompletedNextCursor(data.completedNextCursor ?? null);
       // DB参加記録に基づいて参加状態を更新
       setRegisteredTournamentId(data.myTournamentId ?? null);
       setCanReenterTournamentId(data.canReenterTournamentId ?? null);
@@ -87,6 +91,41 @@ export function useTournamentState() {
       }
     }
   }, []);
+
+  const loadMoreCompleted = useCallback(async () => {
+    if (!completedNextCursor || isLoadingMoreCompleted) return;
+    setIsLoadingMoreCompleted(true);
+    try {
+      const url = `${API_BASE}/api/tournaments/completed?before=${encodeURIComponent(completedNextCursor)}`;
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = (await res.json()) as {
+        tournaments?: TournamentLobbyInfo[];
+        nextCursor?: string | null;
+        myFinishedTournamentIds?: string[];
+      };
+      const newItems = data.tournaments ?? [];
+      if (newItems.length > 0) {
+        setTournaments((prev) => {
+          const existingIds = new Set(prev.map((t) => t.id));
+          const dedup = newItems.filter((t) => !existingIds.has(t.id));
+          return [...prev, ...dedup];
+        });
+      }
+      if (data.myFinishedTournamentIds && data.myFinishedTournamentIds.length > 0) {
+        setMyFinishedTournamentIds((prev) => {
+          const next = new Set(prev);
+          for (const id of data.myFinishedTournamentIds!) next.add(id);
+          return next;
+        });
+      }
+      setCompletedNextCursor(data.nextCursor ?? null);
+    } catch {
+      // 失敗時はカーソル保持して再試行可能
+    } finally {
+      setIsLoadingMoreCompleted(false);
+    }
+  }, [completedNextCursor, isLoadingMoreCompleted]);
 
   const register = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -223,6 +262,9 @@ export function useTournamentState() {
     tournaments,
     refreshList,
     isListLoading,
+    completedNextCursor,
+    isLoadingMoreCompleted,
+    loadMoreCompleted,
 
     // Registration
     registeredTournamentId,

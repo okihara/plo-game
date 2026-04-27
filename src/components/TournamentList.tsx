@@ -44,6 +44,9 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     tournaments,
     refreshList,
     isListLoading,
+    completedNextCursor,
+    isLoadingMoreCompleted,
+    loadMoreCompleted,
     registeredTournamentId,
     canReenterTournamentId,
     myEliminatedTournamentId,
@@ -217,6 +220,24 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                 />
               );
             })}
+
+            {tournaments.length > 0 && completedNextCursor && (
+              <button
+                type="button"
+                onClick={loadMoreCompleted}
+                disabled={isLoadingMoreCompleted}
+                className="w-full py-[3cqw] rounded-[2cqw] text-[3cqw] font-bold border-[0.4cqw] border-cream-800 bg-cream-50 text-cream-900 hover:bg-cream-100 active:bg-cream-200 disabled:bg-cream-100 disabled:text-cream-500 transition-colors flex items-center justify-center gap-[2cqw]"
+              >
+                {isLoadingMoreCompleted ? (
+                  <>
+                    <Loader2 className="w-[4cqw] h-[4cqw] animate-spin shrink-0" />
+                    読み込み中...
+                  </>
+                ) : (
+                  <>もっと見る</>
+                )}
+              </button>
+            )}
           </div>
         )}
       </div>
