@@ -75,9 +75,15 @@ function formatCompact(v: number): string {
 export function ProfitChart({ points }: ProfitChartProps) {
   if (points.length < 2) return null;
 
-  const allValues = points.flatMap(pt => [pt.c, pt.s, pt.n, pt.e]);
-  const rawMin = Math.min(0, ...allValues);
-  const rawMax = Math.max(0, ...allValues);
+  // 大量ハンド時に Math.min(...arr) がスタック上限で落ちるのでループで畳む
+  let rawMin = 0;
+  let rawMax = 0;
+  for (const pt of points) {
+    if (pt.c < rawMin) rawMin = pt.c; else if (pt.c > rawMax) rawMax = pt.c;
+    if (pt.s < rawMin) rawMin = pt.s; else if (pt.s > rawMax) rawMax = pt.s;
+    if (pt.n < rawMin) rawMin = pt.n; else if (pt.n > rawMax) rawMax = pt.n;
+    if (pt.e < rawMin) rawMin = pt.e; else if (pt.e > rawMax) rawMax = pt.e;
+  }
 
   // Ensure at least 1 tick above and below zero
   const yTicks = niceTicks(rawMin, rawMax, 4);
