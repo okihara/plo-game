@@ -257,8 +257,8 @@ async function main() {
     const today = new Date().toISOString().slice(0, 10);
     const lines: string[] = [];
     lines.push(`#title=BabyPLO トーナメント RP ランキング TOP ${limit}`);
-    lines.push(`#subtitle=完了トナメ ${tournamentsCounted} 本ぶんの暫定集計（${today}時点）`);
-    lines.push(`#footer=順位 × エントリー数で算出 / 1位ボーナス×1.3 / Bot除外`);
+    lines.push(`#subtitle=完了トナメ ${tournamentsCounted} 本分の暫定集計（${today}時点）`);
+    lines.push(`#footer=順位 × エントリー数で算出 / 1位ボーナス×1.3`);
     ranking.slice(0, limit).forEach((u, i) => {
       lines.push([
         i + 1,
