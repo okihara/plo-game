@@ -8,7 +8,8 @@ export const TABLE_CONSTANTS = {
   MIN_PLAYERS_TO_START: 3,
 
   // タイミング
-  ACTION_TIMEOUT_MS: 20000,
+  ACTION_TIMEOUT_PREFLOP_MS: 15000,
+  ACTION_TIMEOUT_POSTFLOP_MS: 30000,
   ACTION_ANIMATION_DELAY_MS: 1200,    // ストリート変更前のアクション演出待ち
   STREET_TRANSITION_DELAY_MS: 800,    // コミュニティカード確認時間
   SHOWDOWN_DELAY_MS: 1800,            // ショウダウンカード公開前の待ち時間
