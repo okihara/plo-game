@@ -1,5 +1,7 @@
 // Tournament types shared between client and server
 
+import type { GameVariant } from './types.js';
+
 // --- Tournament Status ---
 
 export type TournamentStatus =
@@ -43,6 +45,7 @@ export interface ClientTournamentState {
   payoutStructure: { position: number; amount: number }[];
   isRegistrationOpen: boolean;
   isFinalTable: boolean;
+  gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
 }
 
 // --- Tournament Lobby Info ---
@@ -69,6 +72,7 @@ export interface TournamentLobbyInfo {
   winner?: { displayName: string; avatarUrl: string | null } | null;
   /** ファイナルテーブル(または heads_up)中のテーブルID。観戦リンク表示用。 */
   finalTableId?: string;
+  gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
 }
 
 // --- Tournament Result ---

@@ -12,6 +12,7 @@ import { LimitHoldemStrategy } from './limitHoldemStrategy.js';
 // 3. GameVariant 型に追加 (packages/shared/src/types.ts)
 const strategies: Record<GameVariant, AIVariantStrategy> = {
   plo: new PLOStrategy(),
+  plo5: new PLOStrategy(),  // PLO5: 暫定で PLO ストラテジーを流用 (Phase 3 でプリフロップ評価器を差し替え予定)
   stud: new StudStrategy(),
   razz: new RazzStrategy(),
   'limit_2-7_triple_draw': new DrawStrategy(),

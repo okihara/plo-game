@@ -18,7 +18,7 @@ export function HandAnalysisOverlay({
   );
 
   const postflopInfo = useMemo(() => {
-    if (!isVisible || holeCards.length !== 4 || communityCards.length < 3) {
+    if (!isVisible || (holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length < 3) {
       return null;
     }
     const outs = communityCards.length < 5 ? calculateOuts(holeCards, communityCards) : null;

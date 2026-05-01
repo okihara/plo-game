@@ -20,6 +20,7 @@ const NOTICE_DISPLAY_MS = 3000;
 
 const variantDisplayName: Record<string, string> = {
   plo: 'PLO',
+  plo5: 'PLO5',
   limit_holdem: 'FLH',
   stud: 'Stud',
   razz: 'Razz',

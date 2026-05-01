@@ -54,6 +54,7 @@ function createTestConfig(id: string): TournamentConfig {
     allowReentry: false,
     maxReentries: 0,
     reentryDeadlineLevel: 4,
+    gameVariant: 'plo',
   };
 }
 

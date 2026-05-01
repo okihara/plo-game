@@ -64,7 +64,7 @@ async function main() {
     const playerEvals: { username: string; userId: string | null; holeCards: string[]; handRank: number; handName: string; profit: number; isWinner: boolean; folded: boolean }[] = [];
 
     for (const p of hand.players) {
-      if (p.holeCards.length !== 4) continue;
+      if (p.holeCards.length !== 4 && p.holeCards.length !== 5) continue;
 
       // フォールドしたか判定: actionsからフォールドを探す
       const actions = hand.actions as any[];

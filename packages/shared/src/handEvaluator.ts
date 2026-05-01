@@ -1,10 +1,12 @@
 import { Card, HandRank } from './types';
 import { getRankValue } from './deck';
 
-// PLOでは必ず2枚のホールカードと3枚のコミュニティカードを使う
+// PLO/PLO5: 必ず2枚のホールカードと3枚のコミュニティカードを使う
+// PLO  → ホール 4 枚 (C(4,2)=6 通り)
+// PLO5 → ホール 5 枚 (C(5,2)=10 通り)
 export function evaluatePLOHand(holeCards: Card[], communityCards: Card[]): HandRank {
-  if (holeCards.length !== 4 || (communityCards.length < 4 || communityCards.length > 5)) {
-    throw new Error('PLO requires 4 hole cards and 4-5 community cards');
+  if ((holeCards.length !== 4 && holeCards.length !== 5) || (communityCards.length < 4 || communityCards.length > 5)) {
+    throw new Error('PLO requires 4 or 5 hole cards and 4-5 community cards');
   }
 
   let bestHand: HandRank = { rank: 0, name: '', highCards: [] };
@@ -192,8 +194,9 @@ export function evaluateCurrentHoldemHand(holeCards: Card[], communityCards: Car
 }
 
 // コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
+// PLO は 4 枚、PLO5 は 5 枚のホールカードを受け取る
 export function evaluateCurrentHand(holeCards: Card[], communityCards: Card[]): HandRank | null {
-  if (holeCards.length !== 4 || communityCards.length < 3) {
+  if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length < 3) {
     return null;
   }
 

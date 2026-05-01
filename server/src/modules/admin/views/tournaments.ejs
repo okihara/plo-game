@@ -164,6 +164,13 @@
           <label>リエントリー期限レベル</label>
           <input type="number" id="reentryDeadlineLevel" value="8" min="1">
         </div>
+        <div class="form-group">
+          <label>ゲーム種別</label>
+          <select id="gameVariant">
+            <option value="plo">PLO (4-card Omaha)</option>
+            <option value="plo5">PLO5 (5-card Omaha)</option>
+          </select>
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn btn-create" onclick="createTournament()">作成</button>
@@ -233,6 +240,7 @@
         startCondition: document.getElementById('startCondition').value,
         registrationLevels: parseInt(document.getElementById('registrationLevels').value),
         allowReentry: document.getElementById('allowReentry').value === 'true',
+        gameVariant: document.getElementById('gameVariant').value,
       };
 
       if (body.allowReentry) {

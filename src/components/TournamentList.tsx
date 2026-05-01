@@ -306,6 +306,11 @@ export function TournamentCard({
           >
             {status.text}
           </span>
+          {t.gameVariant === 'plo5' && (
+            <span className="px-[1.8cqw] py-[0.4cqw] rounded-full text-[2.4cqw] font-bold text-white bg-violet-600">
+              PLO5
+            </span>
+          )}
           {t.isRegistrationOpen && !isFinished && (
             <span className="px-[1.8cqw] py-[0.4cqw] rounded-full text-[2.3cqw] font-semibold bg-forest/10 text-forest border border-forest/25">
               参加可能

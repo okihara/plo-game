@@ -1,4 +1,4 @@
-import { GameState, Player, Position, Action } from './types.js';
+import { GameState, Player, Position, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { evaluatePLOHand, compareHands } from './handEvaluator.js';
 
@@ -21,7 +21,7 @@ export function createInitialGameState(playerChips: number = 600): GameState {
       name: names[i],
       position: POSITIONS[i],
       chips: playerChips,
-      holeCards: [],         // PLOでは4枚のホールカード
+      holeCards: [],         // PLO: 4枚 / PLO5: 5枚 (variant 設定で決まる)
       currentBet: 0,         // 現在のストリートでの累計ベット額
       totalBetThisRound: 0,  // このハンド全体での累計ベット額
       folded: false,
@@ -141,10 +141,11 @@ export function startNewHand(state: GameState): GameState {
   newState.lastFullRaiseBet = newState.currentBet;
 
   // === カードを配る ===
-  // PLOは4枚ずつ配る（テキサスホールデムは2枚）
+  // PLO: 4 枚 / PLO5: 5 枚 (variant の VariantConfig.holeCardCount から決定)
+  const holeCardCount = getVariantConfig(newState.variant).holeCardCount;
   for (let i = 0; i < 6; i++) {
     if (newState.players[i].isSittingOut) continue;
-    const { cards, remainingDeck } = dealCards(newState.deck, 4);
+    const { cards, remainingDeck } = dealCards(newState.deck, holeCardCount);
     newState.players[i].holeCards = cards;
     newState.deck = remainingDeck;
   }

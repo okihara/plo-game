@@ -184,7 +184,7 @@ export function calculateAllInEVProfits(
   sidePots: SidePot[],
   totalBets: Map<number, number>,
 ): Map<number, number> {
-  const activePlayers = allPlayers.filter(p => !p.folded && p.holeCards.length === 4);
+  const activePlayers = allPlayers.filter(p => !p.folded && (p.holeCards.length === 4 || p.holeCards.length === 5));
 
   // デッドカード = フォールド済みプレイヤーのカード
   const deadCards = allPlayers
