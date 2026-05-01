@@ -435,15 +435,15 @@ export class TableInstance {
 
     // 現在のゲーム状態を再送信
     socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
-    socket.emit('game:state', { state: this.getClientGameState() });
 
-    // ハンド中ならホールカードも再送信
+    // startNewHand と同じ順序で hole_cards → game:state を送る
     if (this.gameState && !this.gameState.isHandComplete) {
       const holeCards = this.gameState.players[seatIndex]?.holeCards;
       if (holeCards && holeCards.length > 0) {
         this.broadcast.emitToSocket(socket, odId, 'game:hole_cards', { cards: holeCards, seatIndex });
       }
     }
+    socket.emit('game:state', { state: this.getClientGameState() });
 
     return true;
   }
