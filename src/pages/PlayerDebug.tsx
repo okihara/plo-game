@@ -10,6 +10,14 @@ const sampleCardsOmaha: CardType[] = [
   { suit: 'c', rank: 'J' },
 ];
 
+const sampleCardsOmaha5: CardType[] = [
+  { suit: 'h', rank: 'A' },
+  { suit: 's', rank: 'K' },
+  { suit: 'd', rank: 'Q' },
+  { suit: 'c', rank: 'J' },
+  { suit: 'h', rank: 'T' },
+];
+
 const sampleCardsHoldem: CardType[] = [
   { suit: 'h', rank: 'A' },
   { suit: 's', rank: 'K' },
@@ -35,6 +43,7 @@ const sampleCardsDraw: CardType[] = [
 
 const variantOptions: { value: GameVariant; label: string }[] = [
   { value: 'plo', label: 'PLO (Omaha)' },
+  { value: 'plo5', label: 'PLO5 (5 Card Omaha)' },
   { value: 'limit_holdem', label: "Limit Hold'em" },
   { value: 'stud', label: '7 Card Stud' },
   { value: 'razz', label: 'Razz (Stud)' },
@@ -43,6 +52,7 @@ const variantOptions: { value: GameVariant; label: string }[] = [
 ];
 
 function getSampleCards(variant: GameVariant): CardType[] {
+  if (variant === 'plo5') return sampleCardsOmaha5;
   const family = getVariantConfig(variant).family;
   switch (family) {
     case 'stud': return sampleCardsStud;
