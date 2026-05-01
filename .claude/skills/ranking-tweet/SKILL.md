@@ -44,7 +44,19 @@ stdout に JSON が出る（`--diff` モードでは `dotenv` のログは抑制
 
 見どころは**1〜2 個に絞る**のが読みやすい。全員のΔ表を並べるのは避ける。
 
-### Step 3: ツイート下書き生成
+### Step 3: ランキング画像の生成
+
+ツイート下書きと一緒に、TOP 30 のランキング表画像も生成する。`--image=<path>` を渡すと内部で `render-rp-ranking.py`（PIL 使用）が呼ばれて PNG を出力する。
+
+```bash
+cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp/rp-ranking.png
+```
+
+- 出力先は `/tmp/rp-ranking.png` 固定でよい（毎回上書き）
+- 生成後、Read ツールでパスを開いてユーザーに見せる（`/tmp/rp-ranking.png`）
+- 画像は cream/forest テーマで、優勝列はゴールド強調・1〜3位はメダル丸表示
+
+### Step 4: ツイート下書き生成
 
 **フォーマット骨格（案）:**
 
@@ -82,7 +94,7 @@ stdout に JSON が出る（`--diff` モードでは `dotenv` のログは抑制
 
 **出力形式:** 下書きをコードブロックでそのまま提示する。その後に、採用した観察（どの動きを目玉にしたか）を 1〜2 行で補足し、**別案の目玉コメント**を 2 案ほど添える。
 
-### Step 4: 完了
+### Step 5: 完了
 
 - ファイル保存はしない
 - メモリ保存も不要（毎回異なる内容）

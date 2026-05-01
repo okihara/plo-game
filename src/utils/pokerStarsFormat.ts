@@ -2,6 +2,9 @@ import type { HandDetail } from '../components/HandDetailDialog';
 import { toPokerStarsHandText, type PokerStarsHandInput } from '@plo/shared';
 
 export function toPokerStarsText(hand: HandDetail): string {
+  // 5 枚ホールカードのプレイヤーがいれば PLO5 と判定 (DB スキーマに gameVariant
+  // カラムが追加されたら hand.gameVariant を直接使う形に置換予定)
+  const variant = hand.players.some(p => p.holeCards.length === 5) ? 'plo5' : 'plo';
   const input: PokerStarsHandInput = {
     id: hand.id,
     handNumber: hand.handNumber,
@@ -22,6 +25,7 @@ export function toPokerStarsText(hand: HandDetail): string {
       profit: p.profit,
       isCurrentUser: p.isCurrentUser,
     })),
+    variant,
   };
   return toPokerStarsHandText(input);
 }

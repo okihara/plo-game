@@ -286,6 +286,7 @@ model Tournament {
   startedAt              DateTime?
   completedAt            DateTime?
   createdAt              DateTime         @default(now())
+  gameVariant            String           @default("plo")  // 'plo' | 'plo5'
 
   registrations TournamentRegistration[]
   results       TournamentResult[]

@@ -2,8 +2,8 @@ import { GameState, Action } from '../types.js';
 import { getValidActions } from '../gameEngine.js';
 import { BotPersonality, OpponentModel } from './types.js';
 
-// 既存のプリフロップ評価をインポート
-import { getPreFlopEvaluation, PreFlopEvaluation } from '../cpuAI.js';
+import { PreFlopEvaluation } from '../cpuAI.js';
+import { evaluatePreflopByVariant } from './preflopFacade.js';
 
 /**
  * プリフロップの意思決定。
@@ -18,7 +18,7 @@ export function getPreflopDecision(
 ): { action: Action; amount: number } {
   const player = state.players[playerIndex];
   const validActions = getValidActions(state, playerIndex);
-  const evaluation = getPreFlopEvaluation(player.holeCards);
+  const evaluation = evaluatePreflopByVariant(player.holeCards, state.variant);
   const handStrength = evaluation.score;
   const effectiveStrength = Math.min(1, handStrength + positionBonus);
 

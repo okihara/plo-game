@@ -44,9 +44,9 @@ body {
 }
 
 @keyframes action-pop {
-  0% { transform: translateX(-50%) scale(0.5); opacity: 0; }
-  30% { transform: translateX(-50%) scale(1); opacity: 1; }
-  100% { transform: translateX(-50%) scale(1); opacity: 1; }
+  0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+  30% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
 }
 
 @keyframes fade-in {
@@ -261,7 +261,7 @@ body {
 
 /* Dark gold gradient for game screen */
 .game-bg {
-  background: url('/images/bg.webp') center / cover no-repeat;
+  background: url('/images/bg.png') center / cover no-repeat;
 }
 
 /* Debug outline toggle (Ctrl+Shift+D) */

@@ -94,7 +94,10 @@ const EMPTY_RESULT: PreFlopEvaluation = {
  */
 export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   const validCards = holeCards.filter(c => c && c.rank && c.suit);
-  if (validCards.length < 4) {
+  // PLO 4 枚専用。PLO5 (5 枚) は別経路 (preflopEvaluatorPLO5) で評価する。
+  // canonicalKey が `for i < 4` ハードコードのため、5 枚を渡すと先頭 4 枚だけ
+  // 使われる silent bug になる。明示的に 4 枚以外を弾く。
+  if (validCards.length !== 4) {
     return { ...EMPTY_RESULT };
   }
 

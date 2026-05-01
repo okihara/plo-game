@@ -52,7 +52,7 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
       className={`@container relative flex flex-col items-center justify-end h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
     >
       {cards.length > 0 && (
-      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : 'gap-[1cqw]'} justify-center`}>
+      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : '-space-x-[1.5cqw]'} justify-center`}>
         {(() => {
           // 差分カード内での順番マップ（cardIndex → 0,1,2...）
           const animOrderMap = new Map<number, number>();

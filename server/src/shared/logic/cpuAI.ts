@@ -1,8 +1,8 @@
-import { GameState, Action, Card, Rank, Street, GameAction } from './types.js';
+import { GameState, Action, Card, Rank, Street, GameAction, GameVariant } from './types.js';
 import { getValidActions } from './gameEngine.js';
 import { getRankValue } from './deck.js';
 import { evaluatePLOHand } from './handEvaluator.js';
-import { evaluatePreFlopStrength } from './preflopEquity.js';
+import { evaluatePreflopStrengthByVariant } from './ai/preflopFacade.js';
 // 後方互換: 既存の import { getPreFlopEvaluation } from './cpuAI.js' を維持
 export { getPreFlopEvaluation, evaluatePreFlopStrength, type PreFlopEvaluation } from './preflopEquity.js';
 
@@ -92,7 +92,7 @@ function legacyGetCPUAction(
     return legacyGetPreflopAction(state, playerIndex, validActions, positionBonus);
   }
 
-  const handEval = legacyEvaluatePostFlopHand(player.holeCards, state.communityCards);
+  const handEval = legacyEvaluatePostFlopHand(player.holeCards, state.communityCards, state.variant);
   const boardTexture = legacyAnalyzeBoardTexture(state.communityCards);
   const aggression = legacyAnalyzeOpponentAggression(state, playerIndex);
 
@@ -129,7 +129,7 @@ function legacyGetPreflopAction(
   positionBonus: number
 ): { action: Action; amount: number } {
   const player = state.players[playerIndex];
-  const handStrength = evaluatePreFlopStrength(player.holeCards);
+  const handStrength = evaluatePreflopStrengthByVariant(player.holeCards, state.variant);
   const effectiveStrength = Math.min(1, handStrength + positionBonus);
   const toCall = state.currentBet - player.currentBet;
   const potOdds = toCall > 0 ? toCall / (state.pot + toCall) : 0;
@@ -378,9 +378,9 @@ function legacyShouldBluff(
   return random < bluffFrequency;
 }
 
-function legacyEvaluatePostFlopHand(holeCards: Card[], communityCards: Card[]): LegacyHandEvaluation {
+function legacyEvaluatePostFlopHand(holeCards: Card[], communityCards: Card[], variant: GameVariant): LegacyHandEvaluation {
   if (communityCards.length < 3) {
-    return { strength: evaluatePreFlopStrength(holeCards), madeHandRank: 0, hasFlushDraw: false, hasStraightDraw: false, hasWrapDraw: false, drawStrength: 0, isNuts: false, isNearNuts: false };
+    return { strength: evaluatePreflopStrengthByVariant(holeCards, variant), madeHandRank: 0, hasFlushDraw: false, hasStraightDraw: false, hasWrapDraw: false, drawStrength: 0, isNuts: false, isNearNuts: false };
   }
   const madeHand = evaluatePLOHand(holeCards, communityCards.length >= 5 ? communityCards : [...communityCards, ...getDummyCards(5 - communityCards.length, [...holeCards, ...communityCards])]);
   const drawInfo = legacyEvaluateDraws(holeCards, communityCards);

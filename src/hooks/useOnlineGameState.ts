@@ -314,7 +314,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         }
 
         // ストリート変更検出
-        if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current) {
+        if (prevStreetRef.current && state.currentStreet !== prevStreetRef.current && state.currentStreet !== 'showdown') {
           setNewCommunityCardsCount(state.communityCards.length - prevCardCountRef.current);
           clearAllActionMarkers();
         } else {
@@ -383,8 +383,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         const currentState = clientStateRef.current;
         if (currentState) {
           const convertedWinners = serverWinners.map(w => {
-          // playerIdをseat番号に変換（refで最新のclientStateを参照）
-          const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
+            // playerIdをseat番号に変換（refで最新のclientStateを参照）
+            const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
             return {
               playerId: seat,  // -1 = 不明（UI側でハイライトされないだけ）
               amount: w.amount,

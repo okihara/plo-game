@@ -77,6 +77,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
           reentryDeadlineLevel: t.reentryDeadlineLevel,
           winner,
+          gameVariant: (t.gameVariant ?? 'plo') as 'plo' | 'plo5',
         };
       });
 
@@ -475,6 +476,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           maxReentries: tournament.config.maxReentries,
           reentryDeadlineLevel: tournament.config.reentryDeadlineLevel,
           scheduledStartTime: tournament.config.scheduledStartTime,
+          gameVariant: tournament.config.gameVariant,
         },
       });
 

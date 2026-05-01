@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo';
+export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo';
 
 // --- Variant Config ---
 
@@ -30,6 +30,7 @@ export interface VariantConfig {
 
 export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   plo:                          { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  plo5:                         { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 5, maxDraws: 0, usesBringIn: false },
   limit_holdem:                 { family: 'holdem', betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 2, maxDraws: 0, usesBringIn: false },
   stud:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
   razz:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
@@ -75,7 +76,7 @@ export interface Player {
   name: string;
   position: Position;
   chips: number;
-  holeCards: Card[];   // PLO: 4枚の私的カード, Stud: 全カード配布順(isUpで表裏区別)
+  holeCards: Card[];   // PLO: 4枚 / PLO5: 5枚 / Stud: 全カード配布順(isUpで表裏区別)
   currentBet: number;
   totalBetThisRound: number;
   folded: boolean;

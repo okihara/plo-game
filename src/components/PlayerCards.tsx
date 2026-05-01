@@ -24,7 +24,7 @@ const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = 
   5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
 };
 
-const cardPositionStyle = 'top-[10cqw] left-1/2 -translate-x-1/2';
+const cardPositionStyle = 'top-[-15.5cqw] left-1/2 -translate-x-1/2';
 
 interface PlayerCardsProps {
   player: PlayerType;
@@ -60,8 +60,15 @@ export function PlayerCards({
   }, [showCards, player.folded, player.holeCards.length]);
 
   
-  // 表向きカードの重なりマージン（studは枚数が多いので深く重ねる）
-  const cardOverlapMargin = getVariantConfig(variant).family === 'stud' ? '-ml-[5cqw]' : '-ml-[2cqw]';
+  const variantConfig = getVariantConfig(variant);
+  const holeCardCount = variantConfig.holeCardCount;
+  // 表向きカードの重なりマージン (stud: 7 枚で深く重ねる / PLO5: 5 枚で少し深く / PLO: 通常)
+  const cardOverlapMargin =
+    variantConfig.family === 'stud' ? '-ml-[5cqw]' :
+    holeCardCount >= 5 ? '-ml-[4cqw]' :
+    '-ml-[2cqw]';
+  // 裏向きカードの重なりマージン (PLO: 6cqw / PLO5: 7cqw でやや深く)
+  const faceDownOverlapMargin = holeCardCount >= 5 ? '-ml-[7cqw]' : '-ml-[6cqw]';
 
   return (
     <>
@@ -92,14 +99,14 @@ export function PlayerCards({
                   )}
                 </div>
               ))
-            : (player.holeCards || Array(4).fill(null)).map((card, cardIndex) => {
+            : (player.holeCards.length > 0 ? player.holeCards : Array(holeCardCount).fill(null)).map((card, cardIndex) => {
                 const dealDelay = (cardIndex * 6 + dealOrder) * 40;
                 const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
                 const foldOffset = foldToOffsets[positionIndex];
                 return (
                   <div
                     key={cardIndex}
-                    className={`${cardIndex > 0 ? '-ml-[6cqw]' : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''} ${player.folded && !isFolding ? 'invisible' : ''}`}
+                    className={`${cardIndex > 0 ? faceDownOverlapMargin : ''} ${isDealing ? 'animate-deal-card' : ''} ${isFolding ? 'animate-fold-card' : ''} ${player.folded && !isFolding ? 'invisible' : ''}`}
                     style={isDealing ? {
                       opacity: 0,
                       animationDelay: `${dealDelay}ms`,

@@ -12,7 +12,7 @@ export type {
   TournamentCompletedData,
 } from '@plo/shared';
 
-import type { BlindLevel } from '@plo/shared';
+import type { BlindLevel, GameVariant } from '@plo/shared';
 
 // --- Tournament Config (server only) ---
 
@@ -33,6 +33,7 @@ export interface TournamentConfig {
   allowReentry: boolean;
   maxReentries: number;
   reentryDeadlineLevel: number;
+  gameVariant: GameVariant;  // 'plo' | 'plo5' (将来的に他 variant 拡張可)
 }
 
 // --- Tournament Player (server only) ---

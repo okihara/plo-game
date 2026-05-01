@@ -55,6 +55,7 @@ function createTestConfig(overrides?: Partial<TournamentConfig>): TournamentConf
     allowReentry: false,
     maxReentries: 0,
     reentryDeadlineLevel: 4,
+    gameVariant: 'plo',
     ...overrides,
   };
 }

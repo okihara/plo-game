@@ -187,6 +187,10 @@ export class ActionController {
 
     const validActions = this.variantAdapter.getValidActions(gameState, currentPlayerIndex);
 
+    const timeoutMs = gameState.currentStreet === 'preflop'
+      ? TABLE_CONSTANTS.ACTION_TIMEOUT_PREFLOP_MS
+      : TABLE_CONSTANTS.ACTION_TIMEOUT_POSTFLOP_MS;
+
     // ダッシュボード用のpendingAction設定
     this.pendingAction = {
       playerId: currentSeat.odId,
@@ -198,7 +202,7 @@ export class ActionController {
         maxAmount: a.maxAmount,
       })),
       requestedAt: Date.now(),
-      timeoutMs: TABLE_CONSTANTS.ACTION_TIMEOUT_MS,
+      timeoutMs,
     };
 
     // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）
@@ -209,7 +213,7 @@ export class ActionController {
     this.actionTimer = setTimeout(() => {
       if (this.actionGeneration !== gen) return;
       onTimeout(playerIdForTimeout, seatIndexForTimeout);
-    }, TABLE_CONSTANTS.ACTION_TIMEOUT_MS);
+    }, timeoutMs);
   }
 
 }
