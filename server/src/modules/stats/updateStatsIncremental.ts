@@ -43,7 +43,7 @@ export async function updatePlayerStats(
       const winner = gameState.winners.find(w => w.playerId === i);
       const player = gameState.players[i];
       const finalHand = winner?.handName ?? (
-        !player.folded && player.holeCards.length === 4 && gameState.communityCards.length === 5
+        !player.folded && (player.holeCards.length === 4 || player.holeCards.length === 5) && gameState.communityCards.length === 5
           ? 'evaluated' // showdown参加マーカー
           : null
       );

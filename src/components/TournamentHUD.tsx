@@ -47,8 +47,11 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
           className="pointer-events-auto flex items-center gap-[1cqw] bg-cream-200 rounded-l-[2cqw] rounded-r-none pl-[2.5cqw] pr-[1cqw] py-[1.4cqw] text-[3.1cqw] leading-snug shadow-md border border-gray-700/12 w-[27cqw] select-none touch-manipulation active:scale-[0.98] active:brightness-95 transition-[transform,filter] duration-150 text-left"
         >
           <div className="flex-1 min-w-0 text-gray-800">
-            <div>
-              {ts.playersRemaining}/{ts.totalPlayers}E
+            <div className="flex items-center gap-[1cqw]">
+              <span>{ts.playersRemaining}/{ts.totalPlayers}E</span>
+              {ts.gameVariant === 'plo5' && (
+                <span className="px-[0.8cqw] py-[0.2cqw] rounded-[0.6cqw] text-[2.2cqw] font-bold text-white bg-violet-600 leading-none">PLO5</span>
+              )}
             </div>
             <div>
               Lv.{bl.level}{isFinalBlindLevel ? ` - ${HUD_FINAL_LEVEL_CLOCK}` : ` - ${countdown}`}

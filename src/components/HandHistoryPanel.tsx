@@ -72,7 +72,7 @@ function HandSummaryCard({
           })()}
           {(() => {
             const name = hand.finalHand
-              || (hand.holeCards.length === 4 && hand.communityCards.length >= 3
+              || ((hand.holeCards.length === 4 || hand.holeCards.length === 5) && hand.communityCards.length >= 3
                 ? evaluateCurrentHand(
                     hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
                     hand.communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),

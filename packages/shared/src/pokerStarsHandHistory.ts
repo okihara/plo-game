@@ -33,6 +33,9 @@ export interface PokerStarsHandInput {
   dealerPosition: number;
   createdAt: string | Date;
   players: PokerStarsHandPlayer[];
+  // 'plo'  → "Omaha Pot Limit"        (デフォルト)
+  // 'plo5' → "5 Card Omaha Pot Limit"  (PokerStars 公式表記に準拠)
+  variant?: 'plo' | 'plo5';
 }
 
 function getPos(seatPosition: number, dealerPosition: number, allSeats: number[]): string {
@@ -90,7 +93,8 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
   const dateStr = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} JST`;
   const handNum = id.replace(/-/g, '').slice(-12).replace(/^0+/, '') || id.slice(-6);
 
-  lines.push(`PokerStars Hand #${handNum}: Omaha Pot Limit (${sb}/${bb}) - ${dateStr}`);
+  const variantLabel = hand.variant === 'plo5' ? '5 Card Omaha Pot Limit' : 'Omaha Pot Limit';
+  lines.push(`PokerStars Hand #${handNum}: ${variantLabel} (${sb}/${bb}) - ${dateStr}`);
   lines.push(`Table 'PLO Game' 6-max Seat #${dealerPosition + 1} is the button`);
 
   for (const p of sortedPlayers) {

@@ -29,6 +29,7 @@ const baseTournament: TournamentLobbyInfo = {
   maxReentries: 2,
   totalReentries: 0,
   reentryDeadlineLevel: 6,
+  gameVariant: 'plo',
 };
 
 const presets: Preset[] = [

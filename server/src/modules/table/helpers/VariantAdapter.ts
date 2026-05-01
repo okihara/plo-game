@@ -57,7 +57,11 @@ export class VariantAdapter {
       case 'holdem':
         return createLimitHoldemGameState(buyInChips, smallBlind, bigBlind);
       default: {
+        // PLO / PLO5 はどちらも createInitialGameState を経由する。
+        // 配布枚数は startNewHand 内で variant.holeCardCount から動的に決まるため、
+        // ここで variant を正しく設定しておく必要がある（デフォルトは 'plo'）。
         const state = createInitialGameState(buyInChips);
+        state.variant = this.variant;
         state.smallBlind = smallBlind;
         state.bigBlind = bigBlind;
         return state;

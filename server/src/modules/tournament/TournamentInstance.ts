@@ -416,6 +416,7 @@ export class TournamentInstance {
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       isRegistrationOpen: this.isRegistrationOpen(),
       isFinalTable: this.status === 'final_table' || (this.tables.size === 1 && remaining <= PLAYERS_PER_TABLE),
+      gameVariant: this.config.gameVariant,
     };
   }
 
@@ -445,6 +446,7 @@ export class TournamentInstance {
         ? new Date(this.blindScheduler.getLevelStartTimestamp(this.config.registrationLevels)).toISOString()
         : undefined,
       finalTableId: isFt ? Array.from(this.tables.keys())[0] : undefined,
+      gameVariant: this.config.gameVariant,
     };
   }
 
@@ -478,6 +480,7 @@ export class TournamentInstance {
       gameMode: 'tournament',
       lifecycleCallbacks: callbacks,
       tournamentId: this.id,
+      variant: this.config.gameVariant,
     });
 
     this.tables.set(table.id, table);

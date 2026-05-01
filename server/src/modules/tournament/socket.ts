@@ -178,6 +178,7 @@ export function createTournamentFromConfig(
     allowReentry: options?.allowReentry ?? true,
     maxReentries: options?.maxReentries ?? DEFAULT_MAX_REENTRIES,
     reentryDeadlineLevel: options?.reentryDeadlineLevel ?? DEFAULT_REGISTRATION_LEVELS,
+    gameVariant: options?.gameVariant ?? 'plo',
   };
 
   tournamentManager.createTournament(config);

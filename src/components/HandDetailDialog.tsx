@@ -53,7 +53,7 @@ function parseCard(s: string): Card {
 }
 
 function getHandName(holeCards: string[], communityCards: string[]): string {
-  if (holeCards.length !== 4 || communityCards.length !== 5) return '';
+  if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length !== 5) return '';
   try {
     return evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)).name;
   } catch {
@@ -259,7 +259,7 @@ function PlayerRow({ player, position, communityCards, displayName, anonymousAva
   onTap?: () => void;
 }) {
   const handName = player.finalHand
-    || (player.holeCards.length === 4 && communityCards.length >= 3
+    || ((player.holeCards.length === 4 || player.holeCards.length === 5) && communityCards.length >= 3
       ? evaluateCurrentHand(
           player.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
           communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
