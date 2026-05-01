@@ -62,7 +62,7 @@ const betPositionStyles: Record<number, string> = {
   5: 'top-0 left-[-15cqw]',
 };
 
-const dealerButtonStyle = 'top-[-7cqw] right-[-7cqw]';
+const dealerButtonStyle = 'top-[-5cqw] right-[-5cqw]';
 
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
@@ -148,100 +148,103 @@ export function Player({
         </div>
       )}
 
-      {/* Avatar with Timer Ring */}
-      <div className="relative">
-        {/* Current Player Glow Ring */}
-        {isCurrentPlayer && (
-          <div className="absolute inset-[-3cqw] w-[28cqw] h-[28cqw] rounded-full animate-ping bg-white/90" />
-        )}
-        {isCurrentPlayer && (
-          <div className="absolute inset-[-2cqw] w-[26cqw] h-[26cqw] rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-spin opacity-70" style={{ animationDuration: '3s' }} />
-        )}
-        {isCurrentPlayer && (
-          <div className="absolute inset-[-1cqw] w-[24cqw] h-[24cqw] rounded-full bg-gray-900" />
-        )}
-        {/* Timer Ring */}
-        {timerProgress !== null && (
-          <svg
-            className="absolute inset-0 w-[25cqw] h-[25cqw] -m-[1.5cqw] rotate-90 -scale-x-100 z-10"
-            viewBox="0 0 100 100"
+      {/* Avatar + Player Info (horizontal row) */}
+      <div className="relative z-[25] flex flex-row items-center -translate-y-[3cqw]">
+        {/* Avatar with Timer Ring */}
+        <div className="relative z-[22]">
+          {/* Current Player Glow Ring */}
+          {isCurrentPlayer && (
+            <div className="absolute inset-[-3cqw] w-[22cqw] h-[22cqw] rounded-full animate-ping bg-white/90" />
+          )}
+          {isCurrentPlayer && (
+            <div className="absolute inset-[-2cqw] w-[20cqw] h-[20cqw] rounded-full bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400 animate-spin opacity-70" style={{ animationDuration: '3s' }} />
+          )}
+          {isCurrentPlayer && (
+            <div className="absolute inset-[-1cqw] w-[18cqw] h-[18cqw] rounded-full bg-gray-900" />
+          )}
+          {/* Timer Ring */}
+          {timerProgress !== null && (
+            <svg
+              className="absolute inset-0 w-[19cqw] h-[19cqw] -m-[1.5cqw] rotate-90 -scale-x-100 z-10"
+              viewBox="0 0 100 100"
+            >
+              {/* Background circle */}
+              <circle
+                cx="50"
+                cy="50"
+                r="44"
+                fill="none"
+                stroke="rgba(0,0,0,0.5)"
+                strokeWidth="10"
+              />
+              {/* Progress circle */}
+              <circle
+                cx="50"
+                cy="50"
+                r="44"
+                fill="none"
+                stroke={timerProgress > 0.3 ? '#22c55e' : timerProgress > 0.1 ? '#eab308' : '#ef4444'}
+                strokeWidth="10"
+                strokeLinecap="round"
+                strokeDasharray={`${timerProgress * 276} 276`}
+                className="transition-all duration-100"
+              />
+            </svg>
+          )}
+          <div
+            className={`
+              w-[16cqw] h-[16cqw] rounded-full
+              bg-gradient-to-br from-gray-500 to-gray-700
+              border-[0.5cqw] flex items-center justify-center
+              text-[8cqw] relative overflow-hidden z-10
+              ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
+              ${player.folded ? 'brightness-[0.3] grayscale' : ''}
+              ${isWinner ? 'border-yellow-400' : ''}
+            `}
           >
-            {/* Background circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke="rgba(0,0,0,0.5)"
-              strokeWidth="10"
-            />
-            {/* Progress circle */}
-            <circle
-              cx="50"
-              cy="50"
-              r="44"
-              fill="none"
-              stroke={timerProgress > 0.3 ? '#22c55e' : timerProgress > 0.1 ? '#eab308' : '#ef4444'}
-              strokeWidth="10"
-              strokeLinecap="round"
-              strokeDasharray={`${timerProgress * 276} 276`}
-              className="transition-all duration-100"
-            />
-          </svg>
-        )}
-        <div
-          className={`
-            w-[22cqw] h-[22cqw] rounded-full
-            bg-gradient-to-br from-gray-500 to-gray-700
-            border-[0.7cqw] flex items-center justify-center
-            text-[8cqw] relative overflow-hidden z-10
-            ${isCurrentPlayer ? 'border-amber-400 shadow-[0_0_8cqw_rgba(251,191,36,0.8)]' : 'border-white/60'}
-            ${player.folded ? 'brightness-[0.3] grayscale' : ''}
-            ${isWinner ? 'border-yellow-400' : ''}
-          `}
-        >
-          {avatarImage ? (
-            <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
-          ) : (
-            <span className="text-[4.5cqw] text-gray-400 font-medium">Empty</span>
+            {avatarImage ? (
+              <img src={avatarImage} alt={player.name} className="w-full h-full object-cover" />
+            ) : (
+              <span className="text-[3cqw] text-gray-400 font-medium">Empty</span>
+            )}
+          </div>
+          {/* Dealer Button (PLO only - Stud has no positional dealer) */}
+          {player.position === 'BTN' && (
+            <div className={`absolute w-[12cqw] h-[12cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.6cqw] border-yellow-700 rounded-full flex items-center justify-center text-[6cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
+              D
+            </div>
+          )}
+          {/* All-In Marker */}
+          {player.isAllIn && !player.folded && (
+            <div className="absolute top-[-3cqw] left-[-3cqw] bg-red-600 text-white text-[4cqw] font-black px-[1.5cqw] py-[0.5cqw] rounded-full shadow-md z-[25] leading-none whitespace-nowrap">
+              ALL IN
+            </div>
+          )}
+          {/* Remaining seconds display */}
+          {remainingTime !== null && (
+            <div className="absolute left-1/2 -translate-x-1/2 top-[-3cqw] bg-black rounded-lg px-[2cqw] py-[0.5cqw] flex items-center justify-center text-[5cqw] text-white z-[35] leading-none">
+              {Math.ceil(remainingTime / 1000)}s
+            </div>
+          )}
+          {/* Last Action Marker (CSS animation handles fade-out) */}
+          {showActionMarker && !showdownHandName && (
+            <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[-2cqw] -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] ${actionColorStyles[lastAction.action]}`}>
+              {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount, lastAction.displayChipTotal)}
+            </div>
           )}
         </div>
-        {/* Dealer Button (PLO only - Stud has no positional dealer) */}
-        {player.position === 'BTN' && (
-          <div className={`absolute w-[16.5cqw] h-[16.5cqw] bg-gradient-to-br from-yellow-100 via-yellow-400 to-yellow-600 border-[0.8cqw] border-yellow-700 rounded-full flex items-center justify-center text-[8cqw] font-black text-gray-800 shadow-md z-[25] ${dealerButtonStyle}`}>
-            D
-          </div>
-        )}
-        {/* All-In Marker */}
-        {player.isAllIn && !player.folded && (
-          <div className="absolute top-[-4cqw] left-[-4cqw] bg-red-600 text-white text-[4.5cqw] font-black px-[2cqw] py-[0.5cqw] rounded-full shadow-md z-[25] leading-none whitespace-nowrap">
-            ALL IN
-          </div>
-        )}
-        {/* Remaining seconds display */}
-        {remainingTime !== null && (
-          <div className="absolute left-1/2 -translate-x-1/2 top-[-3cqw] bg-black rounded-lg px-[2cqw] py-[0.5cqw] flex items-center justify-center text-[5cqw] text-white z-[35] leading-none">
-            {Math.ceil(remainingTime / 1000)}s
-          </div>
-        )}
-        {/* Last Action Marker (CSS animation handles fade-out) */}
-        {showActionMarker && !showdownHandName && (
-          <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[-2cqw] -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] ${actionColorStyles[lastAction.action]}`}>
-            {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount, lastAction.displayChipTotal)}
-          </div>
-        )}
-      </div>
 
-      {/* Player Info */}
-      <div className={`relative bg-black/80 px-[1cqw] py-[0.1cqw] rounded-lg -mt-[1.0cqw] text-center min-w-[25cqw] max-w-[35cqw] z-[20] ${player.hasWeeklyChampion ? 'ring-[0.5cqw] ring-yellow-400 shadow-[0_0_2cqw_rgba(250,204,21,0.6)]' : ''} ${player.folded ? 'brightness-[0.3]' : ''} ${isWinner ? 'animate-[win-box-glow_2s_ease-in-out_infinite]' : ''}`}>
-        {labelColor && (
-          <div
-            className="absolute top-[-1cqw] left-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"
-            style={{ backgroundColor: labelColor }}
-          />
-        )}
-        <div className="text-[3.5cqw] text-white truncate">{player.name}</div>
-        <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
+        {/* Player Info */}
+        <div className={`relative bg-black/80 border border-white/60 -ml-[4cqw] px-[1cqw] pl-[5cqw] rounded-lg text-center h-[13cqw] w-[28cqw] flex flex-col justify-center z-[20] ${player.hasWeeklyChampion ? 'ring-[0.5cqw] ring-yellow-400 shadow-[0_0_2cqw_rgba(250,204,21,0.6)]' : ''} ${player.folded ? 'brightness-[0.3]' : ''} ${isWinner ? 'animate-[win-box-glow_2s_ease-in-out_infinite]' : ''}`}>
+          {labelColor && (
+            <div
+              className="absolute top-[-1cqw] left-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"
+              style={{ backgroundColor: labelColor }}
+            />
+          )}
+          <div className="text-[3.5cqw] text-white truncate">{player.name}</div>
+          <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
+        </div>
       </div>
 
       {/* Hole Cards */}
