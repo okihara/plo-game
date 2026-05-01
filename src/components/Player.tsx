@@ -277,7 +277,7 @@ export function Player({
 
       {/* Last Action Marker (CSS animation handles fade-out) */}
       {showActionMarker && !showdownHandName && (
-        <div key={lastAction.timestamp} className={`absolute left-1/2 top-[-5.5cqw] -translate-x-1/2 -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] whitespace-nowrap z-[40] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] ${actionColorStyles[lastAction.action]}`}>
+        <div key={lastAction.timestamp} className={`absolute left-1/2 top-[-5.5cqw] -translate-x-1/2 -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] whitespace-nowrap z-[40] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] shadow-[0_0_4cqw_rgba(0,0,0,1)] ${actionColorStyles[lastAction.action]}`}>
           {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount, lastAction.displayChipTotal)}
         </div>
       )}
