@@ -24,7 +24,7 @@ const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = 
   5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
 };
 
-const cardPositionStyle = 'top-[10cqw] left-1/2 -translate-x-1/2';
+const cardPositionStyle = 'top-[-15.5cqw] left-1/2 -translate-x-1/2';
 
 interface PlayerCardsProps {
   player: PlayerType;
