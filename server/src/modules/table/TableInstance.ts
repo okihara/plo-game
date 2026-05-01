@@ -1083,6 +1083,9 @@ export class TableInstance {
       }
     }
 
+    // ハンド完了後の状態をブロードキャスト
+    this.broadcastGameState();
+
     // pendingStartHand を先に設定してから isHandInProgress を解除する。
     // 逆順だと、onHandSettled コールバック内で triggerMaybeStartHand() が呼ばれた際に
     // 両方のガードが外れた状態になり、ハンドが二重起動する。
