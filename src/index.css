@@ -261,7 +261,7 @@ body {
 
 /* Dark gold gradient for game screen */
 .game-bg {
-  background: url('/images/bg.webp') center / cover no-repeat;
+  background: url('/images/bg.png') center / cover no-repeat;
 }
 
 /* Debug outline toggle (Ctrl+Shift+D) */
