@@ -46,23 +46,23 @@ function formatAction(
 
 const positionStyles: Record<number, string> = {
   0: 'bottom-[-12%] left-1/2 -translate-x-1/2', // 自分
-  1: 'bottom-[14%] left-[-10%]', // 左下
-  2: 'top-[20%] left-[-10%]', // 左上
-  3: 'top-[-4%] left-1/2 -translate-x-1/2', // 上
-  4: 'top-[20%] right-[-10%]', // 右上
-  5: 'bottom-[14%] right-[-10%]', // 右下
+  1: 'bottom-[18%] left-[-17%]', // 左下
+  2: 'top-[28%] left-[-17%]', // 左上
+  3: 'top-[4%] left-1/2 -translate-x-1/2', // 上
+  4: 'top-[28%] right-[-17%]', // 右上
+  5: 'bottom-[18%] right-[-17%]', // 右下
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-15cqw]',
-  1: 'top-0 right-[-15cqw]',
-  2: 'top-[8cqw] right-[-15cqw]',
-  3: 'bottom-[-12cqw]',
-  4: 'top-[8cqw] left-[-15cqw]',
-  5: 'top-0 left-[-15cqw]',
+  0: 'top-[-30cqw]',
+  1: 'top-[1cqw] right-[-15cqw]',
+  2: 'top-[1cqw] right-[-15cqw]',
+  3: 'top-[15cqw]',
+  4: 'top-[1cqw] left-[-15cqw]',
+  5: 'top-[1cqw] left-[-15cqw]',
 };
 
-const dealerButtonStyle = 'top-[-5cqw] right-[-5cqw]';
+const dealerButtonStyle = 'top-[-5cqw] left-[-5cqw]';
 
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
@@ -226,12 +226,6 @@ export function Player({
               {Math.ceil(remainingTime / 1000)}s
             </div>
           )}
-          {/* Last Action Marker (CSS animation handles fade-out) */}
-          {showActionMarker && !showdownHandName && (
-            <div key={lastAction.timestamp} className={`absolute left-1/2 -translate-x-1/2 top-[-2cqw] -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] whitespace-nowrap z-[30] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] ${actionColorStyles[lastAction.action]}`}>
-              {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount, lastAction.displayChipTotal)}
-            </div>
-          )}
         </div>
 
         {/* Player Info */}
@@ -278,6 +272,13 @@ export function Player({
           className={`absolute bg-black/70 text-yellow-400 px-[2.3cqw] py-[1.2cqw] rounded-full text-[4.8cqw] whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
         >
           {formatChips(player.currentBet)}
+        </div>
+      )}
+
+      {/* Last Action Marker (CSS animation handles fade-out) */}
+      {showActionMarker && !showdownHandName && (
+        <div key={lastAction.timestamp} className={`absolute left-1/2 top-[-5.5cqw] -translate-x-1/2 -translate-y-1/2 px-[2cqw] py-[1cqw] rounded-xl text-[5.0cqw] whitespace-nowrap z-[40] animate-action-pop pointer-events-none bg-black/90 border-[0.5cqw] ${actionColorStyles[lastAction.action]}`}>
+          {formatAction(lastAction.action, lastAction.amount, formatChips, lastAction.drawCount, lastAction.displayChipTotal)}
         </div>
       )}
 
