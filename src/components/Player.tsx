@@ -175,7 +175,7 @@ export function Player({
                 r="44"
                 fill="none"
                 stroke="rgba(0,0,0,0.5)"
-                strokeWidth="10"
+                strokeWidth="0"
               />
               {/* Progress circle */}
               <circle
@@ -184,7 +184,7 @@ export function Player({
                 r="44"
                 fill="none"
                 stroke={timerProgress > 0.3 ? '#22c55e' : timerProgress > 0.1 ? '#eab308' : '#ef4444'}
-                strokeWidth="10"
+                strokeWidth="6"
                 strokeLinecap="round"
                 strokeDasharray={`${timerProgress * 276} 276`}
                 className="transition-all duration-100"
