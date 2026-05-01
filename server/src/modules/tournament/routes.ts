@@ -152,10 +152,11 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       const tournament = tournamentManager.getTournament(request.params.id);
       if (tournament) {
         const state = tournament.getClientState();
-        if (state.status === 'completed') {
-          return { ...state, results: tournament.getResults() };
+        const status = tournament.getStatus();
+        if (status === 'completed') {
+          return { ...state, status, results: tournament.getResults() };
         }
-        return state;
+        return { ...state, status };
       }
 
       // DBから取得（終了済みトーナメント対応）

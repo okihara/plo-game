@@ -5,6 +5,7 @@ import { TournamentClockPanel } from './TournamentClockPanel';
 
 interface TournamentHUDProps {
   tournamentState: ClientTournamentState;
+  myChips: number | null;
   lastEliminated: TournamentPlayerEliminatedData | null;
 }
 
@@ -30,7 +31,7 @@ function useCountdown(targetMs: number): string {
   return remaining;
 }
 
-export function TournamentHUD({ tournamentState: ts, lastEliminated }: TournamentHUDProps) {
+export function TournamentHUD({ tournamentState: ts, myChips, lastEliminated }: TournamentHUDProps) {
   const [clockOpen, setClockOpen] = useState(false);
   const countdown = useCountdown(ts.nextLevelAt);
   const isFinalBlindLevel = ts.nextBlindLevel == null;
@@ -38,7 +39,7 @@ export function TournamentHUD({ tournamentState: ts, lastEliminated }: Tournamen
 
   return (
     <>
-      {clockOpen && <TournamentClockPanel tournamentState={ts} onClose={() => setClockOpen(false)} />}
+      {clockOpen && <TournamentClockPanel tournamentState={ts} myChips={myChips} onClose={() => setClockOpen(false)} />}
       {/* トーナメント情報 — 設定ボタンの下 */}
       <div className="absolute top-[14cqw] right-0 z-30 pointer-events-none">
         <button
