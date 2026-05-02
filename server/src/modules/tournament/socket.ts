@@ -137,7 +137,7 @@ export function registerTournamentHandlers(
     }
 
     // トーナメント状態を送信
-    socket.emit('tournament:state', tournament.getClientState(odId));
+    socket.emit('tournament:state', tournament.getClientState());
 
     // テーブルに着席済みなら game:state も再送信
     if (player.tableId) {

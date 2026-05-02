@@ -353,7 +353,7 @@ export class TournamentInstance {
     }
 
     // トーナメント状態を送信
-    socket.emit('tournament:state', this.getClientState(odId));
+    socket.emit('tournament:state', this.getClientState());
 
     return true;
   }
@@ -380,42 +380,33 @@ export class TournamentInstance {
   // Client State
   // ============================================
 
-  public getClientState(forOdId?: string): ClientTournamentState {
+  public getClientState(): ClientTournamentState {
     const currentLevel = this.blindScheduler.getCurrentLevel();
     const nextLevel = this.blindScheduler.getNextLevel();
     const remaining = this.getPlayersRemaining();
 
-    // スタック情報を計算
-    const stacks = Array.from(this.players.values())
-      .filter(p => p.status === 'playing' || p.status === 'disconnected')
-      .map(p => p.chips);
-
-    const averageStack = stacks.length > 0 ? Math.round(stacks.reduce((a, b) => a + b, 0) / stacks.length) : 0;
-    const largestStack = stacks.length > 0 ? Math.max(...stacks) : 0;
-    const smallestStack = stacks.length > 0 ? Math.min(...stacks) : 0;
-
-    const myPlayer = forOdId ? this.players.get(forOdId) : undefined;
+    // 平均スタックのみ集計（最大/最小はクライアント未使用）
+    let stackSum = 0;
+    let stackCount = 0;
+    for (const p of this.players.values()) {
+      if (p.status === 'playing' || p.status === 'disconnected') {
+        stackSum += p.chips;
+        stackCount++;
+      }
+    }
+    const averageStack = stackCount > 0 ? Math.round(stackSum / stackCount) : 0;
 
     return {
       tournamentId: this.id,
       name: this.config.name,
-      status: this.status,
-      buyIn: this.config.buyIn,
-      startingChips: this.config.startingChips,
       prizePool: this.prizePool,
       totalPlayers: this.getTotalEntries(),
       playersRemaining: remaining,
       currentBlindLevel: currentLevel,
       nextBlindLevel: nextLevel,
       nextLevelAt: this.blindScheduler.getNextLevelAt(),
-      myChips: myPlayer?.chips ?? null,
-      myTableId: myPlayer?.tableId ?? null,
       averageStack,
-      largestStack,
-      smallestStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
-      isRegistrationOpen: this.isRegistrationOpen(),
-      isFinalTable: this.status === 'final_table' || (this.tables.size === 1 && remaining <= PLAYERS_PER_TABLE),
       gameVariant: this.config.gameVariant,
     };
   }
@@ -1043,11 +1034,8 @@ export class TournamentInstance {
   }
 
   private broadcastTournamentState(): void {
-    // 各プレイヤーに個別の状態を送信（myChips, myTableIdが異なるため）
-    for (const player of this.players.values()) {
-      if (player.socket) {
-        player.socket.emit('tournament:state', this.getClientState(player.odId));
-      }
-    }
+    // 全プレイヤー共通のペイロードなのでルーム全体に1回 emit。
+    // 個別のチップ・卓IDは game:state / tournament:table_assigned 系で配信済み。
+    this.io.to(this.roomName).emit('tournament:state', this.getClientState());
   }
 }

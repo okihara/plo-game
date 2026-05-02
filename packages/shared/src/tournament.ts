@@ -28,23 +28,14 @@ export interface BlindLevel {
 export interface ClientTournamentState {
   tournamentId: string;
   name: string;
-  status: TournamentStatus;
-  buyIn: number;
-  startingChips: number;
   prizePool: number;
   totalPlayers: number;
   playersRemaining: number;
   currentBlindLevel: BlindLevel;
   nextBlindLevel: BlindLevel | null;
   nextLevelAt: number;           // UNIXタイムスタンプ (ms)
-  myChips: number | null;
-  myTableId: string | null;
   averageStack: number;
-  largestStack: number;
-  smallestStack: number;
   payoutStructure: { position: number; amount: number }[];
-  isRegistrationOpen: boolean;
-  isFinalTable: boolean;
   gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
 }
 

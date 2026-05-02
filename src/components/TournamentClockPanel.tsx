@@ -31,12 +31,13 @@ function prizeOrdinal(n: number): string {
 
 interface TournamentClockPanelProps {
   tournamentState: ClientTournamentState;
+  myChips: number | null;
   onClose: () => void;
 }
 
 const FINAL_LEVEL_CLOCK = '--:--';
 
-export function TournamentClockPanel({ tournamentState: ts, onClose }: TournamentClockPanelProps) {
+export function TournamentClockPanel({ tournamentState: ts, myChips, onClose }: TournamentClockPanelProps) {
   const isFinalBlindLevel = ts.nextBlindLevel == null;
   const [clock, setClock] = useState(() =>
     isFinalBlindLevel ? FINAL_LEVEL_CLOCK : formatTimeToNextLevel(ts.nextLevelAt),
@@ -171,7 +172,7 @@ export function TournamentClockPanel({ tournamentState: ts, onClose }: Tournamen
               label="PLAYERS"
               value={`${ts.playersRemaining}/${ts.totalPlayers}`}
             />
-            {ts.myChips != null && <RightStat label="MY STACK" value={formatChipsAbsolute(ts.myChips)} />}
+            {myChips != null && <RightStat label="MY STACK" value={formatChipsAbsolute(myChips)} />}
           </section>
         </div>
 
