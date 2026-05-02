@@ -489,7 +489,7 @@ export function wouldAdvanceStreet(state: GameState, playerIndex: number, action
  * 次にアクションすべきプレイヤーを決定する
  * @returns nextPlayerIndex: 次のプレイヤー（-1なら終了）, moveToNextStreet: 次のストリートに進むか
  */
-function determineNextAction(state: GameState): { nextPlayerIndex: number; moveToNextStreet: boolean } {
+export function determineNextAction(state: GameState): { nextPlayerIndex: number; moveToNextStreet: boolean } {
   const activePlayers = getActivePlayers(state);
 
   // 1人しか残っていない → ハンド終了

@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo';
+export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo' | 'plo_double_board_bomb';
 
 // --- Variant Config ---
 
@@ -38,6 +38,7 @@ export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   'no_limit_2-7_single_draw':  { family: 'draw',   betting: 'no_limit',   usesCommunityCards: false, holeCardCount: 5, maxDraws: 1, usesBringIn: false },
   omaha_hilo:                   { family: 'omaha',  betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
   stud_hilo:                    { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+  plo_double_board_bomb:        { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
 };
 
 export function getVariantConfig(variant: GameVariant): VariantConfig {
@@ -114,6 +115,10 @@ export interface GameState {
   players: Player[];
   deck: Card[];
   communityCards: Card[];
+  /** ダブルボード bomb pot 用。[board1, board2] が入る。
+   *  bomb pot 進行中は boards[0] と communityCards を同期する（後方互換）。
+   *  通常 variant では undefined。 */
+  boards?: Card[][];
   pot: number;
   sidePots: { amount: number; eligiblePlayers: number[] }[];
   currentStreet: Street;
