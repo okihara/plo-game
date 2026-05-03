@@ -399,7 +399,7 @@ export function TournamentCard({
       {/* Tier 3: 詳細（小） */}
       <div className="px-[4cqw] pt-[1cqw] pb-[2cqw] text-[2.8cqw] text-cream-700 flex flex-wrap gap-x-[3cqw] gap-y-[0.3cqw]">
         <span>
-          初期 <span className="tabular-nums font-medium text-cream-800">{t.startingChips.toLocaleString()}</span>
+          初期 <span className="tabular-nums font-medium text-cream-800">{(t.startingChips * (t.chipUnit ?? 1)).toLocaleString()}</span>
         </span>
         {t.allowReentry && (
           <span>

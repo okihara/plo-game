@@ -3,6 +3,10 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 interface GameSettings {
   useBBNotation: boolean;
   bigBlind: number;
+  /** チップ表示倍率。トナメ=100、キャッシュ=1。
+   *  内部 chip 値は raw (1 単位整数) のまま流通させ、formatChips の出力時に
+   *  この値を掛けて「見かけ上のチップ数」に変換する。 */
+  chipUnit: number;
   showHandName: boolean;
   analysisEnabled: boolean;
 }
@@ -11,6 +15,7 @@ interface GameSettingsContextValue {
   settings: GameSettings;
   setUseBBNotation: (value: boolean) => void;
   setBigBlind: (value: number) => void;
+  setChipUnit: (value: number) => void;
   setShowHandName: (value: boolean) => void;
   setAnalysisEnabled: (value: boolean) => void;
   formatChips: (amount: number) => string;
@@ -54,6 +59,7 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
     return loaded.analysisEnabled ?? false;
   });
   const [bigBlind, setBigBlind] = useState(100);
+  const [chipUnit, setChipUnit] = useState(1);
 
   useEffect(() => {
     saveSettings({ useBBNotation, showHandName, analysisEnabled });
@@ -72,6 +78,7 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
   };
 
   const formatChips = (amount: number): string => {
+    // BB 表記は raw 同士の比なので chipUnit を掛けない (300/200 = 1500/1000 = 1.5bb)
     if (useBBNotation && bigBlind > 0) {
       const bbAmount = amount / bigBlind;
       if (bbAmount === Math.floor(bbAmount)) {
@@ -80,18 +87,21 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
       return `${bbAmount.toFixed(1)}bb`;
     }
 
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(1)}K`;
+    // 絶対チップ数表示は raw に chipUnit を掛けて display 値にする
+    const display = amount * chipUnit;
+    if (display >= 1000000) {
+      return `${(display / 1000000).toFixed(1)}M`;
+    } else if (display >= 1000) {
+      return `${(display / 1000).toFixed(1)}K`;
     }
-    return `${amount}`;
+    return `${display}`;
   };
 
   const value: GameSettingsContextValue = {
-    settings: { useBBNotation, bigBlind, showHandName, analysisEnabled },
+    settings: { useBBNotation, bigBlind, chipUnit, showHandName, analysisEnabled },
     setUseBBNotation,
     setBigBlind,
+    setChipUnit,
     setShowHandName,
     setAnalysisEnabled,
     formatChips,

@@ -5,4 +5,3 @@ export * from './protocol';
 export * from './preflopEquity';
 export * from './tournament';
 export * from './pokerStarsHandHistory';
-export * from './displayScale';

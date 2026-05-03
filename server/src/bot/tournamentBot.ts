@@ -8,7 +8,7 @@ const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'BabyPLO Daily Turbo';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
 // チップは内部 1/100 単位 (chipUnit=100、UI が ×100 で表示)
 const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '300', 10);
-const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.15'); // 15秒
+const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '5'); // 15秒
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || ''; // 既存トーナメントに参加する場合
 const JOIN_ACTIVE = process.env.JOIN_ACTIVE === 'true'; // 進行中のトーナメントを自動検索して参加
 const CHAOS_MODE = process.env.CHAOS_MODE === 'true'; // ランダム切断→再接続で不具合を再現する

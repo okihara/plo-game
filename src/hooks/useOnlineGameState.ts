@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
 import { playActionSound, playDealSound, playMyTurnSound } from '../services/actionSound';
-import { scaleClientGameStateForDisplay, type ClientGameState } from '@plo/shared';
+import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState } from '../logic/types';
 import { convertClientStateToGameState } from './onlineGameShared';
 
@@ -198,11 +198,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // ============================================
 
   const handleAction = useCallback((action: Action, amount: number, discardIndices?: number[]) => {
-    // UI 側は表示倍率済み (×chipUnit) の値で動いているので、サーバーへ送る前に
-    // raw 内部値 (= 1 単位整数) に戻す。サーバーのエンジンは内部小値で動いている。
-    const u = clientStateRef.current?.chipUnit ?? 1;
-    const rawAmount = u > 1 ? Math.round(amount / u) : amount;
-    wsService.sendAction(action, rawAmount, discardIndices);
+    wsService.sendAction(action, amount, discardIndices);
     setActionTimeoutAt(null);
   }, []);
 
@@ -346,10 +342,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
         prevStreetRef.current = state.currentStreet;
         prevCardCountRef.current = state.communityCards.length;
-        // トナメ (chipUnit > 1) の場合、ここで chip 系列の値をすべて表示単位に
-        // 引き上げる。下流の UI は cash と同じ値域として扱える。
-        // handleAction の amount は state.chipUnit で割って raw 値に戻して送る。
-        setClientState(scaleClientGameStateForDisplay(state));
+        // 内部は常に raw (1 単位整数) のまま下流へ流す。表示倍率 (×chipUnit) は
+        // GameSettingsContext.formatChips が担当する。
+        setClientState(state);
 
         // タイマー情報を更新
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
@@ -380,26 +375,21 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         if (seat < 0) return;
         const acting = currentState.players[seat];
         if (!acting) return;
-        // amount は raw 値で来るので chipUnit を掛けて表示単位に揃える
-        const u = currentState.chipUnit ?? 1;
-        const displayAmount = amount * u;
         const prevBet = acting.currentBet;
         const chipMoving = action === 'bet' || action === 'raise' || action === 'call' || action === 'allin';
-        const displayChipTotal = chipMoving ? prevBet + displayAmount : undefined;
-        recordAction(seat, action, displayAmount, drawCount, displayChipTotal);
+        const displayChipTotal = chipMoving ? prevBet + amount : undefined;
+        recordAction(seat, action, amount, drawCount, displayChipTotal);
       },
       onHandComplete: (serverWinners) => {
         isNewHandRef.current = true;
         const currentState = clientStateRef.current;
         if (currentState) {
-          // amount は raw 値で来るので chipUnit を掛けて表示単位に揃える
-          const u = currentState.chipUnit ?? 1;
           const convertedWinners = serverWinners.map(w => {
             // playerIdをseat番号に変換（refで最新のclientStateを参照）
             const seat = currentState.players.findIndex(p => p?.odId === w.playerId);
             return {
               playerId: seat,  // -1 = 不明（UI側でハイライトされないだけ）
-              amount: w.amount * u,
+              amount: w.amount,
               handName: w.handName,
             };
           });

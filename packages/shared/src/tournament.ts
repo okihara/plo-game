@@ -50,6 +50,9 @@ export interface TournamentLobbyInfo {
   status: TournamentStatus;
   buyIn: number;
   startingChips: number;
+  /** チップ表示倍率。startingChips は raw 値で送られるので UI が ×chipUnit して表示する。
+   *  buyIn / prizePool はトーナメント通貨でありチップとは別系列なので倍率非対応。 */
+  chipUnit?: number;
   registeredPlayers: number;
   maxPlayers: number;
   currentBlindLevel: number;
