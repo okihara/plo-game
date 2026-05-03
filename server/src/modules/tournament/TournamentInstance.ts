@@ -17,6 +17,16 @@ import { maskName } from '../../shared/utils.js';
 import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
 
 /**
+ * BlindLevel から TableInstance に渡す blinds 文字列を生成。
+ * ante > 0 のときだけ "sb/bb/ante" 形式、それ以外は "sb/bb"。
+ */
+function formatBlindsStr(level: BlindLevel): string {
+  return level.ante > 0
+    ? `${level.smallBlind}/${level.bigBlind}/${level.ante}`
+    : `${level.smallBlind}/${level.bigBlind}`;
+}
+
+/**
  * 1つのトーナメントのライフサイクルを管理する
  * 内部に複数の TableInstance を保持し、コールバックで連携する
  */
@@ -447,7 +457,7 @@ export class TournamentInstance {
 
   private createTournamentTable(): TableInstance {
     const currentLevel = this.blindScheduler.getCurrentLevel();
-    const blindsStr = `${currentLevel.smallBlind}/${currentLevel.bigBlind}`;
+    const blindsStr = formatBlindsStr(currentLevel);
 
     const callbacks: TableLifecycleCallbacks = {
       onPlayerBusted: (odId, seatIndex, socket, chipsAtHandStart) => {
@@ -725,7 +735,7 @@ export class TournamentInstance {
   // ============================================
 
   private onBlindLevelUp(newLevel: BlindLevel, nextLevel: BlindLevel | null): void {
-    const blindsStr = `${newLevel.smallBlind}/${newLevel.bigBlind}`;
+    const blindsStr = formatBlindsStr(newLevel);
 
     // 全テーブルのブラインドを更新
     for (const table of this.tables.values()) {

@@ -239,10 +239,15 @@ export function GameTable({
               <Settings className="w-[5cqw] h-[5cqw]" />
             </button>
           </div>
-      {/* バリアント + ブラインド（中央上部） */}
+      {/* バリアント + ブラインド（中央上部）。
+          sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
       <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
         <span className="bg-cream-200 rounded-b-[3cqw] px-[3cqw] py-[0.5cqw] text-black text-[3.3cqw] font-medium tracking-wide whitespace-nowrap w-[40cqw] h-[7cqw] text-center inline-flex items-end justify-center">
-          {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant} {blindsLabel}
+          {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant}
+          {' '}
+          {gameState.bigBlind > 0
+            ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
+            : `ante ${gameState.ante}`}
         </span>
       </div>
       {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}

@@ -43,25 +43,25 @@ export class VariantAdapter {
   /**
    * 初期ゲーム状態を作成
    */
-  createGameState(buyInChips: number, smallBlind: number, bigBlind: number): GameState {
+  createGameState(buyInChips: number, smallBlind: number, bigBlind: number, ante: number = 0): GameState {
     // omaha_hilo は family === 'omaha' だが PLO とは別エンジン
     if (this.variant === 'omaha_hilo') {
       return createOmahaHiLoGameState(buyInChips, smallBlind, bigBlind);
     }
     // plo_double_board_bomb は family === 'omaha' だが専用エンジン。
-    // SB/BB は投稿せず全員アンテのみのため、blind level の bb 値を ante として
-    // 持たせ、smallBlind / bigBlind は 0 で揃える ("sb=0 / bb=0 / ante=N")。
+    // SB/BB は投稿せず全員アンテのみ。blind level の ante フィールドを直接使う。
     if (this.variant === 'plo_double_board_bomb') {
       const state = createBombPotGameState(buyInChips);
-      state.smallBlind = 0;
-      state.bigBlind = 0;
-      state.ante = bigBlind;
+      state.smallBlind = smallBlind;
+      state.bigBlind = bigBlind;
+      state.ante = ante;
       return state;
     }
     switch (this.config.family) {
       case 'stud': {
-        const ante = Math.ceil(smallBlind / 4);
-        return createStudGameState(buyInChips, ante, smallBlind, this.variant);
+        // Stud は SB を 1/4 にしたものを ante として使う既存ルール (blind level の ante は未使用)
+        const studAnte = Math.ceil(smallBlind / 4);
+        return createStudGameState(buyInChips, studAnte, smallBlind, this.variant);
       }
       case 'draw':
         return createDrawGameState(buyInChips, smallBlind, this.config.maxDraws);

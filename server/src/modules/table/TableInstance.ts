@@ -26,6 +26,8 @@ export class TableInstance {
   public blinds: string;
   public smallBlind: number;
   public bigBlind: number;
+  /** ブラインドレベルから渡されるアンテ額。bomb pot / Stud では > 0 になる。 */
+  public ante: number = 0;
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
   public readonly variant: GameVariant = 'plo';
@@ -94,9 +96,11 @@ export class TableInstance {
       },
     };
 
-    const [sb, bb] = blinds.split('/').map(Number);
+    // blinds 文字列は "sb/bb" または "sb/bb/ante" 形式 (ante 省略時 0)
+    const [sb, bb, ante] = blinds.split('/').map(Number);
     this.smallBlind = sb;
     this.bigBlind = bb;
+    this.ante = ante || 0;
 
     // ヘルパー初期化
     const roomName = `table:${this.id}`;
@@ -407,14 +411,16 @@ export class TableInstance {
    * ハンド中は即座に反映されず、次のハンドから適用される
    */
   public updateBlinds(newBlinds: string): void {
-    const [sb, bb] = newBlinds.split('/').map(Number);
-    if (isNaN(sb) || isNaN(bb) || sb <= 0 || bb <= 0) {
+    const [sb, bb, ante] = newBlinds.split('/').map(Number);
+    const anteValue = ante || 0;
+    if (isNaN(sb) || isNaN(bb) || sb < 0 || bb < 0 || (bb <= 0 && anteValue <= 0)) {
       console.error(`[Table ${this.id}] updateBlinds: invalid format "${newBlinds}"`);
       return;
     }
     this.blinds = newBlinds;
     this.smallBlind = sb;
     this.bigBlind = bb;
+    this.ante = anteValue;
     console.log(`[Table ${this.id}] Blinds updated to ${newBlinds}`);
   }
 
@@ -686,9 +692,10 @@ export class TableInstance {
       this.advanceHorseVariantIfNeeded();
     }
 
-    // Create initial game state
-    const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
-    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
+    // Create initial game state。bomb pot は bb=0 なので buy-in 計算には ante を使う。
+    const buyInBase = this.bigBlind > 0 ? this.bigBlind : this.ante;
+    const buyInChips = buyInBase * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
+    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind, this.ante);
     // トナメは最小チップ単位 100。ポット分配で 100 未満の端数が出ないようにする
     if (this.gameMode === 'tournament') {
       this.gameState.chipUnit = 100;
