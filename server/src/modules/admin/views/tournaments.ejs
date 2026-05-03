@@ -122,11 +122,11 @@
           <select id="startCondition">
             <option value="manual">手動開始</option>
             <option value="immediate">現時刻で開始</option>
-            <option value="scheduled">時刻指定</option>
+            <option value="scheduled" selected>時刻指定</option>
             <option value="player_count">人数到達</option>
           </select>
         </div>
-        <div class="form-group" id="scheduledTimeGroup" style="display:none">
+        <div class="form-group" id="scheduledTimeGroup">
           <label>開始時刻</label>
           <input type="datetime-local" id="scheduledStartTime">
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
@@ -153,14 +153,14 @@
           <label>リエントリー</label>
           <select id="allowReentry">
             <option value="false">なし</option>
-            <option value="true">あり</option>
+            <option value="true" selected>あり</option>
           </select>
         </div>
-        <div class="form-group" id="reentryGroup" style="display:none">
+        <div class="form-group" id="reentryGroup">
           <label>最大リエントリー回数</label>
           <input type="number" id="maxReentries" value="1" min="1">
         </div>
-        <div class="form-group" id="reentryDeadlineGroup" style="display:none">
+        <div class="form-group" id="reentryDeadlineGroup">
           <label>リエントリー期限レベル</label>
           <input type="number" id="reentryDeadlineLevel" value="8" min="1">
         </div>
@@ -230,6 +230,8 @@
     }
     refreshDayPresetLabels();
     setInterval(refreshDayPresetLabels, 60000);
+    // 開始時刻のデフォルトを「今日 22:00」(過ぎていれば翌日 22:00) にセット
+    setTimeToday(22, 0);
 
     async function createTournament() {
       var body = {
