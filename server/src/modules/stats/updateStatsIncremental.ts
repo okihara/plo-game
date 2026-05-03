@@ -53,18 +53,12 @@ export async function updatePlayerStats(
 
   const upserts: Promise<unknown>[] = [];
 
-  // 内部 chip 値を表示単位に揃える (トーナメント=100、キャッシュ=1)。
-  // profit / allInEVProfit のような絶対チップ値は ×chipUnit して保存し、
-  // ハンドヒストリーの保存値と表記を一致させる。
-  const chipUnit = gameState.chipUnit ?? 1;
-
   for (let i = 0; i < seats.length; i++) {
     const seat = seats[i];
     if (!seat || !startChips.has(i) || !isAuthenticatedUser(seat.odId)) continue;
 
-    const profit = (gameState.players[i].chips - startChips.get(i)!) * chipUnit;
-    const rawEv = allInEVProfits?.get(i) ?? null;
-    const allInEVProfit = rawEv != null ? rawEv * chipUnit : null;
+    const profit = gameState.players[i].chips - startChips.get(i)!;
+    const allInEVProfit = allInEVProfits?.get(i) ?? null;
     const inc = computeIncrementForPlayer(
       seat.odId, i, profit, actions,
       gameState.dealerPosition, winnerOdIds,
