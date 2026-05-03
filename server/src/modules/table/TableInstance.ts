@@ -689,9 +689,7 @@ export class TableInstance {
     // Create initial game state
     const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
     this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
-    // トナメは内部 1/100 単位で扱い、UI/ハンドヒストリーで ×100 して表示する。
-    // chipUnit は表示倍率の宣言として GameState にぶら下げる (エンジン内部の chips/pot/bet
-    // 値はそのまま 1 単位整数で動く)。
+    // トナメは最小チップ単位 100。ポット分配で 100 未満の端数が出ないようにする
     if (this.gameMode === 'tournament') {
       this.gameState.chipUnit = 100;
     }

@@ -182,9 +182,7 @@ export interface GameState {
   discardPile?: Card[];      // Draw: 捨て札の山（ドロー時のデッキ補充用）
   maxDraws?: number;         // Draw: ドロー回数（1=Single Draw, 3=Triple Draw, デフォルト3）
   validActions?: { action: string; minAmount: number; maxAmount: number }[] | null; // クライアント側でサーバーから受信した有効アクション
-  /** 表示用倍率。サーバー/クライアント間およびエンジン内部のチップ値はすべて素の整数で扱う。
-   *  UI 表示・ハンドヒストリー保存時にこの値を掛けて「見かけ上のチップ数」に変換する。
-   *  - トーナメント: 100 (例: 内部 18 chips → 表示 1800 chips)
-   *  - キャッシュ:    undefined (= 1 相当、変換なし) */
+  /** 最小チップ単位。ポット分配時に各勝者の取り分をこの倍数に切り下げ、
+   *  端数は最初の勝者へ寄せる。トーナメント=100、キャッシュ=undefined(1相当)。 */
   chipUnit?: number;
 }

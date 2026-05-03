@@ -503,12 +503,12 @@ export function determineBombPotWinner(
   }
 
   // === 各 sidepot を 2 ボードに半分割し、ボード毎に勝者決定 ===
-  // chipUnit は表示倍率なので分配計算には影響しない (内部は常に整数 1 単位)。
   newState.winners = [];
+  const chipUnit = newState.chipUnit ?? 1;
 
   for (const pot of contestedPots) {
-    // ボード半分割: 端数 (1 chip) はボード 1 へ寄せる
-    const boardAmounts = splitChipsEvenly(pot.amount, BOARD_COUNT);
+    // ボード半分割: 端数 (chipUnit 未満) はボード 1 へ寄せる
+    const boardAmounts = splitChipsEvenly(pot.amount, BOARD_COUNT, chipUnit);
 
     for (let b = 0; b < BOARD_COUNT; b++) {
       const boardPotAmount = boardAmounts[b];
@@ -531,7 +531,7 @@ export function determineBombPotWinner(
       }
 
       // 各勝者へ分配 (端数は最初の勝者へ寄せる)
-      const shares = splitChipsEvenly(boardPotAmount, top.length);
+      const shares = splitChipsEvenly(boardPotAmount, top.length, chipUnit);
 
       for (let i = 0; i < top.length; i++) {
         const amt = shares[i];
