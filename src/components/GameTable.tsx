@@ -185,8 +185,15 @@ export function GameTable({
     if (variantConfig.family === 'holdem') {
       return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
     }
+    // DBBP は 2 ボードを別々に評価し "B1: X / B2: Y" で表示
+    if (gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2) {
+      const h1 = evaluateCurrentHand(myHoleCards, gameState.boards[0])?.name;
+      const h2 = evaluateCurrentHand(myHoleCards, gameState.boards[1])?.name;
+      if (!h1 && !h2) return undefined;
+      return `B1: ${h1 ?? '—'} / B2: ${h2 ?? '—'}`;
+    }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
-  }, [myHoleCards, gameState.communityCards, gameState.variant]);
+  }, [myHoleCards, gameState.communityCards, gameState.boards, gameState.variant]);
 
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
   const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
