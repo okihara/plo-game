@@ -632,36 +632,6 @@ describe('determineBombPotWinner', () => {
     expect(result.winners.reduce((s, w) => s + w.amount, 0)).toBe(300);
   });
 
-  it('chipUnit=100 のとき、ボード半分割と各ボードの分配が 100 の倍数になる', () => {
-    // pot=2300 を 2 ボードに半分割。chipUnit なしなら board1=1150/board2=1150 (どちらも100の倍数)。
-    // 同じ pot で各ボードが 3 人タイの場合: 1150/3 = 383 残り 1 → 385/383/383。
-    // chipUnit=100 なら 各ボード 1100/0 寄せでなく、半分割→各ボードへ 100 単位で分配されるべき。
-    const state = buildShowdownState({
-      boards: [
-        // 全員ボードプレイ (A-K-Q-J-T のストレート)
-        [card('A', 'h'), card('K', 'h'), card('Q', 'h'), card('J', 'c'), card('T', 'd')],
-        [card('A', 's'), card('K', 's'), card('Q', 's'), card('J', 'd'), card('T', 'h')],
-      ],
-      bigBlind: 100,
-      playersConfig: [
-        { holeCards: [card('2', 'c'), card('3', 'c'), card('4', 'c'), card('5', 'c')], totalBetThisRound: 800 },
-        { holeCards: [card('2', 'd'), card('3', 'd'), card('4', 'd'), card('5', 'd')], totalBetThisRound: 800 },
-        { holeCards: [card('6', 'c'), card('7', 'c'), card('8', 'd'), card('9', 'd')], totalBetThisRound: 700 },
-        null, null, null,
-      ],
-    });
-    state.chipUnit = 100;
-
-    const result = determineBombPotWinner(state);
-
-    // 全 winners の取り分は 100 の倍数
-    for (const w of result.winners) {
-      expect(w.amount % 100).toBe(0);
-    }
-    // 合計は pot と一致
-    expect(result.winners.reduce((s, w) => s + w.amount, 0)).toBe(2300);
-  });
-
   it('レーキを差し引いた額が分配される（rakePercent 指定時）', () => {
     const state = buildShowdownState({
       boards: [

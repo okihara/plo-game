@@ -804,8 +804,9 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
       }
     }
 
-    // ポットを均等分配（端数は最初の勝者に付与、chipUnit の倍数に揃える）
-    const shares = splitChipsEvenly(pot.amount, potWinners.length, newState.chipUnit ?? 1);
+    // ポットを均等分配（端数は最初の勝者に付与）。
+    // chipUnit は表示倍率なのでここでは渡さない (内部は常に 1 単位の整数で扱う)。
+    const shares = splitChipsEvenly(pot.amount, potWinners.length);
 
     for (let i = 0; i < potWinners.length; i++) {
       const amount = shares[i];
