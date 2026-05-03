@@ -440,8 +440,6 @@ export class TournamentInstance {
         : undefined,
       finalTableId: isFt ? Array.from(this.tables.keys())[0] : undefined,
       gameVariant: this.config.gameVariant,
-      // トナメは内部 1/100 単位。startingChips の表示時に UI が ×100 する
-      chipUnit: 100,
     };
   }
 

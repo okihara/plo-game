@@ -7,11 +7,6 @@ function formatChipsAbsolute(amount: number): string {
   return Math.round(amount).toLocaleString('ja-JP');
 }
 
-/** chip 値 (raw) に表示倍率を掛けて絶対表記。BlindLevel の sb/bb/ante、averageStack 用。 */
-function formatChipsScaled(amount: number, chipUnit: number): string {
-  return formatChipsAbsolute(amount * chipUnit);
-}
-
 /** 次レベルまで（想定1時間未満）を MM:SS で表示 */
 function formatTimeToNextLevel(targetMs: number): string {
   const diff = Math.max(0, targetMs - Date.now());
@@ -70,9 +65,6 @@ export function TournamentClockPanel({ tournamentState: ts, myChips, onClose }: 
   const bl = ts.currentBlindLevel;
   const next = ts.nextBlindLevel;
   const payouts = [...ts.payoutStructure].sort((a, b) => a.position - b.position).slice(0, 8);
-  // chip 値 (sb/bb/ante/averageStack/myChips) は raw なので表示時に ×chipUnit する。
-  // payout/prizePool はトーナメント通貨でありチップとは別系列なので変換しない。
-  const u = ts.chipUnit ?? 1;
 
   return (
     <div
@@ -151,19 +143,19 @@ export function TournamentClockPanel({ tournamentState: ts, myChips, onClose }: 
               <div className="whitespace-nowrap">
                 <span className="font-semibold text-white">BLINDS: </span>
                 <span className="tabular-nums text-white">
-                  {formatChipsScaled(bl.smallBlind, u)}/{formatChipsScaled(bl.bigBlind, u)}
+                  {formatChipsAbsolute(bl.smallBlind)}/{formatChipsAbsolute(bl.bigBlind)}
                 </span>
               </div>
               <div className="whitespace-nowrap">
                 <span className="font-semibold text-white">ANTE: </span>
-                <span className="tabular-nums text-white">{formatChipsScaled(bl.ante, u)}</span>
+                <span className="tabular-nums text-white">{formatChipsAbsolute(bl.ante)}</span>
               </div>
               <div className="text-white whitespace-nowrap overflow-x-auto">
                 <span className="font-semibold text-white">NEXT LEVEL: </span>
                 {next ? (
                   <span className="tabular-nums">
-                    {formatChipsScaled(next.smallBlind, u)}/{formatChipsScaled(next.bigBlind, u)}
-                    {next.ante > 0 ? ` (${formatChipsScaled(next.ante, u)})` : ''}
+                    {formatChipsAbsolute(next.smallBlind)}/{formatChipsAbsolute(next.bigBlind)}
+                    {next.ante > 0 ? ` (${formatChipsAbsolute(next.ante)})` : ''}
                   </span>
                 ) : (
                   <span className="text-white">—</span>
@@ -175,12 +167,12 @@ export function TournamentClockPanel({ tournamentState: ts, myChips, onClose }: 
           {/* 右カラム */}
           <section className="flex min-h-0 min-w-0 flex-col gap-0 px-[2.5cqw] py-[2.5cqw]">
             <RightStat label="NEXT BREAK IN" value="—" valueClass="font-mono" />
-            <RightStat label="AVG STACK" value={formatChipsScaled(ts.averageStack, u)} />
+            <RightStat label="AVG STACK" value={formatChipsAbsolute(ts.averageStack)} />
             <RightStat
               label="PLAYERS"
               value={`${ts.playersRemaining}/${ts.totalPlayers}`}
             />
-            {myChips != null && <RightStat label="MY STACK" value={formatChipsScaled(myChips, u)} />}
+            {myChips != null && <RightStat label="MY STACK" value={formatChipsAbsolute(myChips)} />}
           </section>
         </div>
 

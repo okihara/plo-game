@@ -88,7 +88,7 @@ export function GameTable({
   isSpectator = false,
   isTournament = false,
 }: GameTableProps) {
-  const { settings, setBigBlind, setChipUnit } = useGameSettings();
+  const { settings, setBigBlind } = useGameSettings();
   const { user } = useAuth();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
@@ -144,11 +144,9 @@ export function GameTable({
   const isCurrentDrawStreet = isDrawStreet(gameState.currentStreet);
 
   // bigBlind設定 (bomb pot は SB/BB を投稿せず ante のみなので ante を BB 相当として扱う)
-  // chipUnit は formatChips が表示倍率に使う (トナメ=100, キャッシュ=1)
   useEffect(() => {
     setBigBlind(gameState.bigBlind || gameState.ante);
-    setChipUnit(gameState.chipUnit ?? 1);
-  }, [gameState, setBigBlind, setChipUnit]);
+  }, [gameState, setBigBlind]);
 
   const myPlayer = mySeat !== null ? gameState.players[mySeat] : null;
   // 観戦は常に席0を画面手前基準（ディーラー／BTN基準にしない）
