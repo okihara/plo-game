@@ -15,8 +15,8 @@ export class TableManager {
 
   // Create a new table
   public createTable(blinds: string = '1/3', isFastFold: boolean = false, variant: GameVariant = 'plo', isHorse: boolean = false): TableInstance {
-    // ハンド履歴は omaha 系 variant (PLO / PLO5) のみ保存。それ以外 (Stud/Razz/Draw/Holdem 等) は Null Recorder。
-    const handHistoryEnabledVariants: GameVariant[] = ['plo', 'plo5'];
+    // ハンド履歴は omaha 系 variant (PLO / PLO5 / Bomb Pot) のみ保存。それ以外 (Stud/Razz/Draw/Holdem 等) は Null Recorder。
+    const handHistoryEnabledVariants: GameVariant[] = ['plo', 'plo5', 'plo_double_board_bomb'];
     const historyRecorder = handHistoryEnabledVariants.includes(variant) ? undefined : new NullHandHistoryRecorder();
     const table = new TableInstance(this.io, blinds, isFastFold, { variant, historyRecorder, isHorse });
     this.tables.set(table.id, table);

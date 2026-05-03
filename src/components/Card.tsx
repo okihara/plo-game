@@ -2,7 +2,7 @@ import { Card as CardType, getVariantConfig, GameVariant } from '../logic';
 
 // === 定数・型 ===
 
-type CardSize = 'sm' | 'md' | 'lg';
+type CardSize = 'xs' | 'sm' | 'md' | 'lg';
 type CardVariant = GameVariant;
 
 const SUIT_SYMBOLS: Record<string, string> = {
@@ -20,12 +20,15 @@ const SUIT_BG_COLORS: Record<string, string> = {
 };
 
 const sizeStyles: Record<CardSize, { card: string; suit: string; corner: string }> = {
+  // xs: bomb pot 用の縦半分・横並び（rank 左 / suit 右）コンパクトカード
+  xs: { card: 'w-[14cqw] h-[10cqw] text-[6cqw]', suit: 'text-[6cqw]', corner: 'text-[4cqw]' },
   sm: { card: 'w-[11cqw] h-[15.4cqw] text-[6.4cqw]', suit: 'text-[6.4cqw]', corner: 'text-[5cqw]' },
   md: { card: 'w-[14cqw] h-[20.5cqw] text-[7.9cqw]', suit: 'text-[7.9cqw]', corner: 'text-[5cqw]' },
   lg: { card: 'w-[13cqw] h-[18cqw] text-[7cqw]', suit: 'text-[7cqw]', corner: 'text-[4.5cqw]' },
 };
 
 const faceDownSizeStyles: Record<CardSize, string> = {
+  xs: 'w-[14cqw] h-[10cqw]',
   sm: 'w-[11cqw] h-[15.4cqw]',
   md: 'w-[14cqw] h-[20.5cqw]',
   lg: 'w-[13cqw] h-[18cqw]',
@@ -46,6 +49,26 @@ export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', s
   const suitBg = SUIT_BG_COLORS[card.suit];
   const styles = sizeStyles[size];
   const isTiny = getVariantConfig(variant as GameVariant).family === 'stud';
+  // xs: 横並びコンパクト（rank 左 / suit 右）。bomb pot のダブルボード用。
+  const isHorizontal = size === 'xs';
+
+  if (isHorizontal) {
+    return (
+      <div
+        className={`
+          flex flex-row items-center justify-center gap-[0.4cqw]
+          ${suitBg} text-white border-[0.3cqw] border-white/40
+          rounded-[1.5cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)] relative
+          ${styles.card}
+          ${className}
+        `}
+        style={style}
+      >
+        <span className="leading-none font-bold">{card.rank}</span>
+        <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
+      </div>
+    );
+  }
 
   return (
     <div

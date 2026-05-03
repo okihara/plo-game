@@ -8,12 +8,18 @@ import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
 
 /** ハンド履歴記録のインターフェイス */
 export interface IHandHistoryRecorder {
-  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void;
+  /**
+   * ハンド開始時 (= variantAdapter.startHand を呼ぶ前) に呼ぶ。
+   * このタイミングで chips を撮ることでブラインド/アンテ徴収前の値が保存され、
+   * profit = endChips - startChips が正しく "自分の投資を引いた純利益" になる。
+   * blinds 文字列もここで snapshot し、ハンド中の level up で値が変わっても
+   * 保存される値はそのハンド開始時のものになる。
+   */
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, blinds: string): void;
   setAllInEVProfits(evProfits: Map<number, number>): void;
   getStartChips(): Map<number, number>;
   recordHandComplete(
     tableId: string,
-    blinds: string,
     gameState: GameState,
     seats: (SeatInfo | null)[]
   ): Promise<void>;
@@ -23,12 +29,11 @@ export interface IHandHistoryRecorder {
 export class NullHandHistoryRecorder implements IHandHistoryRecorder {
   private startChips = new Map<number, number>();
 
-  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, _blinds: string): void {
     this.startChips.clear();
     for (let i = 0; i < seats.length; i++) {
       if (seats[i]) {
-        const chips = gameState.players[i].chips + gameState.players[i].totalBetThisRound;
-        this.startChips.set(i, chips);
+        this.startChips.set(i, gameState.players[i].chips);
       }
     }
   }
@@ -58,6 +63,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
   private allInEVProfits: Map<number, number> | null = null;
+  private blinds: string = '';
   private readonly tournamentId: string | null;
 
   constructor(options?: { tournamentId?: string }) {
@@ -65,16 +71,21 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   }
 
   /**
-   * ハンド開始時に呼ぶ。開始時チップを記録する。
+   * ハンド開始時 (variantAdapter.startHand を呼ぶ前) に呼ぶ。
+   * ブラインド/アンテ徴収前の chips と、そのハンドで適用される blinds 文字列を
+   * snapshot として保存する。
    */
-  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, blinds: string): void {
     this.handCount++;
     this.startChips.clear();
     this.allInEVProfits = null;
+    this.blinds = blinds;
 
     for (let i = 0; i < seats.length; i++) {
       if (seats[i]) {
-        // ブラインド差し引き前のチップを復元
+        // startHand を呼ぶ前なので chips はそのまま開始時の値。
+        // ハンド完了時の cleanup で totalBetThisRound は 0 になっているはずだが、
+        // 念のため加算しておく (再呼び出し等の防御)。
         const chips = gameState.players[i].chips + gameState.players[i].totalBetThisRound;
         this.startChips.set(i, chips);
       }
@@ -96,7 +107,6 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
    */
   async recordHandComplete(
     tableId: string,
-    blinds: string,
     gameState: GameState,
     seats: (SeatInfo | null)[]
   ): Promise<void> {
@@ -139,7 +149,17 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
 
           // ショーダウンに参加した全プレイヤーの役名を評価
           let finalHand: string | null = null;
-          if (winnerEntry?.handName) {
+          const isBombPot = gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2;
+          if (isBombPot && !player.folded && player.holeCards.length === 4
+              && gameState.boards![0].length === 5 && gameState.boards![1].length === 5) {
+            try {
+              const h1 = evaluatePLOHand(player.holeCards, gameState.boards![0]).name;
+              const h2 = evaluatePLOHand(player.holeCards, gameState.boards![1]).name;
+              finalHand = `B1: ${h1} / B2: ${h2}`;
+            } catch (e) {
+              console.warn('Bomb pot hand evaluation failed for seat', seatIndex, e);
+            }
+          } else if (winnerEntry?.handName) {
             finalHand = winnerEntry.handName;
           } else if (!player.folded && (player.holeCards.length === 4 || player.holeCards.length === 5) && gameState.communityCards.length === 5) {
             try {
@@ -166,13 +186,18 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
 
       if (playerRecords.length === 0) return;
 
+      const isBombPot = gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2;
+      const board1 = isBombPot ? gameState.boards![0] : gameState.communityCards;
+      const board2 = isBombPot ? gameState.boards![1] : [];
+
       await prisma.handHistory.create({
         data: {
           tableId,
           ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
           handNumber: this.handCount,
-          blinds,
-          communityCards: serializeCards(gameState.communityCards),
+          blinds: this.blinds,
+          communityCards: serializeCards(board1),
+          communityCards2: serializeCards(board2),
           potSize: gameState.pot,
           rakeAmount: gameState.rake ?? 0,
           winners: winnerOdIds,

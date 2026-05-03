@@ -142,6 +142,7 @@ export class StateTransformer {
         this.seatToOnlinePlayer(seat, i, gameState.players[i])
       ),
       communityCards: gameState.communityCards,
+      boards: gameState.boards,
       pot: gameState.pot,
       sidePots: (gameState.sidePots || []).map(sp => ({
         amount: sp.amount,
@@ -162,6 +163,7 @@ export class StateTransformer {
       ante: gameState.ante ?? 0,
       bringIn: gameState.bringIn ?? 0,
       validActions: validActions ?? null,
+      chipUnit: gameState.chipUnit,
     };
   }
 }

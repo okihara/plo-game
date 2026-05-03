@@ -28,7 +28,7 @@ export function NoLimitActionPanel({ state, mySeat, onAction }: NoLimitActionPan
   const minRaise = Math.max(minRaiseTotal - myPlayer.currentBet, state.bigBlind);
   const maxRaise = myPlayer.chips;
 
-  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind);
+  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind, state.chipUnit);
   const maxSliderIndex = betSliderMaxIndex(minRaise, maxRaise, chipStep);
 
   const [sliderIndex, setSliderIndex] = useState(0);

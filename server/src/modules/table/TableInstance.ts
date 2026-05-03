@@ -26,6 +26,8 @@ export class TableInstance {
   public blinds: string;
   public smallBlind: number;
   public bigBlind: number;
+  /** ブラインドレベルから渡されるアンテ額。bomb pot / Stud では > 0 になる。 */
+  public ante: number = 0;
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
   public readonly variant: GameVariant = 'plo';
@@ -94,9 +96,11 @@ export class TableInstance {
       },
     };
 
-    const [sb, bb] = blinds.split('/').map(Number);
+    // blinds 文字列は "sb/bb" または "sb/bb/ante" 形式 (ante 省略時 0)
+    const [sb, bb, ante] = blinds.split('/').map(Number);
     this.smallBlind = sb;
     this.bigBlind = bb;
+    this.ante = ante || 0;
 
     // ヘルパー初期化
     const roomName = `table:${this.id}`;
@@ -407,14 +411,16 @@ export class TableInstance {
    * ハンド中は即座に反映されず、次のハンドから適用される
    */
   public updateBlinds(newBlinds: string): void {
-    const [sb, bb] = newBlinds.split('/').map(Number);
-    if (isNaN(sb) || isNaN(bb) || sb <= 0 || bb <= 0) {
+    const [sb, bb, ante] = newBlinds.split('/').map(Number);
+    const anteValue = ante || 0;
+    if (isNaN(sb) || isNaN(bb) || sb < 0 || bb < 0 || (bb <= 0 && anteValue <= 0)) {
       console.error(`[Table ${this.id}] updateBlinds: invalid format "${newBlinds}"`);
       return;
     }
     this.blinds = newBlinds;
     this.smallBlind = sb;
     this.bigBlind = bb;
+    this.ante = anteValue;
     console.log(`[Table ${this.id}] Blinds updated to ${newBlinds}`);
   }
 
@@ -686,9 +692,14 @@ export class TableInstance {
       this.advanceHorseVariantIfNeeded();
     }
 
-    // Create initial game state
-    const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
-    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
+    // Create initial game state。bomb pot は bb=0 なので buy-in 計算には ante を使う。
+    const buyInBase = this.bigBlind > 0 ? this.bigBlind : this.ante;
+    const buyInChips = buyInBase * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
+    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind, this.ante);
+    // トナメは最小チップ単位 100。ポット分配で 100 未満の端数が出ないようにする
+    if (this.gameMode === 'tournament') {
+      this.gameState.chipUnit = 100;
+    }
 
     // Restore dealer position (startNewHand will increment it)
     if (this.lastDealerPosition >= 0) {
@@ -711,6 +722,12 @@ export class TableInstance {
         this.gameState.players[i].isSittingOut = true;
       }
     }
+
+    // ハンドヒストリー用スナップショット記録 (startHand を呼ぶ前に取る:
+    // ブラインド/アンテ徴収前の chips と、このハンドで適用される blinds 文字列を保存。
+    // bomb pot のように totalBetThisRound に乗らない徴収方式でも startChips が
+    // 正しく開始時の値になり、Result の profit が「自分の投資を引いた純利益」になる)
+    this.historyRecorder.recordHandStart(seats, this.gameState, this.blinds);
 
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
@@ -735,10 +752,48 @@ export class TableInstance {
       this.emitHoleCardsToSpectators(i);
     }
 
-    // ハンドヒストリー用スナップショット記録
-    this.historyRecorder.recordHandStart(seats, this.gameState);
+    // bomb pot: 全員がアンテで all-in になり startBombPotHand が即ランアウト
+    // → showdown 状態で返ってくるケース。requestNextAction は isHandComplete を
+    // 見て早期 return するため、ここで明示的にランアウト演出経由で
+    // handleHandComplete に到達させないと次ハンドが永久に始まらない。
+    if (this.gameState.isHandComplete) {
+      this.handleAllInRunOut(this.gameState, 0).catch(e => console.error('handleAllInRunOut error (start-of-hand showdown):', e));
+      return;
+    }
+
+    // bomb pot: ホール配布 → 1 秒待ち → フロップ公開、の演出を挟む。
+    // 中間 state では boards を空・currentStreet='preflop'・currentPlayerIndex=-1 にして、
+    // 1 秒後に本物の state（フロップ込）を流すことで、クライアントの street 差分検出
+    // (preflop → flop) が後続の 3 枚を新カードとして拾い、既存のフリップ演出に乗る。
+    if (this.gameState.variant === 'plo_double_board_bomb') {
+      const realState = this.gameState;
+      const dealState: GameState = JSON.parse(JSON.stringify(realState));
+      dealState.boards = [[], []];
+      dealState.communityCards = [];
+      dealState.currentStreet = 'preflop';
+      dealState.currentPlayerIndex = -1;
+      this.gameState = dealState;
+      this.broadcastGameState();
+      this.handleBombPotInitialReveal(realState).catch(e => console.error('handleBombPotInitialReveal error:', e));
+      return;
+    }
 
     // Request first action then broadcast (so pendingAction is set)
+    this.requestNextAction();
+    this.broadcastGameState();
+  }
+
+  /**
+   * DBBP のハンド開始時、ホール配布だけが見える中間 state を流したあと、
+   * 1 秒待ってフロップ込みの本物 state に差し替えて再ブロードキャストする。
+   * 戻し時に boards が 0 → 3 になるので、クライアントは既存の新カード演出に乗る。
+   */
+  private async handleBombPotInitialReveal(realState: GameState): Promise<void> {
+    await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.BOMB_POT_FLOP_REVEAL_DELAY_MS); });
+
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    this.gameState = realState;
     this.requestNextAction();
     this.broadcastGameState();
   }
@@ -853,23 +908,30 @@ export class TableInstance {
   private async handleAllInRunOut(finalState: GameState, previousCardCount: number): Promise<void> {
     console.warn(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
 
+    const isBombPot = finalState.variant === 'plo_double_board_bomb' && finalState.boards?.length === 2;
+
     // ランアウト前のボードでEV計算（エクイティベース）
-    try {
-      const priorBoard = finalState.communityCards.slice(0, previousCardCount);
-      const allPots = calculateSidePots(finalState.players);
-      const totalBets = new Map<number, number>();
-      const allPlayerInfo = finalState.players.map(p => {
-        totalBets.set(p.id, p.totalBetThisRound);
-        return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
-      });
-      const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
-      this.historyRecorder.setAllInEVProfits(evProfits);
-      console.warn(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
-    } catch (err) {
-      console.error(`[Table ${this.id}] EV calculation failed:`, err);
+    // bomb pot は 2 ボード前提で equity 計算式が異なるため、ここではスキップ。
+    if (!isBombPot) {
+      try {
+        const priorBoard = finalState.communityCards.slice(0, previousCardCount);
+        const allPots = calculateSidePots(finalState.players);
+        const totalBets = new Map<number, number>();
+        const allPlayerInfo = finalState.players.map(p => {
+          totalBets.set(p.id, p.totalBetThisRound);
+          return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
+        });
+        const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
+        this.historyRecorder.setAllInEVProfits(evProfits);
+        console.warn(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
+      } catch (err) {
+        console.error(`[Table ${this.id}] EV calculation failed:`, err);
+      }
     }
 
     const allCards = [...finalState.communityCards];
+    // bomb pot では board 1 / board 2 の最終形を別々に保持（並列ランアウト用）
+    const finalBoards = isBombPot ? finalState.boards!.map(b => [...b]) : null;
 
     // 表示ステージを構築（フロップ→ターン→リバーの順）
     const stages: { cardCount: number; street: 'flop' | 'turn' | 'river' }[] = [];
@@ -892,10 +954,18 @@ export class TableInstance {
     const activePlayers = getActivePlayers(finalState);
     if (activePlayers.length > 1) {
       const showdownPlayers = activePlayers.map(p => {
-        const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
-        let handName = winnerEntry?.handName || '';
-        if (!handName) {
-          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
+        // bomb pot は winners[].handName が "Board X: ..." 形式の部分情報なので
+        // 全プレイヤーで evaluateHandName を呼んで両ボードの役名 ("B1: ... / B2: ...")
+        // を組み立てる（勝者・敗者ともに同じフォーマットで表示）
+        let handName = '';
+        if (isBombPot) {
+          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards, finalBoards!);
+        } else {
+          const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
+          handName = winnerEntry?.handName || '';
+          if (!handName) {
+            handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
+          }
         }
         return {
           seatIndex: p.id,
@@ -923,9 +993,13 @@ export class TableInstance {
     }
 
     // ランアウト中の中間状態用: 分配前のチップとポットを計算
+    // bomb pot は同一プレイヤーが両ボードで勝つと winners[] に複数エントリが入るため
+    // find でなく合計を引く必要がある。
     const preDistributionChips = finalState.players.map(p => {
-      const winEntry = finalState.winners.find(w => w.playerId === p.id);
-      return winEntry ? p.chips - winEntry.amount : p.chips;
+      const wonTotal = finalState.winners
+        .filter(w => w.playerId === p.id)
+        .reduce((sum, w) => sum + w.amount, 0);
+      return p.chips - wonTotal;
     });
     const preDistributionPot = finalState.winners.reduce((sum, w) => sum + w.amount, 0) + finalState.rake;
 
@@ -945,7 +1019,16 @@ export class TableInstance {
 
       // 中間状態を作成（このストリートまでのカードだけ見せる）
       const intermediateState = JSON.parse(JSON.stringify(finalState)) as GameState;
-      intermediateState.communityCards = allCards.slice(0, stage.cardCount);
+      if (isBombPot && finalBoards) {
+        // 2 ボードを並列に開示（同じ枚数まで両方を見せる）
+        intermediateState.boards = [
+          finalBoards[0].slice(0, stage.cardCount),
+          finalBoards[1].slice(0, stage.cardCount),
+        ];
+        intermediateState.communityCards = intermediateState.boards[0];
+      } else {
+        intermediateState.communityCards = allCards.slice(0, stage.cardCount);
+      }
       intermediateState.isHandComplete = false;
       intermediateState.winners = [];
       intermediateState.currentStreet = stage.street;
@@ -987,7 +1070,9 @@ export class TableInstance {
 
     // 部分オールイン時のEV計算: handleAllInRunOut を経由しなかった場合
     // （例: Turnでオールインしたが他プレイヤーがアクティブのままリバーまで進んだケース）
-    if (!this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
+    // bomb pot は 2 ボード前提で式が異なるためスキップ
+    const isBombPotForEV = this.gameState.variant === 'plo_double_board_bomb';
+    if (!isBombPotForEV && !this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
       try {
         const priorBoard = this.gameState.communityCards.slice(0, this.allInStreetCardCount);
         const allPots = calculateSidePots(this.gameState.players);
@@ -1016,7 +1101,6 @@ export class TableInstance {
     };
     this.historyRecorder.recordHandComplete(
       this.id,
-      this.blinds,
       gameStateSnapshot,
       seatsSnapshot
     ).catch(err => console.error('Hand history save failed:', err));
@@ -1026,11 +1110,17 @@ export class TableInstance {
     const seats = this.playerManager.getSeats();
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1 && !this.showdownSentDuringRunOut) {
       const activePlayers = getActivePlayers(this.gameState);
+      const isBombPot = this.gameState.variant === 'plo_double_board_bomb' && this.gameState.boards?.length === 2;
       const showdownPlayers = activePlayers.map(p => {
-        const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
-        let handName = winnerEntry?.handName || '';
-        if (!handName) {
-          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
+        let handName: string;
+        if (isBombPot) {
+          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards, this.gameState!.boards);
+        } else {
+          const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
+          handName = winnerEntry?.handName || '';
+          if (!handName) {
+            handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
+          }
         }
         return {
           seatIndex: p.id,

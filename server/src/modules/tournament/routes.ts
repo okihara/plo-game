@@ -5,6 +5,7 @@ import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import { maskName } from '../../shared/utils.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
+import type { GameVariant } from '@plo/shared';
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
 async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -77,7 +78,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           totalReentries: t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
           reentryDeadlineLevel: t.reentryDeadlineLevel,
           winner,
-          gameVariant: (t.gameVariant ?? 'plo') as 'plo' | 'plo5',
+          gameVariant: (t.gameVariant ?? 'plo') as GameVariant,
         };
       });
 

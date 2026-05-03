@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { formatChips as formatChipsAbsolute } from '../utils/formatChips';
 
 interface GameSettings {
   useBBNotation: boolean;
@@ -79,13 +80,8 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
       }
       return `${bbAmount.toFixed(1)}bb`;
     }
-
-    if (amount >= 1000000) {
-      return `${(amount / 1000000).toFixed(1)}M`;
-    } else if (amount >= 1000) {
-      return `${(amount / 1000).toFixed(1)}K`;
-    }
-    return `${amount}`;
+    // 絶対値表示は src/utils/formatChips.ts に集約 (BB 表記オフ時の唯一の真実の源)
+    return formatChipsAbsolute(amount);
   };
 
   const value: GameSettingsContextValue = {

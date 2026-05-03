@@ -343,7 +343,10 @@ export function getValidActions(state: GameState, playerIndex: number): { action
       // まだ誰もベットしていない → ベット
       // ポットリミットベット = 現在のポット額
       const potLimitBet = Math.min(state.pot, player.chips);
-      const minBet = Math.min(state.bigBlind, player.chips);
+      // ベットの最小額は state.minRaise (新ストリート開始時に bigBlind / bomb pot は ante にリセットされる)。
+      // bomb pot は state.bigBlind=0 で startBombPotHand が minRaise=ante と設定するため、
+      // ここで bigBlind を直接見ると 0 ベット = 実質チェックを許してしまう。
+      const minBet = Math.min(state.minRaise, player.chips);
       actions.push({ action: 'bet', minAmount: minBet, maxAmount: potLimitBet });
     } else {
       // 既にベットがある → レイズ
@@ -489,7 +492,7 @@ export function wouldAdvanceStreet(state: GameState, playerIndex: number, action
  * 次にアクションすべきプレイヤーを決定する
  * @returns nextPlayerIndex: 次のプレイヤー（-1なら終了）, moveToNextStreet: 次のストリートに進むか
  */
-function determineNextAction(state: GameState): { nextPlayerIndex: number; moveToNextStreet: boolean } {
+export function determineNextAction(state: GameState): { nextPlayerIndex: number; moveToNextStreet: boolean } {
   const activePlayers = getActivePlayers(state);
 
   // 1人しか残っていない → ハンド終了
@@ -623,6 +626,24 @@ function runOutBoard(state: GameState, rakePercent: number = 0, rakeCapBB: numbe
 
   newState.currentStreet = 'showdown';
   return determineWinner(newState, rakePercent, rakeCapBB);
+}
+
+/**
+ * total を n 等分する。各取り分は chipUnit の倍数になるよう切り下げ、
+ * 端数 (chipUnit 未満) は最初の要素にまとめて寄せる。
+ *
+ * 用途: ポット分配 (タイ分配 / DBBP のボード半分割 / 各ボードのチョップ)。
+ *   - チップ総量保存: 返り値の合計は total と一致する
+ *   - chipUnit=1 (キャッシュ) なら従来通り 1 チップ単位
+ *   - chipUnit=100 (トーナメント) なら 100 未満のチップ移動が発生しない
+ */
+export function splitChipsEvenly(total: number, n: number, chipUnit: number = 1): number[] {
+  if (n <= 0) return [];
+  const unit = Math.max(1, chipUnit);
+  const base = Math.floor(total / n / unit) * unit;
+  const result = new Array(n).fill(base);
+  result[0] += total - base * n;
+  return result;
 }
 
 /**
@@ -786,12 +807,11 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
       }
     }
 
-    // ポットを分配（均等分配、端数は最初の勝者に付与）
-    const winAmount = Math.floor(pot.amount / potWinners.length);
-    const remainder = pot.amount % potWinners.length;
+    // ポットを均等分配（端数は最初の勝者に付与、chipUnit の倍数に揃える）
+    const shares = splitChipsEvenly(pot.amount, potWinners.length, newState.chipUnit ?? 1);
 
     for (let i = 0; i < potWinners.length; i++) {
-      const amount = winAmount + (i === 0 ? remainder : 0);
+      const amount = shares[i];
       const existing = winnerAmounts.get(potWinners[i].playerId);
       if (existing) {
         existing.amount += amount;

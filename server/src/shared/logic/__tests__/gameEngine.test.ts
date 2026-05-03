@@ -436,6 +436,7 @@ describe('getValidActions', () => {
     state.players[0].currentBet = 0;
     state.players[0].chips = 600;
     state.pot = 20;
+    state.minRaise = state.bigBlind; // 本番では新ストリート開始時に設定される
 
     const actions = getValidActions(state, 0);
     const betAction = actions.find(a => a.action === 'bet');
@@ -1313,6 +1314,42 @@ describe('determineWinner: タイと端数', () => {
     // 端数が出る（101を2人で分割 → 51 + 50）
     const totalWinAmount = result.winners.reduce((sum, w) => sum + w.amount, 0);
     expect(totalWinAmount).toBe(101);
+  });
+
+  it('chipUnit=100 のとき、タイ分配の各取り分は 100 の倍数になる (端数は最初の勝者)', () => {
+    // 3 人タイで pot=2300。chipUnit なしなら 766/766/768。chipUnit=100 なら 700/700/900。
+    const state = createInitialGameState();
+    state.chipUnit = 100;
+    state.pot = 2300;
+    state.communityCards = [
+      card('A', 'h'), card('K', 'h'), card('Q', 'h'),
+      card('J', 'c'), card('T', 'd'),
+    ];
+
+    // 3 人とも同じ A-K-Q-J-T ストレート (ボードプレイ)
+    state.players[0].holeCards = [card('2', 's'), card('3', 's'), card('4', 'c'), card('5', 'c')];
+    state.players[0].folded = false;
+    state.players[0].totalBetThisRound = 800;
+
+    state.players[1].holeCards = [card('2', 'd'), card('3', 'd'), card('4', 'd'), card('5', 'd')];
+    state.players[1].folded = false;
+    state.players[1].totalBetThisRound = 800;
+
+    state.players[2].holeCards = [card('6', 's'), card('7', 's'), card('8', 'c'), card('9', 'c')];
+    state.players[2].folded = false;
+    state.players[2].totalBetThisRound = 700;
+
+    for (let i = 3; i < 6; i++) state.players[i].folded = true;
+
+    const result = determineWinner(state);
+    expect(result.winners.length).toBe(3);
+    // 各取り分は 100 の倍数
+    for (const w of result.winners) {
+      expect(w.amount % 100).toBe(0);
+    }
+    // 合計は pot と一致 (チップ保存)
+    const total = result.winners.reduce((s, w) => s + w.amount, 0);
+    expect(total).toBe(2300);
   });
 
   it('サイドポットで各ポットの勝者が異なる場合', () => {

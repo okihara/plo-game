@@ -117,6 +117,9 @@ export interface ClientGameState {
   tableId: string;
   players: (OnlinePlayer | null)[];
   communityCards: Card[];
+  /** Double Board Bomb Pot: [board1, board2]。それ以外の variant は undefined。
+   *  bomb pot 進行中は communityCards を boards[0] のミラーとして同期する。 */
+  boards?: Card[][];
   pot: number;
   sidePots: { amount: number; eligiblePlayerSeats: number[] }[];
   currentStreet: string;
@@ -135,6 +138,9 @@ export interface ClientGameState {
   ante: number;     // Stud: アンテ額
   bringIn: number;  // Stud: ブリングイン額
   validActions: { action: string; minAmount: number; maxAmount: number }[] | null;
+  /** 最小チップ単位。クライアントの bet スライダーがこの倍数しか選べないように
+   *  step を切り上げる用途。トーナメント=100、キャッシュ=undefined(1相当)。 */
+  chipUnit?: number;
 }
 
 export interface TableInfo {

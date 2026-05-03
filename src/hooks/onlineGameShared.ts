@@ -68,6 +68,7 @@ export function convertClientStateToGameState(
     players,
     deck: [],
     communityCards: clientState.communityCards,
+    boards: clientState.boards,
     pot: clientState.pot,
     sidePots: (clientState.sidePots || []).map(sp => ({
       amount: sp.amount,
@@ -92,5 +93,6 @@ export function convertClientStateToGameState(
     betCount: 0,
     maxBetsPerRound: 4,
     validActions: clientState.validActions ?? null,
+    chipUnit: clientState.chipUnit,
   };
 }
