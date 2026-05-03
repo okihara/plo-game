@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
+import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Copy, Check } from 'lucide-react';
 import { PokerTable } from './PokerTable';
@@ -17,19 +17,6 @@ import type { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import type { Card, Action, GameState } from '../logic/types';
 
 const NOTICE_DISPLAY_MS = 3000;
-
-const variantDisplayName: Record<string, string> = {
-  plo: 'PLO',
-  plo5: 'PLO5',
-  limit_holdem: 'FLH',
-  stud: 'Stud',
-  razz: 'Razz',
-  'limit_2-7_triple_draw': '2-7 TD',
-  'no_limit_2-7_single_draw': 'NL 2-7 SD',
-  omaha_hilo: 'FLO8',
-  stud_hilo: 'Stud Hi-Lo',
-  plo_double_board_bomb: 'Bomb Pot',
-};
 
 export interface GameTableProps {
   // ゲーム状態（non-null を要求）
@@ -124,7 +111,7 @@ export function GameTable({
 
   // バリアント変更通知
   useEffect(() => {
-    const name = variantDisplayName[gameState.variant] || gameState.variant;
+    const name = VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant;
     showCenterNotice(`${name}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.variant]);
@@ -255,7 +242,7 @@ export function GameTable({
       {/* バリアント + ブラインド（中央上部） */}
       <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
         <span className="bg-cream-200 rounded-b-[3cqw] px-[3cqw] py-[0.5cqw] text-black text-[3.3cqw] font-medium tracking-wide whitespace-nowrap w-[40cqw] h-[7cqw] text-center inline-flex items-end justify-center">
-          {variantDisplayName[gameState.variant] || gameState.variant} {blindsLabel}
+          {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant} {blindsLabel}
         </span>
       </div>
       {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}

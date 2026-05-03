@@ -2,6 +2,8 @@
  * ハンド履歴を PokerStars 風テキストに変換（クライアント・サーバー共通）。
  */
 
+import { VARIANT_POKERSTARS_LABEL, type GameVariant } from './types';
+
 export interface PokerStarsHandPlayer {
   username: string;
   seatPosition: number;
@@ -35,10 +37,10 @@ export interface PokerStarsHandInput {
   dealerPosition: number;
   createdAt: string | Date;
   players: PokerStarsHandPlayer[];
-  // 'plo'                    → "Omaha Pot Limit"               (デフォルト)
-  // 'plo5'                   → "5 Card Omaha Pot Limit"        (PokerStars 公式表記)
-  // 'plo_double_board_bomb'  → "Omaha Pot Limit Double Board Bomb Pot"
-  variant?: 'plo' | 'plo5' | 'plo_double_board_bomb';
+  /** PokerStars ヘッダーで表示する variant 名のキー。
+   *  実際のラベル文字列は packages/shared/src/types.ts の VARIANT_POKERSTARS_LABEL に集約。
+   *  未指定時は 'plo' として扱う。 */
+  variant?: GameVariant;
 }
 
 function getPos(seatPosition: number, dealerPosition: number, allSeats: number[]): string {
@@ -98,11 +100,7 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
   const dateStr = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} JST`;
   const handNum = id.replace(/-/g, '').slice(-12).replace(/^0+/, '') || id.slice(-6);
 
-  const variantLabel = hand.variant === 'plo5'
-    ? '5 Card Omaha Pot Limit'
-    : isBombPot
-      ? 'Omaha Pot Limit Double Board Bomb Pot'
-      : 'Omaha Pot Limit';
+  const variantLabel = VARIANT_POKERSTARS_LABEL[hand.variant ?? 'plo'];
   lines.push(`PokerStars Hand #${handNum}: ${variantLabel} (${sb}/${bb}) - ${dateStr}`);
   lines.push(`Table 'PLO Game' 6-max Seat #${dealerPosition + 1} is the button`);
 

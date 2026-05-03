@@ -94,14 +94,16 @@ export function PokerTable({
               <CommunityCards
                 cards={state.boards?.[0] ?? []}
                 newCardsCount={newCommunityCardsCount}
-                topClass="top-[50%]"
+                topClass="top-[47%]"
                 label="B1"
+                cardSize="xs"
               />
               <CommunityCards
                 cards={state.boards?.[1] ?? []}
                 newCardsCount={newCommunityCardsCount}
-                topClass="top-[60%]"
+                topClass="top-[55%]"
                 label="B2"
+                cardSize="xs"
               />
             </>
           ) : (
@@ -137,7 +139,7 @@ export function PokerTable({
           // bomb pot: 2ボードを top-[50%]/[60%] に表示するため carried pot は下にずらす
           const isBombPot = state.variant === 'plo_double_board_bomb';
           const topClass = isBombPot
-            ? 'top-[68%]'
+            ? 'top-[62%]'
             : (!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]');
           return (
             <div className={`absolute ${topClass} left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 px-[3cqw] rounded-[15cqw] text-[5cqw] text-white-80 z-10`}>
