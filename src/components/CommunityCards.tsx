@@ -20,7 +20,7 @@ export function CommunityCards({ cards, newCardsCount, topClass = 'top-[52%]', l
   return (
     <div className={`absolute ${topClass} left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-[0.7cqw] z-[5]`}>
       {label && (
-        <span className="absolute right-full mr-[1.5cqw] text-white/70 text-[3.5cqw] uppercase tracking-wider whitespace-nowrap">
+        <span className="absolute right-full mr-[1.5cqw] bg-black/70 text-white text-[3cqw] uppercase tracking-wider whitespace-nowrap rounded-[0.8cqw] px-[1.2cqw] py-[1cqw] leading-none">
           {label}
         </span>
       )}
