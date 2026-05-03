@@ -140,22 +140,28 @@ export function TournamentClockPanel({ tournamentState: ts, myChips, onClose }: 
               </span>
             </div>
             <div className="mt-[2.5cqw] min-w-0 w-full space-y-[1.6cqw] border-t-2 border-white/35 pt-[2.6cqw] text-left text-[3.2cqw] leading-snug">
-              <div className="whitespace-nowrap">
-                <span className="font-semibold text-white">BLINDS: </span>
-                <span className="tabular-nums text-white">
-                  {formatChipsAbsolute(bl.smallBlind)}/{formatChipsAbsolute(bl.bigBlind)}
-                </span>
-              </div>
-              <div className="whitespace-nowrap">
-                <span className="font-semibold text-white">ANTE: </span>
-                <span className="tabular-nums text-white">{formatChipsAbsolute(bl.ante)}</span>
-              </div>
+              {/* sb/bb と ante を BlindLevel から直接読む。bomb pot 等で sb=bb=0 なら BLINDS 行を出さない */}
+              {(bl.smallBlind > 0 || bl.bigBlind > 0) && (
+                <div className="whitespace-nowrap">
+                  <span className="font-semibold text-white">BLINDS: </span>
+                  <span className="tabular-nums text-white">
+                    {formatChipsAbsolute(bl.smallBlind)}/{formatChipsAbsolute(bl.bigBlind)}
+                  </span>
+                </div>
+              )}
+              {bl.ante > 0 && (
+                <div className="whitespace-nowrap">
+                  <span className="font-semibold text-white">ANTE: </span>
+                  <span className="tabular-nums text-white">{formatChipsAbsolute(bl.ante)}</span>
+                </div>
+              )}
               <div className="text-white whitespace-nowrap overflow-x-auto">
                 <span className="font-semibold text-white">NEXT LEVEL: </span>
                 {next ? (
                   <span className="tabular-nums">
-                    {formatChipsAbsolute(next.smallBlind)}/{formatChipsAbsolute(next.bigBlind)}
-                    {next.ante > 0 ? ` (${formatChipsAbsolute(next.ante)})` : ''}
+                    {(next.smallBlind > 0 || next.bigBlind > 0)
+                      ? `${formatChipsAbsolute(next.smallBlind)}/${formatChipsAbsolute(next.bigBlind)}${next.ante > 0 ? ` (${formatChipsAbsolute(next.ante)})` : ''}`
+                      : `ante ${formatChipsAbsolute(next.ante)}`}
                   </span>
                 ) : (
                   <span className="text-white">—</span>

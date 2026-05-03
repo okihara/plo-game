@@ -122,11 +122,11 @@
           <select id="startCondition">
             <option value="manual">手動開始</option>
             <option value="immediate">現時刻で開始</option>
-            <option value="scheduled">時刻指定</option>
+            <option value="scheduled" selected>時刻指定</option>
             <option value="player_count">人数到達</option>
           </select>
         </div>
-        <div class="form-group" id="scheduledTimeGroup" style="display:none">
+        <div class="form-group" id="scheduledTimeGroup">
           <label>開始時刻</label>
           <input type="datetime-local" id="scheduledStartTime">
           <div style="display:flex;gap:4px;flex-wrap:wrap;margin-top:4px">
@@ -153,14 +153,14 @@
           <label>リエントリー</label>
           <select id="allowReentry">
             <option value="false">なし</option>
-            <option value="true">あり</option>
+            <option value="true" selected>あり</option>
           </select>
         </div>
-        <div class="form-group" id="reentryGroup" style="display:none">
+        <div class="form-group" id="reentryGroup">
           <label>最大リエントリー回数</label>
           <input type="number" id="maxReentries" value="1" min="1">
         </div>
-        <div class="form-group" id="reentryDeadlineGroup" style="display:none">
+        <div class="form-group" id="reentryDeadlineGroup">
           <label>リエントリー期限レベル</label>
           <input type="number" id="reentryDeadlineLevel" value="8" min="1">
         </div>
@@ -169,6 +169,7 @@
           <select id="gameVariant">
             <option value="plo">PLO (4-card Omaha)</option>
             <option value="plo5">PLO5 (5-card Omaha)</option>
+            <option value="plo_double_board_bomb">DBBP (Double Board Bomb Pot)</option>
           </select>
         </div>
       </div>
@@ -229,6 +230,28 @@
     }
     refreshDayPresetLabels();
     setInterval(refreshDayPresetLabels, 60000);
+    // 開始時刻のデフォルトを「今日 22:00」(過ぎていれば翌日 22:00) にセット
+    setTimeToday(22, 0);
+
+    // ゲーム種別変更時にタイトルを "BabyPLO [{種別}] {M/D}" に書き換える。
+    // ユーザーが既に手動編集していたら触らない。
+    var VARIANT_LABELS = { plo: 'Daily', plo5: '5-Card', plo_double_board_bomb: 'DBBP' };
+    var nameInput = document.getElementById('name');
+    var INITIAL_NAME = nameInput.value;
+    function buildTournamentName(variant) {
+      var d = new Date();
+      var md = (d.getMonth() + 1) + '/' + d.getDate();
+      var label = VARIANT_LABELS[variant] ?? '';
+      return 'BabyPLO ' + (label ? label + ' ' : '') + md;
+    }
+    var lastAutoName = buildTournamentName(document.getElementById('gameVariant').value);
+    nameInput.value = lastAutoName;
+    document.getElementById('gameVariant').addEventListener('change', function() {
+      // ユーザーが手動編集済みなら何もしない
+      if (nameInput.value !== lastAutoName && nameInput.value !== INITIAL_NAME) return;
+      lastAutoName = buildTournamentName(this.value);
+      nameInput.value = lastAutoName;
+    });
 
     async function createTournament() {
       var body = {

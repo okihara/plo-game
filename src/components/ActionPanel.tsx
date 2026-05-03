@@ -71,7 +71,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const canFastFold = !!isFastFold && !isMyTurn && !myPlayer.folded && !state.isHandComplete
     && !(isBB && state.currentStreet === 'preflop' && state.currentBet <= myPlayer.currentBet) && !canCheck && state.currentStreet !== 'showdown'&& !myPlayer.hasActed;
 
-  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind);
+  const chipStep = betSliderChipStepFromSmallBlind(state.smallBlind, state.chipUnit);
   const maxSliderIndex = betSliderMaxIndex(minRaise, maxRaise, chipStep);
 
   const [sliderIndex, setSliderIndex] = useState(0);

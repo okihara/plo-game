@@ -81,7 +81,8 @@ model HandHistory {
   tournamentId   String?  // NULL = cash game
   handNumber     Int
   blinds         String   // e.g., "10/20"
-  communityCards String[] // Array of card strings
+  communityCards String[] // Array of card strings (bomb pot 時は board1 を格納)
+  communityCards2 String[] @default([]) // bomb pot 時の board2。通常 variant では空
   potSize        Int
   rakeAmount     Int      @default(0)
   winners        String[] // Array of winner user IDs

@@ -17,6 +17,7 @@ export const TABLE_CONSTANTS = {
   NEXT_HAND_DELAY_MS: 1800,           // 通常ハンド完了後の次ハンドまでの待ち時間
   NEXT_HAND_SHOWDOWN_DELAY_MS: 4200,  // ショウダウン後の次ハンドまでの待ち時間
   RUNOUT_STREET_DELAY_MS: 1500,       // オールイン時の各ストリート表示間隔
+  BOMB_POT_FLOP_REVEAL_DELAY_MS: 1000, // DBBP: ホール配布 → フロップ公開までの待ち時間
   
   // レーキ
   RAKE_PERCENT: 0.05,  // 5%

@@ -7,48 +7,51 @@ const NO_DELAY = process.env.NO_DELAY === 'true';
 const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'BabyPLO Daily Turbo';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
 const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '30000', 10);
-const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '0.15'); // 15秒
+const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '10.15'); // 15秒
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || ''; // 既存トーナメントに参加する場合
 const JOIN_ACTIVE = process.env.JOIN_ACTIVE === 'true'; // 進行中のトーナメントを自動検索して参加
 const CHAOS_MODE = process.env.CHAOS_MODE === 'true'; // ランダム切断→再接続で不具合を再現する
 
-// テスト用高速ブラインドスケジュール（50/100 スタート）
+// テスト用高速ブラインドスケジュール（DBBP 用、ante=200 スタート）
+// bot は plo_double_board_bomb トーナメントを作るため、SB/BB は投稿せず
+// アンテのみ。schedule の ante フィールドに値を入れ、smallBlind/bigBlind は 0。
+// 全 ante を chipUnit (=100) の倍数で揃える。
 const FAST_BLIND_SCHEDULE = [
-  { level: 1,  smallBlind: 50,    bigBlind: 100,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 2,  smallBlind: 75,    bigBlind: 150,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 3,  smallBlind: 100,   bigBlind: 200,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 4,  smallBlind: 150,   bigBlind: 300,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 5,  smallBlind: 200,   bigBlind: 400,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 6,  smallBlind: 300,   bigBlind: 600,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 7,  smallBlind: 400,   bigBlind: 800,   ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 8,  smallBlind: 500,   bigBlind: 1000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 9,  smallBlind: 750,   bigBlind: 1500,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 10, smallBlind: 1000,  bigBlind: 2000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 11, smallBlind: 1500,  bigBlind: 3000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 12, smallBlind: 2000,  bigBlind: 4000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 13, smallBlind: 2500,  bigBlind: 5000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 14, smallBlind: 3000,  bigBlind: 6000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 15, smallBlind: 4000,  bigBlind: 8000,  ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 16, smallBlind: 5000,  bigBlind: 10000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 17, smallBlind: 7500,  bigBlind: 15000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 18, smallBlind: 10000, bigBlind: 20000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 19, smallBlind: 15000, bigBlind: 30000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 20, smallBlind: 20000, bigBlind: 40000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 21, smallBlind: 30000, bigBlind: 60000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 22, smallBlind: 40000, bigBlind: 80000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 23, smallBlind: 50000, bigBlind: 100000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 24, smallBlind: 75000, bigBlind: 150000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 25, smallBlind: 100000, bigBlind: 200000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 26, smallBlind: 150000, bigBlind: 300000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 27, smallBlind: 200000, bigBlind: 400000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 28, smallBlind: 300000, bigBlind: 600000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 29, smallBlind: 400000, bigBlind: 800000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 30, smallBlind: 500000, bigBlind: 1000000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 31, smallBlind: 750000, bigBlind: 1500000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 32, smallBlind: 1000000, bigBlind: 2000000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 33, smallBlind: 1500000, bigBlind: 3000000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 34, smallBlind: 2000000, bigBlind: 4000000, ante: 0, durationMinutes: BLIND_DURATION },
-  { level: 35, smallBlind: 3000000, bigBlind: 6000000, ante: 0, durationMinutes: BLIND_DURATION },
+  { level: 1,  smallBlind: 0, bigBlind: 0, ante: 200,     durationMinutes: BLIND_DURATION },
+  { level: 2,  smallBlind: 0, bigBlind: 0, ante: 400,     durationMinutes: BLIND_DURATION },
+  { level: 3,  smallBlind: 0, bigBlind: 0, ante: 600,     durationMinutes: BLIND_DURATION },
+  { level: 4,  smallBlind: 0, bigBlind: 0, ante: 800,     durationMinutes: BLIND_DURATION },
+  { level: 5,  smallBlind: 0, bigBlind: 0, ante: 1000,    durationMinutes: BLIND_DURATION },
+  { level: 6,  smallBlind: 0, bigBlind: 0, ante: 1200,    durationMinutes: BLIND_DURATION },
+  { level: 7,  smallBlind: 0, bigBlind: 0, ante: 1600,    durationMinutes: BLIND_DURATION },
+  { level: 8,  smallBlind: 0, bigBlind: 0, ante: 2000,    durationMinutes: BLIND_DURATION },
+  { level: 9,  smallBlind: 0, bigBlind: 0, ante: 2400,    durationMinutes: BLIND_DURATION },
+  { level: 10, smallBlind: 0, bigBlind: 0, ante: 3000,    durationMinutes: BLIND_DURATION },
+  { level: 11, smallBlind: 0, bigBlind: 0, ante: 4000,    durationMinutes: BLIND_DURATION },
+  { level: 12, smallBlind: 0, bigBlind: 0, ante: 5000,    durationMinutes: BLIND_DURATION },
+  { level: 13, smallBlind: 0, bigBlind: 0, ante: 6000,    durationMinutes: BLIND_DURATION },
+  { level: 14, smallBlind: 0, bigBlind: 0, ante: 8000,    durationMinutes: BLIND_DURATION },
+  { level: 15, smallBlind: 0, bigBlind: 0, ante: 10000,   durationMinutes: BLIND_DURATION },
+  { level: 16, smallBlind: 0, bigBlind: 0, ante: 12000,   durationMinutes: BLIND_DURATION },
+  { level: 17, smallBlind: 0, bigBlind: 0, ante: 16000,   durationMinutes: BLIND_DURATION },
+  { level: 18, smallBlind: 0, bigBlind: 0, ante: 20000,   durationMinutes: BLIND_DURATION },
+  { level: 19, smallBlind: 0, bigBlind: 0, ante: 24000,   durationMinutes: BLIND_DURATION },
+  { level: 20, smallBlind: 0, bigBlind: 0, ante: 30000,   durationMinutes: BLIND_DURATION },
+  { level: 21, smallBlind: 0, bigBlind: 0, ante: 40000,   durationMinutes: BLIND_DURATION },
+  { level: 22, smallBlind: 0, bigBlind: 0, ante: 50000,   durationMinutes: BLIND_DURATION },
+  { level: 23, smallBlind: 0, bigBlind: 0, ante: 60000,   durationMinutes: BLIND_DURATION },
+  { level: 24, smallBlind: 0, bigBlind: 0, ante: 80000,   durationMinutes: BLIND_DURATION },
+  { level: 25, smallBlind: 0, bigBlind: 0, ante: 100000,  durationMinutes: BLIND_DURATION },
+  { level: 26, smallBlind: 0, bigBlind: 0, ante: 120000,  durationMinutes: BLIND_DURATION },
+  { level: 27, smallBlind: 0, bigBlind: 0, ante: 160000,  durationMinutes: BLIND_DURATION },
+  { level: 28, smallBlind: 0, bigBlind: 0, ante: 200000,  durationMinutes: BLIND_DURATION },
+  { level: 29, smallBlind: 0, bigBlind: 0, ante: 240000,  durationMinutes: BLIND_DURATION },
+  { level: 30, smallBlind: 0, bigBlind: 0, ante: 300000,  durationMinutes: BLIND_DURATION },
+  { level: 31, smallBlind: 0, bigBlind: 0, ante: 400000,  durationMinutes: BLIND_DURATION },
+  { level: 32, smallBlind: 0, bigBlind: 0, ante: 600000,  durationMinutes: BLIND_DURATION },
+  { level: 33, smallBlind: 0, bigBlind: 0, ante: 1000000, durationMinutes: BLIND_DURATION },
+  { level: 34, smallBlind: 0, bigBlind: 0, ante: 1600000, durationMinutes: BLIND_DURATION },
+  { level: 35, smallBlind: 0, bigBlind: 0, ante: 2400000, durationMinutes: BLIND_DURATION },
 ];
 
 async function main(): Promise<void> {
@@ -101,6 +104,7 @@ async function main(): Promise<void> {
         allowReentry: true,
         maxReentries: 3,
         reentryDeadlineLevel: 30,
+        gameVariant: "plo_double_board_bomb",
       }),
     });
 

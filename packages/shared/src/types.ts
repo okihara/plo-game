@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo';
+export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo' | 'plo_double_board_bomb';
 
 // --- Variant Config ---
 
@@ -38,11 +38,51 @@ export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   'no_limit_2-7_single_draw':  { family: 'draw',   betting: 'no_limit',   usesCommunityCards: false, holeCardCount: 5, maxDraws: 1, usesBringIn: false },
   omaha_hilo:                   { family: 'omaha',  betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
   stud_hilo:                    { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
+  plo_double_board_bomb:        { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
 };
 
 export function getVariantConfig(variant: GameVariant): VariantConfig {
   return VARIANT_CONFIGS[variant];
 }
+
+/** UI 表示用の variant 略称（テーブル中央通知・タイトルバー等で共通利用） */
+export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
+  plo: 'PLO',
+  plo5: 'PLO5',
+  limit_holdem: 'FLH',
+  stud: 'Stud',
+  razz: 'Razz',
+  'limit_2-7_triple_draw': '2-7 TD',
+  'no_limit_2-7_single_draw': 'NL 2-7 SD',
+  omaha_hilo: 'FLO8',
+  stud_hilo: 'Stud Hi-Lo',
+  plo_double_board_bomb: 'DBBP',
+};
+
+/** トーナメントロビー / HUD で variant を区別表示するためのバッジ背景色。
+ *  デフォルトの 'plo' はバッジ非表示（エントリ無し）。エントリのある variant のみ
+ *  TournamentHUD / TournamentList などでカラーバッジが描画される。
+ *  バッジに表示する文字列は `VARIANT_DISPLAY_NAMES` を参照する。
+ *  値は Tailwind のクラス名。 */
+export const VARIANT_BADGE_BG: Partial<Record<GameVariant, string>> = {
+  plo5:                  'bg-violet-600',
+  plo_double_board_bomb: 'bg-rose-600',
+};
+
+/** PokerStars Hand History のヘッダーで使う variant 名。
+ *  公式表記に準拠（"Omaha Pot Limit" / "5 Card Omaha Pot Limit" など）。 */
+export const VARIANT_POKERSTARS_LABEL: Record<GameVariant, string> = {
+  plo: 'Omaha Pot Limit',
+  plo5: '5 Card Omaha Pot Limit',
+  limit_holdem: "Hold'em Limit",
+  stud: '7 Card Stud',
+  razz: 'Razz',
+  'limit_2-7_triple_draw': '2-7 Triple Draw Limit',
+  'no_limit_2-7_single_draw': '2-7 Single Draw No Limit',
+  omaha_hilo: 'Omaha Hi/Lo Limit',
+  stud_hilo: '7 Card Stud Hi/Lo',
+  plo_double_board_bomb: 'Omaha Pot Limit Double Board Bomb Pot',
+};
 
 /** @deprecated Use getVariantConfig(variant).family === 'stud' */
 export function isStudFamily(variant: GameVariant): boolean {
@@ -114,6 +154,10 @@ export interface GameState {
   players: Player[];
   deck: Card[];
   communityCards: Card[];
+  /** ダブルボード bomb pot 用。[board1, board2] が入る。
+   *  bomb pot 進行中は boards[0] と communityCards を同期する（後方互換）。
+   *  通常 variant では undefined。 */
+  boards?: Card[][];
   pot: number;
   sidePots: { amount: number; eligiblePlayers: number[] }[];
   currentStreet: Street;
@@ -138,4 +182,9 @@ export interface GameState {
   discardPile?: Card[];      // Draw: 捨て札の山（ドロー時のデッキ補充用）
   maxDraws?: number;         // Draw: ドロー回数（1=Single Draw, 3=Triple Draw, デフォルト3）
   validActions?: { action: string; minAmount: number; maxAmount: number }[] | null; // クライアント側でサーバーから受信した有効アクション
+  /** 最小チップ単位。
+   *  - ポット分配時に各勝者の取り分をこの倍数に切り下げ、端数は最初の勝者へ寄せる
+   *  - クライアントの bet スライダーが指定できる最小単位
+   *  トーナメント=100、キャッシュ=undefined(1相当)。 */
+  chipUnit?: number;
 }

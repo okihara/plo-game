@@ -387,6 +387,16 @@ export class BotClient {
         amount = validAction.minAmount;
       } else if (aiDecision.action === 'bet' || aiDecision.action === 'raise') {
         amount = Math.max(validAction.minAmount, Math.min(validAction.maxAmount, amount));
+        // chipUnit が指定されているときは倍数に切り下げ。クライアント側スライダーと
+        // 同じ単位で動かし、サーバー側分配 floor と整合させる。
+        const chipUnit = this.gameState?.chipUnit ?? 1;
+        if (chipUnit > 1) {
+          const snapped = Math.floor(amount / chipUnit) * chipUnit;
+          // floor で minAmount を下回るなら ceil で 1 ステップ上に戻す
+          amount = snapped >= validAction.minAmount ? snapped : Math.ceil(amount / chipUnit) * chipUnit;
+          // それでも maxAmount を超える場合は maxAmount に収める (maxAmount 自体は chipUnit 倍数の前提)
+          amount = Math.min(amount, validAction.maxAmount);
+        }
       }
 
       // シチュエーションに応じた思考時間
@@ -491,6 +501,7 @@ export class BotClient {
       bringIn: this.gameState.bringIn ?? 0,
       betCount: 0,
       maxBetsPerRound: 4,
+      chipUnit: this.gameState.chipUnit,
     };
   }
 

@@ -45,6 +45,8 @@ export type TournamentHandExport = {
   handNumber: number;
   blinds: string;
   communityCards: string[];
+  /** Double Board Bomb Pot のセカンドボード。空配列なら通常ハンド。 */
+  communityCards2: string[];
   potSize: number;
   rakeAmount: number;
   winners: string[];
@@ -63,6 +65,7 @@ export function formatTournamentHandsForUser(
     handNumber: hand.handNumber,
     blinds: hand.blinds,
     communityCards: hand.communityCards,
+    communityCards2: hand.communityCards2,
     potSize: hand.potSize,
     rakeAmount: hand.rakeAmount,
     winners: hand.winners,

@@ -1,14 +1,14 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Share2, Link, Check, Image, FileText, Eye, EyeOff, UserRound } from 'lucide-react';
-import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
+import { evaluatePLOHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
 import { ProfilePopup } from './ProfilePopup';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
 
-import { MiniCard, ProfitDisplay, PositionBadge, getPositionName } from './HandHistoryUtils';
+import { MiniCard, ProfitDisplay, PositionBadge, getPositionName, parseBB } from './HandHistoryUtils';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -38,6 +38,8 @@ export interface HandDetail {
   handNumber: number;
   blinds: string;
   communityCards: string[];
+  /** Double Board Bomb Pot のセカンドボード。空配列なら通常ハンド扱い。 */
+  communityCards2?: string[];
   potSize: number;
   rakeAmount?: number;
   winners: string[];
@@ -52,7 +54,17 @@ function parseCard(s: string): Card {
   return { rank: s.slice(0, -1) as Card['rank'], suit: s.slice(-1) as Card['suit'] };
 }
 
-function getHandName(holeCards: string[], communityCards: string[]): string {
+function getHandName(holeCards: string[], communityCards: string[], communityCards2?: string[]): string {
+  // Double Board Bomb Pot: 両ボードの役名を "B1: X / B2: Y" 形式で返す
+  if (communityCards2 && communityCards2.length === 5 && holeCards.length === 4 && communityCards.length === 5) {
+    try {
+      const h1 = evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)).name;
+      const h2 = evaluatePLOHand(holeCards.map(parseCard), communityCards2.map(parseCard)).name;
+      return `B1: ${h1} / B2: ${h2}`;
+    } catch {
+      return '';
+    }
+  }
   if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length !== 5) return '';
   try {
     return evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)).name;
@@ -82,13 +94,15 @@ function getStreetCards(communityCards: string[]): Record<string, string[]> {
   };
 }
 
-function computeStreetStartPots(actions: HandDetailAction[], blinds: string): Record<string, number> {
+function computeStreetStartPots(actions: HandDetailAction[], blinds: string, initialPot?: number): Record<string, number> {
   // ブラインド額をパース（例: "1/2" → SB=1, BB=2）
+  // bomb pot 等で initialPot が指定されたらそちらを優先（全員アンテで pot が SB+BB と異なるため）。
   const parts = blinds.split('/').map(Number);
   const blindTotal = parts.reduce((sum, v) => sum + (isNaN(v) ? 0 : v), 0);
+  const startPot = initialPot ?? blindTotal;
 
   const pots: Record<string, number> = {};
-  let cumPot = blindTotal;
+  let cumPot = startPot;
   let prevStreet = '';
   for (const a of actions) {
     const s = a.street || 'preflop';
@@ -202,23 +216,39 @@ function complementMissingFolds(
 
 /* ── サブコンポーネント ── */
 
-function StreetHeader({ street, cards, pot, isFirst }: {
+function StreetHeader({ street, cards, cards2, pot, isFirst }: {
   street: string;
   cards?: string[];
+  /** Double Board Bomb Pot 用の board 2 カード。指定されたら 2 段表示にする。 */
+  cards2?: string[];
   pot?: number;
   isFirst: boolean;
 }) {
+  const hasBoard2 = cards2 != null && cards2.length > 0;
   return (
     <div className={isFirst ? 'mb-[1cqw]' : 'mt-[3cqw] mb-[1cqw]'}>
-      <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
+      <div className="flex items-start gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
         <span className="text-cream-800 text-[3cqw] font-bold w-[10cqw] shrink-0">{STREET_LABELS[street] || street}</span>
-        {cards && cards.length > 0 && (
-          <div className="flex gap-[0.4cqw]">
-            {cards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+        {(cards && cards.length > 0) || hasBoard2 ? (
+          <div className="flex flex-col gap-[0.6cqw]">
+            {cards && cards.length > 0 && (
+              <div className="flex items-center gap-[0.4cqw]">
+                {hasBoard2 && (
+                  <span className="text-cream-700 text-[2.4cqw] font-bold w-[4cqw] shrink-0">B1</span>
+                )}
+                {cards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+              </div>
+            )}
+            {hasBoard2 && (
+              <div className="flex items-center gap-[0.4cqw]">
+                <span className="text-cream-700 text-[2.4cqw] font-bold w-[4cqw] shrink-0">B2</span>
+                {cards2.map((c, j) => <MiniCard key={j} cardStr={c} />)}
+              </div>
+            )}
           </div>
-        )}
+        ) : null}
         {pot != null && pot > 0 && (
-          <span className="text-cream-800 text-[3cqw] font-bold">{pot}</span>
+          <span className="ml-auto shrink-0 text-cream-800 text-[3cqw] font-bold">{pot}</span>
         )}
       </div>
     </div>
@@ -250,22 +280,21 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
   );
 }
 
-function PlayerRow({ player, position, communityCards, displayName, anonymousAvatar, onTap }: {
+function PlayerRow({ player, position, displayName, anonymousAvatar, bb, onTap }: {
   player: HandDetailPlayer;
   position: string | null;
-  communityCards: string[];
   displayName: string;
   anonymousAvatar: boolean;
+  /** 指定時は startChips を BB 単位で表示。未指定なら生のチップ数。 */
+  bb?: number;
   onTap?: () => void;
 }) {
-  const handName = player.finalHand
-    || ((player.holeCards.length === 4 || player.holeCards.length === 5) && communityCards.length >= 3
-      ? evaluateCurrentHand(
-          player.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-          communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-        )?.name
-      : null);
-
+  const stackText = bb && bb > 0
+    ? (() => {
+        const v = player.startChips / bb;
+        return v === Math.floor(v) ? `${v}bb` : `${v.toFixed(1)}bb`;
+      })()
+    : player.startChips.toLocaleString();
   return (
     <div
       className={`rounded-[1.5cqw] px-[2cqw] py-[1.5cqw] border flex items-center gap-[1.5cqw] ${
@@ -293,10 +322,64 @@ function PlayerRow({ player, position, communityCards, displayName, anonymousAva
       <div className="flex items-center gap-[0.4cqw] shrink-0">
         {player.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
       </div>
-      {handName && <span className="text-cream-700 text-[2.5cqw] truncate">{handName}</span>}
-      <span className="ml-auto shrink-0">
-        <ProfitDisplay profit={player.profit} />
+      <span className="ml-auto shrink-0 text-cream-700 text-[2.8cqw]">
+        Stack: {stackText}
       </span>
+    </div>
+  );
+}
+
+/** bomb pot 用「Ante」見出しと、各プレイヤーのアンテ拠出を 1 行ずつ表示。
+ *  bomb pot は preflop が無く全員から 1BB 相当のアンテを徴収するため、ここで
+ *  pot 形成を可視化する。アンテはサイドポットを作らない (短スタック all-in 者
+ *  でも勝てば pot 全額を獲得) ため、表示も「実支払額の単純和」でよい。 */
+function BombPotAnteSection({
+  players,
+  ante,
+  allSeats,
+  dealerPosition,
+  hideOpponentNames,
+}: {
+  players: HandDetailPlayer[];
+  ante: number;
+  allSeats: number[];
+  dealerPosition: number;
+  hideOpponentNames: boolean;
+}) {
+  const antes = players
+    .filter(p => p.startChips > 0)
+    .map(p => ({ p, paid: Math.min(ante, p.startChips), allIn: p.startChips <= ante }))
+    .sort((a, b) => a.p.seatPosition - b.p.seatPosition);
+  if (antes.length === 0) return null;
+  const total = antes.reduce((sum, a) => sum + a.paid, 0);
+
+  return (
+    <div className="mb-[1cqw]">
+      <div className="flex items-center gap-[2cqw] border-b border-cream-400 pb-[1cqw]">
+        <span className="text-cream-800 text-[3cqw] font-bold w-[10cqw] shrink-0">Ante</span>
+        <span className="ml-auto shrink-0 text-cream-800 text-[3cqw] font-bold">{total}</span>
+      </div>
+      {antes.map(({ p, paid, allIn }) => {
+        const pos = getPositionName(p.seatPosition, dealerPosition, allSeats);
+        return (
+          <div key={`ante-${p.seatPosition}`} className={`flex items-center py-[0.5cqw] px-[1cqw] ${allIn ? 'opacity-80' : ''}`}>
+            <span className="w-[9cqw] shrink-0">
+              {pos ? <PositionBadge position={pos} /> : null}
+            </span>
+            <span
+              className={`w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate ${
+                hideOpponentNames && !p.isCurrentUser ? 'font-mono tracking-tight' : ''
+              }`}
+            >
+              {playerLabel(p, hideOpponentNames)}
+            </span>
+            <span className="w-[14cqw] shrink-0 text-cream-900 text-[3cqw] font-bold">
+              ante{allIn ? ' (all-in)' : ''}
+            </span>
+            <span className="ml-auto shrink-0 text-forest text-[3cqw] font-bold">{paid}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -311,7 +394,18 @@ function ActionHistory({
   hideOpponentNames: boolean;
 }) {
   const streetCards = getStreetCards(hand.communityCards);
-  const streetStartPot = computeStreetStartPots(hand.actions, hand.blinds);
+  const streetCards2 = hand.communityCards2 && hand.communityCards2.length > 0
+    ? getStreetCards(hand.communityCards2)
+    : null;
+  const isBombPot = streetCards2 != null;
+  // bomb pot は SB+BB ではなく全員アンテで pot 形成。アンテはサイドポット対象外で
+  // 短スタック all-in 者の支払いも丸ごと pot に残る (= refund 無し)。なので
+  // 初期 pot = 全員のアンテ支払額の単純和 で OK。
+  const ante = parseBB(hand.blinds);
+  const initialPot = isBombPot
+    ? hand.players.reduce((sum, p) => sum + Math.min(ante, p.startChips), 0)
+    : undefined;
+  const streetStartPot = computeStreetStartPots(hand.actions, hand.blinds, initialPot);
   const streetsInActions = new Set(hand.actions.map(a => a.street || 'preflop'));
 
   const nameForSeat = (seatIndex: number, fallbackOdName: string) => {
@@ -323,10 +417,19 @@ function ActionHistory({
   };
 
   let lastStreet = '';
-  let isFirstHeader = true;
+  let isFirstHeader = !isBombPot; // bomb pot は Ante セクションが先頭になるので Flop は最初扱いにしない
 
   return (
     <>
+      {isBombPot && (
+        <BombPotAnteSection
+          players={hand.players}
+          ante={ante}
+          allSeats={allSeats}
+          dealerPosition={hand.dealerPosition}
+          hideOpponentNames={hideOpponentNames}
+        />
+      )}
       {hand.actions.map((a, i) => {
         const street = a.street || 'preflop';
         const showHeader = street !== lastStreet && (STREETS as readonly string[]).includes(street);
@@ -342,6 +445,7 @@ function ActionHistory({
               <StreetHeader
                 street={street}
                 cards={streetCards[street]}
+                cards2={streetCards2?.[street]}
                 pot={streetStartPot[street]}
                 isFirst={isFirst}
               />
@@ -357,11 +461,18 @@ function ActionHistory({
       })}
 
       {/* オールインランアウト時: アクションのないストリートのカードを追加表示 */}
-      {(['flop', 'turn', 'river'] as const).map(s =>
-        !streetsInActions.has(s) && streetCards[s]?.length > 0 ? (
-          <StreetHeader key={`runout-${s}`} street={s} cards={streetCards[s]} isFirst={false} />
-        ) : null
-      )}
+      {(['flop', 'turn', 'river'] as const).map(s => {
+        if (streetsInActions.has(s) || !(streetCards[s]?.length > 0)) return null;
+        return (
+          <StreetHeader
+            key={`runout-${s}`}
+            street={s}
+            cards={streetCards[s]}
+            cards2={streetCards2?.[s]}
+            isFirst={false}
+          />
+        );
+      })}
     </>
   );
 }
@@ -375,14 +486,17 @@ function ResultSection({
   allSeats: number[];
   hideOpponentNames: boolean;
 }) {
-  const activePlayers = useMemo(() => {
-    const foldedSeats = new Set(
-      hand.actions.filter(a => a.action === 'fold').map(a => a.seatIndex)
-    );
+  const foldedSeats = useMemo(
+    () => new Set(hand.actions.filter(a => a.action === 'fold').map(a => a.seatIndex)),
+    [hand.actions],
+  );
+  // チップ増減があった全プレイヤーを表示（SB/BB で降りた人も含める）。
+  // showdown 参加者は役名を出し、フォールド済みは "(folded)" を出す。
+  const resultPlayers = useMemo(() => {
     return hand.players
-      .filter(p => !foldedSeats.has(p.seatPosition))
+      .filter(p => p.profit !== 0 || !foldedSeats.has(p.seatPosition))
       .sort((a, b) => b.profit - a.profit);
-  }, [hand.actions, hand.players]);
+  }, [hand.players, foldedSeats]);
 
   return (
     <>
@@ -392,21 +506,27 @@ function ResultSection({
           {hand.rakeAmount != null && hand.rakeAmount > 0 && (
             <span className="text-cream-700 text-[2.5cqw] font-medium">Rake {hand.rakeAmount}</span>
           )}
-          <span className="text-forest text-[3cqw] font-bold">{hand.potSize}</span>
+          <span className="ml-auto shrink-0 text-forest text-[3cqw] font-bold">{hand.potSize}</span>
         </div>
       </div>
-      {activePlayers.map((p, i) => {
+      {resultPlayers.map((p, i) => {
         const pos = getPositionName(p.seatPosition, hand.dealerPosition, allSeats);
+        const folded = foldedSeats.has(p.seatPosition);
+        const handLabel = folded
+          ? <span className="italic text-cream-600">folded</span>
+          : (p.finalHand || getHandName(p.holeCards, hand.communityCards, hand.communityCards2));
         return (
-          <div key={`result-${i}`} className="flex items-center py-[0.5cqw] px-[1cqw]">
+          <div key={`result-${i}`} className={`flex items-center py-[0.5cqw] px-[1cqw] ${folded ? 'opacity-70' : ''}`}>
             <span className="w-[9cqw] shrink-0">
               {pos && <PositionBadge position={pos} />}
             </span>
             <span className="w-[22cqw] shrink-0 text-cream-700 text-[3cqw] truncate font-mono tracking-tight">
               {playerLabel(p, hideOpponentNames)}
             </span>
-            <span className="w-[18cqw] shrink-0 text-cream-700 text-[2.5cqw] truncate">{p.finalHand || getHandName(p.holeCards, hand.communityCards)}</span>
-            <ProfitDisplay profit={p.profit} />
+            <span className="flex-1 min-w-0 text-cream-700 text-[2.5cqw] truncate">{handLabel}</span>
+            <span className="ml-auto shrink-0">
+              <ProfitDisplay profit={p.profit} />
+            </span>
           </div>
         );
       })}
@@ -421,17 +541,27 @@ export function HandDetailDialog({
   onClose,
   initialHideOpponentNames,
   isPublicPage,
+  displayUnit = 'chips',
 }: {
   hand: HandDetail;
   onClose: () => void;
   initialHideOpponentNames?: boolean;
   isPublicPage?: boolean;
+  /** 'bb' のとき PlayerRow の Stack を BB 表記で表示。デフォルトは生チップ。 */
+  displayUnit?: 'chips' | 'bb';
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
-  const normalizedHand = useMemo(() => ({
-    ...hand,
-    actions: complementMissingFolds(hand.actions, hand.players, hand.dealerPosition),
-  }), [hand]);
+  const normalizedHand = useMemo(() => {
+    // Double Board Bomb Pot は preflop が存在しない (全員アンテで即フロップ) ため、
+    // 「preflop で fold した」扱いの補完は行わない。preflop 見出しも出さない。
+    const isBombPot = (hand.communityCards2?.length ?? 0) > 0;
+    return {
+      ...hand,
+      actions: isBombPot
+        ? hand.actions
+        : complementMissingFolds(hand.actions, hand.players, hand.dealerPosition),
+    };
+  }, [hand]);
   const sortedPlayers = useMemo(() => {
     const dealer = hand.dealerPosition;
     return [...hand.players].sort((a, b) => {
@@ -646,9 +776,9 @@ export function HandDetailDialog({
                 key={i}
                 player={p}
                 position={getPositionName(p.seatPosition, hand.dealerPosition, allSeats)}
-                communityCards={hand.communityCards}
                 displayName={playerLabel(p, hideOpponentNames)}
                 anonymousAvatar={hideOpponentNames && !p.isCurrentUser}
+                bb={displayUnit === 'bb' ? parseBB(hand.blinds) : undefined}
                 onTap={!isPublicPage && p.userId ? () => setProfilePlayer(p) : undefined}
               />
             ))}

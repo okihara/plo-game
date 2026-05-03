@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet } from '../logic';
+import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Copy, Check } from 'lucide-react';
 import { PokerTable } from './PokerTable';
@@ -17,18 +17,6 @@ import type { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import type { Card, Action, GameState } from '../logic/types';
 
 const NOTICE_DISPLAY_MS = 3000;
-
-const variantDisplayName: Record<string, string> = {
-  plo: 'PLO',
-  plo5: 'PLO5',
-  limit_holdem: 'FLH',
-  stud: 'Stud',
-  razz: 'Razz',
-  'limit_2-7_triple_draw': '2-7 TD',
-  'no_limit_2-7_single_draw': 'NL 2-7 SD',
-  omaha_hilo: 'FLO8',
-  stud_hilo: 'Stud Hi-Lo',
-};
 
 export interface GameTableProps {
   // ゲーム状態（non-null を要求）
@@ -123,7 +111,7 @@ export function GameTable({
 
   // バリアント変更通知
   useEffect(() => {
-    const name = variantDisplayName[gameState.variant] || gameState.variant;
+    const name = VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant;
     showCenterNotice(`${name}`);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gameState.variant]);
@@ -155,9 +143,9 @@ export function GameTable({
   const isDraw = getVariantConfig(gameState.variant).family === 'draw';
   const isCurrentDrawStreet = isDrawStreet(gameState.currentStreet);
 
-  // bigBlind設定
+  // bigBlind設定 (bomb pot は SB/BB を投稿せず ante のみなので ante を BB 相当として扱う)
   useEffect(() => {
-    setBigBlind(gameState.bigBlind);
+    setBigBlind(gameState.bigBlind || gameState.ante);
   }, [gameState, setBigBlind]);
 
   const myPlayer = mySeat !== null ? gameState.players[mySeat] : null;
@@ -197,8 +185,15 @@ export function GameTable({
     if (variantConfig.family === 'holdem') {
       return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
     }
+    // DBBP は 2 ボードを別々に評価し "B1: X / B2: Y" で表示
+    if (gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2) {
+      const h1 = evaluateCurrentHand(myHoleCards, gameState.boards[0])?.name;
+      const h2 = evaluateCurrentHand(myHoleCards, gameState.boards[1])?.name;
+      if (!h1 && !h2) return undefined;
+      return `B1: ${h1 ?? '—'} / B2: ${h2 ?? '—'}`;
+    }
     return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
-  }, [myHoleCards, gameState.communityCards, gameState.variant]);
+  }, [myHoleCards, gameState.communityCards, gameState.boards, gameState.variant]);
 
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
   const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
@@ -251,10 +246,15 @@ export function GameTable({
               <Settings className="w-[5cqw] h-[5cqw]" />
             </button>
           </div>
-      {/* バリアント + ブラインド（中央上部） */}
+      {/* バリアント + ブラインド（中央上部）。
+          sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
       <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
         <span className="bg-cream-200 rounded-b-[3cqw] px-[3cqw] py-[0.5cqw] text-black text-[3.3cqw] font-medium tracking-wide whitespace-nowrap w-[40cqw] h-[7cqw] text-center inline-flex items-end justify-center">
-          {variantDisplayName[gameState.variant] || gameState.variant} {blindsLabel}
+          {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant}
+          {' '}
+          {gameState.bigBlind > 0
+            ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
+            : `ante ${gameState.ante}`}
         </span>
       </div>
       {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}
