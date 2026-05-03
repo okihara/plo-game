@@ -62,7 +62,7 @@ const betPositionStyles: Record<number, string> = {
   5: 'top-[1cqw] left-[-15cqw]',
 };
 
-const dealerButtonStyle = 'top-[-5cqw] left-[-5cqw]';
+const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
 
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
