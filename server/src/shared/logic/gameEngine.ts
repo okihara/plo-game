@@ -343,7 +343,10 @@ export function getValidActions(state: GameState, playerIndex: number): { action
       // まだ誰もベットしていない → ベット
       // ポットリミットベット = 現在のポット額
       const potLimitBet = Math.min(state.pot, player.chips);
-      const minBet = Math.min(state.bigBlind, player.chips);
+      // ベットの最小額は state.minRaise (新ストリート開始時に bigBlind / bomb pot は ante にリセットされる)。
+      // bomb pot は state.bigBlind=0 で startBombPotHand が minRaise=ante と設定するため、
+      // ここで bigBlind を直接見ると 0 ベット = 実質チェックを許してしまう。
+      const minBet = Math.min(state.minRaise, player.chips);
       actions.push({ action: 'bet', minAmount: minBet, maxAmount: potLimitBet });
     } else {
       // 既にベットがある → レイズ

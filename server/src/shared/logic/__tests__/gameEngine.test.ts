@@ -436,6 +436,7 @@ describe('getValidActions', () => {
     state.players[0].currentBet = 0;
     state.players[0].chips = 600;
     state.pot = 20;
+    state.minRaise = state.bigBlind; // 本番では新ストリート開始時に設定される
 
     const actions = getValidActions(state, 0);
     const betAction = actions.find(a => a.action === 'bet');

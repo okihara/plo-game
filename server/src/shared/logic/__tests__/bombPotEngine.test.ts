@@ -220,6 +220,23 @@ describe('startBombPotHand', () => {
   });
 });
 
+// ===== getBombPotValidActions =====
+
+describe('getBombPotValidActions', () => {
+  it('オープニングベットの最小額が ante (= 1BB 相当) になる (0 ベット禁止)', () => {
+    // bomb pot は state.bigBlind = 0 なので、minBet を bigBlind 直参照だと 0 になる。
+    // state.minRaise (= ante) を見ることで正しく ante が最小ベット額になる。
+    const state = createBombPotGameState(1000);
+    state.ante = 100;
+    const after = startBombPotHand(state);
+    const actions = getBombPotValidActions(after, after.currentPlayerIndex);
+    const bet = actions.find(a => a.action === 'bet');
+    expect(bet).toBeDefined();
+    expect(bet!.minAmount).toBe(100);
+    expect(bet!.minAmount).toBeGreaterThan(0);
+  });
+});
+
 // ===== applyBombPotAction（ストリート進行） =====
 
 describe('applyBombPotAction（ストリート進行）', () => {
