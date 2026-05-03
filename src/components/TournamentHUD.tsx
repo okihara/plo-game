@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { ClientTournamentState, TournamentPlayerEliminatedData } from '@plo/shared';
 import { TournamentClockPanel } from './TournamentClockPanel';
-import { VariantBadge } from './VariantBadge';
 
 interface TournamentHUDProps {
   tournamentState: ClientTournamentState;
@@ -49,13 +48,7 @@ export function TournamentHUD({ tournamentState: ts, myChips, lastEliminated }: 
           className="pointer-events-auto flex items-center gap-[1cqw] bg-cream-200 rounded-l-[2cqw] rounded-r-none pl-[2.5cqw] pr-[1cqw] py-[1.4cqw] text-[3.1cqw] leading-snug shadow-md border border-gray-700/12 w-[27cqw] select-none touch-manipulation active:scale-[0.98] active:brightness-95 transition-[transform,filter] duration-150 text-left"
         >
           <div className="flex-1 min-w-0 text-gray-800">
-            <div className="flex items-center gap-[1cqw]">
-              <span>{ts.playersRemaining}/{ts.totalPlayers}E</span>
-              <VariantBadge
-                variant={ts.gameVariant}
-                className="px-[0.8cqw] py-[0.2cqw] rounded-[0.6cqw] text-[2.2cqw] leading-none"
-              />
-            </div>
+            <div>{ts.playersRemaining}/{ts.totalPlayers}E</div>
             <div>
               Lv.{bl.level}{isFinalBlindLevel ? ` - ${HUD_FINAL_LEVEL_CLOCK}` : ` - ${countdown}`}
             </div>
