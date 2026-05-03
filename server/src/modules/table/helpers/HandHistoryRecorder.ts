@@ -119,13 +119,24 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
     if (!hasAuthUser) return;
 
     try {
+      // 内部 chip 値を表示単位に揃える (トーナメント=100、キャッシュ=1)。
+      // HandHistory に保存するチップ系列の値はすべて ×chipUnit した「表示値」。
+      // これにより既存レコード (chipUnit=1 相当) と統一スケールになり、表示側で
+      // 倍率を掛け直す必要がない。
+      const chipUnit = gameState.chipUnit ?? 1;
+      const scale = (n: number): number => n * chipUnit;
+      // blinds 文字列も ×chipUnit (例: "1/2" → "100/200")
+      const blindsScaled = chipUnit === 1
+        ? this.blinds
+        : this.blinds.split('/').map(s => String(Number(s) * chipUnit)).join('/');
+
       // アクション履歴を odId/odName/street 付きに変換
       const actions = gameState.handHistory.map((a: GameAction) => ({
         seatIndex: a.playerId,
         odId: seats[a.playerId]?.odId ?? `unknown_${a.playerId}`,
         odName: seats[a.playerId]?.odName ?? `Seat ${a.playerId}`,
         action: a.action,
-        amount: a.amount,
+        amount: scale(a.amount),
         street: a.street,
       }));
 
@@ -169,7 +180,8 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             }
           }
 
-          const allInEVProfit = this.allInEVProfits?.get(seatIndex) ?? null;
+          const rawEv = this.allInEVProfits?.get(seatIndex) ?? null;
+          const allInEVProfit = rawEv != null ? scale(rawEv) : null;
 
           return {
             userId: isAuthenticatedUser(seat.odId) ? seat.odId : null,
@@ -177,8 +189,8 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             seatPosition: seatIndex,
             holeCards: serializeCards(player.holeCards),
             finalHand,
-            startChips: startChip,
-            profit,
+            startChips: scale(startChip),
+            profit: scale(profit),
             allInEVProfit,
           };
         })
@@ -195,11 +207,11 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           tableId,
           ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
           handNumber: this.handCount,
-          blinds: this.blinds,
+          blinds: blindsScaled,
           communityCards: serializeCards(board1),
           communityCards2: serializeCards(board2),
-          potSize: gameState.pot,
-          rakeAmount: gameState.rake ?? 0,
+          potSize: scale(gameState.pot),
+          rakeAmount: scale(gameState.rake ?? 0),
           winners: winnerOdIds,
           actions,
           dealerPosition: gameState.dealerPosition,
