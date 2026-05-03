@@ -689,6 +689,10 @@ export class TableInstance {
     // Create initial game state
     const buyInChips = this.bigBlind * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
     this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind);
+    // トナメは最小チップ単位 100。ポット分配で 100 未満の端数が出ないようにする
+    if (this.gameMode === 'tournament') {
+      this.gameState.chipUnit = 100;
+    }
 
     // Restore dealer position (startNewHand will increment it)
     if (this.lastDealerPosition >= 0) {

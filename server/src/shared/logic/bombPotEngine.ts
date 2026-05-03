@@ -19,6 +19,7 @@ import {
   getActivePlayers,
   getPlayersWhoCanAct,
   getValidActions,
+  splitChipsEvenly,
 } from './gameEngine.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
@@ -503,11 +504,11 @@ export function determineBombPotWinner(
 
   // === 各 sidepot を 2 ボードに半分割し、ボード毎に勝者決定 ===
   newState.winners = [];
+  const chipUnit = newState.chipUnit ?? 1;
 
   for (const pot of contestedPots) {
-    const half = Math.floor(pot.amount / 2);
-    const extra = pot.amount - half * 2; // 0 or 1
-    const boardAmounts = [half + extra, half]; // ボード 1 が +1 を受ける
+    // ボード半分割: 端数 (chipUnit 未満) はボード 1 へ寄せる
+    const boardAmounts = splitChipsEvenly(pot.amount, BOARD_COUNT, chipUnit);
 
     for (let b = 0; b < BOARD_COUNT; b++) {
       const boardPotAmount = boardAmounts[b];
@@ -529,11 +530,11 @@ export function determineBombPotWinner(
         }
       }
 
-      const perWinner = Math.floor(boardPotAmount / top.length);
-      const remainder = boardPotAmount % top.length;
+      // 各勝者へ分配 (端数は最初の勝者へ寄せる)
+      const shares = splitChipsEvenly(boardPotAmount, top.length, chipUnit);
 
       for (let i = 0; i < top.length; i++) {
-        const amt = perWinner + (i === 0 ? remainder : 0);
+        const amt = shares[i];
         const player = newState.players.find(p => p.id === top[i].playerId)!;
         player.chips += amt;
         newState.winners.push({
