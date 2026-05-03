@@ -139,7 +139,17 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
 
           // ショーダウンに参加した全プレイヤーの役名を評価
           let finalHand: string | null = null;
-          if (winnerEntry?.handName) {
+          const isBombPot = gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2;
+          if (isBombPot && !player.folded && player.holeCards.length === 4
+              && gameState.boards![0].length === 5 && gameState.boards![1].length === 5) {
+            try {
+              const h1 = evaluatePLOHand(player.holeCards, gameState.boards![0]).name;
+              const h2 = evaluatePLOHand(player.holeCards, gameState.boards![1]).name;
+              finalHand = `B1: ${h1} / B2: ${h2}`;
+            } catch (e) {
+              console.warn('Bomb pot hand evaluation failed for seat', seatIndex, e);
+            }
+          } else if (winnerEntry?.handName) {
             finalHand = winnerEntry.handName;
           } else if (!player.folded && (player.holeCards.length === 4 || player.holeCards.length === 5) && gameState.communityCards.length === 5) {
             try {
@@ -166,13 +176,18 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
 
       if (playerRecords.length === 0) return;
 
+      const isBombPot = gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2;
+      const board1 = isBombPot ? gameState.boards![0] : gameState.communityCards;
+      const board2 = isBombPot ? gameState.boards![1] : [];
+
       await prisma.handHistory.create({
         data: {
           tableId,
           ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
           handNumber: this.handCount,
           blinds,
-          communityCards: serializeCards(gameState.communityCards),
+          communityCards: serializeCards(board1),
+          communityCards2: serializeCards(board2),
           potSize: gameState.pot,
           rakeAmount: gameState.rake ?? 0,
           winners: winnerOdIds,

@@ -53,6 +53,9 @@ export function TournamentHUD({ tournamentState: ts, myChips, lastEliminated }: 
               {ts.gameVariant === 'plo5' && (
                 <span className="px-[0.8cqw] py-[0.2cqw] rounded-[0.6cqw] text-[2.2cqw] font-bold text-white bg-violet-600 leading-none">PLO5</span>
               )}
+              {ts.gameVariant === 'plo_double_board_bomb' && (
+                <span className="px-[0.8cqw] py-[0.2cqw] rounded-[0.6cqw] text-[2.2cqw] font-bold text-white bg-rose-600 leading-none">BOMB</span>
+              )}
             </div>
             <div>
               Lv.{bl.level}{isFinalBlindLevel ? ` - ${HUD_FINAL_LEVEL_CLOCK}` : ` - ${countdown}`}

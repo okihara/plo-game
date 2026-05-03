@@ -7,6 +7,7 @@ import { createStudGameState, startStudHand, getStudValidActions, applyStudActio
 import { createDrawGameState, startDrawHand, getDrawValidActions, applyDrawAction, wouldDrawAdvanceStreet, determineDrawWinner } from '../../../shared/logic/drawEngine.js';
 import { createLimitHoldemGameState, startLimitHoldemHand, getLimitHoldemValidActions, applyLimitHoldemAction, wouldLimitHoldemAdvanceStreet, determineLimitHoldemWinner } from '../../../shared/logic/limitHoldemEngine.js';
 import { createOmahaHiLoGameState, startOmahaHiLoHand, getOmahaHiLoValidActions, applyOmahaHiLoAction, wouldOmahaHiLoAdvanceStreet, determineOmahaHiLoWinner } from '../../../shared/logic/omahaHiLoEngine.js';
+import { createBombPotGameState, startBombPotHand, getBombPotValidActions, applyBombPotAction, wouldBombPotAdvanceStreet, determineBombPotWinner } from '../../../shared/logic/bombPotEngine.js';
 import { evaluatePLOHand, evaluateHoldemHand, evaluate27LowHand, evaluateOmahaHiLoHand } from '../../../shared/logic/handEvaluator.js';
 import { StudVariantRules } from '../../../shared/logic/studVariantRules.js';
 import { StudHighRules } from '../../../shared/logic/rules/studHighRules.js';
@@ -47,6 +48,13 @@ export class VariantAdapter {
     if (this.variant === 'omaha_hilo') {
       return createOmahaHiLoGameState(buyInChips, smallBlind, bigBlind);
     }
+    // plo_double_board_bomb も family === 'omaha' だが専用エンジン
+    if (this.variant === 'plo_double_board_bomb') {
+      const state = createBombPotGameState(buyInChips);
+      state.smallBlind = smallBlind;
+      state.bigBlind = bigBlind;
+      return state;
+    }
     switch (this.config.family) {
       case 'stud': {
         const ante = Math.ceil(smallBlind / 4);
@@ -74,6 +82,7 @@ export class VariantAdapter {
    */
   startHand(gameState: GameState): GameState {
     if (this.variant === 'omaha_hilo') return startOmahaHiLoHand(gameState);
+    if (this.variant === 'plo_double_board_bomb') return startBombPotHand(gameState);
     switch (this.config.family) {
       case 'stud':
         return startStudHand(gameState, this.studRules!);
@@ -91,6 +100,7 @@ export class VariantAdapter {
    */
   getValidActions(gameState: GameState, seatIndex: number): ValidAction[] {
     if (this.variant === 'omaha_hilo') return getOmahaHiLoValidActions(gameState, seatIndex);
+    if (this.variant === 'plo_double_board_bomb') return getBombPotValidActions(gameState, seatIndex);
     switch (this.config.family) {
       case 'stud':
         return getStudValidActions(gameState, seatIndex);
@@ -105,8 +115,9 @@ export class VariantAdapter {
 
   /**
    * ショーダウン用のハンド名を評価
+   * bomb pot 時は boards を渡すと "B1: X / B2: Y" 形式で返す。
    */
-  evaluateHandName(player: Player, communityCards: Card[]): string {
+  evaluateHandName(player: Player, communityCards: Card[], boards?: Card[][]): string {
     try {
       if (this.variant === 'omaha_hilo') {
         if (communityCards.length === 5 && player.holeCards.length === 4) {
@@ -114,6 +125,13 @@ export class VariantAdapter {
           return low ? `${high.name} / ${low.name}` : high.name;
         }
         return '';
+      }
+      if (this.variant === 'plo_double_board_bomb') {
+        if (!boards || boards.length !== 2 || player.holeCards.length !== 4) return '';
+        if (boards[0].length !== 5 || boards[1].length !== 5) return '';
+        const h1 = evaluatePLOHand(player.holeCards, boards[0]).name;
+        const h2 = evaluatePLOHand(player.holeCards, boards[1]).name;
+        return `B1: ${h1} / B2: ${h2}`;
       }
       switch (this.config.family) {
         case 'stud':
@@ -152,6 +170,7 @@ export class VariantAdapter {
    */
   applyAction(gameState: GameState, seatIndex: number, action: Action, amount: number, rakePercent: number, rakeCapBB: number, discardIndices?: number[]): GameState {
     if (this.variant === 'omaha_hilo') return applyOmahaHiLoAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
+    if (this.variant === 'plo_double_board_bomb') return applyBombPotAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
     switch (this.config.family) {
       case 'stud':
         return applyStudAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB, this.studRules!);
@@ -169,6 +188,7 @@ export class VariantAdapter {
    */
   wouldAdvanceStreet(gameState: GameState, seatIndex: number, action: Action, amount: number, discardIndices?: number[]): boolean {
     if (this.variant === 'omaha_hilo') return wouldOmahaHiLoAdvanceStreet(gameState, seatIndex, action, amount);
+    if (this.variant === 'plo_double_board_bomb') return wouldBombPotAdvanceStreet(gameState, seatIndex, action, amount);
     switch (this.config.family) {
       case 'stud':
         return wouldStudAdvanceStreet(gameState, seatIndex, action, amount, this.studRules!);
@@ -186,6 +206,7 @@ export class VariantAdapter {
    */
   determineWinner(gameState: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
     if (this.variant === 'omaha_hilo') return determineOmahaHiLoWinner(gameState, rakePercent, rakeCapBB);
+    if (this.variant === 'plo_double_board_bomb') return determineBombPotWinner(gameState, rakePercent, rakeCapBB);
     switch (this.config.family) {
       case 'stud':
         return determineStudWinner(gameState, rakePercent, rakeCapBB, this.studRules!);

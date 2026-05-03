@@ -68,6 +68,7 @@ export function convertClientStateToGameState(
     players,
     deck: [],
     communityCards: clientState.communityCards,
+    boards: clientState.boards,
     pot: clientState.pot,
     sidePots: (clientState.sidePots || []).map(sp => ({
       amount: sp.amount,

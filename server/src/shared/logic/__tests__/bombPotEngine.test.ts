@@ -177,6 +177,26 @@ describe('startBombPotHand', () => {
     expect(after.deck.length).toBe(52 - 30);
   });
 
+  it('全員がアンテで all-in になった場合は即ランアウト→ showdown 状態で返る', () => {
+    const state = createBombPotGameState(1000);
+    state.bigBlind = 100;
+    // 全員 BB 未満（all-in 対象）
+    for (const p of state.players) p.chips = 30;
+    const after = startBombPotHand(state);
+
+    // 全員 all-in
+    expect(after.players.every(p => p.isAllIn)).toBe(true);
+    // 即ランアウト → 両ボード 5 枚 / showdown / isHandComplete=true
+    expect(after.boards![0].length).toBe(5);
+    expect(after.boards![1].length).toBe(5);
+    expect(after.currentStreet).toBe('showdown');
+    expect(after.isHandComplete).toBe(true);
+    // winners が決定済み（ボード 1, 2 でそれぞれ少なくとも 1 名）
+    expect(after.winners.length).toBeGreaterThanOrEqual(2);
+    // ボード 1 / ボード 2 の handName が "Board X: ..." 形式
+    expect(after.winners.every(w => /^Board [12]:/.test(w.handName))).toBe(true);
+  });
+
   it('カードに重複がない', () => {
     const state = createBombPotGameState(1000);
     const after = startBombPotHand(state);

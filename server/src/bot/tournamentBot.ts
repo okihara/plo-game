@@ -101,6 +101,7 @@ async function main(): Promise<void> {
         allowReentry: true,
         maxReentries: 3,
         reentryDeadlineLevel: 30,
+        gameVariant: "plo_double_board_bomb",
       }),
     });
 

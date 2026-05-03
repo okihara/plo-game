@@ -28,6 +28,7 @@ const variantDisplayName: Record<string, string> = {
   'no_limit_2-7_single_draw': 'NL 2-7 SD',
   omaha_hilo: 'FLO8',
   stud_hilo: 'Stud Hi-Lo',
+  plo_double_board_bomb: 'Bomb Pot',
 };
 
 export interface GameTableProps {

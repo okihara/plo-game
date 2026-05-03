@@ -117,6 +117,9 @@ export interface ClientGameState {
   tableId: string;
   players: (OnlinePlayer | null)[];
   communityCards: Card[];
+  /** Double Board Bomb Pot: [board1, board2]。それ以外の variant は undefined。
+   *  bomb pot 進行中は communityCards を boards[0] のミラーとして同期する。 */
+  boards?: Card[][];
   pot: number;
   sidePots: { amount: number; eligiblePlayerSeats: number[] }[];
   currentStreet: string;

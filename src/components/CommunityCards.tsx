@@ -4,13 +4,22 @@ import { Card, FaceDownCard } from './Card';
 interface CommunityCardsProps {
   cards: CardType[];
   newCardsCount: number;
+  /** デフォルト top-[52%]。bomb pot の 2 ボード描画用に上書き可能 */
+  topClass?: string;
+  /** "Board 1" 等のラベルを左に小さく表示する */
+  label?: string;
 }
 
-export function CommunityCards({ cards, newCardsCount }: CommunityCardsProps) {
+export function CommunityCards({ cards, newCardsCount, topClass = 'top-[52%]', label }: CommunityCardsProps) {
   const emptySlots = 5 - cards.length;
 
   return (
-    <div className="absolute top-[52%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex gap-[0.7cqw] z-[5]">
+    <div className={`absolute ${topClass} left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-[0.7cqw] z-[5]`}>
+      {label && (
+        <span className="absolute right-full mr-[1.5cqw] text-white/70 text-[3.5cqw] uppercase tracking-wider whitespace-nowrap">
+          {label}
+        </span>
+      )}
       {cards.map((card, index) => {
         const isNew = index >= cards.length - newCardsCount && newCardsCount > 0;
         return <Card key={index} card={card} size="md" isNew={isNew} />;

@@ -738,6 +738,15 @@ export class TableInstance {
     // ハンドヒストリー用スナップショット記録
     this.historyRecorder.recordHandStart(seats, this.gameState);
 
+    // bomb pot: 全員がアンテで all-in になり startBombPotHand が即ランアウト
+    // → showdown 状態で返ってくるケース。requestNextAction は isHandComplete を
+    // 見て早期 return するため、ここで明示的にランアウト演出経由で
+    // handleHandComplete に到達させないと次ハンドが永久に始まらない。
+    if (this.gameState.isHandComplete) {
+      this.handleAllInRunOut(this.gameState, 0).catch(e => console.error('handleAllInRunOut error (start-of-hand showdown):', e));
+      return;
+    }
+
     // Request first action then broadcast (so pendingAction is set)
     this.requestNextAction();
     this.broadcastGameState();
@@ -853,23 +862,30 @@ export class TableInstance {
   private async handleAllInRunOut(finalState: GameState, previousCardCount: number): Promise<void> {
     console.warn(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
 
+    const isBombPot = finalState.variant === 'plo_double_board_bomb' && finalState.boards?.length === 2;
+
     // ランアウト前のボードでEV計算（エクイティベース）
-    try {
-      const priorBoard = finalState.communityCards.slice(0, previousCardCount);
-      const allPots = calculateSidePots(finalState.players);
-      const totalBets = new Map<number, number>();
-      const allPlayerInfo = finalState.players.map(p => {
-        totalBets.set(p.id, p.totalBetThisRound);
-        return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
-      });
-      const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
-      this.historyRecorder.setAllInEVProfits(evProfits);
-      console.warn(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
-    } catch (err) {
-      console.error(`[Table ${this.id}] EV calculation failed:`, err);
+    // bomb pot は 2 ボード前提で equity 計算式が異なるため、ここではスキップ。
+    if (!isBombPot) {
+      try {
+        const priorBoard = finalState.communityCards.slice(0, previousCardCount);
+        const allPots = calculateSidePots(finalState.players);
+        const totalBets = new Map<number, number>();
+        const allPlayerInfo = finalState.players.map(p => {
+          totalBets.set(p.id, p.totalBetThisRound);
+          return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
+        });
+        const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
+        this.historyRecorder.setAllInEVProfits(evProfits);
+        console.warn(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
+      } catch (err) {
+        console.error(`[Table ${this.id}] EV calculation failed:`, err);
+      }
     }
 
     const allCards = [...finalState.communityCards];
+    // bomb pot では board 1 / board 2 の最終形を別々に保持（並列ランアウト用）
+    const finalBoards = isBombPot ? finalState.boards!.map(b => [...b]) : null;
 
     // 表示ステージを構築（フロップ→ターン→リバーの順）
     const stages: { cardCount: number; street: 'flop' | 'turn' | 'river' }[] = [];
@@ -892,10 +908,18 @@ export class TableInstance {
     const activePlayers = getActivePlayers(finalState);
     if (activePlayers.length > 1) {
       const showdownPlayers = activePlayers.map(p => {
-        const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
-        let handName = winnerEntry?.handName || '';
-        if (!handName) {
-          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
+        // bomb pot は winners[].handName が "Board X: ..." 形式の部分情報なので
+        // 全プレイヤーで evaluateHandName を呼んで両ボードの役名 ("B1: ... / B2: ...")
+        // を組み立てる（勝者・敗者ともに同じフォーマットで表示）
+        let handName = '';
+        if (isBombPot) {
+          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards, finalBoards!);
+        } else {
+          const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
+          handName = winnerEntry?.handName || '';
+          if (!handName) {
+            handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
+          }
         }
         return {
           seatIndex: p.id,
@@ -923,9 +947,13 @@ export class TableInstance {
     }
 
     // ランアウト中の中間状態用: 分配前のチップとポットを計算
+    // bomb pot は同一プレイヤーが両ボードで勝つと winners[] に複数エントリが入るため
+    // find でなく合計を引く必要がある。
     const preDistributionChips = finalState.players.map(p => {
-      const winEntry = finalState.winners.find(w => w.playerId === p.id);
-      return winEntry ? p.chips - winEntry.amount : p.chips;
+      const wonTotal = finalState.winners
+        .filter(w => w.playerId === p.id)
+        .reduce((sum, w) => sum + w.amount, 0);
+      return p.chips - wonTotal;
     });
     const preDistributionPot = finalState.winners.reduce((sum, w) => sum + w.amount, 0) + finalState.rake;
 
@@ -945,7 +973,16 @@ export class TableInstance {
 
       // 中間状態を作成（このストリートまでのカードだけ見せる）
       const intermediateState = JSON.parse(JSON.stringify(finalState)) as GameState;
-      intermediateState.communityCards = allCards.slice(0, stage.cardCount);
+      if (isBombPot && finalBoards) {
+        // 2 ボードを並列に開示（同じ枚数まで両方を見せる）
+        intermediateState.boards = [
+          finalBoards[0].slice(0, stage.cardCount),
+          finalBoards[1].slice(0, stage.cardCount),
+        ];
+        intermediateState.communityCards = intermediateState.boards[0];
+      } else {
+        intermediateState.communityCards = allCards.slice(0, stage.cardCount);
+      }
       intermediateState.isHandComplete = false;
       intermediateState.winners = [];
       intermediateState.currentStreet = stage.street;
@@ -987,7 +1024,9 @@ export class TableInstance {
 
     // 部分オールイン時のEV計算: handleAllInRunOut を経由しなかった場合
     // （例: Turnでオールインしたが他プレイヤーがアクティブのままリバーまで進んだケース）
-    if (!this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
+    // bomb pot は 2 ボード前提で式が異なるためスキップ
+    const isBombPotForEV = this.gameState.variant === 'plo_double_board_bomb';
+    if (!isBombPotForEV && !this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
       try {
         const priorBoard = this.gameState.communityCards.slice(0, this.allInStreetCardCount);
         const allPots = calculateSidePots(this.gameState.players);
@@ -1026,11 +1065,17 @@ export class TableInstance {
     const seats = this.playerManager.getSeats();
     if (this.gameState.currentStreet === 'showdown' && getActivePlayers(this.gameState).length > 1 && !this.showdownSentDuringRunOut) {
       const activePlayers = getActivePlayers(this.gameState);
+      const isBombPot = this.gameState.variant === 'plo_double_board_bomb' && this.gameState.boards?.length === 2;
       const showdownPlayers = activePlayers.map(p => {
-        const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
-        let handName = winnerEntry?.handName || '';
-        if (!handName) {
-          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
+        let handName: string;
+        if (isBombPot) {
+          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards, this.gameState!.boards);
+        } else {
+          const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
+          handName = winnerEntry?.handName || '';
+          if (!handName) {
+            handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
+          }
         }
         return {
           seatIndex: p.id,

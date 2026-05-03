@@ -38,6 +38,8 @@ export interface HandDetail {
   handNumber: number;
   blinds: string;
   communityCards: string[];
+  /** Double Board Bomb Pot のセカンドボード。空配列なら通常ハンド扱い。 */
+  communityCards2?: string[];
   potSize: number;
   rakeAmount?: number;
   winners: string[];

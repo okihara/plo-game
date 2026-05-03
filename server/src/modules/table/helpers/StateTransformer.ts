@@ -142,6 +142,7 @@ export class StateTransformer {
         this.seatToOnlinePlayer(seat, i, gameState.players[i])
       ),
       communityCards: gameState.communityCards,
+      boards: gameState.boards,
       pot: gameState.pot,
       sidePots: (gameState.sidePots || []).map(sp => ({
         amount: sp.amount,

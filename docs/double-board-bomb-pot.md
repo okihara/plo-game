@@ -54,14 +54,23 @@ GameState {
 - `server/src/shared/logic/bombPotEngine.ts` — ロジック本体
 - `server/src/shared/logic/__tests__/bombPotEngine.test.ts` — テスト
 
+## 結線済みの作業
+
+- `VariantAdapter` の bomb pot 経路追加（`createGameState` / `startHand` / `getValidActions` / `applyAction` / `wouldAdvanceStreet` / `determineWinner` / `evaluateHandName`）
+- `ClientGameState` / `GameState` への `boards` 追加（`packages/shared/src/protocol.ts`、`StateTransformer` で同期、クライアント `convertClientStateToGameState` で受け取り）
+- `TableInstance.handleAllInRunOut` の 2 ボード並列開示 + 通常 showdown でも `B1: ... / B2: ...` 形式で役名表示
+- クライアント描画（`PokerTable` で `boards[0]` / `boards[1]` を縦に並べて描画、`CommunityCards` に `topClass` / `label` オプション追加）
+- ハンド履歴: `HandHistory.communityCards2` カラム追加、`HandHistoryRecorder` が bomb pot のとき両ボードを保存・finalHand に "B1: ... / B2: ..." を格納
+- PokerStars Hand History 出力拡張（"Omaha Pot Limit Double Board Bomb Pot"、ante 投稿表記、ストリート見出しに Board 1/2 併記、SUMMARY も両ボード出力）
+- Tournament UI バッジ / `GameTable` variant 表示に `Bomb Pot` / `BOMB` バッジ追加
+- Tournament 作成 API は `gameVariant: 'plo_double_board_bomb'` を受け付け、`TableManager` のハンド履歴有効 variant にも追加済み
+
 ## 今後（このメモのスコープ外）
 
-ゲームロジック + テスト以降の作業:
+- Bot AI のダブルボード equity 評価（現状は PLOStrategy を `boards[0]` 視点で流用）
+- 全員アンテで EV 計算が複雑になるためオールインEV計算 (`calculateAllInEVProfits`) は bomb pot ではスキップ。必要なら 2 ボード前提の equity 関数を別途実装。
+- ハンド履歴 UI (`HandDetailDialog`) の 2 ボード描画（PokerStars 風テキストエクスポートは対応済み、画面表示は未対応）
 
-- `VariantAdapter` の bomb pot 経路追加（`createGameState` / `startHand` / `determineWinner` / `wouldAdvanceStreet`）
-- `ClientGameState` への `boards` 追加（packages/shared/src/protocol.ts）
-- `TableInstance.handleAllInRunOut` の 2 ボード並列開示
-- クライアント描画（PokerTable / CommunityCards の 2 ボード対応）
-- ハンド履歴 (`HandHistory.board2` カラム / PokerStars Hand History 出力拡張)
-- Tournament 設定への `gameVariant: 'plo_double_board_bomb'` 設定 UI / シードスクリプト
-- Bot AI のダブルボード equity 評価
+## デプロイ時の注意
+
+- スキーマに `HandHistory.communityCards2 String[] @default([])` を追加したため、デプロイ前に `npm run db:push` で本番 DB に反映する必要あり。

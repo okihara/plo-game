@@ -26,6 +26,8 @@ export interface PokerStarsHandInput {
   handNumber: number;
   blinds: string;
   communityCards: string[];
+  /** Double Board Bomb Pot 用のセカンドボード。空配列なら通常ハンド扱い。 */
+  communityCards2?: string[];
   potSize: number;
   rakeAmount?: number;
   winners: string[];
@@ -33,9 +35,10 @@ export interface PokerStarsHandInput {
   dealerPosition: number;
   createdAt: string | Date;
   players: PokerStarsHandPlayer[];
-  // 'plo'  → "Omaha Pot Limit"        (デフォルト)
-  // 'plo5' → "5 Card Omaha Pot Limit"  (PokerStars 公式表記に準拠)
-  variant?: 'plo' | 'plo5';
+  // 'plo'                    → "Omaha Pot Limit"               (デフォルト)
+  // 'plo5'                   → "5 Card Omaha Pot Limit"        (PokerStars 公式表記)
+  // 'plo_double_board_bomb'  → "Omaha Pot Limit Double Board Bomb Pot"
+  variant?: 'plo' | 'plo5' | 'plo_double_board_bomb';
 }
 
 function getPos(seatPosition: number, dealerPosition: number, allSeats: number[]): string {
@@ -78,6 +81,8 @@ function actionLine(name: string, action: string, amount: number): string {
 export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
   const lines: string[] = [];
   const { blinds, communityCards, players, actions, dealerPosition, createdAt, id, potSize, rakeAmount } = hand;
+  const isBombPot = hand.variant === 'plo_double_board_bomb';
+  const board2 = hand.communityCards2 ?? [];
 
   const [sb, bb] = blinds.split('/').map(Number);
 
@@ -93,7 +98,11 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
   const dateStr = `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())} JST`;
   const handNum = id.replace(/-/g, '').slice(-12).replace(/^0+/, '') || id.slice(-6);
 
-  const variantLabel = hand.variant === 'plo5' ? '5 Card Omaha Pot Limit' : 'Omaha Pot Limit';
+  const variantLabel = hand.variant === 'plo5'
+    ? '5 Card Omaha Pot Limit'
+    : isBombPot
+      ? 'Omaha Pot Limit Double Board Bomb Pot'
+      : 'Omaha Pot Limit';
   lines.push(`PokerStars Hand #${handNum}: ${variantLabel} (${sb}/${bb}) - ${dateStr}`);
   lines.push(`Table 'PLO Game' 6-max Seat #${dealerPosition + 1} is the button`);
 
@@ -101,12 +110,19 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
     lines.push(`Seat ${p.seatPosition + 1}: ${p.username} (${p.startChips} in chips)`);
   }
 
-  const isTwoHanded = players.length === 2;
-  const sbPos = isTwoHanded ? 'BTN/SB' : 'SB';
-  const sbPlayer = players.find(p => getPos(p.seatPosition, dealerPosition, allSeats) === sbPos);
-  const bbPlayer = players.find(p => getPos(p.seatPosition, dealerPosition, allSeats) === 'BB');
-  if (sbPlayer) lines.push(`${sbPlayer.username}: posts small blind ${sb}`);
-  if (bbPlayer) lines.push(`${bbPlayer.username}: posts big blind ${bb}`);
+  if (isBombPot) {
+    // bomb pot は SB/BB を投稿せず全員が 1 BB のアンテを支払う
+    for (const p of sortedPlayers) {
+      lines.push(`${p.username}: posts the ante ${bb}`);
+    }
+  } else {
+    const isTwoHanded = players.length === 2;
+    const sbPos = isTwoHanded ? 'BTN/SB' : 'SB';
+    const sbPlayer = players.find(p => getPos(p.seatPosition, dealerPosition, allSeats) === sbPos);
+    const bbPlayer = players.find(p => getPos(p.seatPosition, dealerPosition, allSeats) === 'BB');
+    if (sbPlayer) lines.push(`${sbPlayer.username}: posts small blind ${sb}`);
+    if (bbPlayer) lines.push(`${bbPlayer.username}: posts big blind ${bb}`);
+  }
 
   lines.push('*** HOLE CARDS ***');
   const me = players.find(p => p.isCurrentUser);
@@ -129,27 +145,45 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
   const nameOf = (seatIndex: number, odName: string) =>
     players.find(p => p.seatPosition === seatIndex)?.username ?? odName;
 
-  lines.push('*** PRE-FLOP ***');
-  for (const a of byStreet.preflop) {
-    lines.push(actionLine(nameOf(a.seatIndex, a.odName), a.action, a.amount));
+  // bomb pot はプリフロップなし
+  if (!isBombPot) {
+    lines.push('*** PRE-FLOP ***');
+    for (const a of byStreet.preflop) {
+      lines.push(actionLine(nameOf(a.seatIndex, a.odName), a.action, a.amount));
+    }
   }
 
+  // ストリート見出し: bomb pot は 2 ボード分を併記
+  const streetHeading = (label: string, idx1: number, idx2?: number): string => {
+    if (isBombPot) {
+      const b1 = idx2 === undefined
+        ? `[${communityCards.slice(0, idx1).join(' ')}]`
+        : `[${communityCards.slice(0, idx1).join(' ')}] [${communityCards[idx2]}]`;
+      const b2 = idx2 === undefined
+        ? `[${board2.slice(0, idx1).join(' ')}]`
+        : `[${board2.slice(0, idx1).join(' ')}] [${board2[idx2]}]`;
+      return `*** ${label} *** Board 1: ${b1} | Board 2: ${b2}`;
+    }
+    if (idx2 === undefined) return `*** ${label} *** [${communityCards.slice(0, idx1).join(' ')}]`;
+    return `*** ${label} *** [${communityCards.slice(0, idx1).join(' ')}] [${communityCards[idx2]}]`;
+  };
+
   if (communityCards.length >= 3) {
-    lines.push(`*** FLOP *** [${communityCards.slice(0, 3).join(' ')}]`);
+    lines.push(streetHeading('FLOP', 3));
     for (const a of byStreet.flop) {
       lines.push(actionLine(nameOf(a.seatIndex, a.odName), a.action, a.amount));
     }
   }
 
   if (communityCards.length >= 4) {
-    lines.push(`*** TURN *** [${communityCards.slice(0, 3).join(' ')}] [${communityCards[3]}]`);
+    lines.push(streetHeading('TURN', 3, 3));
     for (const a of byStreet.turn) {
       lines.push(actionLine(nameOf(a.seatIndex, a.odName), a.action, a.amount));
     }
   }
 
   if (communityCards.length >= 5) {
-    lines.push(`*** RIVER *** [${communityCards.slice(0, 4).join(' ')}] [${communityCards[4]}]`);
+    lines.push(streetHeading('RIVER', 4, 4));
     for (const a of byStreet.river) {
       lines.push(actionLine(nameOf(a.seatIndex, a.odName), a.action, a.amount));
     }
@@ -173,7 +207,10 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   lines.push('*** SUMMARY ***');
   lines.push(`Total pot ${potSize}${rakeAmount ? ` | Rake ${rakeAmount}` : ''}`);
-  if (communityCards.length > 0) {
+  if (isBombPot) {
+    if (communityCards.length > 0) lines.push(`Board 1 [${communityCards.join(' ')}]`);
+    if (board2.length > 0) lines.push(`Board 2 [${board2.join(' ')}]`);
+  } else if (communityCards.length > 0) {
     lines.push(`Board [${communityCards.join(' ')}]`);
   }
 
