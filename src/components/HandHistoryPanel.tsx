@@ -15,6 +15,8 @@ interface HandSummary {
   handNumber: number;
   blinds: string;
   communityCards: string[];
+  /** Double Board Bomb Pot のセカンドボード。空配列なら通常ハンド扱い。 */
+  communityCards2?: string[];
   potSize: number;
   profit: number;
   finalHand: string | null;
@@ -71,32 +73,76 @@ function HandSummaryCard({
             return pos ? <PositionBadge position={pos} /> : null;
           })()}
           {(() => {
-            const name = hand.finalHand
-              || ((hand.holeCards.length === 4 || hand.holeCards.length === 5) && hand.communityCards.length >= 3
-                ? evaluateCurrentHand(
+            const isBombPot = hand.communityCards2 != null && hand.communityCards2.length > 0;
+            let name: string | null | undefined = hand.finalHand;
+            if (!name) {
+              if (isBombPot && hand.holeCards.length === 4
+                  && hand.communityCards.length >= 3 && hand.communityCards2!.length >= 3) {
+                try {
+                  const h1 = evaluateCurrentHand(
                     hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
                     hand.communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-                  )?.name
-                : null);
+                  )?.name;
+                  const h2 = evaluateCurrentHand(
+                    hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+                    hand.communityCards2!.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+                  )?.name;
+                  name = h1 && h2 ? `B1: ${h1} / B2: ${h2}` : (h1 ?? h2 ?? null);
+                } catch { name = null; }
+              } else if ((hand.holeCards.length === 4 || hand.holeCards.length === 5) && hand.communityCards.length >= 3) {
+                name = evaluateCurrentHand(
+                  hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+                  hand.communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
+                )?.name;
+              }
+            }
             return name ? <span className="text-cream-800 text-[2.5cqw] font-medium">{name}</span> : null;
           })()}
         </div>
         <ProfitDisplay profit={hand.profit} size="large" bb={bb} />
       </div>
-      {/* Row 2: cards */}
-      <div className="flex items-center gap-[0.6cqw]">
-        {hand.holeCards.map((c, i) => (
-          <MiniCard key={i} cardStr={c} />
-        ))}
-        {hand.communityCards.length > 0 && (
-          <>
-            <span className="text-cream-700 mx-[1.5cqw] text-[4cqw] font-light">|</span>
-            {hand.communityCards.map((c, i) => (
-              <MiniCard key={`cc-${i}`} cardStr={c} />
+      {/* Row 2: cards (bomb pot は board 1/2 を 2 段表示) */}
+      {(() => {
+        const isBombPot = hand.communityCards2 != null && hand.communityCards2.length > 0;
+        if (isBombPot) {
+          return (
+            <div className="flex flex-col gap-[0.6cqw]">
+              <div className="flex items-center gap-[0.6cqw]">
+                {hand.holeCards.map((c, i) => (
+                  <MiniCard key={i} cardStr={c} />
+                ))}
+              </div>
+              <div className="flex items-center gap-[0.6cqw]">
+                <span className="text-cream-700 text-[2.4cqw] font-bold w-[5cqw] shrink-0">B1</span>
+                {hand.communityCards.map((c, i) => (
+                  <MiniCard key={`b1-${i}`} cardStr={c} />
+                ))}
+              </div>
+              <div className="flex items-center gap-[0.6cqw]">
+                <span className="text-cream-700 text-[2.4cqw] font-bold w-[5cqw] shrink-0">B2</span>
+                {hand.communityCards2!.map((c, i) => (
+                  <MiniCard key={`b2-${i}`} cardStr={c} />
+                ))}
+              </div>
+            </div>
+          );
+        }
+        return (
+          <div className="flex items-center gap-[0.6cqw]">
+            {hand.holeCards.map((c, i) => (
+              <MiniCard key={i} cardStr={c} />
             ))}
-          </>
-        )}
-      </div>
+            {hand.communityCards.length > 0 && (
+              <>
+                <span className="text-cream-700 mx-[1.5cqw] text-[4cqw] font-light">|</span>
+                {hand.communityCards.map((c, i) => (
+                  <MiniCard key={`cc-${i}`} cardStr={c} />
+                ))}
+              </>
+            )}
+          </div>
+        );
+      })()}
     </button>
   );
 }
