@@ -233,6 +233,26 @@
     // 開始時刻のデフォルトを「今日 22:00」(過ぎていれば翌日 22:00) にセット
     setTimeToday(22, 0);
 
+    // ゲーム種別変更時にタイトルを "BabyPLO [{種別}] {M/D}" に書き換える。
+    // ユーザーが既に手動編集していたら触らない。
+    var VARIANT_LABELS = { plo: 'Daily', plo5: '5-Card', plo_double_board_bomb: 'DBBP' };
+    var nameInput = document.getElementById('name');
+    var INITIAL_NAME = nameInput.value;
+    function buildTournamentName(variant) {
+      var d = new Date();
+      var md = (d.getMonth() + 1) + '/' + d.getDate();
+      var label = VARIANT_LABELS[variant] ?? '';
+      return 'BabyPLO ' + (label ? label + ' ' : '') + md;
+    }
+    var lastAutoName = buildTournamentName(document.getElementById('gameVariant').value);
+    nameInput.value = lastAutoName;
+    document.getElementById('gameVariant').addEventListener('change', function() {
+      // ユーザーが手動編集済みなら何もしない
+      if (nameInput.value !== lastAutoName && nameInput.value !== INITIAL_NAME) return;
+      lastAutoName = buildTournamentName(this.value);
+      nameInput.value = lastAutoName;
+    });
+
     async function createTournament() {
       var body = {
         name: document.getElementById('name').value,
