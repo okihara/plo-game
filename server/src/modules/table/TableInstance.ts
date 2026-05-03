@@ -761,7 +761,39 @@ export class TableInstance {
       return;
     }
 
+    // bomb pot: ホール配布 → 1 秒待ち → フロップ公開、の演出を挟む。
+    // 中間 state では boards を空・currentStreet='preflop'・currentPlayerIndex=-1 にして、
+    // 1 秒後に本物の state（フロップ込）を流すことで、クライアントの street 差分検出
+    // (preflop → flop) が後続の 3 枚を新カードとして拾い、既存のフリップ演出に乗る。
+    if (this.gameState.variant === 'plo_double_board_bomb') {
+      const realState = this.gameState;
+      const dealState: GameState = JSON.parse(JSON.stringify(realState));
+      dealState.boards = [[], []];
+      dealState.communityCards = [];
+      dealState.currentStreet = 'preflop';
+      dealState.currentPlayerIndex = -1;
+      this.gameState = dealState;
+      this.broadcastGameState();
+      this.handleBombPotInitialReveal(realState).catch(e => console.error('handleBombPotInitialReveal error:', e));
+      return;
+    }
+
     // Request first action then broadcast (so pendingAction is set)
+    this.requestNextAction();
+    this.broadcastGameState();
+  }
+
+  /**
+   * DBBP のハンド開始時、ホール配布だけが見える中間 state を流したあと、
+   * 1 秒待ってフロップ込みの本物 state に差し替えて再ブロードキャストする。
+   * 戻し時に boards が 0 → 3 になるので、クライアントは既存の新カード演出に乗る。
+   */
+  private async handleBombPotInitialReveal(realState: GameState): Promise<void> {
+    await new Promise<void>(resolve => { setTimeout(resolve, TABLE_CONSTANTS.BOMB_POT_FLOP_REVEAL_DELAY_MS); });
+
+    if (!this.gameState || this.gameState.isHandComplete) return;
+
+    this.gameState = realState;
     this.requestNextAction();
     this.broadcastGameState();
   }
