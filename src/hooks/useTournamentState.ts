@@ -1,13 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { wsService } from '../services/websocket';
-import {
-  scaleClientTournamentStateForDisplay,
-  scaleBlindLevelForDisplay,
-  type TournamentLobbyInfo,
-  type ClientTournamentState,
-  type TournamentEliminationInfo,
-  type TournamentCompletedData,
-  type TournamentPlayerEliminatedData,
+import type {
+  TournamentLobbyInfo,
+  ClientTournamentState,
+  TournamentEliminationInfo,
+  TournamentCompletedData,
+  TournamentPlayerEliminatedData,
 } from '@plo/shared';
 
 // Re-export shared types for components that import from this hook
@@ -37,8 +35,6 @@ export function useTournamentState() {
 
   const eliminatedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const blindNoticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // chipUnit を blind_change イベントから参照するため最新値を ref で保持
-  const chipUnitRef = useRef<number>(1);
 
   const connect = useCallback(async () => {
     if (wsService.isConnected()) {
@@ -145,9 +141,7 @@ export function useTournamentState() {
       onDisconnected: () => setIsConnected(false),
 
       onTournamentState: (state) => {
-        // chip 系列値 (blind level / averageStack) をここで表示単位に揃える
-        chipUnitRef.current = state.chipUnit ?? 1;
-        setTournamentState(scaleClientTournamentStateForDisplay(state));
+        setTournamentState(state);
         // 再接続時: tournament:state が来た = このトーナメントに参加中
         if (state.tournamentId) {
           setRegisteredTournamentId(state.tournamentId);
@@ -165,9 +159,8 @@ export function useTournamentState() {
       },
 
       onTournamentBlindChange: (data) => {
-        // テーブル中央に通知。blind level は raw 値で来るので chipUnit を掛けて表示単位に揃える
-        const displayLevel = scaleBlindLevelForDisplay(data.level, chipUnitRef.current);
-        const msg = `ブラインドアップ\n${displayLevel.smallBlind} / ${displayLevel.bigBlind}\n次のハンドから適用`;
+        // テーブル中央に通知
+        const msg = `ブラインドアップ\n${data.level.smallBlind} / ${data.level.bigBlind}\n次のハンドから適用`;
         if (blindNoticeTimerRef.current) clearTimeout(blindNoticeTimerRef.current);
         setBlindChangeNotice(msg);
         blindNoticeTimerRef.current = setTimeout(() => setBlindChangeNotice(null), 5000);

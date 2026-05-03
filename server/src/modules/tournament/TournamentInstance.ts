@@ -408,8 +408,6 @@ export class TournamentInstance {
       averageStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       gameVariant: this.config.gameVariant,
-      // トナメは内部 1/100 単位。UI が ×100 して表示する
-      chipUnit: 100,
     };
   }
 

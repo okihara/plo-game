@@ -182,7 +182,9 @@ export interface GameState {
   discardPile?: Card[];      // Draw: 捨て札の山（ドロー時のデッキ補充用）
   maxDraws?: number;         // Draw: ドロー回数（1=Single Draw, 3=Triple Draw, デフォルト3）
   validActions?: { action: string; minAmount: number; maxAmount: number }[] | null; // クライアント側でサーバーから受信した有効アクション
-  /** 最小チップ単位。ポット分配時に各勝者の取り分をこの倍数に切り下げ、
-   *  端数は最初の勝者へ寄せる。トーナメント=100、キャッシュ=undefined(1相当)。 */
+  /** 最小チップ単位。
+   *  - ポット分配時に各勝者の取り分をこの倍数に切り下げ、端数は最初の勝者へ寄せる
+   *  - クライアントの bet スライダーが指定できる最小単位
+   *  トーナメント=100、キャッシュ=undefined(1相当)。 */
   chipUnit?: number;
 }

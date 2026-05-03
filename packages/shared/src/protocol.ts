@@ -138,8 +138,8 @@ export interface ClientGameState {
   ante: number;     // Stud: アンテ額
   bringIn: number;  // Stud: ブリングイン額
   validActions: { action: string; minAmount: number; maxAmount: number }[] | null;
-  /** 表示倍率。トーナメントは 100、キャッシュは undefined (=1)。
-   *  クライアントはあらゆるチップ数値の表示時にこれを掛ける。 */
+  /** 最小チップ単位。クライアントの bet スライダーがこの倍数しか選べないように
+   *  step を切り上げる用途。トーナメント=100、キャッシュ=undefined(1相当)。 */
   chipUnit?: number;
 }
 
