@@ -400,7 +400,11 @@ export function HandHistoryPanel({ onClose }: HandHistoryPanelProps = {}) {
         </div>
       )}
       {selectedHand && (
-        <HandDetailDialog hand={selectedHand} onClose={() => setSelectedHand(null)} />
+        <HandDetailDialog
+          hand={selectedHand}
+          onClose={() => setSelectedHand(null)}
+          displayUnit={displayUnit}
+        />
       )}
     </div>
   );

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Share2, Link, Check, Image, FileText, Eye, EyeOff, UserRound } from 'lucide-react';
-import { evaluatePLOHand, evaluateCurrentHand } from '../logic/handEvaluator';
+import { evaluatePLOHand } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
@@ -246,7 +246,7 @@ function StreetHeader({ street, cards, cards2, pot, isFirst }: {
           </div>
         ) : null}
         {pot != null && pot > 0 && (
-          <span className="text-cream-800 text-[3cqw] font-bold">{pot}</span>
+          <span className="ml-auto shrink-0 text-cream-800 text-[3cqw] font-bold">{pot}</span>
         )}
       </div>
     </div>
@@ -278,39 +278,21 @@ function ActionRow({ action, playerName, allSeats, dealerPosition }: {
   );
 }
 
-function PlayerRow({ player, position, communityCards, communityCards2, displayName, anonymousAvatar, onTap }: {
+function PlayerRow({ player, position, displayName, anonymousAvatar, bb, onTap }: {
   player: HandDetailPlayer;
   position: string | null;
-  communityCards: string[];
-  /** Double Board Bomb Pot: 役名を "B1: ... / B2: ..." 形式で組み立てる用 */
-  communityCards2?: string[];
   displayName: string;
   anonymousAvatar: boolean;
+  /** 指定時は startChips を BB 単位で表示。未指定なら生のチップ数。 */
+  bb?: number;
   onTap?: () => void;
 }) {
-  const handName = player.finalHand
-    || (communityCards2 && communityCards2.length >= 3 && player.holeCards.length === 4 && communityCards.length >= 3
-      ? (() => {
-          try {
-            const h1 = evaluateCurrentHand(
-              player.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-              communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-            )?.name;
-            const h2 = evaluateCurrentHand(
-              player.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-              communityCards2.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-            )?.name;
-            if (h1 && h2) return `B1: ${h1} / B2: ${h2}`;
-            return h1 ?? h2 ?? null;
-          } catch { return null; }
-        })()
-      : ((player.holeCards.length === 4 || player.holeCards.length === 5) && communityCards.length >= 3
-        ? evaluateCurrentHand(
-            player.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-            communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-          )?.name
-        : null));
-
+  const stackText = bb && bb > 0
+    ? (() => {
+        const v = player.startChips / bb;
+        return v === Math.floor(v) ? `${v}bb` : `${v.toFixed(1)}bb`;
+      })()
+    : player.startChips.toLocaleString();
   return (
     <div
       className={`rounded-[1.5cqw] px-[2cqw] py-[1.5cqw] border flex items-center gap-[1.5cqw] ${
@@ -338,9 +320,8 @@ function PlayerRow({ player, position, communityCards, communityCards2, displayN
       <div className="flex items-center gap-[0.4cqw] shrink-0">
         {player.holeCards.map((c, j) => <MiniCard key={j} cardStr={c} />)}
       </div>
-      {handName && <span className="text-cream-700 text-[2.5cqw] truncate">{handName}</span>}
-      <span className="ml-auto shrink-0">
-        <ProfitDisplay profit={player.profit} />
+      <span className="ml-auto shrink-0 text-cream-700 text-[2.8cqw]">
+        Stack: {stackText}
       </span>
     </div>
   );
@@ -515,7 +496,7 @@ function ResultSection({
           {hand.rakeAmount != null && hand.rakeAmount > 0 && (
             <span className="text-cream-700 text-[2.5cqw] font-medium">Rake {hand.rakeAmount}</span>
           )}
-          <span className="text-forest text-[3cqw] font-bold">{hand.potSize}</span>
+          <span className="ml-auto shrink-0 text-forest text-[3cqw] font-bold">{hand.potSize}</span>
         </div>
       </div>
       {activePlayers.map((p, i) => {
@@ -546,11 +527,14 @@ export function HandDetailDialog({
   onClose,
   initialHideOpponentNames,
   isPublicPage,
+  displayUnit = 'chips',
 }: {
   hand: HandDetail;
   onClose: () => void;
   initialHideOpponentNames?: boolean;
   isPublicPage?: boolean;
+  /** 'bb' のとき PlayerRow の Stack を BB 表記で表示。デフォルトは生チップ。 */
+  displayUnit?: 'chips' | 'bb';
 }) {
   const allSeats = useMemo(() => hand.players.map(p => p.seatPosition), [hand.players]);
   const normalizedHand = useMemo(() => {
@@ -778,10 +762,9 @@ export function HandDetailDialog({
                 key={i}
                 player={p}
                 position={getPositionName(p.seatPosition, hand.dealerPosition, allSeats)}
-                communityCards={hand.communityCards}
-                communityCards2={hand.communityCards2}
                 displayName={playerLabel(p, hideOpponentNames)}
                 anonymousAvatar={hideOpponentNames && !p.isCurrentUser}
+                bb={displayUnit === 'bb' ? parseBB(hand.blinds) : undefined}
                 onTap={!isPublicPage && p.userId ? () => setProfilePlayer(p) : undefined}
               />
             ))}
