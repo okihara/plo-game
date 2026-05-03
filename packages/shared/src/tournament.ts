@@ -37,6 +37,9 @@ export interface ClientTournamentState {
   averageStack: number;
   payoutStructure: { position: number; amount: number }[];
   gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
+  /** チップ表示倍率。トーナメントは内部 1/100 単位で扱い、UI 表示時に ×chipUnit する。
+   *  blind level / averageStack はサーバーから内部値で送り、クライアントが乗算。 */
+  chipUnit?: number;
 }
 
 // --- Tournament Lobby Info ---

@@ -163,6 +163,7 @@ export class StateTransformer {
       ante: gameState.ante ?? 0,
       bringIn: gameState.bringIn ?? 0,
       validActions: validActions ?? null,
+      chipUnit: gameState.chipUnit,
     };
   }
 }
