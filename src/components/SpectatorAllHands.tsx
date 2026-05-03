@@ -50,7 +50,9 @@ function formatSpectatorStackDisplay(amount: number, useBBNotation: boolean, big
 
 export function SpectatorAllHands({ gameState, holeCardsBySeat }: SpectatorAllHandsProps) {
   const { settings } = useGameSettings();
-  const stackBb = gameState.bigBlind > 0 ? gameState.bigBlind : settings.bigBlind;
+  // bomb pot は bigBlind=0 / ante=N なので ante を BB 相当として扱う
+  const effectiveBb = gameState.bigBlind || gameState.ante;
+  const stackBb = effectiveBb > 0 ? effectiveBb : settings.bigBlind;
 
   const rows = gameState.players
     .map((p, seatIndex) => ({ p, seatIndex }))

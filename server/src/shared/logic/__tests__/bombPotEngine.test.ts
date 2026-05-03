@@ -35,6 +35,7 @@ function checkAroundOneStreet(state: GameState): GameState {
  */
 function buildShowdownState(opts: {
   boards: [Card[], Card[]];
+  /** bomb pot のアンテ額。後方互換のため bigBlind 名で受け付ける。 */
   bigBlind?: number;
   initialChips?: number;
   playersConfig: Array<
@@ -49,8 +50,9 @@ function buildShowdownState(opts: {
 }): GameState {
   const initialChips = opts.initialChips ?? 1000;
   const state = createBombPotGameState(initialChips);
-  state.bigBlind = opts.bigBlind ?? 100;
-  state.smallBlind = Math.floor((opts.bigBlind ?? 100) / 2);
+  state.ante = opts.bigBlind ?? 100;
+  state.bigBlind = 0;
+  state.smallBlind = 0;
   state.boards = [opts.boards[0], opts.boards[1]];
   state.communityCards = opts.boards[0];
   state.currentStreet = 'showdown';
@@ -134,13 +136,14 @@ describe('startBombPotHand', () => {
     }
   });
 
-  it('全員から 1 BB のアンテが徴収される（pot = BB × 6）', () => {
+  it('全員から 1 BB 相当のアンテが徴収される（pot = ante × 6）', () => {
     const state = createBombPotGameState(1000);
-    state.bigBlind = 50;
+    state.ante = 50;
     const after = startBombPotHand(state);
     expect(after.pot).toBe(50 * 6);
     for (const p of after.players) {
-      expect(p.totalBetThisRound).toBe(50);
+      // アンテはサイドポットを作らないため totalBetThisRound には記録しない
+      expect(p.totalBetThisRound).toBe(0);
       expect(p.chips).toBe(1000 - 50);
     }
   });
@@ -152,16 +155,17 @@ describe('startBombPotHand', () => {
     for (const p of after.players) expect(p.currentBet).toBe(0);
   });
 
-  it('チップが BB 未満のプレイヤーは all-in でアンテを払う', () => {
+  it('チップが ante 未満のプレイヤーは all-in でアンテを払う', () => {
     const state = createBombPotGameState(1000);
-    state.bigBlind = 100;
-    state.players[0].chips = 30; // BB に満たない
+    state.ante = 100;
+    state.players[0].chips = 30; // ante に満たない
     const after = startBombPotHand(state);
     expect(after.players[0].chips).toBe(0);
     expect(after.players[0].isAllIn).toBe(true);
-    expect(after.players[0].totalBetThisRound).toBe(30);
-    // 他のプレイヤーは満額
-    expect(after.players[1].totalBetThisRound).toBe(100);
+    // アンテは totalBetThisRound に記録しない (サイドポット対象外)
+    expect(after.players[0].totalBetThisRound).toBe(0);
+    expect(after.players[1].totalBetThisRound).toBe(0);
+    // pot には払った額が積まれている
     expect(after.pot).toBe(30 + 100 * 5);
   });
 
@@ -179,7 +183,7 @@ describe('startBombPotHand', () => {
 
   it('全員がアンテで all-in になった場合は即ランアウト→ showdown 状態で返る', () => {
     const state = createBombPotGameState(1000);
-    state.bigBlind = 100;
+    state.ante = 100;
     // 全員 BB 未満（all-in 対象）
     for (const p of state.players) p.chips = 30;
     const after = startBombPotHand(state);
@@ -267,7 +271,7 @@ describe('applyBombPotAction（ストリート進行）', () => {
 
   it('1 人がベットすると他のプレイヤーには call/raise/fold が出る', () => {
     let s = startBombPotHand(createBombPotGameState(1000));
-    s.bigBlind = 50;
+    s.ante = 50;
     const first = s.currentPlayerIndex;
     s = applyBombPotAction(s, first, 'bet', 100);
     expect(s.currentBet).toBe(100);
@@ -506,6 +510,126 @@ describe('determineBombPotWinner', () => {
     expect(result.players[0].chips - beforeP0).toBe(200);
     // p1 は返却 100 のみ
     expect(result.players[1].chips - beforeP1).toBe(100);
+  });
+
+  // === 新ルール: アンテはサイドポット非対象（短スタック all-in でも勝てば pot 全額獲得）===
+
+  it('アンテで all-in したショートスタックが両ボード勝てば pot 全額を獲得する', () => {
+    // ante=100, p0 chips=30 → all-in 30, p1 chips=200 → 100, p2 chips=200 → 100
+    // pot = 30 + 100 + 100 = 230 (アンテのみ、totalBetThisRound = 0 で記録)
+    // p0 が両ボード勝った場合、refund 無く 230 全額を獲得すべき
+    const state = createBombPotGameState(1000);
+    state.ante = 100;
+    state.players[0].chips = 30;
+    state.players[1].chips = 200;
+    state.players[2].chips = 200;
+    for (let i = 3; i < 6; i++) state.players[i].isSittingOut = true;
+
+    const after = startBombPotHand(state);
+    // アンテ徴収後の状態を直接ショウダウン用に整形
+    after.currentStreet = 'showdown';
+    after.boards = [
+      [card('A', 'h'), card('A', 'd'), card('A', 's'), card('2', 'c'), card('3', 'd')],
+      [card('A', 'c'), card('K', 's'), card('K', 'd'), card('7', 'c'), card('8', 'h')],
+    ];
+    after.communityCards = after.boards[0];
+    // p0 = KK で両ボード勝つ設計
+    after.players[0].holeCards = [card('K', 'h'), card('K', 'c'), card('5', 'd'), card('6', 'd')];
+    after.players[1].holeCards = [card('Q', 'h'), card('Q', 'd'), card('Q', 'c'), card('Q', 's')];
+    after.players[2].holeCards = [card('J', 'h'), card('J', 'd'), card('J', 'c'), card('J', 's')];
+
+    const beforeP0 = after.players[0].chips;
+    const beforeP1 = after.players[1].chips;
+    const beforeP2 = after.players[2].chips;
+    const result = determineBombPotWinner(after);
+
+    // p0 が pot 230 を全額獲得（refund 無し）
+    expect(result.players[0].chips - beforeP0).toBe(230);
+    expect(result.players[1].chips - beforeP1).toBe(0);
+    expect(result.players[2].chips - beforeP2).toBe(0);
+    expect(result.pot).toBe(230);
+  });
+
+  it('アンテのみ + ポストフロップ bet 混合: アンテ主ポットは全 active 対象、bet は side pot', () => {
+    // ante=50: p0 30 (all-in), p1 50, p2 50 → pot から 130 (アンテ分)
+    // post-flop: p1 が 100 bet、p2 が 100 call → totalBetThisRound: p1=100, p2=100
+    // 構築: state.pot = 130 (ante) + 200 (post-flop) = 330
+    const state = buildShowdownState({
+      boards: [
+        // Board1: p0 (KK) が aces full of kings で勝ち
+        [card('A', 'h'), card('A', 'd'), card('A', 's'), card('2', 'c'), card('3', 'd')],
+        // Board2: p2 (66) が quads 6 で勝ち
+        [card('6', 'h'), card('6', 's'), card('7', 'c'), card('8', 'd'), card('9', 'c')],
+      ],
+      bigBlind: 50, // = ante
+      playersConfig: [
+        // p0: KK で board1 勝ち / board2 は弱い
+        { holeCards: [card('K', 'h'), card('K', 'c'), card('4', 'c'), card('4', 's')], totalBetThisRound: 0, isAllIn: true },
+        // p1: QQ で両ボード負ける
+        { holeCards: [card('Q', 'h'), card('Q', 'd'), card('5', 'c'), card('5', 's')], totalBetThisRound: 100 },
+        // p2: 66 で board2 quads 勝ち
+        { holeCards: [card('J', 'h'), card('J', 'd'), card('6', 'c'), card('6', 'd')], totalBetThisRound: 100 },
+        null, null, null,
+      ],
+    });
+    // pot は helper が totalBet 合計 (200) で初期化するので、ante 分 (50*3 - 20 = 130) を後付け加算
+    // 実際は p0 が 30 ante (all-in)、p1 / p2 が 50 ante → 130
+    state.pot = 130 + 200;
+    state.players[0].chips = 0; // p0 は ante で all-in したので残 0
+    state.players[1].chips = 1000 - 50 - 100; // ante 50 + bet 100
+    state.players[2].chips = 1000 - 50 - 100;
+
+    const beforeP0 = state.players[0].chips;
+    const beforeP1 = state.players[1].chips;
+    const beforeP2 = state.players[2].chips;
+    const result = determineBombPotWinner(state);
+
+    // ポット構成:
+    //   - アンテ主ポット: 130 (全 active 対象)
+    //     → board1 65 (p0 win), board2 65 (p2 win)
+    //   - post-flop side pot: 200 (p1 + p2 のみ eligible、p0 は totalBet=0 なので不適格)
+    //     → board1 100 (p1, p0 不適格なら p1 が勝つ?) , board2 100 (p2 win)
+    //
+    // board1 で p0 (KK→AAFull) > p1 (QQ→AAQQQFull) ... 実際は AAA on board + KK = aces full of kings
+    // p1 = AA Q Q Q なので aces full of queens → p0 が強い
+    // しかし post-flop side pot に p0 は不参加 (totalBet=0)
+    // → side pot board1 では p0 不適格なので残った p1 が勝つ
+    expect(result.players[0].chips - beforeP0).toBe(65); // ante 主ポット board1 のみ
+    expect(result.players[1].chips - beforeP1).toBe(100); // side pot board1
+    expect(result.players[2].chips - beforeP2).toBe(65 + 100); // ante board2 + side board2
+    // 合計分配 = 330
+    expect((result.players[0].chips - beforeP0) + (result.players[1].chips - beforeP1) + (result.players[2].chips - beforeP2)).toBe(330);
+  });
+
+  it('全員アンテのみ (post-flop bet 無し) でも アンテ主ポットが全 active に分配される', () => {
+    // ante=100 × 3 → pot=300、post-flop 何も起きずショウダウン
+    const state = buildShowdownState({
+      boards: [
+        // Board1: p0 (KK) full house
+        [card('A', 'h'), card('A', 'd'), card('A', 's'), card('2', 'c'), card('3', 'd')],
+        // Board2: p1 (QQ) full house
+        [card('A', 'c'), card('Q', 'h'), card('Q', 's'), card('7', 'c'), card('8', 'h')],
+      ],
+      bigBlind: 100,
+      playersConfig: [
+        { holeCards: [card('K', 'h'), card('K', 'c'), card('5', 'd'), card('6', 'd')], totalBetThisRound: 0 },
+        { holeCards: [card('Q', 'c'), card('Q', 'd'), card('5', 'c'), card('5', 's')], totalBetThisRound: 0 },
+        { holeCards: [card('2', 'h'), card('3', 's'), card('4', 'd'), card('5', 'h')], totalBetThisRound: 0 },
+        null, null, null,
+      ],
+    });
+    state.pot = 300; // helper の自動 pot=0 を上書き
+
+    const beforeP0 = state.players[0].chips;
+    const beforeP1 = state.players[1].chips;
+    const result = determineBombPotWinner(state);
+
+    // pot 300 を 2 ボードに半分割 → board1=150, board2=150
+    // p0 が board1 勝ち → 150、p1 が board2 勝ち → 150
+    expect(result.players[0].chips - beforeP0).toBe(150);
+    expect(result.players[1].chips - beforeP1).toBe(150);
+    // 分配済み合計 = 300
+    expect(result.winners.reduce((s, w) => s + w.amount, 0)).toBe(300);
   });
 
   it('レーキを差し引いた額が分配される（rakePercent 指定時）', () => {

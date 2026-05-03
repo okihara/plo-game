@@ -48,11 +48,14 @@ export class VariantAdapter {
     if (this.variant === 'omaha_hilo') {
       return createOmahaHiLoGameState(buyInChips, smallBlind, bigBlind);
     }
-    // plo_double_board_bomb も family === 'omaha' だが専用エンジン
+    // plo_double_board_bomb は family === 'omaha' だが専用エンジン。
+    // SB/BB は投稿せず全員アンテのみのため、blind level の bb 値を ante として
+    // 持たせ、smallBlind / bigBlind は 0 で揃える ("sb=0 / bb=0 / ante=N")。
     if (this.variant === 'plo_double_board_bomb') {
       const state = createBombPotGameState(buyInChips);
-      state.smallBlind = smallBlind;
-      state.bigBlind = bigBlind;
+      state.smallBlind = 0;
+      state.bigBlind = 0;
+      state.ante = bigBlind;
       return state;
     }
     switch (this.config.family) {

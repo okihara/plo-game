@@ -59,8 +59,9 @@ export function createBombPotGameState(playerChips: number = 600): GameState {
     currentPlayerIndex: 0,
     currentBet: 0,
     minRaise: 0,
-    smallBlind: 1,
-    bigBlind: 3,
+    // bomb pot は SB/BB を投稿せず全員アンテのみ。"sb=0 / bb=0 / ante=N" で統一表現。
+    smallBlind: 0,
+    bigBlind: 0,
     lastRaiserIndex: -1,
     lastFullRaiseBet: 0,
     handHistory: [],
@@ -68,7 +69,7 @@ export function createBombPotGameState(playerChips: number = 600): GameState {
     winners: [],
     rake: 0,
     variant: 'plo_double_board_bomb',
-    ante: 0,
+    ante: 3, // 後で VariantAdapter / TableInstance が blind level の bb 値で上書き
     bringIn: 0,
     betCount: 0,
     maxBetsPerRound: 0,
@@ -95,7 +96,8 @@ export function startBombPotHand(state: GameState): GameState {
   newState.pot = 0;
   newState.sidePots = [];
   newState.currentBet = 0;
-  newState.minRaise = newState.bigBlind;
+  // bomb pot ではポストフロップの最小ベット = アンテ額（= 1BB 相当）
+  newState.minRaise = newState.ante;
   newState.handHistory = [];
   newState.isHandComplete = false;
   newState.winners = [];
@@ -139,14 +141,19 @@ export function startBombPotHand(state: GameState): GameState {
   }
   assignBlindPostingPositions(newState, newState.dealerPosition, sbIndex, bbIndex, activeCount, 6);
 
-  // === アンテ徴収（全員 1 BB、不足は持っているチップ全部）===
-  const ante = newState.bigBlind;
+  // === アンテ徴収（全員 1 BB 相当、不足は持っているチップ全部）===
+  // 標準ポーカーの ante ルール: アンテはベットではないので side pot を作らない。
+  // 短スタックがアンテで all-in でも勝てば pot 全額を獲得できるよう、
+  // totalBetThisRound には記録せず pot に直接加算する。
+  // post-flop で bet/raise した分のみが totalBetThisRound に乗り、そこから
+  // 通常通り side pot が形成される。
+  const ante = newState.ante;
   for (const p of newState.players) {
     if (p.isSittingOut) continue;
     const paid = Math.min(ante, p.chips);
     p.chips -= paid;
-    p.totalBetThisRound = paid; // sidepot 計算で使う
-    p.currentBet = 0;           // ベッティング上の currentBet は 0（call 不要）
+    p.totalBetThisRound = 0;
+    p.currentBet = 0;
     if (p.chips === 0) p.isAllIn = true;
     newState.pot += paid;
   }
@@ -316,7 +323,8 @@ function moveBombPotToNextStreet(
     p.hasActed = false;
   }
   newState.currentBet = 0;
-  newState.minRaise = newState.bigBlind;
+  // bomb pot: 最小ベット = アンテ額（= 1BB 相当）
+  newState.minRaise = newState.ante;
   newState.lastFullRaiseBet = 0;
 
   const activePlayers = getActivePlayers(newState);
@@ -420,7 +428,8 @@ export function determineBombPotWinner(
     const winner = activePlayers[0];
     let rake = 0;
     if (rakePercent > 0) {
-      rake = calculateRake(newState.pot, newState.bigBlind, rakePercent, rakeCapBB);
+      // bomb pot は bigBlind=0 / ante=N で表現しているため、レーキ cap には ante を使う
+      rake = calculateRake(newState.pot, newState.ante, rakePercent, rakeCapBB);
     }
     newState.rake = rake;
     const winAmount = newState.pot - rake;
@@ -434,23 +443,37 @@ export function determineBombPotWinner(
     dealOneToEachBoard(newState);
   }
 
-  // === Side pot 計算 ===
-  const allPots = calculateSidePots(newState.players);
-  const contestedPots = allPots.filter(p => p.eligiblePlayers.length >= 2);
-  const uncontestedPots = allPots.filter(p => p.eligiblePlayers.length === 1);
+  // === ポット分配の構築 ===
+  // アンテは totalBetThisRound に記録していないため、calculateSidePots は
+  // ポストフロップで bet/raise した分のサイドポットだけを返す。
+  // pot - サイドポット合計 = アンテで集まった分 (= 全 active 対象の主ポット)。
+  const postflopSidePots = calculateSidePots(newState.players);
+  const contestedPostflopPots = postflopSidePots.filter(p => p.eligiblePlayers.length >= 2);
+  const uncontestedPostflopPots = postflopSidePots.filter(p => p.eligiblePlayers.length === 1);
 
-  // 単独 eligible のチップは返却
-  for (const pot of uncontestedPots) {
+  // post-flop で uncontested になった分（自分一人しか出していない bet）は本人に返却
+  for (const pot of uncontestedPostflopPots) {
     const player = newState.players.find(p => p.id === pot.eligiblePlayers[0])!;
     player.chips += pot.amount;
     newState.pot -= pot.amount;
   }
 
+  // pot からポストフロップ contested 分を引いた残りがアンテ主ポット
+  const postflopContestedTotal = contestedPostflopPots.reduce((sum, p) => sum + p.amount, 0);
+  const antePot = newState.pot - postflopContestedTotal;
+
+  // 分配対象ポット = [アンテ主ポット (全 active 対象), ...各 post-flop contested ポット]
+  const contestedPots: { amount: number; eligiblePlayers: number[] }[] = [];
+  if (antePot > 0) {
+    contestedPots.push({ amount: antePot, eligiblePlayers: activePlayers.map(p => p.id) });
+  }
+  contestedPots.push(...contestedPostflopPots);
+
   // レーキ（contested 合計から差し引き）
   const totalContested = contestedPots.reduce((sum, p) => sum + p.amount, 0);
   let rake = 0;
   if (rakePercent > 0 && totalContested > 0) {
-    rake = calculateRake(totalContested, newState.bigBlind, rakePercent, rakeCapBB);
+    rake = calculateRake(totalContested, newState.ante, rakePercent, rakeCapBB);
   }
   newState.rake = rake;
 

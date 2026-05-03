@@ -143,9 +143,9 @@ export function GameTable({
   const isDraw = getVariantConfig(gameState.variant).family === 'draw';
   const isCurrentDrawStreet = isDrawStreet(gameState.currentStreet);
 
-  // bigBlind設定
+  // bigBlind設定 (bomb pot は SB/BB を投稿せず ante のみなので ante を BB 相当として扱う)
   useEffect(() => {
-    setBigBlind(gameState.bigBlind);
+    setBigBlind(gameState.bigBlind || gameState.ante);
   }, [gameState, setBigBlind]);
 
   const myPlayer = mySeat !== null ? gameState.players[mySeat] : null;
