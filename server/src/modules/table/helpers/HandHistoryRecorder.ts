@@ -8,12 +8,18 @@ import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
 
 /** ハンド履歴記録のインターフェイス */
 export interface IHandHistoryRecorder {
-  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void;
+  /**
+   * ハンド開始時 (= variantAdapter.startHand を呼ぶ前) に呼ぶ。
+   * このタイミングで chips を撮ることでブラインド/アンテ徴収前の値が保存され、
+   * profit = endChips - startChips が正しく "自分の投資を引いた純利益" になる。
+   * blinds 文字列もここで snapshot し、ハンド中の level up で値が変わっても
+   * 保存される値はそのハンド開始時のものになる。
+   */
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, blinds: string): void;
   setAllInEVProfits(evProfits: Map<number, number>): void;
   getStartChips(): Map<number, number>;
   recordHandComplete(
     tableId: string,
-    blinds: string,
     gameState: GameState,
     seats: (SeatInfo | null)[]
   ): Promise<void>;
@@ -23,12 +29,11 @@ export interface IHandHistoryRecorder {
 export class NullHandHistoryRecorder implements IHandHistoryRecorder {
   private startChips = new Map<number, number>();
 
-  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, _blinds: string): void {
     this.startChips.clear();
     for (let i = 0; i < seats.length; i++) {
       if (seats[i]) {
-        const chips = gameState.players[i].chips + gameState.players[i].totalBetThisRound;
-        this.startChips.set(i, chips);
+        this.startChips.set(i, gameState.players[i].chips);
       }
     }
   }
@@ -58,6 +63,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
   private allInEVProfits: Map<number, number> | null = null;
+  private blinds: string = '';
   private readonly tournamentId: string | null;
 
   constructor(options?: { tournamentId?: string }) {
@@ -65,16 +71,21 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   }
 
   /**
-   * ハンド開始時に呼ぶ。開始時チップを記録する。
+   * ハンド開始時 (variantAdapter.startHand を呼ぶ前) に呼ぶ。
+   * ブラインド/アンテ徴収前の chips と、そのハンドで適用される blinds 文字列を
+   * snapshot として保存する。
    */
-  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState): void {
+  recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, blinds: string): void {
     this.handCount++;
     this.startChips.clear();
     this.allInEVProfits = null;
+    this.blinds = blinds;
 
     for (let i = 0; i < seats.length; i++) {
       if (seats[i]) {
-        // ブラインド差し引き前のチップを復元
+        // startHand を呼ぶ前なので chips はそのまま開始時の値。
+        // ハンド完了時の cleanup で totalBetThisRound は 0 になっているはずだが、
+        // 念のため加算しておく (再呼び出し等の防御)。
         const chips = gameState.players[i].chips + gameState.players[i].totalBetThisRound;
         this.startChips.set(i, chips);
       }
@@ -96,7 +107,6 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
    */
   async recordHandComplete(
     tableId: string,
-    blinds: string,
     gameState: GameState,
     seats: (SeatInfo | null)[]
   ): Promise<void> {
@@ -185,7 +195,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           tableId,
           ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
           handNumber: this.handCount,
-          blinds,
+          blinds: this.blinds,
           communityCards: serializeCards(board1),
           communityCards2: serializeCards(board2),
           potSize: gameState.pot,

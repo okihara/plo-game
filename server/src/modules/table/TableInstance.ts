@@ -712,6 +712,12 @@ export class TableInstance {
       }
     }
 
+    // ハンドヒストリー用スナップショット記録 (startHand を呼ぶ前に取る:
+    // ブラインド/アンテ徴収前の chips と、このハンドで適用される blinds 文字列を保存。
+    // bomb pot のように totalBetThisRound に乗らない徴収方式でも startChips が
+    // 正しく開始時の値になり、Result の profit が「自分の投資を引いた純利益」になる)
+    this.historyRecorder.recordHandStart(seats, this.gameState, this.blinds);
+
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
     this.lastDealerPosition = this.gameState.dealerPosition;
@@ -734,9 +740,6 @@ export class TableInstance {
       }
       this.emitHoleCardsToSpectators(i);
     }
-
-    // ハンドヒストリー用スナップショット記録
-    this.historyRecorder.recordHandStart(seats, this.gameState);
 
     // bomb pot: 全員がアンテで all-in になり startBombPotHand が即ランアウト
     // → showdown 状態で返ってくるケース。requestNextAction は isHandComplete を
@@ -1055,7 +1058,6 @@ export class TableInstance {
     };
     this.historyRecorder.recordHandComplete(
       this.id,
-      this.blinds,
       gameStateSnapshot,
       seatsSnapshot
     ).catch(err => console.error('Hand history save failed:', err));
