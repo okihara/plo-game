@@ -39,6 +39,16 @@ export const DEFAULT_BLIND_SCHEDULE: BlindLevel[] = [
   { level: 31, smallBlind: 200000, bigBlind: 400000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
 ] as const;
 
+// DBBP 用デフォルトスケジュール (sb=0/bb=0/ante=N)
+// DEFAULT_BLIND_SCHEDULE と同じステップだが ante フィールドに値を入れる
+export const DEFAULT_BOMB_POT_BLIND_SCHEDULE: BlindLevel[] = DEFAULT_BLIND_SCHEDULE.map(l => ({
+  level: l.level,
+  smallBlind: 0,
+  bigBlind: 0,
+  ante: l.bigBlind,
+  durationMinutes: l.durationMinutes,
+}));
+
 // デフォルト初期チップ
 export const DEFAULT_STARTING_CHIPS = 30000;
 

@@ -2,7 +2,7 @@ import { nanoid } from 'nanoid';
 import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
 import { TournamentConfig } from './types.js';
-import { DEFAULT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
+import { DEFAULT_BLIND_SCHEDULE, DEFAULT_BOMB_POT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { prisma } from '../../config/database.js';
 import { hasWeeklyChampionBadge } from '../badges/badgeService.js';
@@ -169,7 +169,11 @@ export function createTournamentFromConfig(
     minPlayers: options?.minPlayers ?? DEFAULT_MIN_PLAYERS,
     maxPlayers: options?.maxPlayers ?? DEFAULT_MAX_PLAYERS,
     playersPerTable: options?.playersPerTable ?? PLAYERS_PER_TABLE,
-    blindSchedule: options?.blindSchedule ?? DEFAULT_BLIND_SCHEDULE,
+    // variant に応じてデフォルトスケジュールを切り替え
+    blindSchedule: options?.blindSchedule
+      ?? (options?.gameVariant === 'plo_double_board_bomb'
+        ? DEFAULT_BOMB_POT_BLIND_SCHEDULE
+        : DEFAULT_BLIND_SCHEDULE),
     registrationLevels: options?.registrationLevels ?? DEFAULT_REGISTRATION_LEVELS,
     payoutPercentage: options?.payoutPercentage ?? [],
     startCondition: options?.startCondition ?? 'manual',
