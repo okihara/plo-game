@@ -575,20 +575,14 @@ function format27LowName(values: number[]): string {
 /**
  * 8-or-better ロー5枚ハンド評価
  * - Razzと同じA-5ローボール（Ace=1、ストレート/フラッシュ無視）
- * - クオリファイ条件: 5枚すべて8以下（ペアなしの場合）
+ * - クオリファイ条件: 5枚すべて8以下 かつ 5ランクすべて異なる（ペア不可）
  * - クオリファイしない場合は null を返す
  */
 function evaluate8OrBetterFiveCardLow(cards: Card[]): HandRank | null {
-  const hand = evaluateRazzFiveCardHand(cards);
-
-  // ノーペア（rank=1）でないとクオリファイしにくいが、
-  // ペアありでもクオリファイ自体は可能（ただし弱い）
-  // クオリファイ条件: 5枚のユニーク値がすべて8以下
   const values = cards.map(c => getRazzRankValue(c.rank));
-  const allEightOrLower = values.every(v => v <= 8);
-  if (!allEightOrLower) return null;
-
-  return hand;
+  if (!values.every(v => v <= 8)) return null;
+  if (new Set(values).size !== 5) return null;  // ペアあり = ロー不成立
+  return evaluateRazzFiveCardHand(cards);
 }
 
 /**
