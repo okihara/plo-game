@@ -88,7 +88,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [isChangingTable, setIsChangingTable] = useState(false);
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
-  const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
+  const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]>([]);
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
@@ -389,6 +389,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
               playerId: seat,  // -1 = 不明（UI側でハイライトされないだけ）
               amount: w.amount,
               handName: w.handName,
+              ...(w.hiLoType ? { hiLoType: w.hiLoType } : {}),
             };
           });
           setWinners(convertedWinners);

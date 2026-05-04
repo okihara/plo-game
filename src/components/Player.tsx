@@ -24,6 +24,8 @@ interface PlayerProps {
   labelColor?: string;
   /** DBBP: このプレイヤーが勝ったボードの 0-indexed 配列（[0], [1], [0,1]）。非DBBP では未定義 */
   wonBoards?: number[];
+  /** Hi-Lo: このプレイヤーが勝ったサイドの配列（['high'], ['low'], ['high','low']）。非Hi-Lo では未定義 */
+  wonHiLoSides?: ('high' | 'low')[];
 }
 
 function formatAction(
@@ -95,6 +97,7 @@ export function Player({
   variant = 'plo',
   labelColor,
   wonBoards,
+  wonHiLoSides,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   const currentVariant = variant;
@@ -276,6 +279,32 @@ export function Player({
                     </span>
                   );
                 })}
+              </div>
+            </div>
+          );
+        }
+
+        // Hi-Lo は常に 2 段表示。ロー不成立時は下段を "Lo なし" と表示
+        if (currentVariant === 'plo_hilo' || currentVariant === 'omaha_hilo' || currentVariant === 'stud_hilo') {
+          const hasLow = handName.includes(' / ');
+          const [hiName, loName] = hasLow ? handName.split(' / ') : [handName, 'Lo なし'];
+          const sides: { label: string; won: boolean; available: boolean }[] = [
+            { label: hiName, won: wonHiLoSides?.includes('high') ?? false, available: true },
+            { label: loName, won: wonHiLoSides?.includes('low') ?? false, available: hasLow },
+          ];
+          return (
+            <div className="absolute left-1/2 -translate-x-1/2 z-[46]" style={{ top: '7cqw' }}>
+              <div className="w-[37cqw] flex flex-col rounded bg-black/90 overflow-hidden">
+                {sides.map((s, i) => (
+                  <span
+                    key={i}
+                    className={`text-[3cqw] h-[5cqw] inline-flex items-center justify-center whitespace-nowrap ${
+                      s.won ? 'text-amber-300 font-bold' : s.available ? 'text-gray-500' : 'text-gray-500 italic'
+                    }`}
+                  >
+                    {s.label}
+                  </span>
+                ))}
               </div>
             </div>
           );

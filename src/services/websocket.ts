@@ -33,10 +33,10 @@ export type WsListeners = {
   onHoleCards?: (data: { cards: Card[]; seatIndex?: number }) => void;
   onActionTaken?: (data: { playerId: string; action: Action; amount: number; drawCount?: number }) => void;
   onShowdown?: (data: {
-    winners: { playerId: string; amount: number; handName: string; cards: Card[] }[];
+    winners: { playerId: string; amount: number; handName: string; cards: Card[]; hiLoType?: 'high' | 'low' | 'scoop' }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
-  onHandComplete?: (winners: { playerId: string; amount: number; handName: string }[]) => void;
+  onHandComplete?: (winners: { playerId: string; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]) => void;
   onTableChanged?: (tableId: string, seat: number) => void;
   onBusted?: (message: string) => void;
   onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
