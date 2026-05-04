@@ -3,7 +3,7 @@
 import { GameState, Card, GameAction } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
-import { evaluatePLOHand, evaluateStudHand } from '../../../shared/logic/handEvaluator.js';
+import { evaluatePLOHand, evaluateStudHand, formatHandName } from '../../../shared/logic/handEvaluator.js';
 import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
 
 /** ハンド履歴記録のインターフェイス */
@@ -153,8 +153,8 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           if (isBombPot && !player.folded && player.holeCards.length === 4
               && gameState.boards![0].length === 5 && gameState.boards![1].length === 5) {
             try {
-              const h1 = evaluatePLOHand(player.holeCards, gameState.boards![0]).name;
-              const h2 = evaluatePLOHand(player.holeCards, gameState.boards![1]).name;
+              const h1 = formatHandName(evaluatePLOHand(player.holeCards, gameState.boards![0]));
+              const h2 = formatHandName(evaluatePLOHand(player.holeCards, gameState.boards![1]));
               finalHand = `B1: ${h1} / B2: ${h2}`;
             } catch (e) {
               console.warn('Bomb pot hand evaluation failed for seat', seatIndex, e);
@@ -163,7 +163,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             finalHand = winnerEntry.handName;
           } else if (!player.folded && (player.holeCards.length === 4 || player.holeCards.length === 5) && gameState.communityCards.length === 5) {
             try {
-              finalHand = evaluatePLOHand(player.holeCards, gameState.communityCards).name || null;
+              finalHand = formatHandName(evaluatePLOHand(player.holeCards, gameState.communityCards)) || null;
             } catch (e) {
               console.warn('Hand evaluation failed for seat', seatIndex, e);
             }

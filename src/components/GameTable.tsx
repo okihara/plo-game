@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_DISPLAY_NAMES } from '../logic';
-import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History, Copy, Check } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
@@ -160,12 +160,12 @@ export function GameTable({
       }
       switch(gameState.variant) {
         case 'stud':
-          return evaluateStudHand(myHoleCards).name;
+          return formatHandName(evaluateStudHand(myHoleCards));
         case 'razz':
           return evaluateRazzHand(myHoleCards).name;
         case 'stud_hilo': {
           const { high, low } = evaluateStudHiLoHand(myHoleCards);
-          return low ? `${high.name} / ${low.name}` : high.name;
+          return low ? `${formatHandName(high)} / ${low.name}` : formatHandName(high);
         }
         default:
           return undefined;
@@ -180,19 +180,23 @@ export function GameTable({
     if (gameState.variant === 'omaha_hilo') {
       const result = evaluateCurrentOmahaHiLoHand(myHoleCards, gameState.communityCards);
       if (!result) return undefined;
-      return result.low ? `${result.high.name} / ${result.low.name}` : result.high.name;
+      return result.low ? `${formatHandName(result.high)} / ${result.low.name}` : formatHandName(result.high);
     }
     if (variantConfig.family === 'holdem') {
-      return evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards)?.name;
+      const r = evaluateCurrentHoldemHand(myHoleCards, gameState.communityCards);
+      return r ? formatHandName(r) : undefined;
     }
     // DBBP は 2 ボードを別々に評価し "B1: X / B2: Y" で表示
     if (gameState.variant === 'plo_double_board_bomb' && gameState.boards?.length === 2) {
-      const h1 = evaluateCurrentHand(myHoleCards, gameState.boards[0])?.name;
-      const h2 = evaluateCurrentHand(myHoleCards, gameState.boards[1])?.name;
+      const r1 = evaluateCurrentHand(myHoleCards, gameState.boards[0]);
+      const r2 = evaluateCurrentHand(myHoleCards, gameState.boards[1]);
+      const h1 = r1 ? formatHandName(r1) : undefined;
+      const h2 = r2 ? formatHandName(r2) : undefined;
       if (!h1 && !h2) return undefined;
       return `B1: ${h1 ?? '—'} / B2: ${h2 ?? '—'}`;
     }
-    return evaluateCurrentHand(myHoleCards, gameState.communityCards)?.name;
+    const r = evaluateCurrentHand(myHoleCards, gameState.communityCards);
+    return r ? formatHandName(r) : undefined;
   }, [myHoleCards, gameState.communityCards, gameState.boards, gameState.variant]);
 
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');

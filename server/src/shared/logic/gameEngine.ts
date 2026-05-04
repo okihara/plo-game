@@ -1,6 +1,6 @@
 import { GameState, Player, Position, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
-import { evaluatePLOHand, compareHands } from './handEvaluator.js';
+import { evaluatePLOHand, compareHands, formatHandName } from './handEvaluator.js';
 
 // ポーカーテーブルの6つのポジション（ディーラーボタンから時計回り）
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
@@ -818,7 +818,7 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
       } else {
         winnerAmounts.set(potWinners[i].playerId, {
           amount,
-          handName: potWinners[i].hand.name,
+          handName: formatHandName(potWinners[i].hand),
         });
       }
     }
