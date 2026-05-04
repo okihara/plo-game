@@ -22,6 +22,8 @@ interface PlayerProps {
   onAvatarClick?: () => void;
   variant?: GameVariant;
   labelColor?: string;
+  /** DBBP: このプレイヤーが勝ったボードの 0-indexed 配列（[0], [1], [0,1]）。非DBBP では未定義 */
+  wonBoards?: number[];
 }
 
 function formatAction(
@@ -92,6 +94,7 @@ export function Player({
   onAvatarClick,
   variant = 'plo',
   labelColor,
+  wonBoards,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   const currentVariant = variant;
@@ -255,6 +258,29 @@ export function Player({
       {/* Hand Name (showdown) */}
       {(showdownHandName || winHandName) && !player.folded && (() => {
         const handName = (showdownHandName || winHandName) as string;
+
+        // DBBP は "B1: X / B2: Y" 形式を 2 段表示し、勝ったボードのみハイライト
+        if (currentVariant === 'plo_double_board_bomb' && handName.includes(' / ')) {
+          const lines = handName.split(' / ');
+          return (
+            <div className="absolute left-1/2 -translate-x-1/2 z-[46]" style={{ top: '7cqw' }}>
+              <div className="w-[37cqw] flex flex-col rounded bg-black/90 overflow-hidden">
+                {lines.map((line, i) => {
+                  const won = wonBoards?.includes(i) ?? false;
+                  return (
+                    <span
+                      key={i}
+                      className={`text-[3cqw] h-[5cqw] inline-flex items-center justify-center whitespace-nowrap ${won ? 'text-amber-300 font-bold' : 'text-gray-500'}`}
+                    >
+                      {line}
+                    </span>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        }
+
         const fontSize = handName.length >= 10 ? 'text-[2.0cqw]' : 'text-[4cqw]';
         return (
           <div className="absolute left-1/2 -translate-x-1/2 z-[46]" style={{ top: '7cqw' }}>
