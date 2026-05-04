@@ -177,7 +177,7 @@ export function GameTable({
       }
       return undefined;
     }
-    if (gameState.variant === 'omaha_hilo') {
+    if (gameState.variant === 'omaha_hilo' || gameState.variant === 'plo_hilo') {
       const result = evaluateCurrentOmahaHiLoHand(myHoleCards, gameState.communityCards);
       if (!result) return undefined;
       return result.low ? `${result.high.name} / ${result.low.name}` : result.high.name;
