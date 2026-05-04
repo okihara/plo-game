@@ -7,7 +7,7 @@ import {
   calculateRake,
   assignBlindPostingPositions,
 } from './gameEngine.js';
-import { evaluate27LowHand, compare27LowHands } from './handEvaluator.js';
+import { evaluate27LowHand, compare27LowHands, formatHandName } from './handEvaluator.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
@@ -727,7 +727,7 @@ export function determineDrawWinner(
       } else {
         winnerAmounts.set(potWinners[i].playerId, {
           amount,
-          handName: potWinners[i].hand.name,
+          handName: formatHandName(potWinners[i].hand),
         });
       }
     }

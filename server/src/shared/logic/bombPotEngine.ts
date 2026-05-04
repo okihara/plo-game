@@ -10,7 +10,7 @@
 
 import { GameState, Player, Position, Action, Card } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
-import { evaluatePLOHand, compareHands } from './handEvaluator.js';
+import { evaluatePLOHand, compareHands, formatHandName } from './handEvaluator.js';
 import {
   assignBlindPostingPositions,
   calculateRake,
@@ -540,7 +540,7 @@ export function determineBombPotWinner(
         newState.winners.push({
           playerId: top[i].playerId,
           amount: amt,
-          handName: `Board ${b + 1}: ${top[i].hand.name}`,
+          handName: `Board ${b + 1}: ${formatHandName(top[i].hand)}`,
         });
       }
     }

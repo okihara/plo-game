@@ -11,7 +11,7 @@ import {
   calculateRake,
   assignBlindPostingPositions,
 } from './gameEngine.js';
-import { evaluateHoldemHand, compareHands } from './handEvaluator.js';
+import { evaluateHoldemHand, compareHands, formatHandName } from './handEvaluator.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
@@ -616,7 +616,7 @@ export function determineLimitHoldemWinner(state: GameState, rakePercent: number
       } else {
         winnerAmounts.set(potWinners[i].playerId, {
           amount,
-          handName: potWinners[i].hand.name,
+          handName: formatHandName(potWinners[i].hand),
         });
       }
     }

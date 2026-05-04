@@ -1,6 +1,6 @@
 import { GameState, Player, Position, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
-import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands } from './handEvaluator.js';
+import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands, formatHandName } from './handEvaluator.js';
 import { resolveHiLoShowdown } from './hiLoSplitPot.js';
 
 // ポーカーテーブルの6つのポジション（ディーラーボタンから時計回り）
@@ -842,7 +842,7 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
       } else {
         winnerAmounts.set(potWinners[i].playerId, {
           amount,
-          handName: potWinners[i].hand.name,
+          handName: formatHandName(potWinners[i].hand),
         });
       }
     }

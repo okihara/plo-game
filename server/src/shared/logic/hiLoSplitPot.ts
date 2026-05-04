@@ -4,7 +4,7 @@
  */
 
 import { HandRank } from './types.js';
-import { compareHands, compareLowHands } from './handEvaluator.js';
+import { compareHands, compareLowHands, formatHandName } from './handEvaluator.js';
 import { ShowdownPlayer, ShowdownPot, PotWinner } from './studVariantRules.js';
 
 export interface HiLoHand {
@@ -91,7 +91,7 @@ export function resolveHiLoShowdown(
 
       for (let i = 0; i < highWinners.length; i++) {
         const amount = winAmount + (i === 0 ? remainder : 0);
-        addToWinnerMap(winnerMap, highWinners[i].playerId, amount, highWinners[i].hand.name, '', true, false);
+        addToWinnerMap(winnerMap, highWinners[i].playerId, amount, formatHandName(highWinners[i].hand), '', true, false);
       }
     } else {
       // ハイ/ロー スプリット
@@ -103,7 +103,7 @@ export function resolveHiLoShowdown(
       const highRemainder = highHalf % highWinners.length;
       for (let i = 0; i < highWinners.length; i++) {
         const amount = highWin + (i === 0 ? highRemainder : 0);
-        addToWinnerMap(winnerMap, highWinners[i].playerId, amount, highWinners[i].hand.name, '', true, false);
+        addToWinnerMap(winnerMap, highWinners[i].playerId, amount, formatHandName(highWinners[i].hand), '', true, false);
       }
 
       // ロー分配

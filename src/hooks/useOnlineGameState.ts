@@ -413,7 +413,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
             const seat = cs.players.findIndex(pl => pl?.odId === w.playerId);
             if (seat >= 0) {
               cardsMap.set(seat, w.cards);
-              if (w.handName) handNamesMap.set(seat, w.handName);
+              // showdownPlayers の役名は両ボード/両側の完全形 ("B1: X / B2: Y", "Hi / Lo")。
+              // winners[].handName は単一ボード/単一側の部分形 ("Board 1: X") なので
+              // 既に handNamesMap にある席は上書きしない。
+              if (w.handName && !handNamesMap.has(seat)) handNamesMap.set(seat, w.handName);
             }
           }
         }
