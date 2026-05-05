@@ -161,6 +161,20 @@ export function PokerTable({
                 })
                 .filter(b => b >= 0)
             : undefined;
+          // Hi-Lo: winners[].hiLoType から勝ったサイドを抽出（scoop は両方）
+          const isHiLoVariant =
+            state.variant === 'plo_hilo' ||
+            state.variant === 'omaha_hilo' ||
+            state.variant === 'stud_hilo';
+          const wonHiLoSides: ('high' | 'low')[] | undefined = isHiLoVariant
+            ? playerWins.flatMap(w =>
+                w.hiLoType === 'scoop'
+                  ? (['high', 'low'] as const)
+                  : w.hiLoType === 'high' || w.hiLoType === 'low'
+                    ? [w.hiLoType]
+                    : []
+              )
+            : undefined;
           return (
             <Player
               key={player.id}
@@ -181,6 +195,7 @@ export function PokerTable({
               variant={state.variant}
               labelColor={player.odId ? LABEL_COLORS.find(c => c.id === getLabel?.(player.odId!)?.color)?.hex : undefined}
               wonBoards={wonBoards}
+              wonHiLoSides={wonHiLoSides}
             />
           );
         })}

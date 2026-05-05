@@ -44,6 +44,7 @@ const sampleCardsDraw: CardType[] = [
 const variantOptions: { value: GameVariant; label: string }[] = [
   { value: 'plo', label: 'PLO (Omaha)' },
   { value: 'plo5', label: 'PLO5 (5 Card Omaha)' },
+  { value: 'plo_hilo', label: 'PLO8 (PLO Hi-Lo)' },
   { value: 'plo_double_board_bomb', label: 'DBBP (Double Board Bomb Pot)' },
   { value: 'limit_holdem', label: "Limit Hold'em" },
   { value: 'stud', label: '7 Card Stud' },
@@ -58,6 +59,14 @@ const DBBP_WON_BOARDS: Record<DbbpWinState, number[]> = {
   b1: [0],
   b2: [1],
   scoop: [0, 1],
+};
+
+type HiLoWinState = 'none' | 'hi' | 'lo' | 'scoop';
+const HI_LO_WON_SIDES: Record<HiLoWinState, ('high' | 'low')[]> = {
+  none: [],
+  hi: ['high'],
+  lo: ['low'],
+  scoop: ['high', 'low'],
 };
 
 function getSampleCards(variant: GameVariant): CardType[] {
@@ -105,9 +114,12 @@ export function PlayerDebug() {
   const [timerStartTime, setTimerStartTime] = useState<number | null>(null);
   const [handNameOption, setHandNameOption] = useState<string>('');
   const [dbbpWinState, setDbbpWinState] = useState<DbbpWinState>('none');
+  const [hiLoWinState, setHiLoWinState] = useState<HiLoWinState>('none');
 
   const isDBBP = variant === 'plo_double_board_bomb';
   const dbbpWonBoards = isDBBP ? DBBP_WON_BOARDS[dbbpWinState] : undefined;
+  const isHiLo = variant === 'plo_hilo' || variant === 'omaha_hilo' || variant === 'stud_hilo';
+  const hiLoWonSides = isHiLo ? HI_LO_WON_SIDES[hiLoWinState] : undefined;
 
   // Create player based on state
   const player = createPlayer('Player', {
@@ -350,6 +362,35 @@ export function PlayerDebug() {
                     </div>
                   )}
 
+                  {isHiLo && (
+                    <div>
+                      <label className="text-sm text-cream-700 block mb-1">Hi-Lo 勝ったサイド</label>
+                      <div className="space-y-1">
+                        {[
+                          { value: 'none', label: '勝ち無し（敗者）' },
+                          { value: 'hi', label: 'Hi のみ勝ち' },
+                          { value: 'lo', label: 'Lo のみ勝ち' },
+                          { value: 'scoop', label: 'スクープ（Hi + Lo）' },
+                        ].map(({ value, label }) => (
+                          <label key={value} className="flex items-center gap-3 cursor-pointer hover:bg-cream-100 p-2 rounded">
+                            <input
+                              type="radio"
+                              name="hiLoWinState"
+                              value={value}
+                              checked={hiLoWinState === value}
+                              onChange={(e) => setHiLoWinState(e.target.value as HiLoWinState)}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-sm">{label}</span>
+                          </label>
+                        ))}
+                      </div>
+                      <p className="text-xs text-cream-600 mt-1">
+                        ※ 役名は上の「役名を表示」で「Hi-Lo（スクープ）」のいずれかを選んでください
+                      </p>
+                    </div>
+                  )}
+
                   {showBet && (
                     <div className="ml-7 mt-2">
                       <label className="text-sm text-cream-700 block mb-1">ベット額</label>
@@ -416,12 +457,19 @@ export function PlayerDebug() {
                   <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
                     <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
                       {[0, 1, 2, 3, 4, 5].map((posIndex) => {
-                        // DBBP は dbbpWonBoards を winner / winAmount の真実とする
+                        // DBBP / Hi-Lo は wonSides を winner / winAmount の真実とする
                         const dbbpWinCount = dbbpWonBoards?.length ?? 0;
-                        const playerIsWinner = isDBBP ? dbbpWinCount > 0 : isWinner;
+                        const hiLoWinCount = hiLoWonSides?.length ?? 0;
+                        const playerIsWinner = isDBBP
+                          ? dbbpWinCount > 0
+                          : isHiLo
+                            ? hiLoWinCount > 0
+                            : isWinner;
                         const playerWinAmount = isDBBP
                           ? (dbbpWinCount > 0 ? dbbpWinCount * 500 : undefined)
-                          : (isWinner ? 500 : undefined);
+                          : isHiLo
+                            ? (hiLoWinCount > 0 ? hiLoWinCount * 500 : undefined)
+                            : (isWinner ? 500 : undefined);
                         return (
                           <Player
                             key={posIndex}
@@ -440,6 +488,7 @@ export function PlayerDebug() {
                             actionTimeoutMs={isTimerActive ? 15000 : null}
                             variant={variant}
                             wonBoards={dbbpWonBoards}
+                            wonHiLoSides={hiLoWonSides}
                           />
                         );
                       })}

@@ -122,7 +122,7 @@ export class VariantAdapter {
    */
   evaluateHandName(player: Player, communityCards: Card[], boards?: Card[][]): string {
     try {
-      if (this.variant === 'omaha_hilo') {
+      if (this.variant === 'omaha_hilo' || this.variant === 'plo_hilo') {
         if (communityCards.length === 5 && player.holeCards.length === 4) {
           const { high, low } = evaluateOmahaHiLoHand(player.holeCards, communityCards);
           return low ? `${formatHandName(high)} / ${low.name}` : formatHandName(high);

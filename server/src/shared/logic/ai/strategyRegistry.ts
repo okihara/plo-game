@@ -19,6 +19,7 @@ const strategies: Record<GameVariant, AIVariantStrategy> = {
   'no_limit_2-7_single_draw': new DrawStrategy(),
   'limit_holdem': new LimitHoldemStrategy(),
   'omaha_hilo': new PLOStrategy(),  // Omaha系なのでPLOストラテジーを流用
+  'plo_hilo': new PLOStrategy(),    // PLO Hi-Lo: PLO ストラテジーを流用 (Hi-Lo 評価は今後)
   'stud_hilo': new StudStrategy(),  // Stud系なのでStudストラテジーを流用
   'plo_double_board_bomb': new PLOStrategy(),  // 暫定: PLO ストラテジーを流用 (ダブルボード対応の equity 評価は今後)
 };
