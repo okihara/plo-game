@@ -1,4 +1,4 @@
-import { Card as CardType, getPreFlopEvaluation, calculateOuts, evaluatePLOHand, HandRank } from '../logic';
+import { Card as CardType, getPreFlopEvaluation, calculateOuts, evaluatePLOHand, HandRank, formatHandName } from '../logic';
 import { useMemo } from 'react';
 
 interface HandAnalysisOverlayProps {
@@ -67,7 +67,7 @@ export function HandAnalysisOverlay({
               {postflopInfo.handRank && (
                 <div className="flex justify-between">
                   <span className="text-gray-400">役</span>
-                  <span className="text-yellow-300 font-bold">{postflopInfo.handRank.name}</span>
+                  <span className="text-yellow-300 font-bold">{formatHandName(postflopInfo.handRank)}</span>
                 </div>
               )}
               {postflopInfo.outs && (

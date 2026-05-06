@@ -169,6 +169,7 @@
           <select id="gameVariant">
             <option value="plo">PLO (4-card Omaha)</option>
             <option value="plo5">PLO5 (5-card Omaha)</option>
+            <option value="plo_hilo">PLO8 (Pot Limit Omaha Hi-Lo)</option>
             <option value="plo_double_board_bomb">DBBP (Double Board Bomb Pot)</option>
           </select>
         </div>
@@ -235,7 +236,7 @@
 
     // ゲーム種別変更時にタイトルを "BabyPLO [{種別}] {M/D}" に書き換える。
     // ユーザーが既に手動編集していたら触らない。
-    var VARIANT_LABELS = { plo: 'Daily', plo5: '5-Card', plo_double_board_bomb: 'DBBP' };
+    var VARIANT_LABELS = { plo: 'Daily', plo5: '5-Card', plo_hilo: 'PLO8', plo_double_board_bomb: 'DBBP' };
     var nameInput = document.getElementById('name');
     var INITIAL_NAME = nameInput.value;
     function buildTournamentName(variant) {

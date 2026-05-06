@@ -160,7 +160,7 @@ export function useTournamentState() {
 
       onTournamentBlindChange: (data) => {
         // テーブル中央に通知
-        const msg = `ブラインドアップ\n${data.level.smallBlind} / ${data.level.bigBlind}\n次のハンドから適用`;
+        const msg = `ブラインドアップ\n${data.level.smallBlind} / ${data.level.bigBlind}${data.level.ante >= 1 ? ` (ante ${data.level.ante})` : ''}\n次のハンドから適用`;
         if (blindNoticeTimerRef.current) clearTimeout(blindNoticeTimerRef.current);
         setBlindChangeNotice(msg);
         blindNoticeTimerRef.current = setTimeout(() => setBlindChangeNotice(null), 5000);

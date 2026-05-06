@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { HandDetailDialog } from './HandDetailDialog';
 import type { HandDetail, HandDetailPlayer } from './HandDetailDialog';
-import { evaluateCurrentHand } from '../logic/handEvaluator';
+import { evaluateCurrentHand, formatHandName } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { MiniCard, ProfitDisplay, PositionBadge, getPositionName, parseBB } from './HandHistoryUtils';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
@@ -79,21 +79,24 @@ function HandSummaryCard({
               if (isBombPot && hand.holeCards.length === 4
                   && hand.communityCards.length >= 3 && hand.communityCards2!.length >= 3) {
                 try {
-                  const h1 = evaluateCurrentHand(
+                  const r1 = evaluateCurrentHand(
                     hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
                     hand.communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-                  )?.name;
-                  const h2 = evaluateCurrentHand(
+                  );
+                  const r2 = evaluateCurrentHand(
                     hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
                     hand.communityCards2!.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-                  )?.name;
+                  );
+                  const h1 = r1 ? formatHandName(r1) : undefined;
+                  const h2 = r2 ? formatHandName(r2) : undefined;
                   name = h1 && h2 ? `B1: ${h1} / B2: ${h2}` : (h1 ?? h2 ?? null);
                 } catch { name = null; }
               } else if ((hand.holeCards.length === 4 || hand.holeCards.length === 5) && hand.communityCards.length >= 3) {
-                name = evaluateCurrentHand(
+                const r = evaluateCurrentHand(
                   hand.holeCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
                   hand.communityCards.map(s => ({ rank: s.slice(0, -1), suit: s.slice(-1) }) as Card),
-                )?.name;
+                );
+                name = r ? formatHandName(r) : undefined;
               }
             }
             return name ? <span className="text-cream-800 text-[2.5cqw] font-medium">{name}</span> : null;

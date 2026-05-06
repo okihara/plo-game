@@ -45,7 +45,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const [newCommunityCardsCount, setNewCommunityCardsCount] = useState(0);
   const [actionTimeoutAt, setActionTimeoutAt] = useState<ActionTimeoutAt | null>(null);
   const [actionTimeoutMs, setActionTimeoutMs] = useState<number | null>(null);
-  const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string }[]>([]);
+  const [winners, setWinners] = useState<{ playerId: number; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]>([]);
   const [showdownCards, setShowdownCards] = useState<Map<number, Card[]>>(new Map());
   const [showdownHandNames, setShowdownHandNames] = useState<Map<number, string>>(new Map());
   const [holeCardsBySeat, setHoleCardsBySeat] = useState<Map<number, Card[]>>(new Map());
@@ -206,6 +206,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
               playerId: seat,
               amount: w.amount,
               handName: w.handName,
+              ...(w.hiLoType ? { hiLoType: w.hiLoType } : {}),
             };
           });
           setWinners(convertedWinners);
@@ -221,7 +222,9 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
           cardsMap.set(p.seatIndex, p.cards);
           if (p.handName) handNamesMap.set(p.seatIndex, p.handName);
         }
-        // players に載らない公開（Hi/Lo の重複行など）を winners.cards から席へ補完
+        // players に載らない公開（Hi/Lo の重複行など）を winners.cards から席へ補完。
+        // showdownPlayers の役名は完全形 ("B1: X / B2: Y", "Hi / Lo")、
+        // winners[].handName は部分形 ("Board 1: X") なので既存席は上書きしない。
         const cs = clientStateRef.current;
         if (cs && winners?.length) {
           for (const w of winners) {
@@ -229,7 +232,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
             const seat = cs.players.findIndex(pl => pl?.odId === w.playerId);
             if (seat >= 0) {
               cardsMap.set(seat, w.cards);
-              if (w.handName) handNamesMap.set(seat, w.handName);
+              if (w.handName && !handNamesMap.has(seat)) handNamesMap.set(seat, w.handName);
             }
           }
         }

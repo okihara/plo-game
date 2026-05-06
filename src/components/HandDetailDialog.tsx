@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Share2, Link, Check, Image, FileText, Eye, EyeOff, UserRound } from 'lucide-react';
-import { evaluatePLOHand } from '../logic/handEvaluator';
+import { evaluatePLOHand, formatHandName } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
@@ -58,8 +58,8 @@ function getHandName(holeCards: string[], communityCards: string[], communityCar
   // Double Board Bomb Pot: 両ボードの役名を "B1: X / B2: Y" 形式で返す
   if (communityCards2 && communityCards2.length === 5 && holeCards.length === 4 && communityCards.length === 5) {
     try {
-      const h1 = evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)).name;
-      const h2 = evaluatePLOHand(holeCards.map(parseCard), communityCards2.map(parseCard)).name;
+      const h1 = formatHandName(evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)));
+      const h2 = formatHandName(evaluatePLOHand(holeCards.map(parseCard), communityCards2.map(parseCard)));
       return `B1: ${h1} / B2: ${h2}`;
     } catch {
       return '';
@@ -67,7 +67,7 @@ function getHandName(holeCards: string[], communityCards: string[], communityCar
   }
   if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length !== 5) return '';
   try {
-    return evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)).name;
+    return formatHandName(evaluatePLOHand(holeCards.map(parseCard), communityCards.map(parseCard)));
   } catch {
     return '';
   }

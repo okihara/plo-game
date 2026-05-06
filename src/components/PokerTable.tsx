@@ -151,15 +151,39 @@ export function PokerTable({
         {/* Players */}
         {orderedPlayers.map(({ player, playerIdx, posIndex }) => {
           const isCurrentPlayer = state.currentPlayerIndex === playerIdx && !state.isHandComplete;
+          const playerWins = state.winners.filter(w => w.playerId === playerIdx);
+          // DBBP は winners[].handName が "Board N: ..." 形式。N (1-indexed) を 0-indexed に変換
+          const wonBoards = state.variant === 'plo_double_board_bomb'
+            ? playerWins
+                .map(w => {
+                  const m = w.handName?.match(/^Board (\d+)/);
+                  return m ? Number(m[1]) - 1 : -1;
+                })
+                .filter(b => b >= 0)
+            : undefined;
+          // Hi-Lo: winners[].hiLoType から勝ったサイドを抽出（scoop は両方）
+          const isHiLoVariant =
+            state.variant === 'plo_hilo' ||
+            state.variant === 'omaha_hilo' ||
+            state.variant === 'stud_hilo';
+          const wonHiLoSides: ('high' | 'low')[] | undefined = isHiLoVariant
+            ? playerWins.flatMap(w =>
+                w.hiLoType === 'scoop'
+                  ? (['high', 'low'] as const)
+                  : w.hiLoType === 'high' || w.hiLoType === 'low'
+                    ? [w.hiLoType]
+                    : []
+              )
+            : undefined;
           return (
             <Player
               key={player.id}
               player={player}
               positionIndex={posIndex}
               isCurrentPlayer={isCurrentPlayer}
-              isWinner={state.winners.some(w => w.playerId === player.id)}
-              winAmount={state.winners.find(w => w.playerId === player.id)?.amount}
-              winHandName={state.winners.find(w => w.playerId === player.id)?.handName}
+              isWinner={playerWins.length > 0}
+              winAmount={playerWins.length > 0 ? playerWins.reduce((s, w) => s + w.amount, 0) : undefined}
+              winHandName={playerWins[0]?.handName}
               showdownHandName={showdownHandNames?.get(playerIdx)}
               lastAction={lastActions.get(player.id) || null}
               showCards={player.isShowdown ?? false}
@@ -170,6 +194,8 @@ export function PokerTable({
               onAvatarClick={() => onPlayerClick?.(player)}
               variant={state.variant}
               labelColor={player.odId ? LABEL_COLORS.find(c => c.id === getLabel?.(player.odId!)?.color)?.hex : undefined}
+              wonBoards={wonBoards}
+              wonHiLoSides={wonHiLoSides}
             />
           );
         })}

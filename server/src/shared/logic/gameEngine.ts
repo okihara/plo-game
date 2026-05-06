@@ -1,6 +1,7 @@
 import { GameState, Player, Position, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
-import { evaluatePLOHand, compareHands } from './handEvaluator.js';
+import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands, formatHandName } from './handEvaluator.js';
+import { resolveHiLoShowdown } from './hiLoSplitPot.js';
 
 // ポーカーテーブルの6つのポジション（ディーラーボタンから時計回り）
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
@@ -776,6 +777,29 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
 
   newState.sidePots = contestedPots;
 
+  // === PLO Hi-Lo (PLO8) は別パスでスプリット解決 ===
+  if (newState.variant === 'plo_hilo') {
+    const showdownPlayers = activePlayers.map(p => ({ id: p.id, holeCards: p.holeCards }));
+    const community = newState.communityCards;
+    const potWinners = resolveHiLoShowdown(
+      showdownPlayers,
+      contestedPots,
+      (player) => evaluateOmahaHiLoHand(player.holeCards, community),
+    );
+    newState.winners = [];
+    for (const pw of potWinners) {
+      const player = newState.players.find(p => p.id === pw.playerId)!;
+      player.chips += pw.amount;
+      newState.winners.push({
+        playerId: pw.playerId,
+        amount: pw.amount,
+        handName: pw.handName,
+        hiLoType: pw.hiLoType,
+      });
+    }
+    return newState;
+  }
+
   // === PLOハンド評価 ===
   // PLOルール: ホールカードから必ず2枚、コミュニティカードから必ず3枚使用
   const playerHandMap = new Map<number, ReturnType<typeof evaluatePLOHand>>();
@@ -818,7 +842,7 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
       } else {
         winnerAmounts.set(potWinners[i].playerId, {
           amount,
-          handName: potWinners[i].hand.name,
+          handName: formatHandName(potWinners[i].hand),
         });
       }
     }

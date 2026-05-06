@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'stud_hilo' | 'plo_double_board_bomb';
+export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'plo_hilo' | 'stud_hilo' | 'plo_double_board_bomb';
 
 // --- Variant Config ---
 
@@ -37,6 +37,7 @@ export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   'limit_2-7_triple_draw':     { family: 'draw',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 5, maxDraws: 3, usesBringIn: false },
   'no_limit_2-7_single_draw':  { family: 'draw',   betting: 'no_limit',   usesCommunityCards: false, holeCardCount: 5, maxDraws: 1, usesBringIn: false },
   omaha_hilo:                   { family: 'omaha',  betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  plo_hilo:                     { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
   stud_hilo:                    { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
   plo_double_board_bomb:        { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
 };
@@ -55,6 +56,7 @@ export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
   'limit_2-7_triple_draw': '2-7 TD',
   'no_limit_2-7_single_draw': 'NL 2-7 SD',
   omaha_hilo: 'FLO8',
+  plo_hilo: 'PLO8',
   stud_hilo: 'Stud Hi-Lo',
   plo_double_board_bomb: 'DBBP',
 };
@@ -66,6 +68,7 @@ export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
  *  値は Tailwind のクラス名。 */
 export const VARIANT_BADGE_BG: Partial<Record<GameVariant, string>> = {
   plo5:                  'bg-violet-600',
+  plo_hilo:              'bg-amber-600',
   plo_double_board_bomb: 'bg-rose-600',
 };
 
@@ -80,6 +83,7 @@ export const VARIANT_POKERSTARS_LABEL: Record<GameVariant, string> = {
   'limit_2-7_triple_draw': '2-7 Triple Draw Limit',
   'no_limit_2-7_single_draw': '2-7 Single Draw No Limit',
   omaha_hilo: 'Omaha Hi/Lo Limit',
+  plo_hilo: 'Omaha Hi/Lo Pot Limit',
   stud_hilo: '7 Card Stud Hi/Lo',
   plo_double_board_bomb: 'Omaha Pot Limit Double Board Bomb Pot',
 };
