@@ -1,5 +1,6 @@
 import { Card, HandRank } from './types';
 import { getRankValue } from './deck';
+import { formatPLOFlushName } from './handName';
 
 // PLO/PLO5: 必ず2枚のホールカードと3枚のコミュニティカードを使う
 // PLO  → ホール 4 枚 (C(4,2)=6 通り)
@@ -25,6 +26,12 @@ export function evaluatePLOHand(holeCards: Card[], communityCards: Card[]): Hand
         bestHand = handRank;
       }
     }
+  }
+
+  // 表示用: PLO フラッシュは "Aフラッシュ"（ボード由来ハイカード）でなく
+  // "Jフラッシュ"（ホール由来ハイカード）で表示する。判定 (highCards/compareHands) は不変。
+  if (bestHand.rank === 6) {
+    bestHand = { ...bestHand, name: formatPLOFlushName(holeCards, communityCards) };
   }
 
   return bestHand;
@@ -212,6 +219,11 @@ export function evaluateCurrentHand(holeCards: Card[], communityCards: Card[]): 
         bestHand = handRank;
       }
     }
+  }
+
+  // 表示用: PLO フラッシュはホール由来ハイカードで表示（evaluatePLOHand と同じ）
+  if (bestHand.rank === 6) {
+    bestHand = { ...bestHand, name: formatPLOFlushName(holeCards, communityCards) };
   }
 
   return bestHand;
@@ -606,6 +618,27 @@ export function evaluate8OrBetterLow(allCards: Card[]): HandRank | null {
 }
 
 /**
+ * Omaha 8-or-better ロー評価: ホール 2 + コミュ 3 制約で最良のロー 5 枚を選ぶ。
+ * クオリファイするハンドがない場合は null を返す。
+ */
+function evaluateOmaha8OrBetterLow(holeCards: Card[], communityCards: Card[]): HandRank | null {
+  const holeCardCombos = getCombinations(holeCards, 2);
+  const communityCombos = getCombinations(communityCards, 3);
+
+  let bestLow: HandRank | null = null;
+  for (const holeCombo of holeCardCombos) {
+    for (const communityCombo of communityCombos) {
+      const fiveCards = [...holeCombo, ...communityCombo];
+      const lowHand = evaluate8OrBetterFiveCardLow(fiveCards);
+      if (lowHand && (!bestLow || compareLowHands(lowHand, bestLow) < 0)) {
+        bestLow = lowHand;
+      }
+    }
+  }
+  return bestLow;
+}
+
+/**
  * Omaha Hi-Lo: ハイとローの両方を評価
  * - ハイ: PLOと同じ（ホール2枚+コミュ3枚で最強ハイハンド）
  * - ロー: ホール2枚+コミュ3枚で最良の8-or-betterロー
@@ -617,32 +650,10 @@ export function evaluateOmahaHiLoHand(
   if (holeCards.length !== 4 || communityCards.length !== 5) {
     throw new Error('Omaha Hi-Lo requires 4 hole cards and 5 community cards');
   }
-
-  const holeCardCombos = getCombinations(holeCards, 2);
-  const communityCombos = getCombinations(communityCards, 3);
-
-  let bestHigh: HandRank = { rank: 0, name: '', highCards: [] };
-  let bestLow: HandRank | null = null;
-
-  for (const holeCombo of holeCardCombos) {
-    for (const communityCombo of communityCombos) {
-      const fiveCards = [...holeCombo, ...communityCombo];
-
-      // ハイ評価
-      const highHand = evaluateFiveCardHand(fiveCards);
-      if (compareHands(highHand, bestHigh) > 0) {
-        bestHigh = highHand;
-      }
-
-      // ロー評価（8-or-better）
-      const lowHand = evaluate8OrBetterFiveCardLow(fiveCards);
-      if (lowHand && (!bestLow || compareLowHands(lowHand, bestLow) < 0)) {
-        bestLow = lowHand;
-      }
-    }
-  }
-
-  return { high: bestHigh, low: bestLow };
+  return {
+    high: evaluatePLOHand(holeCards, communityCards),
+    low: evaluateOmaha8OrBetterLow(holeCards, communityCards),
+  };
 }
 
 /**
@@ -655,30 +666,10 @@ export function evaluateCurrentOmahaHiLoHand(
   if (holeCards.length !== 4 || communityCards.length < 3) {
     return null;
   }
-
-  const holeCardCombos = getCombinations(holeCards, 2);
-  const communityCombos = getCombinations(communityCards, 3);
-
-  let bestHigh: HandRank = { rank: 0, name: '', highCards: [] };
-  let bestLow: HandRank | null = null;
-
-  for (const holeCombo of holeCardCombos) {
-    for (const communityCombo of communityCombos) {
-      const fiveCards = [...holeCombo, ...communityCombo];
-
-      const highHand = evaluateFiveCardHand(fiveCards);
-      if (compareHands(highHand, bestHigh) > 0) {
-        bestHigh = highHand;
-      }
-
-      const lowHand = evaluate8OrBetterFiveCardLow(fiveCards);
-      if (lowHand && (!bestLow || compareLowHands(lowHand, bestLow) < 0)) {
-        bestLow = lowHand;
-      }
-    }
-  }
-
-  return { high: bestHigh, low: bestLow };
+  return {
+    high: evaluateCurrentHand(holeCards, communityCards)!,
+    low: evaluateOmaha8OrBetterLow(holeCards, communityCards),
+  };
 }
 
 /**

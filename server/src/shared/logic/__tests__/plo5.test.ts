@@ -190,6 +190,21 @@ describe('PLO5: 全役の判定 (rank 1〜9)', () => {
     const result = evaluatePLOHand(hole, board);
     expect(result.rank).toBe(6);
     expect(result.highCards).toEqual([14, 13, 12, 11, 5]);
+    // 表示名はホール由来最高ランク (A♠) を採用
+    expect(result.name).toBe('Aフラッシュ');
+  });
+
+  it('フラッシュ表示名: ボードに高スート札があってもホール由来最高ランクで表示する', () => {
+    // 回帰テスト: 以前は 5 枚最高 (ボード由来 A) で "Aフラッシュ" と表示されていた。
+    // PLO はホール 2 枚必須なので勝敗は実質ホール由来ランクで決まる → ホール最高で表示する。
+    const hole = [card('J','s'), card('T','s'), card('2','c'), card('3','d'), card('4','h')];
+    const board = [card('A','s'), card('K','s'), card('5','s'), card('7','c'), card('9','h')];
+    const result = evaluatePLOHand(hole, board);
+    expect(result.rank).toBe(6);
+    // 判定用 highCards は 5 枚降順のまま（compareHands に影響しない）
+    expect(result.highCards).toEqual([14, 13, 11, 10, 5]);
+    // 表示名はホール由来最高 (J♠) ベース
+    expect(result.name).toBe('Jフラッシュ');
   });
 
   it('ストレート: 9-K (T以下キッカーなし)', () => {
