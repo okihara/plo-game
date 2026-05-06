@@ -100,11 +100,16 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
 
   // フォールド予約
   useEffect(() => {
-    if (isMyTurn && prefoldChecked && !actionSent && !prefoldTriggeredRef.current && !canCheck) {
-      prefoldTriggeredRef.current = true;
-      setActionSent(true);
-      setPrefoldChecked(false);
-      onAction('fold', 0);
+    if (isMyTurn && prefoldChecked && !actionSent && !prefoldTriggeredRef.current) {
+      if (canCheck) {
+        // チェック可能なターンが来た場合は自動foldはせず、予約だけ解除する
+        setPrefoldChecked(false);
+      } else {
+        prefoldTriggeredRef.current = true;
+        setActionSent(true);
+        setPrefoldChecked(false);
+        onAction('fold', 0);
+      }
     }
     if (!isMyTurn) {
       prefoldTriggeredRef.current = false;

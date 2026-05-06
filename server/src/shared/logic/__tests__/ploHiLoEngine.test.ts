@@ -10,6 +10,7 @@ import {
   getValidActions,
   determineWinner,
 } from '../gameEngine.js';
+import { VariantAdapter } from '../../../modules/table/helpers/VariantAdapter.js';
 import type { GameState, Card } from '../types.js';
 
 function card(rank: Card['rank'], suit: Card['suit']): Card {
@@ -131,5 +132,42 @@ describe('PLO Hi-Lo (plo_hilo): showdown split', () => {
     // それぞれ high と low を分け合う
     const types = result.winners.map(w => w.hiLoType).sort();
     expect(types).toEqual(['high', 'low']);
+  });
+});
+
+describe('PLO Hi-Lo (plo_hilo): showdown 役名表示', () => {
+  // 回帰テスト: ロー単独勝ち時に players[].handName が "<rank>-low" 単独形式に
+  // 上書きされていた不具合（クライアントの 2 段表示で "6-low / Lo なし" に化ける）。
+  // VariantAdapter.evaluateHandName は常に "Hi / Lo" 完全形（または Hi 単体）を返すべき。
+  it('ロー単独勝ちでも evaluateHandName は "Hi / Lo" 完全形を返す（winners[].handName は部分形）', () => {
+    // 上の split テストと同じセットアップ: Player 0 が Lo only、Player 1 が Hi only。
+    const community = [card('2', 's'), card('4', 'h'), card('6', 'c'), card('T', 'd'), card('K', 'c')];
+    const state = buildShowdownState({
+      community,
+      playersConfig: [
+        { holeCards: [card('A', 'h'), card('3', 's'), card('7', 's'), card('8', 'c')], stake: 100 },
+        { holeCards: [card('K', 'h'), card('K', 'd'), card('Q', 'c'), card('J', 'c')], stake: 100 },
+        null, null, null, null,
+      ],
+    });
+    const result = determineWinner(state);
+
+    // winners[].handName 側: Lo only winner は "<rank>-low" 単独（部分形）になる。
+    const loWinner = result.winners.find(w => w.hiLoType === 'low');
+    expect(loWinner).toBeDefined();
+    expect(loWinner!.handName).not.toContain(' / ');
+    expect(loWinner!.handName.toLowerCase()).toMatch(/-?low$/);
+
+    // VariantAdapter.evaluateHandName 側: Lo qualify しているプレイヤーには
+    // 必ず "Hi / Lo" 形式の完全形を返す。TableInstance はこちらを使うべき。
+    const adapter = new VariantAdapter('plo_hilo');
+    const fullName0 = adapter.evaluateHandName(state.players[0], state.communityCards);
+    expect(fullName0).toContain(' / ');
+    expect(fullName0.toLowerCase()).toMatch(/low/);
+
+    // Lo qualify しないプレイヤー(Hi only)には Hi 単体を返す。
+    const fullName1 = adapter.evaluateHandName(state.players[1], state.communityCards);
+    expect(fullName1).not.toContain(' / ');
+    expect(fullName1.toLowerCase()).not.toMatch(/low/);
   });
 });

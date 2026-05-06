@@ -954,19 +954,12 @@ export class TableInstance {
     const activePlayers = getActivePlayers(finalState);
     if (activePlayers.length > 1) {
       const showdownPlayers = activePlayers.map(p => {
-        // bomb pot は winners[].handName が "Board X: ..." 形式の部分情報なので
-        // 全プレイヤーで evaluateHandName を呼んで両ボードの役名 ("B1: ... / B2: ...")
-        // を組み立てる（勝者・敗者ともに同じフォーマットで表示）
-        let handName = '';
-        if (isBombPot) {
-          handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards, finalBoards!);
-        } else {
-          const winnerEntry = finalState.winners.find(w => w.playerId === p.id);
-          handName = winnerEntry?.handName || '';
-          if (!handName) {
-            handName = this.variantAdapter.evaluateHandName(p, finalState.communityCards);
-          }
-        }
+        // winners[].handName は単一ボード/単一側の部分情報（例: bomb pot の "Board X: ..."、
+        // Hi-Lo のロー単独勝ちで "6-low" のみ）なので、全プレイヤーで evaluateHandName を呼んで
+        // 完全形（"B1: ... / B2: ..." や "Hi / Lo"）に揃える。
+        const handName = isBombPot
+          ? this.variantAdapter.evaluateHandName(p, finalState.communityCards, finalBoards!)
+          : this.variantAdapter.evaluateHandName(p, finalState.communityCards);
         return {
           seatIndex: p.id,
           odId: seats[p.id]?.odId || '',
@@ -1112,16 +1105,9 @@ export class TableInstance {
       const activePlayers = getActivePlayers(this.gameState);
       const isBombPot = this.gameState.variant === 'plo_double_board_bomb' && this.gameState.boards?.length === 2;
       const showdownPlayers = activePlayers.map(p => {
-        let handName: string;
-        if (isBombPot) {
-          handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards, this.gameState!.boards);
-        } else {
-          const winnerEntry = this.gameState!.winners.find(w => w.playerId === p.id);
-          handName = winnerEntry?.handName || '';
-          if (!handName) {
-            handName = this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
-          }
-        }
+        const handName = isBombPot
+          ? this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards, this.gameState!.boards)
+          : this.variantAdapter.evaluateHandName(p, this.gameState!.communityCards);
         return {
           seatIndex: p.id,
           odId: seats[p.id]?.odId || '',
