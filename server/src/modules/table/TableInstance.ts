@@ -250,7 +250,8 @@ export class TableInstance {
   // Handle player action
   public handleAction(odId: string, action: Action, amount: number, discardIndices?: number[]): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
-      console.warn(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
+      // クライアント-サーバー間のレース（連打・遅延到着）で頻発するため info レベル
+      console.log(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
       return false;
     }
 
@@ -275,7 +276,8 @@ export class TableInstance {
     );
 
     if (!result.success) {
-      console.warn(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}, reason=${result.rejectReason}`);
+      // 不正アクションはクライアントの遅延・誤タップで起きうるため info レベル
+      console.log(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}, reason=${result.rejectReason}`);
       return false;
     }
 
@@ -342,7 +344,8 @@ export class TableInstance {
    */
   public handleEarlyFold(odId: string): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
-      console.warn(`[Table ${this.id}] handleEarlyFold rejected: odId=${odId}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
+      // FastFold連打のレースで起きるため info レベル
+      console.log(`[Table ${this.id}] handleEarlyFold rejected: odId=${odId}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
       return false;
     }
 
@@ -906,7 +909,7 @@ export class TableInstance {
    * @param previousCardCount ランアウト開始前のコミュニティカード枚数
    */
   private async handleAllInRunOut(finalState: GameState, previousCardCount: number): Promise<void> {
-    console.warn(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
+    console.log(`[Table ${this.id}] handleAllInRunOut: previousCardCount=${previousCardCount}`);
 
     const isBombPot = finalState.variant === 'plo_double_board_bomb' && finalState.boards?.length === 2;
 
@@ -923,7 +926,7 @@ export class TableInstance {
         });
         const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
         this.historyRecorder.setAllInEVProfits(evProfits);
-        console.warn(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
+        console.log(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
       } catch (err) {
         console.error(`[Table ${this.id}] EV calculation failed:`, err);
       }
@@ -1076,7 +1079,7 @@ export class TableInstance {
         });
         const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
         this.historyRecorder.setAllInEVProfits(evProfits);
-        console.warn(`[Table ${this.id}] Partial all-in EV profits (board=${this.allInStreetCardCount} cards):`, Object.fromEntries(evProfits));
+        console.log(`[Table ${this.id}] Partial all-in EV profits (board=${this.allInStreetCardCount} cards):`, Object.fromEntries(evProfits));
       } catch (err) {
         console.error(`[Table ${this.id}] Partial all-in EV calculation failed:`, err);
       }
