@@ -329,7 +329,7 @@ function buildElement(name: string, stats: OgpStats | null, profitPoints: Profit
     bodyContent,
     // フッター
     h('div', { style: { display: 'flex', justifyContent: 'center', paddingBottom: 16, paddingTop: 8 } },
-      h('div', { style: { display: 'flex', fontSize: 14, color: '#888' } }, 'baby-plo.up.railway.app'),
+      h('div', { style: { display: 'flex', fontSize: 14, color: '#888' } }, 'babyplo.app'),
     ),
   );
 }
