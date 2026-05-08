@@ -12,6 +12,8 @@ const envSchema = z.object({
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
+  /** 移行期に追加で許可するオリジン（カンマ区切り）。CORS / Socket.io / OAuth の許可ホストに加わる。 */
+  CLIENT_URL_ALIASES: z.string().optional(),
   ADMIN_SECRET: z.string().optional(),
   /** トーナメントAI評価（OpenAI Chat Completions）。未設定時は生成APIは503。 */
   TOURNAMENT_EVAL_OPENAI_API_KEY: z.string().optional(),
@@ -33,3 +35,8 @@ function loadEnv(): Env {
 }
 
 export const env = loadEnv();
+
+export const allowedOrigins: string[] = [
+  env.CLIENT_URL,
+  ...(env.CLIENT_URL_ALIASES?.split(',').map((s) => s.trim()).filter(Boolean) ?? []),
+];

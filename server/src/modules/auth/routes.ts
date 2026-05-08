@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
-import { env } from '../../config/env.js';
+import { env, allowedOrigins } from '../../config/env.js';
 import { isLoginBonusAvailable } from './bankroll.js';
 
 // --- OAuth 1.0a helpers ---
@@ -82,6 +82,26 @@ async function oauth1Fetch(
   });
 }
 
+/**
+ * 移行期に旧ドメイン (`baby-plo.up.railway.app`) と新ドメイン (`babyplo.app`) の双方で
+ * Twitter OAuth が成立するよう、リクエストが届いたオリジンを基にコールバック URL と
+ * 成功・失敗時のリダイレクト先を組み立てる。許可リストにないホストは `CLIENT_URL` に
+ * フォールバックする。
+ */
+function originFromRequest(request: FastifyRequest): { serverBase: string; clientBase: string } {
+  if (env.NODE_ENV !== 'production') {
+    return {
+      serverBase: `http://localhost:${env.PORT}`,
+      clientBase: env.CLIENT_URL,
+    };
+  }
+  const candidate = `${request.protocol}://${request.hostname}`;
+  if (allowedOrigins.includes(candidate)) {
+    return { serverBase: candidate, clientBase: candidate };
+  }
+  return { serverBase: env.CLIENT_URL, clientBase: env.CLIENT_URL };
+}
+
 // Temporary store for request token secrets (expires after 10 min)
 const pendingTokens = new Map<string, { secret: string; expires: number }>();
 
@@ -99,13 +119,11 @@ export async function authRoutes(fastify: FastifyInstance) {
   if (env.TWITTER_API_KEY && env.TWITTER_API_KEY_SECRET) {
     const apiKey = env.TWITTER_API_KEY;
     const apiKeySecret = env.TWITTER_API_KEY_SECRET;
-    const serverBaseUrl = env.NODE_ENV === 'production'
-      ? env.CLIENT_URL
-      : `http://localhost:${env.PORT}`;
-    const callbackUrl = `${serverBaseUrl}/api/auth/twitter/callback`;
 
     // Step 1: Start OAuth — get request token, redirect to Twitter
     fastify.get('/twitter', async (request, reply) => {
+      const { serverBase, clientBase } = originFromRequest(request);
+      const callbackUrl = `${serverBase}/api/auth/twitter/callback`;
       try {
         cleanupPendingTokens();
 
@@ -116,7 +134,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         if (!res.ok) {
           const body = await res.text();
           fastify.log.error({ status: res.status, body }, 'Failed to get request token');
-          return reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);
+          return reply.redirect(`${clientBase}/?error=oauth_failed`);
         }
 
         const text = await res.text();
@@ -133,12 +151,13 @@ export async function authRoutes(fastify: FastifyInstance) {
         reply.redirect(`https://api.twitter.com/oauth/authenticate?oauth_token=${oauthToken}`);
       } catch (err) {
         fastify.log.error(err, 'Twitter OAuth start error');
-        reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);
+        reply.redirect(`${clientBase}/?error=oauth_failed`);
       }
     });
 
     // Step 2: Callback — exchange for access token, get user info
     fastify.get('/twitter/callback', async (request, reply) => {
+      const { clientBase } = originFromRequest(request);
       try {
         const { oauth_token, oauth_verifier } = request.query as {
           oauth_token?: string;
@@ -147,14 +166,14 @@ export async function authRoutes(fastify: FastifyInstance) {
 
         if (!oauth_token || !oauth_verifier) {
           fastify.log.error('Missing oauth_token or oauth_verifier in callback');
-          return reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);
+          return reply.redirect(`${clientBase}/?error=oauth_failed`);
         }
 
         // Retrieve stored request token secret
         const pending = pendingTokens.get(oauth_token);
         if (!pending) {
           fastify.log.error('Request token not found or expired');
-          return reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);
+          return reply.redirect(`${clientBase}/?error=oauth_failed`);
         }
         pendingTokens.delete(oauth_token);
 
@@ -168,7 +187,7 @@ export async function authRoutes(fastify: FastifyInstance) {
         if (!tokenRes.ok) {
           const body = await tokenRes.text();
           fastify.log.error({ status: tokenRes.status, body }, 'Failed to get access token');
-          return reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);
+          return reply.redirect(`${clientBase}/?error=oauth_failed`);
         }
 
         const tokenText = await tokenRes.text();
@@ -224,7 +243,7 @@ export async function authRoutes(fastify: FastifyInstance) {
             sameSite: 'lax',
             maxAge: 60 * 60 * 24 * 7,
           })
-          .redirect(`${env.CLIENT_URL}/`);
+          .redirect(`${clientBase}/`);
       } catch (err) {
         fastify.log.error(err, 'Twitter OAuth callback error');
 
@@ -234,7 +253,7 @@ export async function authRoutes(fastify: FastifyInstance) {
           }
         }
 
-        reply.redirect(`${env.CLIENT_URL}/?error=oauth_failed`);
+        reply.redirect(`${clientBase}/?error=oauth_failed`);
       }
     });
   }
