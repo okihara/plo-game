@@ -236,7 +236,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
 
         {/* X Follow Banner */}
         <a
-          href="https://x.com/babyplo_"
+          href="https://x.com/babyplo4"
           target="_blank"
           rel="noopener noreferrer"
           className="mt-[3cqw] w-full flex items-center gap-[2cqw] px-[3cqw] py-[2.5cqw] bg-cream-900 rounded-[2.5cqw] text-white hover:bg-cream-800 active:scale-[0.98] transition-all"

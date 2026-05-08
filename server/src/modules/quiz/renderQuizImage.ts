@@ -178,7 +178,7 @@ function buildElement(data: QuizImageData): ReactNode {
     ),
     // フッター
     h('div', { style: { display: 'flex', justifyContent: 'center', marginTop: 12 } },
-      h('div', { style: { display: 'flex', fontSize: 14, color: '#888' } }, 'babyplo.app'),
+      h('div', { style: { display: 'flex', fontSize: 14, color: '#888' } }, 'baby-plo.app'),
     ),
   );
 }

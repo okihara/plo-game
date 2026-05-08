@@ -83,10 +83,9 @@ async function oauth1Fetch(
 }
 
 /**
- * 移行期に旧ドメイン (`baby-plo.up.railway.app`) と新ドメイン (`babyplo.app`) の双方で
- * Twitter OAuth が成立するよう、リクエストが届いたオリジンを基にコールバック URL と
- * 成功・失敗時のリダイレクト先を組み立てる。許可リストにないホストは `CLIENT_URL` に
- * フォールバックする。
+ * `CLIENT_URL` と `CLIENT_URL_ALIASES` の双方で Twitter OAuth が成立するよう、
+ * リクエストが届いたオリジンを基にコールバック URL と成功・失敗時のリダイレクト先を
+ * 組み立てる。許可リストにないホストは `CLIENT_URL` にフォールバックする。
  */
 function originFromRequest(request: FastifyRequest): { serverBase: string; clientBase: string } {
   if (env.NODE_ENV !== 'production') {
