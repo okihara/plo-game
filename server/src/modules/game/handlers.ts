@@ -123,8 +123,6 @@ export async function handleFastFold(socket: AuthenticatedSocket, tableManager: 
 }
 
 export async function handleDisconnect(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
-  console.log(`Player disconnected: ${socket.odId}`);
-
   try {
     const table = tableManager.getPlayerTable(socket.odId!);
     if (table) {
