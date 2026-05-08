@@ -29,7 +29,8 @@ npm run start       # 本番サーバー起動 (cd server && node --import tsx s
 |--------|-----|------|
 | `NODE_ENV` | `production` | 必須 |
 | `JWT_SECRET` | ランダム文字列 | 32 文字以上、必須 |
-| `CLIENT_URL` | `https://babyplo.app` | デプロイ先 URL（カスタムドメイン。未設定なら `https://<app>.up.railway.app`） |
+| `CLIENT_URL` | `https://babyplo.app` | デプロイ先の正規 URL（OGP / 既定リダイレクト先） |
+| `CLIENT_URL_ALIASES` | `https://baby-plo.up.railway.app` | 移行期に追加で許可するオリジン。カンマ区切り。CORS / Socket.io / OAuth コールバックの許可ホストに加わる。完全に切り替えたら未設定に戻す |
 | `TWITTER_CLIENT_ID` | Twitter Developer Portal から | OAuth 用 |
 | `TWITTER_CLIENT_SECRET` | Twitter Developer Portal から | OAuth 用 |
 | `DATABASE_URL` | (自動) | PostgreSQL アドオンから |
@@ -54,9 +55,10 @@ npm run start       # 本番サーバー起動 (cd server && node --import tsx s
 3. **TLS 証明書**
    - Railway が Let's Encrypt で自動発行する。発行完了まで数分待つ。
 4. **環境変数を更新**
-   - `CLIENT_URL` を `https://babyplo.app` に設定し直してサービスを再デプロイする（CORS / Cookie / OAuth コールバック生成に使われる）。
+   - `CLIENT_URL` を `https://babyplo.app` に設定し直してサービスを再デプロイする（CORS / Cookie / OAuth コールバック生成の正規 URL）。
+   - 移行期は **`CLIENT_URL_ALIASES=https://baby-plo.up.railway.app`** も併設する。サーバーは許可リストに含まれるホスト宛のアクセスについて CORS / Socket.io / OAuth コールバックを動的に許可するため、ユーザーは新旧どちらの URL からでもログインしてプレイできる。新ドメインへ完全移行したら `CLIENT_URL_ALIASES` を削除する。
 5. **Twitter Developer Portal を更新**
-   - OAuth アプリの **Callback URL** に `https://babyplo.app/api/auth/twitter/callback` を追加する（既存の `*.up.railway.app` も当面は残しておくと切り戻しが楽）。
+   - OAuth アプリの **Callback URL** に `https://babyplo.app/api/auth/twitter/callback` を追加する。移行期は旧 `https://baby-plo.up.railway.app/api/auth/twitter/callback` も登録したままにする（旧 URL からの OAuth フローを成立させるため）。
    - **Website URL** も `https://babyplo.app` に更新する。
 6. **動作確認**
    - `https://babyplo.app/health` が 200 を返す。
