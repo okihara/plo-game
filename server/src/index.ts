@@ -8,7 +8,7 @@ import ejs from 'ejs';
 import { Server } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { env } from './config/env.js';
+import { env, allowedOrigins } from './config/env.js';
 import { prisma } from './config/database.js';
 import { authRoutes } from './modules/auth/routes.js';
 import { bankrollRoutes } from './modules/auth/bankroll.js';
@@ -37,7 +37,7 @@ const fastify = Fastify({
 
 // Plugins
 await fastify.register(cors, {
-  origin: env.CLIENT_URL,
+  origin: allowedOrigins,
   credentials: true,
 });
 
@@ -222,7 +222,7 @@ const start = async () => {
     // Setup Socket.io on the same server (before listen for admin routes)
     const io = new Server(fastify.server, {
       cors: {
-        origin: env.CLIENT_URL,
+        origin: allowedOrigins,
         credentials: true,
       },
       pingInterval: 10000,  // 10秒ごとにping
