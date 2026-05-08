@@ -71,6 +71,9 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
 export async function handHistoryRoutes(fastify: FastifyInstance) {
   // Auth middleware
   fastify.addHook('preHandler', async (request, reply) => {
+    // ユーザー固有レスポンスを Railway エッジ等の中間プロキシにキャッシュさせない。
+    // 過去 /api/auth/me で「全ユーザーが同一ユーザーとして表示」される事故があった (commit 58208e8)。
+    reply.header('Cache-Control', 'no-store');
     try {
       await request.jwtVerify();
     } catch (err) {
