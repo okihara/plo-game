@@ -287,7 +287,6 @@ export function adminRoutes(deps: AdminDependencies) {
       const connectedOdIds = new Set<string>();
       const socketInfos: Array<{
         odId: string;
-        isBot: boolean;
         tableId: string | null;
         tableBlinds: string | null;
         seatNumber: number | null;
@@ -315,7 +314,6 @@ export function adminRoutes(deps: AdminDependencies) {
 
         socketInfos.push({
           odId,
-          isBot: !!authSocket.odIsBot,
           tableId: table?.id ?? null,
           tableBlinds: table?.blinds ?? null,
           seatNumber,
@@ -342,7 +340,7 @@ export function adminRoutes(deps: AdminDependencies) {
           displayName: user?.displayName ?? null,
           avatarUrl: user?.avatarUrl ?? null,
           provider: user?.provider ?? 'unknown',
-          isBot: si.isBot,
+          isBot: user?.provider === 'bot',
           balance: user?.bankroll?.balance ?? 0,
           tableId: si.tableId,
           tableBlinds: si.tableBlinds,
