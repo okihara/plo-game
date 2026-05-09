@@ -46,7 +46,7 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
     vpip: 0.25, pfr: 0.20, threeBetFreq: 0.09,
     cbetFreq: 0.65, aggression: 0.80,
     bluffFreq: 0.13, slowplayFreq: 0.12,
-    foldTo3Bet: 0.52, foldToCbet: 0.45, foldToRiverBet: 0.50,
+    foldTo3Bet: 0.52, foldToCbet: 0.45, foldToRiverBet: 0.55,
   },
 
   // ken2408: ルースAG — アグレッシブだが計算的（ブラフ抑制済み）
@@ -154,7 +154,7 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
     vpip: 0.30, pfr: 0.22, threeBetFreq: 0.09,
     cbetFreq: 0.64, aggression: 0.80,
     bluffFreq: 0.13, slowplayFreq: 0.09,
-    foldTo3Bet: 0.52, foldToCbet: 0.44, foldToRiverBet: 0.50,
+    foldTo3Bet: 0.52, foldToCbet: 0.44, foldToRiverBet: 0.55,
   },
 
   // yuna0312: セミTAG — やや受動的だが堅いハンドセレクト
