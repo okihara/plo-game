@@ -42,6 +42,7 @@
     .p-money { color: #fbbf24; font-size: 10px; }
     .p-bet { color: #f97316; font-size: 10px; }
     .p-icon { font-size: 9px; flex-shrink: 0; }
+    .p-state { font-size: 10px; flex-shrink: 0; color: #fbbf24; font-weight: 600; }
     /* Pending action in header */
     .pa-label { color: #fbbf24; font-weight: 600; font-size: 11px; }
     .pa-timer { color: #f59e0b; font-size: 11px; }
@@ -368,13 +369,15 @@
         var isPending = t.pendingAction && t.pendingAction.seatNumber === i;
         if (isPending) cls.push('pending');
 
-        var icon = p.isConnected ? '🟢' : '🔴';
-        if (p.folded) icon = 'F';
-        else if (p.isAllIn) icon = 'AI';
-        if (p.isSittingOut) icon = '💤';
-        if (isPending) icon = '⏳';
+        var connIcon = p.isConnected ? '🟢' : '🔴';
+        var stateIcon = '';
+        if (isPending) stateIcon = '⏳';
+        else if (p.isSittingOut) stateIcon = '💤';
+        else if (p.folded) stateIcon = 'F';
+        else if (p.isAllIn) stateIcon = 'AI';
 
-        var row1 = '<div class="p-row"><span class="p-icon">' + icon + '</span>';
+        var row1 = '<div class="p-row"><span class="p-icon">' + connIcon + '</span>';
+        if (stateIcon) row1 += '<span class="p-state">' + stateIcon + '</span>';
         if (p.position) row1 += '<span class="p-pos">' + p.position + '</span>';
         row1 += '<span class="p-name">' + p.odName + '</span>';
         row1 += '</div>';
