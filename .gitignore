@@ -14,6 +14,9 @@ server/src/modules/quiz/fonts/
 # Quiz data (history, preview images)
 server/data/
 
+# Bot daily report outputs
+server/scripts/reports/
+
 # Generated TypeScript files in shared
 shared/types/*.js
 shared/types/*.js.map
