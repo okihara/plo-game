@@ -206,7 +206,7 @@ export class TableInstance {
         // Studブリングインフェーズ等では fold が無効なため、有効アクションを選択
         this.actionController.clearTimers();
         const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-        this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+        this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -247,8 +247,18 @@ export class TableInstance {
     return { odId, chips, socket, hasWeeklyChampion };
   }
 
-  // Handle player action
-  public handleAction(odId: string, action: Action, amount: number, discardIndices?: number[]): boolean {
+  /**
+   * Handle player action.
+   * @param source 'manual' = プレイヤー本人の入力（タイムアウトペナルティをリセット）
+   *               'auto'   = タイムアウト/切断/離席による自動アクション（リセットしない）
+   */
+  public handleAction(
+    odId: string,
+    action: Action,
+    amount: number,
+    discardIndices?: number[],
+    source: 'manual' | 'auto' = 'manual',
+  ): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
       // クライアント-サーバー間のレース（連打・遅延到着）で頻発するため info レベル
       console.log(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
@@ -279,6 +289,11 @@ export class TableInstance {
       // 不正アクションはクライアントの遅延・誤タップで起きうるため info レベル
       console.log(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}, reason=${result.rejectReason}`);
       return false;
+    }
+
+    // 手動アクション成功 → 連続タイムアウトカウンタをリセット
+    if (source === 'manual') {
+      this.playerManager.resetConsecutiveTimeouts(seatIndex);
     }
 
     this.gameState = result.gameState;
@@ -845,7 +860,7 @@ export class TableInstance {
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
           const defaultAction = this.getDefaultDisconnectAction(idx);
-          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
           if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === idx) {
             // handleAction 失敗時のリカバリー: 強制フォールドして進行
             console.error(`[Table ${this.id}] Disconnected fold failed, forcing advance. seat=${idx}`);
@@ -871,9 +886,12 @@ export class TableInstance {
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
+      // タイムアウト記録（短縮ペナルティ用）
+      this.playerManager.incrementConsecutiveTimeouts(seatIndex);
+
       // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
 
       if (!handled) {
         // handleAction が失敗した場合のリカバリー: 強制フォールドして進行
