@@ -2,6 +2,37 @@
 
 `/morning-bot-improve` ルーティンによる Bot AI 調整の履歴。直近の変更箇所を確認して **3 日連続で同じ箇所を触らない** ためのログ。
 
+## 2026-05-10
+
+### 仮説
+ポジション別の中央 BB/100 が全 personality で BB だけ突出して赤字（TatsuyaN -37 / YuHayashi -82 / yuna0312 -53）。`getPositionBonus` の BB ペナルティ -0.05 は SB と同じ値で、BB 防衛の call レンジが構造的に広すぎる可能性。BB ペナルティだけ少し強める。
+
+### 観測（集団・直近24h, 20,671 ハンド, hands>=100 の 251 bot）
+
+- 全体: Bot 総損益 -40,743 / Human +16,257（昨日 -52,549 / +25,889 から軽い改善）
+- ベスト10 vs ワースト10: WSD +19.8, AFq +17.1, Cbet +4.9, F→Cbet -7.5。VPIP/PFR/3Bet/WTSD はほぼ同等
+- Personality 別 平均 BB/100 (中央 WSD%):
+  - TatsuyaN: -21.4 (60.6) — foldToRiverBet 0.50→0.55 適用済み
+  - YuHayashi: -19.1 (60.4) — foldToRiverBet 0.50→0.55 適用済み
+  - yuna0312:  -18.6 (60.5) — 据え置き
+  - 3 personality がほぼ同水準に収束（昨日の差は消失）
+- Personality × Position 中央 BB/100:
+  - BB: TatsuyaN -37 / YuHayashi -82 / yuna0312 -53
+  - SB: -29 / -28 / -31
+  - BTN/CO/MP/EP はほぼ ±20 以内
+
+### 変更
+- `server/src/shared/logic/cpuAI.ts`
+  - `getPositionBonus('BB')`: -0.05 → -0.07 (-40% より強いペナルティ)
+- 効果: BB facing raise 時の `effectiveStrength > vpipThreshold` 判定が一段厳しくなり、marginal hand の call レンジが約 0.02 ぶん狭まる。BB 自由チェックや postflop 計算自体には影響なし
+- 影響範囲: 全 bot 382 体（全 personality 共通）。ただし変更が効くのは BB ポジション限定
+
+### PR
+（push 後に追記）
+
+### 評価予定
+2026-05-11 以降のレポートで全 personality の BB position 中央 BB/100 と全体損益を確認。BB が改善し全体損益が悪化していなければ成功。逆に悪化していたら revert。
+
 ## 2026-05-09
 
 ### 仮説
