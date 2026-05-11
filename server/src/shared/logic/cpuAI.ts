@@ -499,7 +499,7 @@ export function getPositionBonus(position: string): number {
     case 'CO': return 0.08;
     case 'HJ': return 0.05;
     case 'UTG': return 0;
-    case 'BB': return -0.05;
+    case 'BB': return -0.07;
     case 'SB': return -0.05;
     default: return 0;
   }
