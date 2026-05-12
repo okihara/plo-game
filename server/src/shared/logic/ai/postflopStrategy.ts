@@ -643,6 +643,10 @@ function evaluateCbet(
   if (numOpponents >= 3) cbetChance *= 0.3;
   else if (numOpponents === 2) cbetChance *= 0.5;
 
+  // OOP 補正: SB/BB はポジションがないので cbet を控えめに
+  const position = state.players[playerIndex].position;
+  if (position === 'SB' || position === 'BB') cbetChance *= 0.85;
+
   // ボード補正
   if (boardTexture.isWet) cbetChance *= 0.7;
   if (boardTexture.monotone) cbetChance *= 0.5;
