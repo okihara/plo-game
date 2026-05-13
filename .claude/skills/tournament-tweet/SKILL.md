@@ -28,7 +28,7 @@ cd server && npx tsx scripts/tournament-tweet-data.ts --prod --tournament <tourn
 
 stdout に JSON が出る。主要フィールド:
 
-- `tournament.name` / `completedAt` / `totalEntries`（リエントリー込みの総エントリー数）
+- `tournament.name` / `completedAt` / `totalEntries`（リエントリー込みの総エントリー数）/ `uniqueRegistrations`（実参加者数＝ユニーク登録数）
 - `winner.displayName` / `winner.prize`
 - `topResults[]` — 上位5名（`position`, `displayName`, `prize`, `reentries`）
 - `lastHands[]` — トナメ全体の最後の30ハンド（古い順）。`communityCards`, `potSize`, `winnerNames`, `players[]`（startChips / profit / 優勝者のホールカードのみ入る）, `actions`
@@ -69,7 +69,7 @@ stdout に JSON が出る。主要フィールド:
 <優勝者のプレーに触れた1〜2文のコメント>🏆
 おめでとうございます！
 
-<文脈に合わせた一言>N エントリー！
+<文脈に合わせた一言>Nエントリー（参加者M名）！
 参加者のみなさんありがとうございました🙇‍♂️
 
 #BabyPLO
@@ -83,7 +83,7 @@ stdout に JSON が出る。主要フィールド:
   - 「勝負どころを逃さないプレーで〜」
   - 「拮抗した状況が続く中、要所でしっかりと勝負を決めて〜」
   - 「ハイレベルなファイナルテーブルを勝ち抜き〜」
-- エントリー数の前置きは曜日・祝日・特記事項があれば織り込む（例: 「休みの中」「本日は」「平日の夜に」）。分からなければシンプルに「本日は」
+- エントリー数は **`Nエントリー（参加者M名）`** の形式で書く（N = `totalEntries`、M = `uniqueRegistrations`）。前置きは曜日・祝日・特記事項があれば織り込む（例: 「休みの中」「本日は」「平日の夜に」）。分からなければシンプルに「本日は」
 - 絵文字は過去サンプルと同じく 🥇🏆🙇‍♂️ を使用。増やしすぎない
 - ハッシュタグは `#BabyPLO` のみ
 
