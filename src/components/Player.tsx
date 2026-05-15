@@ -50,11 +50,11 @@ function formatAction(
 
 const positionStyles: Record<number, string> = {
   0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
-  1: 'bottom-[19.74cqw] left-[-13.05cqw]', // 左下
-  2: 'top-[30.7cqw] left-[-13.05cqw]', // 左上
-  3: 'top-[4.39cqw] left-1/2 -translate-x-1/2', // 上
-  4: 'top-[30.7cqw] right-[-13.05cqw]', // 右上
-  5: 'bottom-[19.74cqw] right-[-13.05cqw]', // 右下
+  1: 'bottom-[25.74cqw] left-[-14.05cqw]', // 左下
+  2: 'top-[35.7cqw] left-[-14.05cqw]', // 左上
+  3: 'top-[7.8cqw] left-1/2 -translate-x-1/2', // 上
+  4: 'top-[35.7cqw] right-[-14.05cqw]', // 右上
+  5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
 };
 
 const betPositionStyles: Record<number, string> = {
