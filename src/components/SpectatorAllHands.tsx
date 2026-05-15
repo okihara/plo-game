@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Card as CardType, GameState } from '../logic/types';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { MiniCard, PositionBadge } from './HandHistoryUtils';
@@ -26,6 +27,13 @@ function SpectatorFaceDownMini() {
 interface SpectatorAllHandsProps {
   gameState: GameState;
   holeCardsBySeat: Map<number, CardType[]>;
+  nav?: {
+    label: string;
+    onPrevious: () => void;
+    onNext: () => void;
+    canGoPrevious: boolean;
+    canGoNext: boolean;
+  };
 }
 
 /** K/M 略記なし。bb は bigBlind で算出 */
@@ -48,7 +56,7 @@ function formatSpectatorStackDisplay(amount: number, useBBNotation: boolean, big
   return `${chipsStr} (${bbStr})`;
 }
 
-export function SpectatorAllHands({ gameState, holeCardsBySeat }: SpectatorAllHandsProps) {
+export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: SpectatorAllHandsProps) {
   const { settings } = useGameSettings();
   // bomb pot は bigBlind=0 / ante=N なので ante を BB 相当として扱う
   const effectiveBb = gameState.bigBlind || gameState.ante;
@@ -63,6 +71,33 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat }: SpectatorAllHa
   return (
     <div className="@container w-full flex-shrink-0 overflow-y-auto py-[4cqw]">
       <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[50cqw] overflow-hidden">
+        {nav && (
+          <div className="flex items-center justify-between gap-[1cqw] pb-[1cqw] border-b border-white/10 shrink-0">
+            <button
+              type="button"
+              onClick={nav.onPrevious}
+              disabled={!nav.canGoPrevious}
+              title="前のテーブル"
+              aria-label="前のテーブル"
+              className="flex items-center justify-center w-[7cqw] h-[7cqw] text-white/85 hover:text-white rounded-full bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+            >
+              <ChevronLeft className="w-[4.5cqw] h-[4.5cqw]" />
+            </button>
+            <span className="text-white/85 tabular-nums" style={{ fontSize: '2.8cqw' }}>
+              {nav.label}
+            </span>
+            <button
+              type="button"
+              onClick={nav.onNext}
+              disabled={!nav.canGoNext}
+              title="次のテーブル"
+              aria-label="次のテーブル"
+              className="flex items-center justify-center w-[7cqw] h-[7cqw] text-white/85 hover:text-white rounded-full bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+            >
+              <ChevronRight className="w-[4.5cqw] h-[4.5cqw]" />
+            </button>
+          </div>
+        )}
         {rows.map(({ p, seatIndex }) => {
           const cards = holeCardsBySeat.has(seatIndex)
             ? (holeCardsBySeat.get(seatIndex) ?? [])
