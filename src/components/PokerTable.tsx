@@ -72,9 +72,9 @@ export function PokerTable({
 
   return (
     <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
-      <div className="@container top-[4cqw] h-[85%] aspect-[0.7] relative">
+      <div className="@container top-[4cqw] h-[109.65cqw] aspect-[0.7] relative">
         {/* Pot Display - above community cards */}
-        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-yellow-400 z-10">
+        <div className="absolute top-[43.86cqw] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-yellow-400 z-10">
           <div className="flex flex-col items-center gap-[0.5cqw]">
             <span className="text-[5cqw]">Total: {formatChips(state.pot)}</span>
             {state.sidePots.length > 1 && (
@@ -94,14 +94,14 @@ export function PokerTable({
               <CommunityCards
                 cards={state.boards?.[0] ?? []}
                 newCardsCount={newCommunityCardsCount}
-                topClass="top-[47%]"
+                topClass="top-[51.54cqw]"
                 label="B1"
                 cardSize="xs"
               />
               <CommunityCards
                 cards={state.boards?.[1] ?? []}
                 newCardsCount={newCommunityCardsCount}
-                topClass="top-[55%]"
+                topClass="top-[60.31cqw]"
                 label="B2"
                 cardSize="xs"
               />
@@ -110,7 +110,7 @@ export function PokerTable({
             <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
           )
         ) : (
-          <div className="absolute top-[52%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-center">
+          <div className="absolute top-[57.02cqw] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-center">
             <div className="flex gap-[2cqw] text-[6cqw] text-white/60 justify-center whitespace-nowrap">
               {[
                 state.ante ? `Ante ${formatChips(state.ante)}` : null,
@@ -136,11 +136,11 @@ export function PokerTable({
           const carriedPot = state.pot - currentStreetBets;
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
-          // bomb pot: 2ボードを top-[50%]/[60%] に表示するため carried pot は下にずらす
+          // bomb pot: 2ボードを上下に表示するため carried pot は下にずらす
           const isBombPot = state.variant === 'plo_double_board_bomb';
           const topClass = isBombPot
-            ? 'top-[62%]'
-            : (!getVariantConfig(state.variant).usesCommunityCards ? 'top-[50%]' : 'top-[62%]');
+            ? 'top-[67.98cqw]'
+            : (!getVariantConfig(state.variant).usesCommunityCards ? 'top-[54.83cqw]' : 'top-[67.98cqw]');
           return (
             <div className={`absolute ${topClass} left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 px-[3cqw] rounded-[15cqw] text-[5cqw] text-white-80 z-10`}>
               {formatChips(carriedPot)}

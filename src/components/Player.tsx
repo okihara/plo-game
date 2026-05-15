@@ -49,12 +49,12 @@ function formatAction(
 }
 
 const positionStyles: Record<number, string> = {
-  0: 'bottom-[-12%] left-1/2 -translate-x-1/2', // 自分
-  1: 'bottom-[18%] left-[-17%]', // 左下
-  2: 'top-[28%] left-[-17%]', // 左上
-  3: 'top-[4%] left-1/2 -translate-x-1/2', // 上
-  4: 'top-[28%] right-[-17%]', // 右上
-  5: 'bottom-[18%] right-[-17%]', // 右下
+  0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
+  1: 'bottom-[19.74cqw] left-[-13.05cqw]', // 左下
+  2: 'top-[30.7cqw] left-[-13.05cqw]', // 左上
+  3: 'top-[4.39cqw] left-1/2 -translate-x-1/2', // 上
+  4: 'top-[30.7cqw] right-[-13.05cqw]', // 右上
+  5: 'bottom-[19.74cqw] right-[-13.05cqw]', // 右下
 };
 
 const betPositionStyles: Record<number, string> = {
