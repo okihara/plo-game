@@ -207,7 +207,7 @@ export function GameTable({
 
       {/* メンテナンス通知バナー */}
       {maintenanceStatus?.isActive && (
-        <div className="absolute top-[4%] left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <div className="absolute top-[4cqh] left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="bg-red-600/90 text-white text-center py-[0.5cqw] px-[3cqw] rounded-b-[1.5cqw]"
                style={{ fontSize: 'min(1.4vh, 2.3vw)' }}>
             メンテナンス予定 - 現在のハンド終了後、新しいハンドは開始されません
@@ -217,14 +217,14 @@ export function GameTable({
       )}
       {/* お知らせバナー */}
       {announcementStatus?.isActive && !maintenanceStatus?.isActive && (
-        <div className="absolute top-[3%] left-0 right-0 z-50 flex justify-center pointer-events-none">
+        <div className="absolute top-[3cqh] left-0 right-0 z-50 flex justify-center pointer-events-none">
           <div className="bg-blue-600/85 text-white text-center py-[0.5cqw] px-[3cqw] rounded-[1.5cqw] whitespace-pre-line text-[2.3cqw]">
             {announcementStatus.message}
           </div>
         </div>
       )}
       {/* ゲーム情報ヘッダー */}
-          <div className="absolute top-0 left-0 right-0 z-10 h-[6%] bg-transparent px-[4%] pt-[2%] flex items-center gap-[4cqw]">
+          <div className="absolute top-0 left-0 right-0 z-10 h-[6cqh] bg-transparent px-[4cqw] pt-[2cqw] flex items-center gap-[4cqw]">
             <button
               onClick={onBack}
               className="flex items-center justify-center w-[8cqw] h-[8cqw] text-white/80 hover:text-white transition-colors rounded-full bg-white/20"
@@ -252,7 +252,7 @@ export function GameTable({
           </div>
       {/* バリアント + ブラインド（中央上部）。
           sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
-      <div className="absolute top-[-0.1%] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
+      <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
         <span className="bg-cream-200 rounded-b-[3cqw] px-[3cqw] py-[0.5cqw] text-black text-[3.3cqw] font-medium tracking-wide whitespace-nowrap w-[40cqw] h-[7cqw] text-center inline-flex items-end justify-center">
           {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant}
           {' '}
@@ -263,7 +263,7 @@ export function GameTable({
       </div>
       {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}
       {!isSpectator && privateTableInfo && (
-        <div className="absolute top-[9%] right-[4%] z-[160]">
+        <div className="absolute top-[9cqh] right-[4cqw] z-[160]">
           <div className="relative">
             <button
               onClick={() => setShowInvitePopover(!showInvitePopover)}
@@ -304,7 +304,7 @@ export function GameTable({
 
           {/* バリアント変更通知（テーブル中央） */}
           {centerNotice && (
-            <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
+            <div className="absolute top-[40cqh] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
               <div className="bg-cream-200/80 text-gray-800 font-bold w-[70cqw] min-h-[32cqw] py-[4cqw] flex items-center justify-center rounded-[2cqw] text-[6cqw] animate-fade-in whitespace-pre-line text-center leading-[1.4]">
                 {centerNotice}
               </div>
