@@ -187,9 +187,18 @@ export class ActionController {
 
     const validActions = this.variantAdapter.getValidActions(gameState, currentPlayerIndex);
 
-    const timeoutMs = gameState.currentStreet === 'preflop'
+    const baseTimeoutMs = gameState.currentStreet === 'preflop'
       ? TABLE_CONSTANTS.ACTION_TIMEOUT_PREFLOP_MS
       : TABLE_CONSTANTS.ACTION_TIMEOUT_POSTFLOP_MS;
+
+    // 連続タイムアウトに応じて持ち時間を短縮（牛歩抑止）
+    const factors = TABLE_CONSTANTS.ACTION_TIMEOUT_PENALTY_FACTORS;
+    const penaltyIndex = Math.min(currentSeat.consecutiveTimeouts, factors.length - 1);
+    const factor = factors[penaltyIndex];
+    const timeoutMs = Math.max(
+      TABLE_CONSTANTS.ACTION_TIMEOUT_MIN_MS,
+      Math.round(baseTimeoutMs * factor),
+    );
 
     // ダッシュボード用のpendingAction設定
     this.pendingAction = {

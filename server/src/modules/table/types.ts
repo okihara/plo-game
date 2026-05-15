@@ -57,6 +57,12 @@ export interface SeatInfo {
   nameMasked: boolean; // 他プレイヤーにusernameをマスク表示するか
   leftForFastFold?: boolean; // FastFold移動済み（表示用に席情報を残す）
   hasWeeklyChampion?: boolean; // ウィークリーチャンピオンバッジ保有（着席時にスナップショット）
+  /**
+   * 直前の手動アクションから連続でタイムアウトした回数。
+   * 手番が回ってきたときの持ち時間短縮（牛歩対策）に使う。
+   * 手動アクション成功で 0 にリセットされる。
+   */
+  consecutiveTimeouts: number;
 }
 
 // ダッシュボード用：送信メッセージログ
