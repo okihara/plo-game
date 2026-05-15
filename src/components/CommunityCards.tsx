@@ -6,7 +6,7 @@ type CardSize = 'xs' | 'sm' | 'md' | 'lg';
 interface CommunityCardsProps {
   cards: CardType[];
   newCardsCount: number;
-  /** デフォルト top-[57.02cqw]。bomb pot の 2 ボード描画用に上書き可能 */
+  /** デフォルト top-[70.02cqw]。bomb pot の 2 ボード描画用に上書き可能 */
   topClass?: string;
   /** "Board 1" 等のラベルを左に小さく表示する */
   label?: string;
@@ -14,7 +14,7 @@ interface CommunityCardsProps {
   cardSize?: CardSize;
 }
 
-export function CommunityCards({ cards, newCardsCount, topClass = 'top-[57.02cqw]', label, cardSize = 'md' }: CommunityCardsProps) {
+export function CommunityCards({ cards, newCardsCount, topClass = 'top-[70.02cqw]', label, cardSize = 'md' }: CommunityCardsProps) {
   const emptySlots = 5 - cards.length;
 
   return (

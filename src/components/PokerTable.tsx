@@ -74,7 +74,7 @@ export function PokerTable({
     <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
       <div className="@container top-[4cqw] h-[109.65cqw] aspect-[0.7] relative">
         {/* Pot Display - above community cards */}
-        <div className="absolute top-[43.86cqw] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-yellow-400 z-10">
+        <div className="absolute top-[55cqw] left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 px-[3cqw] py-[0cqw] rounded-lg text-yellow-400 z-10">
           <div className="flex flex-col items-center gap-[0.5cqw]">
             <span className="text-[5cqw]">Total: {formatChips(state.pot)}</span>
             {state.sidePots.length > 1 && (
@@ -139,8 +139,8 @@ export function PokerTable({
           // bomb pot: 2ボードを上下に表示するため carried pot は下にずらす
           const isBombPot = state.variant === 'plo_double_board_bomb';
           const topClass = isBombPot
-            ? 'top-[67.98cqw]'
-            : (!getVariantConfig(state.variant).usesCommunityCards ? 'top-[54.83cqw]' : 'top-[67.98cqw]');
+            ? 'top-[84.98cqw]'
+            : (!getVariantConfig(state.variant).usesCommunityCards ? 'top-[54.83cqw]' : 'top-[84.98cqw]');
           return (
             <div className={`absolute ${topClass} left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 px-[3cqw] rounded-[15cqw] text-[5cqw] text-white-80 z-10`}>
               {formatChips(carriedPot)}

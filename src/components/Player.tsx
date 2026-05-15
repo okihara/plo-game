@@ -58,7 +58,7 @@ const positionStyles: Record<number, string> = {
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-30cqw]',
+  0: 'top-[-26cqw]',
   1: 'top-[1cqw] right-[-15cqw]',
   2: 'top-[1cqw] right-[-15cqw]',
   3: 'top-[15cqw]',
