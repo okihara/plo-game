@@ -16,10 +16,10 @@ function cardsTitle(cards: CardType[]): string {
 function SpectatorFaceDownMini() {
   return (
     <span
-      className="inline-flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-800 text-white/75 border-[0.3cqw] border-slate-400 rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm"
+      className="inline-flex items-center justify-center bg-gradient-to-br from-slate-500 to-slate-800 text-white/75 border-[0.1cqw] border-slate-400 rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm"
       aria-hidden
     >
-      ?
+      ??
     </span>
   );
 }
@@ -69,8 +69,8 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
   if (rows.length === 0) return null;
 
   return (
-    <div className="@container py-[5cqw]">
-      <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[43cqw] overflow-hidden">
+    <div className="py-[5cqw]">
+      <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[0.1cqw] h-[43cqw] overflow-hidden">
         {nav && (
           <div className="flex items-center justify-between gap-[1cqw] pb-[0.6cqw] border-b border-white/10 shrink-0">
             <button
@@ -105,7 +105,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
           return (
             <div
               key={seatIndex}
-              className={`flex items-center gap-[1cqw] min-w-0 ${p.folded ? 'opacity-45 brightness-90' : ''}`}
+              className={`flex items-center gap-[1cqw] min-w-0 shrink-0 ${p.folded ? 'opacity-45 brightness-90' : ''}`}
             >
               {/* 固定幅: カード列の左端を全行で揃える（狭めてカードを左へ） */}
               <div
@@ -133,7 +133,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
                 </span>
               </div>
               <div
-                className="flex flex-wrap items-center gap-[0.6cqw] min-w-0 flex-1"
+                className="flex flex-nowrap items-center gap-[0.6cqw] min-w-0 flex-1"
                 title={cardsTitle(cards)}
               >
                 {cards.length === 0 ? (

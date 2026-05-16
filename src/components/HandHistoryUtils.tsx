@@ -16,7 +16,7 @@ export function MiniCard({ cardStr }: { cardStr: string }) {
   const textColor = SUIT_TEXT_COLORS[suit] || 'text-gray-800';
 
   return (
-    <span className={`inline-flex items-center justify-center bg-white ${textColor} border-[0.3cqw] ${borderColor} rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
+    <span className={`inline-flex items-center justify-center bg-white ${textColor} border-[0.1cqw] ${borderColor} rounded-[0.8cqw] px-[1.6cqw] py-[0.8cqw] text-[3cqw] font-mono font-bold leading-none shadow-sm`}>
       {rank}{symbol}
     </span>
   );
@@ -84,7 +84,7 @@ export function getPositionName(seatPosition: number, dealerPosition: number, al
 export function PositionBadge({ position }: { position: string }) {
   if (!position) return null;
   return (
-    <span className="bg-cream-200 text-cream-800 text-[2.5cqw] font-bold w-[7cqw] text-center py-[0.5cqw] rounded-[0.8cqw] border border-cream-400 shrink-0 inline-block">
+    <span className="bg-cream-200 text-cream-800 text-[2.5cqw] font-bold w-[7cqw] h-[4cqw] text-center rounded-[0.5cqw] border border-cream-400 shrink-0 inline-block">
       {position}
     </span>
   );
