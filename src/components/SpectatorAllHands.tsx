@@ -95,7 +95,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
             );
           }
           return (
-            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.15 : 1, fontSize: '3cqw' }}>
+            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.25 : 1, fontSize: '3cqw' }}>
               <div style={{ width: '65%', display: 'flex', gap: 4 }}>
                 <span>#{seatIndex + 1}</span>
                 <span
