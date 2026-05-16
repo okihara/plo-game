@@ -1,4 +1,4 @@
-import { GameState, Player as PlayerType, getVariantConfig } from '../logic';
+import { GameState, Player as PlayerType } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -16,29 +16,6 @@ interface PokerTableProps {
   onPlayerClick?: (player: PlayerType) => void;
   showdownHandNames?: Map<number, string>;
   getLabel?: (targetUserId: string) => { color: string } | undefined;
-}
-
-function getStreetLabel(street: string): string {
-  switch (street) {
-    case 'preflop': return 'Preflop';
-    case 'flop': return 'Flop';
-    case 'turn': return 'Turn';
-    case 'river': return 'River';
-    case 'showdown': return 'Showdown';
-    case 'third': return '3rd';
-    case 'fourth': return '4th';
-    case 'fifth': return '5th';
-    case 'sixth': return '6th';
-    case 'seventh': return '7th';
-    case 'predraw': return '1st Bet';
-    case 'postdraw1': return '2nd Bet';
-    case 'postdraw2': return '3rd Bet';
-    case 'draw1': return '1st Draw';
-    case 'draw2': return '2nd Draw';
-    case 'draw3': return 'Final Draw';
-    case 'final': return 'Final';
-    default: return street;
-  }
 }
 
 export function PokerTable({
@@ -88,20 +65,20 @@ export function PokerTable({
         </div>
 
         {/* Community Cards (PLO/Holdem) / Stud Info */}
-        {getVariantConfig(state.variant).usesCommunityCards ? (
+        {
           state.variant === 'plo_double_board_bomb' ? (
             <>
               <CommunityCards
                 cards={state.boards?.[0] ?? []}
                 newCardsCount={newCommunityCardsCount}
-                topClass="top-[51.54cqw]"
+                topClass="top-[64.5cqw]"
                 label="B1"
                 cardSize="xs"
               />
               <CommunityCards
                 cards={state.boards?.[1] ?? []}
                 newCardsCount={newCommunityCardsCount}
-                topClass="top-[60.31cqw]"
+                topClass="top-[75.5cqw]"
                 label="B2"
                 cardSize="xs"
               />
@@ -109,26 +86,7 @@ export function PokerTable({
           ) : (
             <CommunityCards cards={state.communityCards} newCardsCount={newCommunityCardsCount} />
           )
-        ) : (
-          <div className="absolute top-[57.02cqw] left-1/2 -translate-x-1/2 -translate-y-1/2 z-10 text-center">
-            <div className="flex gap-[2cqw] text-[6cqw] text-white/60 justify-center whitespace-nowrap">
-              {[
-                state.ante ? `Ante ${formatChips(state.ante)}` : null,
-                state.bringIn ? `BI ${formatChips(state.bringIn)}` : null,
-                `SB ${formatChips(state.smallBlind)}`,
-                `bb ${formatChips(state.bigBlind)}`,
-              ].filter(Boolean).map((text, i) => (
-                <span key={i}>
-                  {i > 0 && <span className="text-white/30 mr-[2cqw]">|</span>}
-                  {text}
-                </span>
-              ))}
-            </div>
-            <span className={`text-[6cqw] text-white/70 uppercase tracking-wider mt-[1cqw] inline-block border-2 border-white/70 px-[2cqw] py-[0.5cqw]`}>
-              {getStreetLabel(state.currentStreet)}
-            </span>
-          </div>
-        )}
+        }
 
         {/* Carried Pot - below community cards, after first street */}
         {(() => {
@@ -136,11 +94,7 @@ export function PokerTable({
           const carriedPot = state.pot - currentStreetBets;
           const isFirstStreet = state.currentStreet === 'preflop' || state.currentStreet === 'third';
           if (isFirstStreet || carriedPot <= 0) return null;
-          // bomb pot: 2ボードを上下に表示するため carried pot は下にずらす
-          const isBombPot = state.variant === 'plo_double_board_bomb';
-          const topClass = isBombPot
-            ? 'top-[84.98cqw]'
-            : (!getVariantConfig(state.variant).usesCommunityCards ? 'top-[54.83cqw]' : 'top-[84.98cqw]');
+          const topClass = 'top-[84.98cqw]';
           return (
             <div className={`absolute ${topClass} left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/50 px-[3cqw] rounded-[15cqw] text-[5cqw] text-white-80 z-10`}>
               {formatChips(carriedPot)}
