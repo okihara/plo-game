@@ -144,7 +144,7 @@ export function Player({
     : null;
 
   return (
-    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[30]' : ''}`} onClick={onAvatarClick}>
+    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[40]' : ''}`} onClick={onAvatarClick}>
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-25cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
