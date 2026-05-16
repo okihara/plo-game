@@ -58,12 +58,12 @@ const positionStyles: Record<number, string> = {
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-26cqw]',
-  1: 'top-[1cqw] right-[-15cqw]',
-  2: 'top-[1cqw] right-[-15cqw]',
-  3: 'top-[15cqw]',
-  4: 'top-[1cqw] left-[-15cqw]',
-  5: 'top-[1cqw] left-[-15cqw]',
+  0: 'top-[-23cqw]',
+  1: 'top-[2cqw] right-[-17cqw]',
+  2: 'top-[2cqw] right-[-17cqw]',
+  3: 'top-[18cqw]',
+  4: 'top-[2cqw] left-[-17cqw]',
+  5: 'top-[2cqw] left-[-17cqw]',
 };
 
 const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
@@ -324,7 +324,7 @@ export function Player({
       {player.currentBet > 0 && (
         <div
           key={chipAnimKey}
-          className={`absolute bg-black/70 text-yellow-400 px-[2.3cqw] py-[1.2cqw] rounded-full text-[4.8cqw] whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
+          className={`absolute bg-black/70 text-yellow-400 text-center w-[18cqw] px-[0.1cqw] py-[0cqw] rounded-full text-[4.0cqw] whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
         >
           {formatChips(player.currentBet)}
         </div>
