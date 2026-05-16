@@ -5,6 +5,7 @@ import { GameTable } from '../components/GameTable';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { OnlineConnectionGate } from '../components/OnlineConnectionGate';
 import { SpectatorAllHands } from '../components/SpectatorAllHands';
+import { TournamentHUD } from '../components/TournamentHUD';
 
 interface WatchGameProps {
   tableId: string;
@@ -30,6 +31,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     showdownHandNames,
     maintenanceStatus,
     announcementStatus,
+    tournamentState,
     connectAndWatch,
     disconnect,
   } = useSpectatorGameState(tableId, inviteCode);
@@ -118,9 +120,18 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
             onBack={onBack}
             blindsLabel={blindsLabel}
             isSpectator
+            isTournament={!!tournamentState}
             maintenanceStatus={maintenanceStatus}
             announcementStatus={announcementStatus}
-          />
+          >
+            {tournamentState && (
+              <TournamentHUD
+                tournamentState={tournamentState}
+                myChips={null}
+                lastEliminated={null}
+              />
+            )}
+          </GameTable>
           <SpectatorAllHands gameState={gameState} holeCardsBySeat={holeCardsBySeat} nav={spectateNav} />
         </div>
       )}

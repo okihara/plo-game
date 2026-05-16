@@ -36,6 +36,8 @@ export class TableInstance {
 
   // ゲームモード（キャッシュ / トーナメント）
   public readonly gameMode: GameMode = 'cash';
+  /** トーナメント所属テーブルのとき、所属トーナメント ID。キャッシュゲームでは null */
+  public readonly tournamentId: string | null = null;
   private readonly lifecycleCallbacks: TableLifecycleCallbacks;
 
   // HORSE (MIXゲーム) モード
@@ -87,6 +89,7 @@ export class TableInstance {
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
     this.gameMode = options?.gameMode ?? 'cash';
+    this.tournamentId = options?.tournamentId ?? null;
 
     // デフォルト: キャッシュゲーム用コールバック（table:busted通知 → unseat）
     this.lifecycleCallbacks = options?.lifecycleCallbacks ?? {
@@ -110,7 +113,7 @@ export class TableInstance {
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
     this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder(
-      this.gameMode === 'tournament' && options?.tournamentId ? { tournamentId: options.tournamentId } : undefined
+      this.gameMode === 'tournament' && this.tournamentId ? { tournamentId: this.tournamentId } : undefined
     );
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
