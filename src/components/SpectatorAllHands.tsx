@@ -86,7 +86,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
             : (p.holeCards ?? []);
           if (p.isSittingOut) {
             return (
-              <div key={seatIndex} style={{ display: 'flex', opacity: 0.35, fontSize: '3cqw' }}>
+              <div key={seatIndex} style={{ display: 'flex', opacity: 0.15, fontSize: '3cqw' }}>
                 <div style={{ width: '60%', display: 'flex', gap: 4 }}>
                   <span>#{seatIndex + 1}</span>
                   <span style={{ flex: 1 }}>EMPTY</span>
@@ -95,7 +95,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
             );
           }
           return (
-            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.45 : 1, fontSize: '3cqw' }}>
+            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.15 : 1, fontSize: '3cqw' }}>
               <div style={{ width: '65%', display: 'flex', gap: 4 }}>
                 <span>#{seatIndex + 1}</span>
                 <span
