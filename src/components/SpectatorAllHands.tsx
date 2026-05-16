@@ -69,19 +69,19 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
   if (rows.length === 0) return null;
 
   return (
-    <div className="@container w-full flex-shrink-0 overflow-y-auto py-[4cqw]">
-      <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[50cqw] overflow-hidden">
+    <div className="@container py-[5cqw]">
+      <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[43cqw] overflow-hidden">
         {nav && (
-          <div className="flex items-center justify-between gap-[1cqw] pb-[1cqw] border-b border-white/10 shrink-0">
+          <div className="flex items-center justify-between gap-[1cqw] pb-[0.6cqw] border-b border-white/10 shrink-0">
             <button
               type="button"
               onClick={nav.onPrevious}
               disabled={!nav.canGoPrevious}
               title="前のテーブル"
               aria-label="前のテーブル"
-              className="flex items-center justify-center w-[7cqw] h-[7cqw] text-white/85 hover:text-white rounded-full bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+              className="flex items-center justify-center w-[7cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
             >
-              <ChevronLeft className="w-[4.5cqw] h-[4.5cqw]" />
+              <ChevronLeft className="w-[3.5cqw] h-[3.5cqw]" />
             </button>
             <span className="text-white/85 tabular-nums" style={{ fontSize: '2.8cqw' }}>
               {nav.label}
@@ -92,9 +92,9 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
               disabled={!nav.canGoNext}
               title="次のテーブル"
               aria-label="次のテーブル"
-              className="flex items-center justify-center w-[7cqw] h-[7cqw] text-white/85 hover:text-white rounded-full bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+              className="flex items-center justify-center w-[7cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
             >
-              <ChevronRight className="w-[4.5cqw] h-[4.5cqw]" />
+              <ChevronRight className="w-[3.5cqw] h-[3.5cqw]" />
             </button>
           </div>
         )}
