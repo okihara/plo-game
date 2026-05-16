@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSpectatorGameState } from '../hooks/useSpectatorGameState';
 import { useTournamentSpectateTableIds } from '../hooks/useTournamentSpectateTableIds';
 import { GameTable } from '../components/GameTable';
@@ -43,7 +43,39 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     };
   }, [connectAndWatch, disconnect]);
 
-  const tournamentTableIds = useTournamentSpectateTableIds(tournamentId);
+  const { tableIds: tournamentTableIds, refresh: refreshTournamentTableIds } =
+    useTournamentSpectateTableIds(tournamentId);
+
+  // 観戦中の卓がブレイク/統合された場合のみ、トーナメントの別卓へ自動ジャンプ。
+  // 他のエラー（rate-limit, 観戦上限, テーブルが見つからない等）では飛ばさない。
+  // FT 統合直後はサーバ側で新 FT 卓の登録に少しラグがあるため、短い待機を入れて refresh する。
+  const attemptedTableIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!connectionError) return;
+    if (!tournamentId?.trim() || !onNavigateWatchTable) return;
+    const shouldAutoJump =
+      connectionError.includes('閉じられました') ||
+      connectionError.includes('統合されました') ||
+      connectionError.includes('テーブルが見つかりません');
+    if (!shouldAutoJump) return;
+    if (attemptedTableIdsRef.current.has(tableId)) return;
+    attemptedTableIdsRef.current.add(tableId);
+    const q = { tournament: tournamentId, invite: inviteCode };
+    const pickOther = (ids: string[]) =>
+      ids.find(id => id !== tableId && !attemptedTableIdsRef.current.has(id));
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      if (cancelled) return;
+      const fresh = await refreshTournamentTableIds();
+      if (cancelled) return;
+      const target = pickOther(fresh) ?? pickOther(tournamentTableIds);
+      if (target) onNavigateWatchTable(target, q);
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [connectionError, tournamentId, tableId, inviteCode, onNavigateWatchTable, tournamentTableIds, refreshTournamentTableIds]);
   const spectateNav = useMemo(() => {
     if (!tournamentId?.trim() || !onNavigateWatchTable || tournamentTableIds.length < 2) {
       return undefined;
@@ -132,7 +164,12 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
               />
             )}
           </GameTable>
-          <SpectatorAllHands gameState={gameState} holeCardsBySeat={holeCardsBySeat} nav={spectateNav} />
+          <SpectatorAllHands
+            gameState={gameState}
+            holeCardsBySeat={holeCardsBySeat}
+            nav={spectateNav}
+            onRefresh={() => window.location.reload()}
+          />
         </div>
       )}
     </OnlineConnectionGate>

@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight, RotateCw } from 'lucide-react';
 import type { Card as CardType, GameState } from '../logic/types';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 
@@ -20,6 +20,8 @@ interface SpectatorAllHandsProps {
     canGoPrevious: boolean;
     canGoNext: boolean;
   };
+  /** リロードボタン用。常に有効化できる単独の操作にする */
+  onRefresh?: () => void;
 }
 
 /** K/M 略記なし。bb は bigBlind で算出 */
@@ -42,7 +44,7 @@ function formatSpectatorStackDisplay(amount: number, useBBNotation: boolean, big
   return `${chipsStr} (${bbStr})`;
 }
 
-export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: SpectatorAllHandsProps) {
+export function SpectatorAllHands({ gameState, holeCardsBySeat, nav, onRefresh }: SpectatorAllHandsProps) {
   const { settings } = useGameSettings();
   // bomb pot は bigBlind=0 / ante=N なので ante を BB 相当として扱う
   const effectiveBb = gameState.bigBlind || gameState.ante;
@@ -66,9 +68,21 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
           >
             <ChevronLeft className="w-[3.5cqw] h-[3.5cqw]" />
           </button>
-          <span className="text-white/85 tabular-nums" style={{ fontSize: '2.8cqw' }}>
-            {nav?.label ?? ''}
-          </span>
+          <div className="flex items-center gap-[1cqw]">
+            <span className="text-white/85 tabular-nums" style={{ fontSize: '2.8cqw' }}>
+              {nav?.label ?? ''}
+            </span>
+            <button
+              type="button"
+              onClick={onRefresh}
+              disabled={!onRefresh}
+              title="リロード"
+              aria-label="リロード"
+              className="flex items-center justify-center w-[5cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+            >
+              <RotateCw className="w-[3cqw] h-[3cqw]" />
+            </button>
+          </div>
           <button
             type="button"
             onClick={nav?.onNext}
