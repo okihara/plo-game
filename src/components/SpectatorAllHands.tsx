@@ -44,9 +44,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
   const effectiveBb = gameState.bigBlind || gameState.ante;
   const stackBb = effectiveBb > 0 ? effectiveBb : settings.bigBlind;
 
-  const rows = gameState.players
-    .map((p, seatIndex) => ({ p, seatIndex }))
-    .filter(({ p }) => !p.isSittingOut);
+  const rows = gameState.players.map((p, seatIndex) => ({ p, seatIndex }));
 
   if (rows.length === 0) return null;
 
@@ -84,8 +82,18 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
           const cards = holeCardsBySeat.has(seatIndex)
             ? (holeCardsBySeat.get(seatIndex) ?? [])
             : (p.holeCards ?? []);
+          if (p.isSittingOut) {
+            return (
+              <div key={seatIndex} style={{ display: 'flex', opacity: 0.35, fontSize: '3cqw' }}>
+                <div style={{ width: '64%', display: 'flex', gap: 4 }}>
+                  <span>#{seatIndex + 1}</span>
+                  <span style={{ flex: 1 }}>EMPTY</span>
+                </div>
+              </div>
+            );
+          }
           return (
-            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.45 : 1, fontSize: '3.5cqw' }}>
+            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.45 : 1, fontSize: '3cqw' }}>
               <div style={{ width: '64%', display: 'flex', gap: 4 }}>
                 <span>#{seatIndex + 1}</span>
                 <span
@@ -100,7 +108,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
                   {p.position ?? ''}
                 </span>
                 <span style={{ flex: 1 }}>{p.name}</span>
-                <span>{formatSpectatorStackDisplay(p.chips, settings.useBBNotation, stackBb)}</span>
+                <span style={{ color: '#fcd34d' }}>{formatSpectatorStackDisplay(p.chips, settings.useBBNotation, stackBb)}</span>
               </div>
               <div style={{ display: 'flex', flex: 1, gap: 4, justifyContent: 'flex-end' }}>
                 {cards.length === 0

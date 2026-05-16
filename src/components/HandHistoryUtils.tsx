@@ -84,7 +84,7 @@ export function getPositionName(seatPosition: number, dealerPosition: number, al
 export function PositionBadge({ position }: { position: string }) {
   if (!position) return null;
   return (
-    <span className="bg-cream-200 text-cream-800 text-[2.5cqw] font-bold w-[7cqw] h-[4cqw] text-center rounded-[0.5cqw] border border-cream-400 shrink-0 inline-block">
+    <span className="bg-cream-200 text-cream-800 text-[2.5cqw] font-bold w-[7cqw] h-[4cqw] text-center rounded-[0.5cqw] border-[0.5cqw] border-cream-400 shrink-0 inline-block">
       {position}
     </span>
   );
