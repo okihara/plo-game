@@ -17,6 +17,14 @@ import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistory
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
+import { AuthenticatedSocket } from '../game/authMiddleware.js';
+
+/** 観戦時に全員のホールカードを覗ける特権 username（読み手のみ） */
+const SPECTATOR_PRIVILEGED_USERNAMES: ReadonlySet<string> = new Set([
+  'succhan627',
+  'okkichan3',
+  'babyplo_',
+]);
 
 // 型の再エクスポート（後方互換性のため）
 export type { MessageLog, PendingAction };
@@ -521,17 +529,31 @@ export class TableInstance {
     return this.spectators.size;
   }
 
-  /** 観戦者へ着席者と同タイミングでホールを席単位で送る */
-  private emitHoleCardsToSpectators(_seatIndex: number): void {
-    // 一旦、観戦モードでの全員カード送信は無効化
+  /** 観戦者へ着席者と同タイミングでホールを席単位で送る（特権ユーザーにのみ送信） */
+  private emitHoleCardsToSpectators(seatIndex: number): void {
     if (this.spectators.size === 0 || !this.gameState) return;
-    const player = this.gameState.players[_seatIndex] ?? null;
+    const player = this.gameState.players[seatIndex] ?? null;
     const cards = player?.holeCards ?? [];
     if (cards.length === 0) return;
-    const payload = { seatIndex: _seatIndex, cards };
+    const payload = { seatIndex, cards };
     for (const sock of this.spectators.values()) {
-      sock.emit('game:hole_cards', payload);
+      const auth = sock as AuthenticatedSocket;
+      if (auth.odUsername && SPECTATOR_PRIVILEGED_USERNAMES.has(auth.odUsername)) {
+        sock.emit('game:hole_cards', payload);
+      }
     }
+  }
+
+  /** 観戦者参加時に、特権ユーザーへ現在配られている全ホールを一括送信する */
+  private sendCurrentHoleCardsToSpectator(socket: Socket): void {
+    if (!this.gameState) return;
+    const auth = socket as AuthenticatedSocket;
+    if (!auth.odUsername || !SPECTATOR_PRIVILEGED_USERNAMES.has(auth.odUsername)) return;
+    this.gameState.players.forEach((player, seatIndex) => {
+      const cards = player?.holeCards ?? [];
+      if (cards.length === 0) return;
+      socket.emit('game:hole_cards', { seatIndex, cards });
+    });
   }
 
   public addSpectator(socket: Socket): { ok: true } | { ok: false; message: string } {
@@ -547,6 +569,7 @@ export class TableInstance {
       this.spectators.set(socket.id, socket);
       socket.join(this.roomName);
     }
+    this.sendCurrentHoleCardsToSpectator(socket);
     return { ok: true };
   }
 
