@@ -2,9 +2,13 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { Card as CardType, GameState } from '../logic/types';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 
-function cardToHistoryStr(c: CardType): string {
-  return `${c.rank}${c.suit}`;
-}
+const SUIT_SYMBOL: Record<string, string> = { h: '♥', d: '♦', c: '♣', s: '♠' };
+const SUIT_BG: Record<string, string> = {
+  h: '#dc2626', // red-600
+  d: '#2563eb', // blue-600
+  c: '#15803d', // green-700
+  s: '#1f2937', // gray-800
+};
 
 interface SpectatorAllHandsProps {
   gameState: GameState;
@@ -50,34 +54,32 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
 
   return (
     <div className="py-[5cqw]">
-      <div className="rounded-[2cqw] bg-black border-[0.3cqw] border-white/15 px-[2cqw] py-[2cqw] flex flex-col gap-[0.1cqw] h-[43cqw] overflow-hidden">
-        {nav && (
-          <div className="flex items-center justify-between gap-[1cqw] pb-[0.6cqw] border-b border-white/10 shrink-0">
-            <button
-              type="button"
-              onClick={nav.onPrevious}
-              disabled={!nav.canGoPrevious}
-              title="前のテーブル"
-              aria-label="前のテーブル"
-              className="flex items-center justify-center w-[7cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
-            >
-              <ChevronLeft className="w-[3.5cqw] h-[3.5cqw]" />
-            </button>
-            <span className="text-white/85 tabular-nums" style={{ fontSize: '2.8cqw' }}>
-              {nav.label}
-            </span>
-            <button
-              type="button"
-              onClick={nav.onNext}
-              disabled={!nav.canGoNext}
-              title="次のテーブル"
-              aria-label="次のテーブル"
-              className="flex items-center justify-center w-[7cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
-            >
-              <ChevronRight className="w-[3.5cqw] h-[3.5cqw]" />
-            </button>
-          </div>
-        )}
+      <div className="bg-black px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[43cqw] overflow-hidden">
+        <div className="flex items-center justify-between gap-[1cqw] pb-[0.6cqw] border-b border-white/10 shrink-0">
+          <button
+            type="button"
+            onClick={nav?.onPrevious}
+            disabled={!nav?.canGoPrevious}
+            title="前のテーブル"
+            aria-label="前のテーブル"
+            className="flex items-center justify-center w-[7cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+          >
+            <ChevronLeft className="w-[3.5cqw] h-[3.5cqw]" />
+          </button>
+          <span className="text-white/85 tabular-nums" style={{ fontSize: '2.8cqw' }}>
+            {nav?.label ?? ''}
+          </span>
+          <button
+            type="button"
+            onClick={nav?.onNext}
+            disabled={!nav?.canGoNext}
+            title="次のテーブル"
+            aria-label="次のテーブル"
+            className="flex items-center justify-center w-[7cqw] h-[4.5cqw] text-white/85 hover:text-white rounded-[0.8cqw] bg-white/10 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
+          >
+            <ChevronRight className="w-[3.5cqw] h-[3.5cqw]" />
+          </button>
+        </div>
         {rows.map(({ p, seatIndex }) => {
           const cards = holeCardsBySeat.has(seatIndex)
             ? (holeCardsBySeat.get(seatIndex) ?? [])
@@ -85,7 +87,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
           if (p.isSittingOut) {
             return (
               <div key={seatIndex} style={{ display: 'flex', opacity: 0.35, fontSize: '3cqw' }}>
-                <div style={{ width: '64%', display: 'flex', gap: 4 }}>
+                <div style={{ width: '60%', display: 'flex', gap: 4 }}>
                   <span>#{seatIndex + 1}</span>
                   <span style={{ flex: 1 }}>EMPTY</span>
                 </div>
@@ -94,7 +96,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
           }
           return (
             <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.45 : 1, fontSize: '3cqw' }}>
-              <div style={{ width: '64%', display: 'flex', gap: 4 }}>
+              <div style={{ width: '65%', display: 'flex', gap: 4 }}>
                 <span>#{seatIndex + 1}</span>
                 <span
                   style={{
@@ -107,15 +109,44 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav }: Spectator
                 >
                   {p.position ?? ''}
                 </span>
-                <span style={{ flex: 1 }}>{p.name}</span>
-                <span style={{ color: '#fcd34d' }}>{formatSpectatorStackDisplay(p.chips, settings.useBBNotation, stackBb)}</span>
+                <span style={{ width: '24cqw', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{p.name}</span>
+                <span style={{ color: '#fcd34d', flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{formatSpectatorStackDisplay(p.chips, settings.useBBNotation, stackBb)}</span>
               </div>
               <div style={{ display: 'flex', flex: 1, gap: 4, justifyContent: 'flex-end' }}>
                 {cards.length === 0
                   ? '—'
-                  : cards.map((c, i) => (
-                      <span key={i}>{c.isUp === false ? '??' : cardToHistoryStr(c)}</span>
-                    ))}
+                  : cards.map((c, i) =>
+                      c.isUp === false ? (
+                        <span
+                          key={i}
+                          style={{
+                            background: '#4b5563',
+                            color: '#fff',
+                            width: '6cqw',
+                            textAlign: 'center',
+                            flexShrink: 0,
+                            borderRadius: 2,
+                          }}
+                        >
+                          ??
+                        </span>
+                      ) : (
+                        <span
+                          key={i}
+                          style={{
+                            background: SUIT_BG[c.suit],
+                            color: '#fff',
+                            width: '6cqw',
+                            textAlign: 'center',
+                            flexShrink: 0,
+                            borderRadius: 2,
+                          }}
+                        >
+                          {c.rank}
+                          {SUIT_SYMBOL[c.suit]}
+                        </span>
+                      )
+                    )}
               </div>
             </div>
           );
