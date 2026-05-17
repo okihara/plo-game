@@ -6,6 +6,7 @@ import { env } from '../../config/env.js';
 import { maskName } from '../../shared/utils.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
 import type { GameVariant } from '@plo/shared';
+import { resolveBlindSchedule, type BlindStructureId } from './constants.js';
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
 async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -464,8 +465,18 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     });
 
     // トーナメント作成（管理者用）
-    fastify.post<{ Body: Partial<TournamentConfig> }>('/api/tournaments', { preHandler: requireAdmin }, async (request) => {
-      const tournamentId = createTournamentFromConfig(tournamentManager, request.body);
+    fastify.post<{ Body: Partial<TournamentConfig> & { structureId?: BlindStructureId } }>('/api/tournaments', { preHandler: requireAdmin }, async (request) => {
+      const { structureId, blindSchedule, ...rest } = request.body;
+      // structureId が指定されていてかつ blindSchedule が無い場合のみ、ストラクチャから schedule を解決する。
+      // 明示的に blindSchedule が渡された場合はそれを尊重（既存のテスト用 bot の挙動を維持）。
+      const resolvedSchedule = blindSchedule
+        ?? (structureId
+          ? resolveBlindSchedule(structureId, (rest.gameVariant ?? 'plo'))
+          : undefined);
+      const tournamentId = createTournamentFromConfig(tournamentManager, {
+        ...rest,
+        ...(resolvedSchedule ? { blindSchedule: resolvedSchedule } : {}),
+      });
       const tournament = tournamentManager.getTournament(tournamentId)!;
 
       // DB保存

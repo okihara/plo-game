@@ -173,6 +173,15 @@
             <option value="plo_double_board_bomb">DBBP (Double Board Bomb Pot)</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>ストラクチャ</label>
+          <select id="structureId">
+            <% structures.forEach(function(s) { %>
+              <option value="<%= s.id %>"<%= s.id === defaults.structureId ? ' selected' : '' %>><%= s.label %></option>
+            <% }); %>
+          </select>
+          <span class="hint">ブラインド表 + 初期チップ・遅刻登録レベルの推奨値を切り替え</span>
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn btn-create" onclick="createTournament()">作成</button>
@@ -187,11 +196,24 @@
     </div>
   </div>
 
+  <script id="structures-data" type="application/json"><%- JSON.stringify(structures) %></script>
   <script>
+    // ストラクチャのメタデータ（サーバーから渡される）
+    var STRUCTURES = JSON.parse(document.getElementById('structures-data').textContent);
+
     // 開始条件の切り替え
     document.getElementById('startCondition').addEventListener('change', function() {
       document.getElementById('scheduledTimeGroup').style.display = this.value === 'scheduled' ? '' : 'none';
       document.getElementById('requiredCountGroup').style.display = this.value === 'player_count' ? '' : 'none';
+    });
+
+    // ストラクチャ変更時に startingChips / registrationLevels を推奨値で上書き。
+    // ユーザーが手動編集後でも上書きする（プリセット切り替えの意図を尊重）。
+    document.getElementById('structureId').addEventListener('change', function() {
+      var meta = STRUCTURES.find(function(s) { return s.id === this.value; }.bind(this));
+      if (!meta) return;
+      document.getElementById('startingChips').value = meta.startingChips;
+      document.getElementById('registrationLevels').value = meta.registrationLevels;
     });
 
     // リエントリーの切り替え
@@ -265,6 +287,7 @@
         registrationLevels: parseInt(document.getElementById('registrationLevels').value),
         allowReentry: document.getElementById('allowReentry').value === 'true',
         gameVariant: document.getElementById('gameVariant').value,
+        structureId: document.getElementById('structureId').value,
       };
 
       if (body.allowReentry) {

@@ -1,6 +1,8 @@
+import type { GameVariant } from '@plo/shared';
 import { BlindLevel } from './types';
 
 export const DEFAULT_DURATION_MINUTES = 5;
+export const DEEP_DURATION_MINUTES = 10;
 
 // デフォルトブラインドスケジュール（23レベル、SB/BB = 100/200 開始）
 // 全レベルの sb/bb を chipUnit (=100) の倍数で揃える。
@@ -80,3 +82,53 @@ export const PAYOUT_STRUCTURES: { maxPlayers: number; percentages: number[] }[] 
 
 // リエントリー可能回数
 export const DEFAULT_MAX_REENTRIES = 2;
+
+// --- ブラインドストラクチャ プリセット ---
+// ストラクチャはブラインド表 + 関連する推奨初期値（startingChips / registrationLevels）を担う。
+// 作成フォームではこれらが既定値として反映されるが、ユーザーが任意に上書きできる。
+// blindSchedule は base ladder (DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE) を
+// 各レベルの durationMinutes だけ上書きして組み立てる。
+export type BlindStructureId = 'regular' | 'deep';
+
+export interface BlindStructureMeta {
+  id: BlindStructureId;
+  label: string;
+  durationMinutes: number;
+  startingChips: number;
+  registrationLevels: number;
+}
+
+export const BLIND_STRUCTURES: BlindStructureMeta[] = [
+  {
+    id: 'regular',
+    label: 'Regular (5分/Lv)',
+    durationMinutes: DEFAULT_DURATION_MINUTES,
+    startingChips: DEFAULT_STARTING_CHIPS,
+    registrationLevels: DEFAULT_REGISTRATION_LEVELS,
+  },
+  {
+    id: 'deep',
+    label: 'Deep (10分/Lv)',
+    durationMinutes: DEEP_DURATION_MINUTES,
+    startingChips: DEFAULT_STARTING_CHIPS,
+    registrationLevels: 9,
+  },
+];
+
+export const DEFAULT_BLIND_STRUCTURE_ID: BlindStructureId = 'regular';
+
+/**
+ * structureId と variant からブラインド表を組み立てる。
+ * ベース ladder は variant に応じて DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE。
+ * 各レベルの durationMinutes だけをストラクチャで上書きする。
+ */
+export function resolveBlindSchedule(
+  structureId: BlindStructureId | undefined,
+  variant: GameVariant,
+): BlindLevel[] {
+  const meta = BLIND_STRUCTURES.find(s => s.id === structureId) ?? BLIND_STRUCTURES[0];
+  const base = variant === 'plo_double_board_bomb'
+    ? DEFAULT_BOMB_POT_BLIND_SCHEDULE
+    : DEFAULT_BLIND_SCHEDULE;
+  return base.map(l => ({ ...l, durationMinutes: meta.durationMinutes }));
+}
