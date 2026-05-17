@@ -199,11 +199,7 @@ export class TournamentInstance {
     socket.join(this.roomName);
 
     // 賞金構造を再計算
-    this.prizes = PrizeCalculator.calculate(
-      this.getTotalEntries(),
-      this.prizePool,
-      this.config.payoutPercentage
-    );
+    this.refreshPrizes();
 
     // テーブルに着席
     this.seatPlayerAtAvailableTable(player);
@@ -246,6 +242,7 @@ export class TournamentInstance {
     player.finishPosition = null;
     player.eliminatedAt = null;
     this.prizePool += this.config.buyIn;
+    this.refreshPrizes();
 
     socket.join(this.roomName);
 
@@ -1037,10 +1034,18 @@ export class TournamentInstance {
     return total;
   }
 
-  /** this.prizes から順位に対応する賞金額を取得（0-indexed position） */
+  /** this.prizes から順位に対応する賞金額を取得（1-indexed position） */
   public getPrizeForPosition(position: number): number {
     const entry = this.prizes.find(p => p.position === position);
     return entry?.amount ?? 0;
+  }
+
+  private refreshPrizes(): void {
+    this.prizes = PrizeCalculator.calculate(
+      this.getTotalEntries(),
+      this.prizePool,
+      this.config.payoutPercentage
+    );
   }
 
   private broadcastTournamentState(): void {
