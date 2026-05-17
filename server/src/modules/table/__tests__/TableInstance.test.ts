@@ -1791,7 +1791,7 @@ describe('TableInstance - 連続タイムアウトによる持ち時間ペナル
     (table as any).requestNextAction();
 
     const t = table.getClientGameState().actionTimeoutMs!;
-    // 基準 15s × 0.2 = 3000 → 5000 のフロアでクランプ
+    // 基準 15s × 0.3 = 4500 → 5000 のフロアでクランプ
     expect(t).toBeGreaterThanOrEqual(5000);
     expect(t).toBeLessThan(15000);
   });
