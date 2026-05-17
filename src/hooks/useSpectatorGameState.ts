@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { wsService } from '../services/websocket';
 import { playActionSound } from '../services/actionSound';
-import type { ClientGameState } from '@plo/shared';
+import type { ClientGameState, ClientTournamentState } from '@plo/shared';
 import type { Action, Card, GameState } from '../logic/types';
 import { convertClientStateToGameState } from './onlineGameShared';
 import type { LastAction, ActionTimeoutAt } from './useOnlineGameState';
@@ -23,6 +23,8 @@ export interface SpectatorGameHookResult {
   showdownHandNames: Map<number, string>;
   maintenanceStatus: { isActive: boolean; message: string } | null;
   announcementStatus: { isActive: boolean; message: string } | null;
+  /** 観戦中のテーブルがトーナメント所属なら、そのトーナメントの状態（HUD 用） */
+  tournamentState: ClientTournamentState | null;
   connectAndWatch: () => Promise<void>;
   disconnect: () => void;
 }
@@ -51,6 +53,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const [holeCardsBySeat, setHoleCardsBySeat] = useState<Map<number, Card[]>>(new Map());
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
 
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
@@ -108,6 +111,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     setShowdownCards(new Map());
     setShowdownHandNames(new Map());
     setHoleCardsBySeat(new Map());
+    setTournamentState(null);
     pendingShowdownHandNamesRef.current = null;
     prevIsHandInProgressRef.current = false;
   }, []);
@@ -136,6 +140,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         setShowdownCards(new Map());
         setShowdownHandNames(new Map());
         setHoleCardsBySeat(new Map());
+        setTournamentState(null);
         pendingShowdownHandNamesRef.current = null;
         prevIsHandInProgressRef.current = false;
       },
@@ -241,6 +246,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
       },
       onMaintenanceStatus: data => setMaintenanceStatus(data),
       onAnnouncementStatus: data => setAnnouncementStatus(data),
+      onTournamentState: state => setTournamentState(state),
       onDisplaced: () => {
         setIsDisplaced(true);
         setIsConnected(false);
@@ -282,6 +288,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     showdownHandNames,
     maintenanceStatus,
     announcementStatus,
+    tournamentState,
     connectAndWatch,
     disconnect,
   };

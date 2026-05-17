@@ -143,6 +143,9 @@ export function handleSpectatorDisconnect(
   if (!tableId) return;
   const table = resolveTableInstance(tableId, tableManager, tournamentManager);
   table?.removeSpectator(socket);
+  if (table?.tournamentId) {
+    socket.leave(`tournament:${table.tournamentId}`);
+  }
   socket.odSpectatingTableId = null;
 }
 
@@ -193,6 +196,9 @@ export function handleSpectateJoin(
   if (socket.odSpectatingTableId && socket.odSpectatingTableId !== table.id) {
     const prev = resolveTableInstance(socket.odSpectatingTableId, tableManager, tournamentManager);
     prev?.removeSpectator(socket);
+    if (prev?.tournamentId && prev.tournamentId !== table.tournamentId) {
+      socket.leave(`tournament:${prev.tournamentId}`);
+    }
     socket.odSpectatingTableId = null;
   }
 
@@ -205,6 +211,16 @@ export function handleSpectateJoin(
   socket.odSpectatingTableId = table.id;
   socket.emit('table:spectate_joined', { tableId: table.id });
   socket.emit('game:state', { state: table.getClientGameState() });
+
+  // トーナメントテーブル観戦時はトーナメントルームにも join し、現在状態を 1 回送信。
+  // 以降のレベル進行・人数変動は `tournament:${id}` への broadcast でそのまま届く。
+  if (table.tournamentId) {
+    const tournament = tournamentManager.getTournament(table.tournamentId);
+    if (tournament) {
+      socket.join(`tournament:${table.tournamentId}`);
+      socket.emit('tournament:state', tournament.getClientState());
+    }
+  }
 }
 
 export function handleSpectateLeave(

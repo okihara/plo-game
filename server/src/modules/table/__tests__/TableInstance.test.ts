@@ -1717,3 +1717,82 @@ describe('TableInstance - 観戦', () => {
     }
   });
 });
+
+// ============================================
+// L. タイムアウトペナルティ（連続放置で持ち時間短縮）
+// ============================================
+
+describe('TableInstance - 連続タイムアウトによる持ち時間ペナルティ', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  it('1回目のアクションは基準値（preflop 15s）で発火する', () => {
+    const { table } = setupRunningHand({ playerCount: 3, isFastFold: false });
+    expect(table.getClientGameState().actionTimeoutMs).toBe(15000);
+  });
+
+  it('タイムアウトすると当該席の consecutiveTimeouts が +1 される', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, isFastFold: false });
+
+    const target = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(target).not.toBeNull();
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const seats = (table as any).playerManager.getSeats();
+    expect(seats[target!.seatIndex].consecutiveTimeouts).toBe(0);
+
+    vi.advanceTimersByTime(15000);
+
+    expect(seats[target!.seatIndex].consecutiveTimeouts).toBe(1);
+  });
+
+  it('別席が手動でアクションしても、タイムアウトした席のカウンタは保持される', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, isFastFold: false });
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const seats = (table as any).playerManager.getSeats();
+
+    const utg = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(utg).not.toBeNull();
+    vi.advanceTimersByTime(15000);
+    expect(seats[utg!.seatIndex].consecutiveTimeouts).toBe(1);
+
+    const next = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(next).not.toBeNull();
+    expect(next!.odId).not.toBe(utg!.odId);
+    table.handleAction(next!.odId, 'fold', 0);
+
+    expect(seats[utg!.seatIndex].consecutiveTimeouts).toBe(1);
+  });
+
+  it('プリフロップで連続タイムアウト時、ペナルティタイマーは ACTION_TIMEOUT_MIN_MS 以上を保つ', () => {
+    // PlayerManager 経由で直接カウンタを操作し、ActionController が短縮値を採用することを検証
+    const { table } = setupRunningHand({ playerCount: 3, isFastFold: false });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const playerManager = (table as any).playerManager;
+    const currentSeat = table.getClientGameState().currentPlayerSeat!;
+
+    // 3回連続タイムアウトを擬似的にカウンタへ反映 → 次に requestNextAction される際に短縮される
+    playerManager.incrementConsecutiveTimeouts(currentSeat);
+    playerManager.incrementConsecutiveTimeouts(currentSeat);
+    playerManager.incrementConsecutiveTimeouts(currentSeat);
+
+    // 強制的に再リクエスト（タイマーを張り直す）
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (table as any).actionController.clearActionTimer();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (table as any).requestNextAction();
+
+    const t = table.getClientGameState().actionTimeoutMs!;
+    // 基準 15s × 0.2 = 3000 → 5000 のフロアでクランプ
+    expect(t).toBeGreaterThanOrEqual(5000);
+    expect(t).toBeLessThan(15000);
+  });
+});

@@ -1,11 +1,11 @@
-import { useEffect, useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect, useMemo, useRef } from 'react';
 import { useSpectatorGameState } from '../hooks/useSpectatorGameState';
 import { useTournamentSpectateTableIds } from '../hooks/useTournamentSpectateTableIds';
 import { GameTable } from '../components/GameTable';
 import { ConnectingScreen } from '../components/ConnectingScreen';
 import { OnlineConnectionGate } from '../components/OnlineConnectionGate';
 import { SpectatorAllHands } from '../components/SpectatorAllHands';
+import { TournamentHUD } from '../components/TournamentHUD';
 
 interface WatchGameProps {
   tableId: string;
@@ -31,6 +31,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     showdownHandNames,
     maintenanceStatus,
     announcementStatus,
+    tournamentState,
     connectAndWatch,
     disconnect,
   } = useSpectatorGameState(tableId, inviteCode);
@@ -42,35 +43,67 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     };
   }, [connectAndWatch, disconnect]);
 
-  const tournamentTableIds = useTournamentSpectateTableIds(tournamentId);
+  const { tableIds: tournamentTableIds, refresh: refreshTournamentTableIds } =
+    useTournamentSpectateTableIds(tournamentId);
+
+  // 観戦中の卓がブレイク/統合された場合のみ、トーナメントの別卓へ自動ジャンプ。
+  // 他のエラー（rate-limit, 観戦上限, テーブルが見つからない等）では飛ばさない。
+  // FT 統合直後はサーバ側で新 FT 卓の登録に少しラグがあるため、短い待機を入れて refresh する。
+  const attemptedTableIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!connectionError) return;
+    if (!tournamentId?.trim() || !onNavigateWatchTable) return;
+    const shouldAutoJump =
+      connectionError.includes('閉じられました') ||
+      connectionError.includes('統合されました') ||
+      connectionError.includes('テーブルが見つかりません');
+    if (!shouldAutoJump) return;
+    if (attemptedTableIdsRef.current.has(tableId)) return;
+    attemptedTableIdsRef.current.add(tableId);
+    const q = { tournament: tournamentId, invite: inviteCode };
+    const pickOther = (ids: string[]) =>
+      ids.find(id => id !== tableId && !attemptedTableIdsRef.current.has(id));
+    let cancelled = false;
+    const handle = setTimeout(async () => {
+      if (cancelled) return;
+      const fresh = await refreshTournamentTableIds();
+      if (cancelled) return;
+      const target = pickOther(fresh) ?? pickOther(tournamentTableIds);
+      if (target) onNavigateWatchTable(target, q);
+    }, 500);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+  }, [connectionError, tournamentId, tableId, inviteCode, onNavigateWatchTable, tournamentTableIds, refreshTournamentTableIds]);
   const spectateNav = useMemo(() => {
     if (!tournamentId?.trim() || !onNavigateWatchTable || tournamentTableIds.length < 2) {
       return undefined;
     }
     const idx = tournamentTableIds.indexOf(tableId);
+    const total = tournamentTableIds.length;
     const q = { tournament: tournamentId, invite: inviteCode };
     if (idx < 0) {
       return {
-        onPrevious: () =>
-          onNavigateWatchTable(tournamentTableIds[tournamentTableIds.length - 1]!, q),
+        label: `テーブル —/${total}`,
+        onPrevious: () => onNavigateWatchTable(tournamentTableIds[total - 1]!, q),
         onNext: () => onNavigateWatchTable(tournamentTableIds[0]!, q),
         canGoPrevious: true,
         canGoNext: true,
       };
     }
-    const canGoPrevious = idx > 0;
-    const canGoNext = idx < tournamentTableIds.length - 1;
     return {
+      label: `テーブル ${idx + 1}/${total}`,
       onPrevious: () => {
         if (idx <= 0) return;
         onNavigateWatchTable(tournamentTableIds[idx - 1]!, q);
       },
       onNext: () => {
-        if (idx >= tournamentTableIds.length - 1) return;
+        if (idx >= total - 1) return;
         onNavigateWatchTable(tournamentTableIds[idx + 1]!, q);
       },
-      canGoPrevious,
-      canGoNext,
+      canGoPrevious: idx > 0,
+      canGoNext: idx < total - 1,
     };
   }, [tournamentId, onNavigateWatchTable, tournamentTableIds, tableId, inviteCode]);
 
@@ -119,34 +152,24 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
             onBack={onBack}
             blindsLabel={blindsLabel}
             isSpectator
+            isTournament={!!tournamentState}
             maintenanceStatus={maintenanceStatus}
             announcementStatus={announcementStatus}
+          >
+            {tournamentState && (
+              <TournamentHUD
+                tournamentState={tournamentState}
+                myChips={null}
+                lastEliminated={null}
+              />
+            )}
+          </GameTable>
+          <SpectatorAllHands
+            gameState={gameState}
+            holeCardsBySeat={holeCardsBySeat}
+            nav={spectateNav}
+            onRefresh={() => window.location.reload()}
           />
-          {spectateNav && (
-            <>
-              <button
-                type="button"
-                onClick={spectateNav.onPrevious}
-                disabled={!spectateNav.canGoPrevious}
-                title="前のテーブル"
-                aria-label="前のテーブル"
-                className="absolute left-[2%] top-1/2 z-[20] -translate-y-1/2 flex items-center justify-center w-[10cqw] h-[10cqw] text-white/80 hover:text-white transition-colors rounded-full bg-black/35 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
-              >
-                <ChevronLeft className="w-[6cqw] h-[6cqw]" />
-              </button>
-              <button
-                type="button"
-                onClick={spectateNav.onNext}
-                disabled={!spectateNav.canGoNext}
-                title="次のテーブル"
-                aria-label="次のテーブル"
-                className="absolute right-[2%] top-1/2 z-[20] -translate-y-1/2 flex items-center justify-center w-[10cqw] h-[10cqw] text-white/80 hover:text-white transition-colors rounded-full bg-black/35 border border-white/15 disabled:opacity-35 disabled:pointer-events-none"
-              >
-                <ChevronRight className="w-[6cqw] h-[6cqw]" />
-              </button>
-            </>
-          )}
-          <SpectatorAllHands gameState={gameState} holeCardsBySeat={holeCardsBySeat} />
         </div>
       )}
     </OnlineConnectionGate>

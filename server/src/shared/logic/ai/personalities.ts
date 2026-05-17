@@ -40,13 +40,13 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
     foldTo3Bet: 0.58, foldToCbet: 0.50, foldToRiverBet: 0.55,
   },
 
-  // YuHayashi: バランスTAG — 安定感ある堅い攻め（好成績ボット）
+  // YuHayashi: セミTAG（やや堅実寄りオフセット） — yuna0312 をベースに vpip/fold 系を微調整
   YuHayashi: {
     name: 'YuHayashi',
-    vpip: 0.25, pfr: 0.20, threeBetFreq: 0.09,
-    cbetFreq: 0.65, aggression: 0.80,
-    bluffFreq: 0.13, slowplayFreq: 0.12,
-    foldTo3Bet: 0.52, foldToCbet: 0.45, foldToRiverBet: 0.55,
+    vpip: 0.27, pfr: 0.19, threeBetFreq: 0.06,
+    cbetFreq: 0.52, aggression: 0.60,
+    bluffFreq: 0.08, slowplayFreq: 0.15,
+    foldTo3Bet: 0.62, foldToCbet: 0.54, foldToRiverBet: 0.58,
   },
 
   // ken2408: ルースAG — アグレッシブだが計算的（ブラフ抑制済み）
@@ -148,13 +148,13 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
     foldTo3Bet: 0.48, foldToCbet: 0.40, foldToRiverBet: 0.45,
   },
 
-  // TatsuyaN: バランスやや攻撃的 — 攻めの意識あり（好成績ボット）
+  // TatsuyaN: セミTAG（やや前のめりオフセット） — yuna0312 をベースに vpip/aggression/bluff を微増
   TatsuyaN: {
     name: 'TatsuyaN',
-    vpip: 0.30, pfr: 0.22, threeBetFreq: 0.09,
-    cbetFreq: 0.64, aggression: 0.80,
-    bluffFreq: 0.13, slowplayFreq: 0.09,
-    foldTo3Bet: 0.52, foldToCbet: 0.44, foldToRiverBet: 0.55,
+    vpip: 0.29, pfr: 0.19, threeBetFreq: 0.06,
+    cbetFreq: 0.52, aggression: 0.63,
+    bluffFreq: 0.09, slowplayFreq: 0.15,
+    foldTo3Bet: 0.60, foldToCbet: 0.52, foldToRiverBet: 0.58,
   },
 
   // yuna0312: セミTAG — やや受動的だが堅いハンドセレクト
@@ -189,10 +189,11 @@ const BOT_PERSONALITIES: Record<string, BotPersonality> = {
 const DEFAULT_PERSONALITY: BotPersonality = BOT_PERSONALITIES['HaruSun'];
 
 // 好成績パーソナリティ3種（ハッシュ割り当て用）
+// 2026-05-15 設計変更: yuna0312（受動的）をベースに、TatsuyaN/YuHayashi は ±0.01〜0.03 のオフセットで個性のみ残す
 const STRONG_PERSONALITIES = [
-  BOT_PERSONALITIES['TatsuyaN'],  // バランスやや攻撃的
-  BOT_PERSONALITIES['YuHayashi'], // バランスTAG
-  BOT_PERSONALITIES['yuna0312'],  // セミTAG（やや受動的）
+  BOT_PERSONALITIES['TatsuyaN'],  // セミTAG（やや前のめりオフセット）
+  BOT_PERSONALITIES['YuHayashi'], // セミTAG（やや堅実寄りオフセット）
+  BOT_PERSONALITIES['yuna0312'],  // セミTAG（ベース）
 ];
 
 /** 名前から決定的にハッシュ値を生成 */

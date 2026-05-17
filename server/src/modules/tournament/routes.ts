@@ -293,6 +293,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           handHistory: {
             select: {
               id: true,
+              blinds: true,
               communityCards: true,
               potSize: true,
               createdAt: true,
@@ -317,12 +318,17 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
 
       const lastHand = toHandSummary(playerHands[0]);
 
-      // best = 最大 profit、worst = 最小 profit
+      // best / worst はそのハンドの BB で割った「BB換算 profit」で比較。
+      // ブラインドが上がっていく MTT で、同じチップ損益でも序盤と終盤で重みが違うため。
+      const profitInBB = (ph: typeof playerHands[number]) => {
+        const bb = Number(ph.handHistory.blinds.split('/')[1]);
+        return Number.isFinite(bb) && bb > 0 ? ph.profit / bb : ph.profit;
+      };
       let bestIdx = 0;
       let worstIdx = 0;
       for (let i = 1; i < playerHands.length; i++) {
-        if (playerHands[i].profit > playerHands[bestIdx].profit) bestIdx = i;
-        if (playerHands[i].profit < playerHands[worstIdx].profit) worstIdx = i;
+        if (profitInBB(playerHands[i]) > profitInBB(playerHands[bestIdx])) bestIdx = i;
+        if (profitInBB(playerHands[i]) < profitInBB(playerHands[worstIdx])) worstIdx = i;
       }
 
       return {

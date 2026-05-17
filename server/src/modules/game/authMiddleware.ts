@@ -4,6 +4,7 @@ import { prisma } from '../../config/database.js';
 
 export interface AuthenticatedSocket extends Socket {
   odId?: string;
+  odUsername?: string;
   odIsBot?: boolean;
   odDisplacedByNewConnection?: boolean;
   /** WebSocket 接続モード（観戦専用接続ではプレイ用ソケットを置き換えない） */
@@ -59,6 +60,7 @@ export function setupAuthMiddleware(io: Server, fastify: FastifyInstance): void 
         const user = await findOrCreateBotUser(botName, botAvatar);
 
         socket.odId = user.id;
+        socket.odUsername = user.username;
         socket.odIsBot = true;
         socket.odConnectionMode =
           socket.handshake.auth.connectionMode === 'spectate' ? 'spectate' : 'play';
@@ -85,6 +87,7 @@ export function setupAuthMiddleware(io: Server, fastify: FastifyInstance): void 
       }
 
         socket.odId = user.id;
+        socket.odUsername = user.username;
         socket.odIsBot = false;
         socket.odConnectionMode =
           socket.handshake.auth.connectionMode === 'spectate' ? 'spectate' : 'play';

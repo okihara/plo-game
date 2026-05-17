@@ -49,21 +49,21 @@ function formatAction(
 }
 
 const positionStyles: Record<number, string> = {
-  0: 'bottom-[-12%] left-1/2 -translate-x-1/2', // 自分
-  1: 'bottom-[18%] left-[-17%]', // 左下
-  2: 'top-[28%] left-[-17%]', // 左上
-  3: 'top-[4%] left-1/2 -translate-x-1/2', // 上
-  4: 'top-[28%] right-[-17%]', // 右上
-  5: 'bottom-[18%] right-[-17%]', // 右下
+  0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
+  1: 'bottom-[25.74cqw] left-[-14.05cqw]', // 左下
+  2: 'top-[35.7cqw] left-[-14.05cqw]', // 左上
+  3: 'top-[7.8cqw] left-1/2 -translate-x-1/2', // 上
+  4: 'top-[35.7cqw] right-[-14.05cqw]', // 右上
+  5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
 };
 
 const betPositionStyles: Record<number, string> = {
-  0: 'top-[-30cqw]',
-  1: 'top-[1cqw] right-[-15cqw]',
-  2: 'top-[1cqw] right-[-15cqw]',
-  3: 'top-[15cqw]',
-  4: 'top-[1cqw] left-[-15cqw]',
-  5: 'top-[1cqw] left-[-15cqw]',
+  0: 'top-[-23cqw]',
+  1: 'top-[2cqw] right-[-17cqw]',
+  2: 'top-[2cqw] right-[-17cqw]',
+  3: 'top-[18cqw]',
+  4: 'top-[2cqw] left-[-17cqw]',
+  5: 'top-[2cqw] left-[-17cqw]',
 };
 
 const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
@@ -144,7 +144,7 @@ export function Player({
     : null;
 
   return (
-    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[30]' : ''}`} onClick={onAvatarClick}>
+    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[40]' : ''}`} onClick={onAvatarClick}>
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-25cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
@@ -324,7 +324,7 @@ export function Player({
       {player.currentBet > 0 && (
         <div
           key={chipAnimKey}
-          className={`absolute bg-black/70 text-yellow-400 px-[2.3cqw] py-[1.2cqw] rounded-full text-[4.8cqw] whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
+          className={`absolute bg-black/70 text-yellow-400 text-center w-[18cqw] px-[0.1cqw] py-[0cqw] rounded-full text-[4.0cqw] whitespace-nowrap animate-chip-bet ${betPositionStyles[positionIndex]}`}
         >
           {formatChips(player.currentBet)}
         </div>

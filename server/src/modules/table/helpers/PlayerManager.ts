@@ -63,6 +63,7 @@ export class PlayerManager {
       waitingForNextHand: isHandInProgress, // ハンド中に着席した場合は次のハンドから参加
       nameMasked: nameMasked ?? true,
       hasWeeklyChampion: hasWeeklyChampion ?? false,
+      consecutiveTimeouts: 0,
     };
 
     return seatIndex;
@@ -106,6 +107,20 @@ export class PlayerManager {
     const seat = this.seats[seatIndex];
     if (seat) {
       seat.chips = chips;
+    }
+  }
+
+  incrementConsecutiveTimeouts(seatIndex: number): void {
+    const seat = this.seats[seatIndex];
+    if (seat) {
+      seat.consecutiveTimeouts += 1;
+    }
+  }
+
+  resetConsecutiveTimeouts(seatIndex: number): void {
+    const seat = this.seats[seatIndex];
+    if (seat && seat.consecutiveTimeouts !== 0) {
+      seat.consecutiveTimeouts = 0;
     }
   }
 

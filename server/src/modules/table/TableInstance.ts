@@ -17,6 +17,14 @@ import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistory
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
+import { AuthenticatedSocket } from '../game/authMiddleware.js';
+
+/** 観戦時に全員のホールカードを覗ける特権 username（読み手のみ） */
+const SPECTATOR_PRIVILEGED_USERNAMES: ReadonlySet<string> = new Set([
+  'succhan627',
+  'okkichan3',
+  'babyplo_',
+]);
 
 // 型の再エクスポート（後方互換性のため）
 export type { MessageLog, PendingAction };
@@ -36,6 +44,8 @@ export class TableInstance {
 
   // ゲームモード（キャッシュ / トーナメント）
   public readonly gameMode: GameMode = 'cash';
+  /** トーナメント所属テーブルのとき、所属トーナメント ID。キャッシュゲームでは null */
+  public readonly tournamentId: string | null = null;
   private readonly lifecycleCallbacks: TableLifecycleCallbacks;
 
   // HORSE (MIXゲーム) モード
@@ -87,6 +97,7 @@ export class TableInstance {
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
     this.gameMode = options?.gameMode ?? 'cash';
+    this.tournamentId = options?.tournamentId ?? null;
 
     // デフォルト: キャッシュゲーム用コールバック（table:busted通知 → unseat）
     this.lifecycleCallbacks = options?.lifecycleCallbacks ?? {
@@ -110,7 +121,7 @@ export class TableInstance {
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
     this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
     this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder(
-      this.gameMode === 'tournament' && options?.tournamentId ? { tournamentId: options.tournamentId } : undefined
+      this.gameMode === 'tournament' && this.tournamentId ? { tournamentId: this.tournamentId } : undefined
     );
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
@@ -206,7 +217,7 @@ export class TableInstance {
         // Studブリングインフェーズ等では fold が無効なため、有効アクションを選択
         this.actionController.clearTimers();
         const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-        this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+        this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
         this.pendingEarlyFolds.set(seatIndex, odId);
@@ -247,8 +258,18 @@ export class TableInstance {
     return { odId, chips, socket, hasWeeklyChampion };
   }
 
-  // Handle player action
-  public handleAction(odId: string, action: Action, amount: number, discardIndices?: number[]): boolean {
+  /**
+   * Handle player action.
+   * @param source 'manual' = プレイヤー本人の入力（タイムアウトペナルティをリセット）
+   *               'auto'   = タイムアウト/切断/離席による自動アクション（リセットしない）
+   */
+  public handleAction(
+    odId: string,
+    action: Action,
+    amount: number,
+    discardIndices?: number[],
+    source: 'manual' | 'auto' = 'manual',
+  ): boolean {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
       // クライアント-サーバー間のレース（連打・遅延到着）で頻発するため info レベル
       console.log(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
@@ -279,6 +300,11 @@ export class TableInstance {
       // 不正アクションはクライアントの遅延・誤タップで起きうるため info レベル
       console.log(`[Table ${this.id}] handleAction: action rejected by controller, odId=${odId}, seat=${seatIndex}, action=${action}, amount=${amount}, currentPlayer=${this.gameState.currentPlayerIndex}, reason=${result.rejectReason}`);
       return false;
+    }
+
+    // 手動アクション成功 → 連続タイムアウトカウンタをリセット
+    if (source === 'manual') {
+      this.playerManager.resetConsecutiveTimeouts(seatIndex);
     }
 
     this.gameState = result.gameState;
@@ -503,17 +529,31 @@ export class TableInstance {
     return this.spectators.size;
   }
 
-  /** 観戦者へ着席者と同タイミングでホールを席単位で送る */
-  private emitHoleCardsToSpectators(_seatIndex: number): void {
-    // 一旦、観戦モードでの全員カード送信は無効化
-    // if (this.spectators.size === 0 || !this.gameState) return;
-    // const player = this.gameState.players[_seatIndex] ?? null;
-    // const cards = player?.holeCards ?? [];
-    // if (cards.length === 0) return;
-    // const payload = { seatIndex: _seatIndex, cards };
-    // for (const sock of this.spectators.values()) {
-    //   sock.emit('game:hole_cards', payload);
-    // }
+  /** 観戦者へ着席者と同タイミングでホールを席単位で送る（特権ユーザーにのみ送信） */
+  private emitHoleCardsToSpectators(seatIndex: number): void {
+    if (this.spectators.size === 0 || !this.gameState) return;
+    const player = this.gameState.players[seatIndex] ?? null;
+    const cards = player?.holeCards ?? [];
+    if (cards.length === 0) return;
+    const payload = { seatIndex, cards };
+    for (const sock of this.spectators.values()) {
+      const auth = sock as AuthenticatedSocket;
+      if (auth.odUsername && SPECTATOR_PRIVILEGED_USERNAMES.has(auth.odUsername)) {
+        sock.emit('game:hole_cards', payload);
+      }
+    }
+  }
+
+  /** 観戦者参加時に、特権ユーザーへ現在配られている全ホールを一括送信する */
+  private sendCurrentHoleCardsToSpectator(socket: Socket): void {
+    if (!this.gameState) return;
+    const auth = socket as AuthenticatedSocket;
+    if (!auth.odUsername || !SPECTATOR_PRIVILEGED_USERNAMES.has(auth.odUsername)) return;
+    this.gameState.players.forEach((player, seatIndex) => {
+      const cards = player?.holeCards ?? [];
+      if (cards.length === 0) return;
+      socket.emit('game:hole_cards', { seatIndex, cards });
+    });
   }
 
   public addSpectator(socket: Socket): { ok: true } | { ok: false; message: string } {
@@ -529,6 +569,7 @@ export class TableInstance {
       this.spectators.set(socket.id, socket);
       socket.join(this.roomName);
     }
+    this.sendCurrentHoleCardsToSpectator(socket);
     return { ok: true };
   }
 
@@ -845,7 +886,7 @@ export class TableInstance {
         const seat = this.playerManager.getSeat(idx);
         if (seat?.odId) {
           const defaultAction = this.getDefaultDisconnectAction(idx);
-          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+          const handled = this.handleAction(seat.odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
           if (!handled && this.gameState && !this.gameState.isHandComplete && this.gameState.currentPlayerIndex === idx) {
             // handleAction 失敗時のリカバリー: 強制フォールドして進行
             console.error(`[Table ${this.id}] Disconnected fold failed, forcing advance. seat=${idx}`);
@@ -871,9 +912,12 @@ export class TableInstance {
     // Check if player is still at the table
     const seat = this.playerManager.getSeat(seatIndex);
     if (seat && seat.odId === playerId) {
+      // タイムアウト記録（短縮ペナルティ用）
+      this.playerManager.incrementConsecutiveTimeouts(seatIndex);
+
       // チェック可能ならチェック、フォールド可能ならフォールド、それ以外は最低コストアクション
       const defaultAction = this.getDefaultDisconnectAction(seatIndex);
-      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices);
+      const handled = this.handleAction(playerId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
 
       if (!handled) {
         // handleAction が失敗した場合のリカバリー: 強制フォールドして進行
