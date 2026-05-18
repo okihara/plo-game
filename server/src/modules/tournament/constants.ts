@@ -1,44 +1,88 @@
 import type { GameVariant } from '@plo/shared';
 import { BlindLevel } from './types';
 
-export const DEFAULT_DURATION_MINUTES = 5;
-export const DEEP_DURATION_MINUTES = 10;
+// --- ブラインドストラクチャ プリセット ---
+// ストラクチャはブラインド表 + 関連する推奨初期値（startingChips / registrationLevels）を担う。
+// 作成フォームではこれらが既定値として反映されるが、ユーザーが任意に上書きできる。
+// blindSchedule は base ladder (DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE) を
+// 各レベルの durationMinutes だけ上書きして組み立てる。
+export type BlindStructureId = 'regular' | 'deep' | 'hyper';
 
-// デフォルトブラインドスケジュール（23レベル、SB/BB = 100/200 開始）
+export interface BlindStructureMeta {
+  id: BlindStructureId;
+  label: string;
+  durationMinutes: number;
+  startingChips: number;
+  registrationLevels: number;
+}
+
+export const BLIND_STRUCTURES: BlindStructureMeta[] = [
+  {
+    id: 'regular',
+    label: 'Regular (5分/Lv)',
+    durationMinutes: 5,
+    startingChips: 30000,
+    registrationLevels: 8,
+  },
+  {
+    id: 'deep',
+    label: 'Deep (8分/Lv)',
+    durationMinutes: 8,
+    startingChips: 30000,
+    registrationLevels: 10,
+  },
+  {
+    id: 'hyper',
+    label: 'Hyper (0.5分/Lv)',
+    durationMinutes: 0.5,
+    startingChips: 30000,
+    registrationLevels: 4,
+  },
+];
+
+export const DEFAULT_BLIND_STRUCTURE_ID: BlindStructureId = 'regular';
+
+// デフォルトブラインドスケジュール（SB/BB = 100/200 開始）
 // 全レベルの sb/bb を chipUnit (=100) の倍数で揃える。
-// 旧 level 2 (150/300) は chipUnit 非倍数だったため drop。
+// 各 level の durationMinutes は resolveBlindSchedule でストラクチャの値に上書きされるため、
+// ここに書かれた値はプレースホルダ。
 export const DEFAULT_BLIND_SCHEDULE: BlindLevel[] = [
-  { level: 1,  smallBlind: 100,   bigBlind: 200,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 2,  smallBlind: 200,   bigBlind: 400,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 3,  smallBlind: 300,   bigBlind: 600,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 4,  smallBlind: 400,   bigBlind: 800,   ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 5,  smallBlind: 500,   bigBlind: 1000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 6,  smallBlind: 600,   bigBlind: 1200,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 7,  smallBlind: 800,   bigBlind: 1600,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 8,  smallBlind: 1000,  bigBlind: 2000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 9,  smallBlind: 1200,  bigBlind: 2400,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 10, smallBlind: 1500,  bigBlind: 3000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 11, smallBlind: 2000,  bigBlind: 4000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 12, smallBlind: 2500,  bigBlind: 5000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 13, smallBlind: 3000,  bigBlind: 6000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 14, smallBlind: 4000,  bigBlind: 8000,  ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 15, smallBlind: 5000,  bigBlind: 10000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 16, smallBlind: 6000,  bigBlind: 12000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 17, smallBlind: 8000,  bigBlind: 16000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 18, smallBlind: 10000, bigBlind: 20000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 19, smallBlind: 12000, bigBlind: 24000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 20, smallBlind: 15000, bigBlind: 30000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 21, smallBlind: 20000, bigBlind: 40000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 22, smallBlind: 25000, bigBlind: 50000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 23, smallBlind: 30000, bigBlind: 60000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 24, smallBlind: 40000, bigBlind: 80000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 25, smallBlind: 50000, bigBlind: 100000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 26, smallBlind: 60000, bigBlind: 120000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 27, smallBlind: 80000, bigBlind: 160000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 28, smallBlind: 100000, bigBlind: 200000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 29, smallBlind: 120000, bigBlind: 240000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 30, smallBlind: 150000, bigBlind: 300000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
-  { level: 31, smallBlind: 200000, bigBlind: 400000, ante: 0, durationMinutes: DEFAULT_DURATION_MINUTES },
+  { level: 1,  smallBlind: 100,    bigBlind: 200,    ante: 0, durationMinutes: 5 },
+  { level: 2,  smallBlind: 200,    bigBlind: 300,    ante: 0, durationMinutes: 5 },
+  { level: 3,  smallBlind: 200,    bigBlind: 400,    ante: 0, durationMinutes: 5 },
+  { level: 4,  smallBlind: 300,    bigBlind: 500,    ante: 0, durationMinutes: 5 },
+  { level: 5,  smallBlind: 300,    bigBlind: 600,    ante: 0, durationMinutes: 5 },
+  { level: 6,  smallBlind: 400,    bigBlind: 800,    ante: 0, durationMinutes: 5 },
+  { level: 7,  smallBlind: 500,    bigBlind: 1000,   ante: 0, durationMinutes: 5 },
+  { level: 8,  smallBlind: 600,    bigBlind: 1200,   ante: 0, durationMinutes: 5 },
+  { level: 9,  smallBlind: 800,    bigBlind: 1600,   ante: 0, durationMinutes: 5 },
+  { level: 10, smallBlind: 1000,   bigBlind: 2000,   ante: 0, durationMinutes: 5 },
+  { level: 11, smallBlind: 1500,   bigBlind: 3000,   ante: 0, durationMinutes: 5 },
+  { level: 12, smallBlind: 2000,   bigBlind: 4000,   ante: 0, durationMinutes: 5 },
+  { level: 13, smallBlind: 2500,   bigBlind: 5000,   ante: 0, durationMinutes: 5 },
+  { level: 14, smallBlind: 3000,   bigBlind: 6000,   ante: 0, durationMinutes: 5 },
+  { level: 15, smallBlind: 4000,   bigBlind: 8000,   ante: 0, durationMinutes: 5 },
+  { level: 16, smallBlind: 5000,   bigBlind: 10000,  ante: 0, durationMinutes: 5 },
+  { level: 17, smallBlind: 6000,   bigBlind: 12000,  ante: 0, durationMinutes: 5 },
+  { level: 18, smallBlind: 8000,   bigBlind: 16000,  ante: 0, durationMinutes: 5 },
+  { level: 19, smallBlind: 10000,  bigBlind: 20000,  ante: 0, durationMinutes: 5 },
+  { level: 20, smallBlind: 15000,  bigBlind: 30000,  ante: 0, durationMinutes: 5 },
+  { level: 21, smallBlind: 20000,  bigBlind: 40000,  ante: 0, durationMinutes: 5 },
+  { level: 22, smallBlind: 30000,  bigBlind: 60000,  ante: 0, durationMinutes: 5 },
+  { level: 23, smallBlind: 40000,  bigBlind: 80000,  ante: 0, durationMinutes: 5 },
+  { level: 24, smallBlind: 50000,  bigBlind: 100000, ante: 0, durationMinutes: 5 },
+  { level: 25, smallBlind: 60000,  bigBlind: 120000, ante: 0, durationMinutes: 5 },
+  { level: 26, smallBlind: 80000,  bigBlind: 160000, ante: 0, durationMinutes: 5 },
+  { level: 27, smallBlind: 100000, bigBlind: 200000, ante: 0, durationMinutes: 5 },
+  { level: 28, smallBlind: 150000, bigBlind: 300000, ante: 0, durationMinutes: 5 },
+  { level: 29, smallBlind: 200000, bigBlind: 400000, ante: 0, durationMinutes: 5 },
+  { level: 30, smallBlind: 300000, bigBlind: 600000, ante: 0, durationMinutes: 5 },
+  { level: 31, smallBlind: 400000, bigBlind: 800000, ante: 0, durationMinutes: 5 },
+  { level: 32, smallBlind: 500000, bigBlind: 1000000, ante: 0, durationMinutes: 5 },
+  { level: 33, smallBlind: 600000, bigBlind: 1200000, ante: 0, durationMinutes: 5 },
+  { level: 34, smallBlind: 800000, bigBlind: 1600000, ante: 0, durationMinutes: 5 },
+  { level: 35, smallBlind: 1000000, bigBlind: 2000000, ante: 0, durationMinutes: 5 },
+  { level: 36, smallBlind: 1500000, bigBlind: 3000000, ante: 0, durationMinutes: 5 },
 ] as const;
 
 // DBBP 用デフォルトスケジュール (sb=0/bb=0/ante=N)
@@ -66,8 +110,8 @@ export const DEFAULT_BUY_IN = 1000;
 // 最小参加者数
 export const DEFAULT_MIN_PLAYERS = 3;
 
-// 最大参加者数（90テーブル × 6人）
-export const DEFAULT_MAX_PLAYERS = 540;
+// 最大参加者数（17テーブル × 6人）
+export const DEFAULT_MAX_PLAYERS = 102;
 
 // 登録可能レベル（開始からこのレベルまで参加可能）
 export const DEFAULT_REGISTRATION_LEVELS = 8;
@@ -86,47 +130,6 @@ export const PAYOUT_STRUCTURES: { paidPlaces: number; percentages: number[] }[] 
 
 // リエントリー可能回数
 export const DEFAULT_MAX_REENTRIES = 2;
-
-// --- ブラインドストラクチャ プリセット ---
-// ストラクチャはブラインド表 + 関連する推奨初期値（startingChips / registrationLevels）を担う。
-// 作成フォームではこれらが既定値として反映されるが、ユーザーが任意に上書きできる。
-// blindSchedule は base ladder (DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE) を
-// 各レベルの durationMinutes だけ上書きして組み立てる。
-export type BlindStructureId = 'regular' | 'deep' | 'hyper';
-
-export interface BlindStructureMeta {
-  id: BlindStructureId;
-  label: string;
-  durationMinutes: number;
-  startingChips: number;
-  registrationLevels: number;
-}
-
-export const BLIND_STRUCTURES: BlindStructureMeta[] = [
-  {
-    id: 'regular',
-    label: 'Regular (5分/Lv)',
-    durationMinutes: DEFAULT_DURATION_MINUTES,
-    startingChips: DEFAULT_STARTING_CHIPS,
-    registrationLevels: DEFAULT_REGISTRATION_LEVELS,
-  },
-  {
-    id: 'deep',
-    label: 'Deep (10分/Lv)',
-    durationMinutes: DEEP_DURATION_MINUTES,
-    startingChips: DEFAULT_STARTING_CHIPS,
-    registrationLevels: 9,
-  },
-  {
-    id: 'hyper',
-    label: 'Hyper (0.5分/Lv)',
-    durationMinutes: 0.5,
-    startingChips: DEFAULT_STARTING_CHIPS,
-    registrationLevels: 9,
-  },
-];
-
-export const DEFAULT_BLIND_STRUCTURE_ID: BlindStructureId = 'regular';
 
 /**
  * structureId と variant からブラインド表を組み立てる。
