@@ -214,13 +214,14 @@
       document.getElementById('requiredCountGroup').style.display = this.value === 'player_count' ? '' : 'none';
     });
 
-    // ストラクチャ変更時に startingChips / registrationLevels を推奨値で上書き。
+    // ストラクチャ変更時に startingChips / registrationLevels / reentryDeadlineLevel を推奨値で上書き。
     // ユーザーが手動編集後でも上書きする（プリセット切り替えの意図を尊重）。
     document.getElementById('structureId').addEventListener('change', function() {
       var meta = STRUCTURES.find(function(s) { return s.id === this.value; }.bind(this));
       if (!meta) return;
       document.getElementById('startingChips').value = meta.startingChips;
       document.getElementById('registrationLevels').value = meta.registrationLevels;
+      document.getElementById('reentryDeadlineLevel').value = meta.registrationLevels;
     });
 
     // リエントリーの切り替え
