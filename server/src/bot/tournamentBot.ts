@@ -6,7 +6,7 @@ const BOT_COUNT = parseInt(process.env.BOT_COUNT || '9', 10);
 const NO_DELAY = process.env.NO_DELAY === 'true';
 const TOURNAMENT_NAME = process.env.TOURNAMENT_NAME || 'BabyPLO Daily Turbo';
 const BUY_IN = parseInt(process.env.BUY_IN || '100', 10);
-const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '30000', 10);
+const STARTING_CHIPS = parseInt(process.env.STARTING_CHIPS || '1000', 10);
 const BLIND_DURATION = parseFloat(process.env.BLIND_DURATION || '10.15'); // 15秒
 const TOURNAMENT_ID = process.env.TOURNAMENT_ID || ''; // 既存トーナメントに参加する場合
 const JOIN_ACTIVE = process.env.JOIN_ACTIVE === 'true'; // 進行中のトーナメントを自動検索して参加
@@ -81,7 +81,7 @@ async function main(): Promise<void> {
         blindSchedule: FAST_BLIND_SCHEDULE,
         registrationLevels: 30,
         allowReentry: true,
-        maxReentries: 3,
+        maxReentries: 0,
         reentryDeadlineLevel: 30,
         gameVariant: GAME_VARIANT,
       }),

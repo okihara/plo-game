@@ -92,7 +92,7 @@ export const DEFAULT_MAX_REENTRIES = 2;
 // 作成フォームではこれらが既定値として反映されるが、ユーザーが任意に上書きできる。
 // blindSchedule は base ladder (DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE) を
 // 各レベルの durationMinutes だけ上書きして組み立てる。
-export type BlindStructureId = 'regular' | 'deep';
+export type BlindStructureId = 'regular' | 'deep' | 'hyper';
 
 export interface BlindStructureMeta {
   id: BlindStructureId;
@@ -114,6 +114,13 @@ export const BLIND_STRUCTURES: BlindStructureMeta[] = [
     id: 'deep',
     label: 'Deep (10分/Lv)',
     durationMinutes: DEEP_DURATION_MINUTES,
+    startingChips: DEFAULT_STARTING_CHIPS,
+    registrationLevels: 9,
+  },
+  {
+    id: 'hyper',
+    label: 'Hyper (0.5分/Lv)',
+    durationMinutes: 0.5,
     startingChips: DEFAULT_STARTING_CHIPS,
     registrationLevels: 9,
   },

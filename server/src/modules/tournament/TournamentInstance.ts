@@ -390,29 +390,18 @@ export class TournamentInstance {
   public getClientState(): ClientTournamentState {
     const currentLevel = this.blindScheduler.getCurrentLevel();
     const nextLevel = this.blindScheduler.getNextLevel();
-    const remaining = this.getPlayersRemaining();
-
-    // 平均スタックのみ集計（最大/最小はクライアント未使用）
-    let stackSum = 0;
-    let stackCount = 0;
-    for (const p of this.players.values()) {
-      if (p.status === 'playing' || p.status === 'disconnected') {
-        stackSum += p.chips;
-        stackCount++;
-      }
-    }
-    const averageStack = stackCount > 0 ? Math.round(stackSum / stackCount) : 0;
+    const stackSummary = this.getStackSummary();
 
     return {
       tournamentId: this.id,
       name: this.config.name,
       prizePool: this.prizePool,
       totalPlayers: this.getTotalEntries(),
-      playersRemaining: remaining,
+      playersRemaining: stackSummary.playersRemaining,
       currentBlindLevel: currentLevel,
       nextBlindLevel: nextLevel,
       nextLevelAt: this.blindScheduler.getNextLevelAt(),
-      averageStack,
+      averageStack: stackSummary.averageStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       gameVariant: this.config.gameVariant,
     };
@@ -420,21 +409,33 @@ export class TournamentInstance {
 
   public getLobbyInfo() {
     const isFt = this.status === 'final_table' || this.status === 'heads_up';
+    const isStarted = this.blindScheduler.isStarted();
+    const currentBlind = this.blindScheduler.getCurrentLevel();
+    const stackSummary = this.getStackSummary();
     return {
       id: this.id,
       name: this.config.name,
       status: this.status,
       buyIn: this.config.buyIn,
       startingChips: this.config.startingChips,
+      minPlayers: this.config.minPlayers,
       registeredPlayers: this.players.size,
       maxPlayers: this.config.maxPlayers,
-      currentBlindLevel: this.blindScheduler.getCurrentLevel().level,
+      totalEntries: this.getTotalEntries(),
+      playersRemaining: stackSummary.playersRemaining,
+      tableCount: this.tables.size,
+      currentBlindLevel: currentBlind.level,
+      currentBlind,
+      nextBlindLevel: isStarted ? this.blindScheduler.getNextLevel() : null,
+      nextLevelAt: isStarted ? this.blindScheduler.getNextLevelAt() : undefined,
+      averageStack: stackSummary.averageStack,
       prizePool: this.prizePool,
       scheduledStartTime: this.config.scheduledStartTime
         ? (this.config.scheduledStartTime instanceof Date
           ? this.config.scheduledStartTime.toISOString()
           : String(this.config.scheduledStartTime))
         : undefined,
+      startedAt: isStarted ? new Date(this.blindScheduler.getStartedAt()).toISOString() : undefined,
       isRegistrationOpen: this.isRegistrationOpen(),
       allowReentry: this.config.allowReentry,
       maxReentries: this.config.maxReentries,
@@ -445,6 +446,21 @@ export class TournamentInstance {
         : undefined,
       finalTableId: isFt ? Array.from(this.tables.keys())[0] : undefined,
       gameVariant: this.config.gameVariant,
+    };
+  }
+
+  private getStackSummary(): { playersRemaining: number; averageStack: number } {
+    let stackSum = 0;
+    let playersRemaining = 0;
+    for (const p of this.players.values()) {
+      if (p.status === 'playing' || p.status === 'disconnected') {
+        stackSum += p.chips;
+        playersRemaining++;
+      }
+    }
+    return {
+      playersRemaining,
+      averageStack: playersRemaining > 0 ? Math.round(stackSum / playersRemaining) : 0,
     };
   }
 
