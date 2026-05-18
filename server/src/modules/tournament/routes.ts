@@ -429,6 +429,8 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       const buyIn = tournament.config.buyIn;
 
       const maxReentries = tournament.config.maxReentries;
+      // GUEST role はリエントリー上限の対象外
+      const isGuest = tournament.getPlayer(userId)?.role === 'GUEST';
 
       try {
         await prisma.$transaction(async (tx) => {
@@ -437,7 +439,10 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             where: { tournamentId_userId: { tournamentId, userId } },
             select: { reentryCount: true },
           });
-          if (!reg || reg.reentryCount >= maxReentries) {
+          if (!reg) {
+            throw new Error('REENTRY_LIMIT_REACHED');
+          }
+          if (!isGuest && reg.reentryCount >= maxReentries) {
             throw new Error('REENTRY_LIMIT_REACHED');
           }
 

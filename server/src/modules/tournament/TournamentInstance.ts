@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import { Role } from '@prisma/client';
 import { TableInstance } from '../table/TableInstance.js';
 import { TableLifecycleCallbacks } from '../table/types.js';
 import { BlindScheduler } from './BlindScheduler.js';
@@ -145,6 +146,7 @@ export class TournamentInstance {
       avatarUrl?: string | null;
       nameMasked?: boolean;
       hasWeeklyChampion?: boolean;
+      role?: Role;
     }
   ): { success: boolean; error?: string } {
     const existingPlayer = this.players.get(odId);
@@ -190,6 +192,7 @@ export class TournamentInstance {
       eliminatedAt: null,
       nameMasked: options?.nameMasked ?? true,
       hasWeeklyChampion: options?.hasWeeklyChampion ?? false,
+      role: options?.role ?? Role.PLAYER,
     };
 
     this.players.set(odId, player);
@@ -226,7 +229,7 @@ export class TournamentInstance {
       return { success: false, error: 'リエントリー不可のトーナメントです' };
     }
 
-    if (player.reentryCount >= this.config.maxReentries) {
+    if (player.role !== Role.GUEST && player.reentryCount >= this.config.maxReentries) {
       return { success: false, error: 'リエントリー上限に達しています' };
     }
 
@@ -1027,7 +1030,7 @@ export class TournamentInstance {
     const player = this.players.get(odId);
     if (!player || player.status !== 'eliminated') return false;
     if (!this.config.allowReentry) return false;
-    if (player.reentryCount >= this.config.maxReentries) return false;
+    if (player.role !== Role.GUEST && player.reentryCount >= this.config.maxReentries) return false;
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
     if (currentLevel > this.config.reentryDeadlineLevel) return false;
     return true;
