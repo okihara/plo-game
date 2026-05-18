@@ -1,4 +1,5 @@
 import { Server, Socket } from 'socket.io';
+import { Role } from '@prisma/client';
 import { TableInstance } from '../table/TableInstance.js';
 import { TableLifecycleCallbacks } from '../table/types.js';
 import { BlindScheduler } from './BlindScheduler.js';
@@ -145,6 +146,7 @@ export class TournamentInstance {
       avatarUrl?: string | null;
       nameMasked?: boolean;
       hasWeeklyChampion?: boolean;
+      role?: Role;
     }
   ): { success: boolean; error?: string } {
     const existingPlayer = this.players.get(odId);
@@ -190,6 +192,7 @@ export class TournamentInstance {
       eliminatedAt: null,
       nameMasked: options?.nameMasked ?? true,
       hasWeeklyChampion: options?.hasWeeklyChampion ?? false,
+      role: options?.role ?? Role.PLAYER,
     };
 
     this.players.set(odId, player);
@@ -199,11 +202,7 @@ export class TournamentInstance {
     socket.join(this.roomName);
 
     // 賞金構造を再計算
-    this.prizes = PrizeCalculator.calculate(
-      this.getTotalEntries(),
-      this.prizePool,
-      this.config.payoutPercentage
-    );
+    this.refreshPrizes();
 
     // テーブルに着席
     this.seatPlayerAtAvailableTable(player);
@@ -230,7 +229,7 @@ export class TournamentInstance {
       return { success: false, error: 'リエントリー不可のトーナメントです' };
     }
 
-    if (player.reentryCount >= this.config.maxReentries) {
+    if (player.role !== Role.GUEST && player.reentryCount >= this.config.maxReentries) {
       return { success: false, error: 'リエントリー上限に達しています' };
     }
 
@@ -246,6 +245,7 @@ export class TournamentInstance {
     player.finishPosition = null;
     player.eliminatedAt = null;
     this.prizePool += this.config.buyIn;
+    this.refreshPrizes();
 
     socket.join(this.roomName);
 
@@ -393,29 +393,18 @@ export class TournamentInstance {
   public getClientState(): ClientTournamentState {
     const currentLevel = this.blindScheduler.getCurrentLevel();
     const nextLevel = this.blindScheduler.getNextLevel();
-    const remaining = this.getPlayersRemaining();
-
-    // 平均スタックのみ集計（最大/最小はクライアント未使用）
-    let stackSum = 0;
-    let stackCount = 0;
-    for (const p of this.players.values()) {
-      if (p.status === 'playing' || p.status === 'disconnected') {
-        stackSum += p.chips;
-        stackCount++;
-      }
-    }
-    const averageStack = stackCount > 0 ? Math.round(stackSum / stackCount) : 0;
+    const stackSummary = this.getStackSummary();
 
     return {
       tournamentId: this.id,
       name: this.config.name,
       prizePool: this.prizePool,
       totalPlayers: this.getTotalEntries(),
-      playersRemaining: remaining,
+      playersRemaining: stackSummary.playersRemaining,
       currentBlindLevel: currentLevel,
       nextBlindLevel: nextLevel,
       nextLevelAt: this.blindScheduler.getNextLevelAt(),
-      averageStack,
+      averageStack: stackSummary.averageStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       gameVariant: this.config.gameVariant,
     };
@@ -423,21 +412,33 @@ export class TournamentInstance {
 
   public getLobbyInfo() {
     const isFt = this.status === 'final_table' || this.status === 'heads_up';
+    const isStarted = this.blindScheduler.isStarted();
+    const currentBlind = this.blindScheduler.getCurrentLevel();
+    const stackSummary = this.getStackSummary();
     return {
       id: this.id,
       name: this.config.name,
       status: this.status,
       buyIn: this.config.buyIn,
       startingChips: this.config.startingChips,
+      minPlayers: this.config.minPlayers,
       registeredPlayers: this.players.size,
       maxPlayers: this.config.maxPlayers,
-      currentBlindLevel: this.blindScheduler.getCurrentLevel().level,
+      totalEntries: this.getTotalEntries(),
+      playersRemaining: stackSummary.playersRemaining,
+      tableCount: this.tables.size,
+      currentBlindLevel: currentBlind.level,
+      currentBlind,
+      nextBlindLevel: isStarted ? this.blindScheduler.getNextLevel() : null,
+      nextLevelAt: isStarted ? this.blindScheduler.getNextLevelAt() : undefined,
+      averageStack: stackSummary.averageStack,
       prizePool: this.prizePool,
       scheduledStartTime: this.config.scheduledStartTime
         ? (this.config.scheduledStartTime instanceof Date
           ? this.config.scheduledStartTime.toISOString()
           : String(this.config.scheduledStartTime))
         : undefined,
+      startedAt: isStarted ? new Date(this.blindScheduler.getStartedAt()).toISOString() : undefined,
       isRegistrationOpen: this.isRegistrationOpen(),
       allowReentry: this.config.allowReentry,
       maxReentries: this.config.maxReentries,
@@ -448,6 +449,21 @@ export class TournamentInstance {
         : undefined,
       finalTableId: isFt ? Array.from(this.tables.keys())[0] : undefined,
       gameVariant: this.config.gameVariant,
+    };
+  }
+
+  private getStackSummary(): { playersRemaining: number; averageStack: number } {
+    let stackSum = 0;
+    let playersRemaining = 0;
+    for (const p of this.players.values()) {
+      if (p.status === 'playing' || p.status === 'disconnected') {
+        stackSum += p.chips;
+        playersRemaining++;
+      }
+    }
+    return {
+      playersRemaining,
+      averageStack: playersRemaining > 0 ? Math.round(stackSum / playersRemaining) : 0,
     };
   }
 
@@ -1014,7 +1030,7 @@ export class TournamentInstance {
     const player = this.players.get(odId);
     if (!player || player.status !== 'eliminated') return false;
     if (!this.config.allowReentry) return false;
-    if (player.reentryCount >= this.config.maxReentries) return false;
+    if (player.role !== Role.GUEST && player.reentryCount >= this.config.maxReentries) return false;
     const currentLevel = this.blindScheduler.getCurrentLevelIndex() + 1;
     if (currentLevel > this.config.reentryDeadlineLevel) return false;
     return true;
@@ -1037,10 +1053,18 @@ export class TournamentInstance {
     return total;
   }
 
-  /** this.prizes から順位に対応する賞金額を取得（0-indexed position） */
+  /** this.prizes から順位に対応する賞金額を取得（1-indexed position） */
   public getPrizeForPosition(position: number): number {
     const entry = this.prizes.find(p => p.position === position);
     return entry?.amount ?? 0;
+  }
+
+  private refreshPrizes(): void {
+    this.prizes = PrizeCalculator.calculate(
+      this.getTotalEntries(),
+      this.prizePool,
+      this.config.payoutPercentage
+    );
   }
 
   private broadcastTournamentState(): void {

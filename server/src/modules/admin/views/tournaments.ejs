@@ -59,9 +59,16 @@
       padding: 12px;
       margin-bottom: 8px;
     }
-    .t-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .t-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+    .t-title { min-width: 0; }
     .t-name { font-weight: 600; font-size: 14px; }
-    .t-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; font-size: 12px; }
+    .t-subline { margin-top: 4px; color: #94a3b8; font-size: 11px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .t-badges { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+    .mini-badge { display: inline-flex; align-items: center; border-radius: 999px; padding: 2px 7px; font-size: 10px; font-weight: 700; background: #334155; color: #cbd5e1; }
+    .mini-badge.open { background: #14532d; color: #86efac; }
+    .mini-badge.closed { background: #334155; color: #cbd5e1; }
+    .mini-badge.warn { background: #713f12; color: #fde68a; }
+    .t-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 6px; font-size: 12px; }
     .t-info-item { display: flex; justify-content: space-between; background: #0f172a; padding: 4px 8px; border-radius: 4px; }
     .t-info-label { color: #94a3b8; }
     .t-info-value { font-weight: 600; }
@@ -173,6 +180,15 @@
             <option value="plo_double_board_bomb">DBBP (Double Board Bomb Pot)</option>
           </select>
         </div>
+        <div class="form-group">
+          <label>ストラクチャ</label>
+          <select id="structureId">
+            <% structures.forEach(function(s) { %>
+              <option value="<%= s.id %>"<%= s.id === defaults.structureId ? ' selected' : '' %>><%= s.label %></option>
+            <% }); %>
+          </select>
+          <span class="hint">ブラインド表 + 初期チップ・遅刻登録レベルの推奨値を切り替え</span>
+        </div>
       </div>
       <div class="btn-row">
         <button class="btn btn-create" onclick="createTournament()">作成</button>
@@ -187,11 +203,24 @@
     </div>
   </div>
 
+  <script id="structures-data" type="application/json"><%- JSON.stringify(structures) %></script>
   <script>
+    // ストラクチャのメタデータ（サーバーから渡される）
+    var STRUCTURES = JSON.parse(document.getElementById('structures-data').textContent);
+
     // 開始条件の切り替え
     document.getElementById('startCondition').addEventListener('change', function() {
       document.getElementById('scheduledTimeGroup').style.display = this.value === 'scheduled' ? '' : 'none';
       document.getElementById('requiredCountGroup').style.display = this.value === 'player_count' ? '' : 'none';
+    });
+
+    // ストラクチャ変更時に startingChips / registrationLevels を推奨値で上書き。
+    // ユーザーが手動編集後でも上書きする（プリセット切り替えの意図を尊重）。
+    document.getElementById('structureId').addEventListener('change', function() {
+      var meta = STRUCTURES.find(function(s) { return s.id === this.value; }.bind(this));
+      if (!meta) return;
+      document.getElementById('startingChips').value = meta.startingChips;
+      document.getElementById('registrationLevels').value = meta.registrationLevels;
     });
 
     // リエントリーの切り替え
@@ -201,7 +230,36 @@
       document.getElementById('reentryDeadlineGroup').style.display = show ? '' : 'none';
     });
 
-    function formatChips(c) { return '$' + c.toLocaleString(); }
+    function esc(value) {
+      return String(value ?? '').replace(/[&<>"']/g, function(ch) {
+        return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch];
+      });
+    }
+    function formatChips(c) { return '$' + Number(c || 0).toLocaleString(); }
+    function formatDateTime(value) {
+      if (!value) return '-';
+      return new Date(value).toLocaleString('ja-JP', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+    function formatCountdown(targetMs) {
+      if (!targetMs) return '-';
+      var diff = targetMs - Date.now();
+      if (diff <= 0) return 'まもなく';
+      var totalMinutes = Math.ceil(diff / 60000);
+      var hours = Math.floor(totalMinutes / 60);
+      var minutes = totalMinutes % 60;
+      return hours > 0 ? hours + '時間' + minutes + '分' : minutes + '分';
+    }
+    function formatVariant(v) {
+      return ({ plo: 'PLO', plo5: 'PLO5', plo_hilo: 'PLO8', plo_double_board_bomb: 'DBBP' })[v] || v || 'PLO';
+    }
+    function formatBlind(level) {
+      if (!level) return '-';
+      if ((level.smallBlind || 0) === 0 && (level.bigBlind || 0) === 0) {
+        return 'Ante ' + formatChips(level.ante || 0);
+      }
+      var ante = level.ante ? ' / Ante ' + formatChips(level.ante) : '';
+      return formatChips(level.smallBlind) + '/' + formatChips(level.bigBlind) + ante;
+    }
 
     function toLocalDatetime(d) {
       return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
@@ -265,6 +323,7 @@
         registrationLevels: parseInt(document.getElementById('registrationLevels').value),
         allowReentry: document.getElementById('allowReentry').value === 'true',
         gameVariant: document.getElementById('gameVariant').value,
+        structureId: document.getElementById('structureId').value,
       };
 
       if (body.allowReentry) {
@@ -361,22 +420,60 @@
 
       var html = tournaments.map(function(t) {
         var statusBadge = '<span class="badge" style="background:' + (statusColors[t.status]||'#64748b') + ';padding:2px 8px">' + (statusLabels[t.status]||t.status) + '</span>';
+        var isActive = ['waiting', 'starting', 'running', 'final_table', 'heads_up'].indexOf(t.status) !== -1;
+        var totalEntries = t.totalEntries ?? (t.registeredPlayers + (t.totalReentries || 0));
+        var regBadge = isActive
+          ? '<span class="mini-badge ' + (t.isRegistrationOpen ? 'open' : 'closed') + '">' + (t.isRegistrationOpen ? '登録受付中' : '登録終了') + '</span>'
+          : '';
+        var watchLink = t.finalTableId
+          ? '<a class="mini-badge warn" href="/watch/' + encodeURIComponent(t.finalTableId) + '?tournament=' + encodeURIComponent(t.id) + '">FT観戦</a>'
+          : '';
 
         var infoItems = [
+          { label: '種別', value: formatVariant(t.gameVariant) },
           { label: 'Buy-in', value: formatChips(t.buyIn) },
           { label: '初期チップ', value: formatChips(t.startingChips) },
-          { label: '参加者', value: t.registeredPlayers + '/' + t.maxPlayers },
+          { label: '登録者', value: t.registeredPlayers + '/' + t.maxPlayers + (t.minPlayers ? ' (min ' + t.minPlayers + ')' : '') },
+          { label: '総エントリー', value: totalEntries + (t.totalReentries ? ' (RE ' + t.totalReentries + ')' : '') },
           { label: '賞金プール', value: formatChips(t.prizePool) },
+          { label: 'リエントリー', value: t.allowReentry ? 'あり x' + t.maxReentries + ' / 締Lv.' + t.reentryDeadlineLevel : 'なし' },
         ];
         if (t.scheduledStartTime) {
-          infoItems.push({ label: '開始時刻', value: new Date(t.scheduledStartTime).toLocaleString('ja-JP') });
+          infoItems.push({ label: '予定開始', value: formatDateTime(t.scheduledStartTime) });
+        }
+        if (t.startedAt) {
+          infoItems.push({ label: '実開始', value: formatDateTime(t.startedAt) });
         }
         if (t.currentBlindLevel > 0) {
-          infoItems.push({ label: 'ブラインドLv', value: 'Lv.' + t.currentBlindLevel });
+          infoItems.push({ label: '現在ブラインド', value: 'Lv.' + t.currentBlindLevel + ' ' + formatBlind(t.currentBlind) });
+        }
+        if (t.nextBlindLevel) {
+          infoItems.push({ label: '次ブラインド', value: 'Lv.' + t.nextBlindLevel.level + ' ' + formatBlind(t.nextBlindLevel) });
+        }
+        if (t.nextLevelAt) {
+          infoItems.push({ label: '次Lvまで', value: formatCountdown(t.nextLevelAt) });
+        }
+        if (t.playersRemaining !== undefined && t.status !== 'waiting') {
+          infoItems.push({ label: '残り人数', value: t.playersRemaining + '/' + totalEntries });
+        }
+        if (t.averageStack) {
+          infoItems.push({ label: '平均スタック', value: formatChips(t.averageStack) });
+        }
+        if (t.tableCount !== undefined && isActive) {
+          infoItems.push({ label: '卓数', value: t.tableCount });
+        }
+        if (t.registrationDeadlineAt) {
+          infoItems.push({ label: '登録締切', value: formatDateTime(t.registrationDeadlineAt) });
+        }
+        if (t.winner) {
+          infoItems.push({ label: '優勝', value: esc(t.winner.displayName) });
+        }
+        if (t.completedAt) {
+          infoItems.push({ label: '完了', value: formatDateTime(t.completedAt) });
         }
 
         var infoHtml = infoItems.map(function(item) {
-          return '<div class="t-info-item"><span class="t-info-label">' + item.label + '</span><span class="t-info-value">' + item.value + '</span></div>';
+          return '<div class="t-info-item"><span class="t-info-label">' + esc(item.label) + '</span><span class="t-info-value">' + item.value + '</span></div>';
         }).join('');
 
         var actions = '';
@@ -390,12 +487,14 @@
 
         return '<div class="t-item">' +
           '<div class="t-header">' +
-            '<span class="t-name">' + t.name + '</span>' +
-            statusBadge +
+            '<div class="t-title">' +
+              '<div class="t-name">' + esc(t.name) + '</div>' +
+              '<div class="t-subline"><span>ID: ' + esc(t.id) + '</span></div>' +
+            '</div>' +
+            '<div class="t-badges">' + statusBadge + '<span class="mini-badge">' + esc(formatVariant(t.gameVariant)) + '</span>' + regBadge + watchLink + '</div>' +
           '</div>' +
           '<div class="t-info">' + infoHtml + '</div>' +
           (actions ? '<div class="t-actions">' + actions + '</div>' : '') +
-          '<div style="margin-top:4px;font-size:10px;color:#64748b">ID: ' + t.id + '</div>' +
         '</div>';
       }).join('');
 

@@ -1,4 +1,5 @@
 import { Socket } from 'socket.io';
+import type { Role } from '@prisma/client';
 
 // Re-export shared types (client/server 共通)
 export type {
@@ -55,6 +56,8 @@ export interface TournamentPlayer {
   eliminatedAt: Date | null;
   nameMasked: boolean;
   hasWeeklyChampion?: boolean;
+  /** GUEST はリエントリー上限の対象外 */
+  role: Role;
 }
 
 // --- Player Move (server only) ---

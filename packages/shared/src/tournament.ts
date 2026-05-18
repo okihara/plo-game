@@ -47,12 +47,21 @@ export interface TournamentLobbyInfo {
   status: TournamentStatus;
   buyIn: number;
   startingChips: number;
+  minPlayers?: number;
   registeredPlayers: number;
   maxPlayers: number;
+  totalEntries?: number;
+  playersRemaining?: number;
+  tableCount?: number;
   currentBlindLevel: number;
+  currentBlind?: BlindLevel;
+  nextBlindLevel?: BlindLevel | null;
+  nextLevelAt?: number;
+  averageStack?: number;
   prizePool: number;
   scheduledStartTime?: string; // ISO string
   startedAt?: string;          // ISO string
+  completedAt?: string;        // ISO string
   isRegistrationOpen: boolean;
   allowReentry: boolean;
   maxReentries: number;

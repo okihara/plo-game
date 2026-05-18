@@ -6,6 +6,7 @@ import { env } from '../../config/env.js';
 import { maskName } from '../../shared/utils.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
 import type { GameVariant } from '@plo/shared';
+import { resolveBlindSchedule, type BlindStructureId } from './constants.js';
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
 async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -66,12 +67,17 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           status: t.status.toLowerCase() as TournamentStatus,
           buyIn: t.buyIn,
           startingChips: t.startingChips,
+          minPlayers: t.minPlayers,
           registeredPlayers: t._count.registrations,
           maxPlayers: t.maxPlayers,
+          totalEntries: t._count.registrations + t.registrations.reduce((sum, r) => sum + r.reentryCount, 0),
+          playersRemaining: 0,
+          tableCount: 0,
           currentBlindLevel: 0,
           prizePool: t.prizePool,
           scheduledStartTime: t.scheduledStartTime?.toISOString(),
           startedAt: t.startedAt?.toISOString() ?? t.createdAt.toISOString(),
+          completedAt: t.completedAt?.toISOString(),
           isRegistrationOpen: false,
           allowReentry: t.allowReentry,
           maxReentries: t.maxReentries,
@@ -423,6 +429,8 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       const buyIn = tournament.config.buyIn;
 
       const maxReentries = tournament.config.maxReentries;
+      // GUEST role はリエントリー上限の対象外
+      const isGuest = tournament.getPlayer(userId)?.role === 'GUEST';
 
       try {
         await prisma.$transaction(async (tx) => {
@@ -431,7 +439,10 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             where: { tournamentId_userId: { tournamentId, userId } },
             select: { reentryCount: true },
           });
-          if (!reg || reg.reentryCount >= maxReentries) {
+          if (!reg) {
+            throw new Error('REENTRY_LIMIT_REACHED');
+          }
+          if (!isGuest && reg.reentryCount >= maxReentries) {
             throw new Error('REENTRY_LIMIT_REACHED');
           }
 
@@ -464,8 +475,18 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     });
 
     // トーナメント作成（管理者用）
-    fastify.post<{ Body: Partial<TournamentConfig> }>('/api/tournaments', { preHandler: requireAdmin }, async (request) => {
-      const tournamentId = createTournamentFromConfig(tournamentManager, request.body);
+    fastify.post<{ Body: Partial<TournamentConfig> & { structureId?: BlindStructureId } }>('/api/tournaments', { preHandler: requireAdmin }, async (request) => {
+      const { structureId, blindSchedule, ...rest } = request.body;
+      // structureId が指定されていてかつ blindSchedule が無い場合のみ、ストラクチャから schedule を解決する。
+      // 明示的に blindSchedule が渡された場合はそれを尊重（既存のテスト用 bot の挙動を維持）。
+      const resolvedSchedule = blindSchedule
+        ?? (structureId
+          ? resolveBlindSchedule(structureId, (rest.gameVariant ?? 'plo'))
+          : undefined);
+      const tournamentId = createTournamentFromConfig(tournamentManager, {
+        ...rest,
+        ...(resolvedSchedule ? { blindSchedule: resolvedSchedule } : {}),
+      });
       const tournament = tournamentManager.getTournament(tournamentId)!;
 
       // DB保存

@@ -1,6 +1,8 @@
+import type { GameVariant } from '@plo/shared';
 import { BlindLevel } from './types';
 
 export const DEFAULT_DURATION_MINUTES = 5;
+export const DEEP_DURATION_MINUTES = 10;
 
 // デフォルトブラインドスケジュール（23レベル、SB/BB = 100/200 開始）
 // 全レベルの sb/bb を chipUnit (=100) の倍数で揃える。
@@ -70,13 +72,74 @@ export const DEFAULT_MAX_PLAYERS = 540;
 // 登録可能レベル（開始からこのレベルまで参加可能）
 export const DEFAULT_REGISTRATION_LEVELS = 8;
 
-// プレイヤー数に応じた賞金配分
-export const PAYOUT_STRUCTURES: { maxPlayers: number; percentages: number[] }[] = [
-  { maxPlayers: 6,  percentages: [65, 35] },
-  { maxPlayers: 18, percentages: [50, 30, 20] },
-  { maxPlayers: 27, percentages: [45, 25, 18, 12] },
-  { maxPlayers: Infinity, percentages: [40, 23, 16, 12, 9] },
+// リエントリーを含む総エントリー数に対して、上位15%を入賞圏にする。
+export const DEFAULT_PAYOUT_RATE = 0.15;
+
+// 入賞順位数に応じた賞金配分。6位以上は PrizeCalculator で動的生成する。
+export const PAYOUT_STRUCTURES: { paidPlaces: number; percentages: number[] }[] = [
+  { paidPlaces: 1, percentages: [100] },
+  { paidPlaces: 2, percentages: [65, 35] },
+  { paidPlaces: 3, percentages: [50, 30, 20] },
+  { paidPlaces: 4, percentages: [45, 25, 18, 12] },
+  { paidPlaces: 5, percentages: [40, 23, 16, 12, 9] },
 ];
 
 // リエントリー可能回数
 export const DEFAULT_MAX_REENTRIES = 2;
+
+// --- ブラインドストラクチャ プリセット ---
+// ストラクチャはブラインド表 + 関連する推奨初期値（startingChips / registrationLevels）を担う。
+// 作成フォームではこれらが既定値として反映されるが、ユーザーが任意に上書きできる。
+// blindSchedule は base ladder (DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE) を
+// 各レベルの durationMinutes だけ上書きして組み立てる。
+export type BlindStructureId = 'regular' | 'deep' | 'hyper';
+
+export interface BlindStructureMeta {
+  id: BlindStructureId;
+  label: string;
+  durationMinutes: number;
+  startingChips: number;
+  registrationLevels: number;
+}
+
+export const BLIND_STRUCTURES: BlindStructureMeta[] = [
+  {
+    id: 'regular',
+    label: 'Regular (5分/Lv)',
+    durationMinutes: DEFAULT_DURATION_MINUTES,
+    startingChips: DEFAULT_STARTING_CHIPS,
+    registrationLevels: DEFAULT_REGISTRATION_LEVELS,
+  },
+  {
+    id: 'deep',
+    label: 'Deep (10分/Lv)',
+    durationMinutes: DEEP_DURATION_MINUTES,
+    startingChips: DEFAULT_STARTING_CHIPS,
+    registrationLevels: 9,
+  },
+  {
+    id: 'hyper',
+    label: 'Hyper (0.5分/Lv)',
+    durationMinutes: 0.5,
+    startingChips: DEFAULT_STARTING_CHIPS,
+    registrationLevels: 9,
+  },
+];
+
+export const DEFAULT_BLIND_STRUCTURE_ID: BlindStructureId = 'regular';
+
+/**
+ * structureId と variant からブラインド表を組み立てる。
+ * ベース ladder は variant に応じて DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE。
+ * 各レベルの durationMinutes だけをストラクチャで上書きする。
+ */
+export function resolveBlindSchedule(
+  structureId: BlindStructureId | undefined,
+  variant: GameVariant,
+): BlindLevel[] {
+  const meta = BLIND_STRUCTURES.find(s => s.id === structureId) ?? BLIND_STRUCTURES[0];
+  const base = variant === 'plo_double_board_bomb'
+    ? DEFAULT_BOMB_POT_BLIND_SCHEDULE
+    : DEFAULT_BLIND_SCHEDULE;
+  return base.map(l => ({ ...l, durationMinutes: meta.durationMinutes }));
+}

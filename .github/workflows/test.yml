@@ -23,5 +23,9 @@ jobs:
 
       - run: pnpm install
 
+      - name: Server (prisma generate)
+        run: pnpm exec prisma generate
+        working-directory: server
+
       - run: pnpm test
         working-directory: server

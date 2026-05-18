@@ -90,6 +90,7 @@ export function registerTournamentHandlers(
         avatarUrl: user.avatarUrl,
         nameMasked: user.nameMasked,
         hasWeeklyChampion: weeklyChamp,
+        role: socket.odRole,
       });
       if (!result.success) {
         socket.emit('tournament:error', { message: result.error ?? '参加に失敗しました' });

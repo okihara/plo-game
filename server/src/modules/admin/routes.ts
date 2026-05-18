@@ -13,6 +13,8 @@ import {
   DEFAULT_MAX_PLAYERS,
   DEFAULT_MIN_PLAYERS,
   DEFAULT_REGISTRATION_LEVELS,
+  BLIND_STRUCTURES,
+  DEFAULT_BLIND_STRUCTURE_ID,
 } from '../tournament/constants.js';
 
 const tournamentDefaults = {
@@ -21,6 +23,7 @@ const tournamentDefaults = {
   maxPlayers: DEFAULT_MAX_PLAYERS,
   minPlayers: DEFAULT_MIN_PLAYERS,
   registrationLevels: DEFAULT_REGISTRATION_LEVELS,
+  structureId: DEFAULT_BLIND_STRUCTURE_ID,
 };
 
 interface AdminDependencies {
@@ -547,7 +550,10 @@ export function adminRoutes(deps: AdminDependencies) {
     });
 
     fastify.get('/admin/tournaments', async (request, reply) => {
-      return reply.view('tournaments.ejs', { defaults: tournamentDefaults });
+      return reply.view('tournaments.ejs', {
+        defaults: tournamentDefaults,
+        structures: BLIND_STRUCTURES,
+      });
     });
 
     // ============================================

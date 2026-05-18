@@ -16,6 +16,7 @@ model User {
   twitterAvatarUrl String?
   provider      String    // google, discord, apple
   providerId    String
+  role          Role      @default(PLAYER)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   lastLoginAt   DateTime?
@@ -62,6 +63,12 @@ model Transaction {
 
   @@index([userId])
   @@index([createdAt])
+}
+
+enum Role {
+  ADMIN
+  GUEST
+  PLAYER
 }
 
 enum TransactionType {
