@@ -1,11 +1,13 @@
 import { Server, Socket } from 'socket.io';
 import { FastifyInstance } from 'fastify';
+import { Role } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 
 export interface AuthenticatedSocket extends Socket {
   odId?: string;
   odUsername?: string;
   odIsBot?: boolean;
+  odRole?: Role;
   odDisplacedByNewConnection?: boolean;
   /** WebSocket 接続モード（観戦専用接続ではプレイ用ソケットを置き換えない） */
   odConnectionMode?: 'play' | 'spectate';
@@ -62,6 +64,7 @@ export function setupAuthMiddleware(io: Server, fastify: FastifyInstance): void 
         socket.odId = user.id;
         socket.odUsername = user.username;
         socket.odIsBot = true;
+        socket.odRole = user.role;
         socket.odConnectionMode =
           socket.handshake.auth.connectionMode === 'spectate' ? 'spectate' : 'play';
 
@@ -89,6 +92,7 @@ export function setupAuthMiddleware(io: Server, fastify: FastifyInstance): void 
         socket.odId = user.id;
         socket.odUsername = user.username;
         socket.odIsBot = false;
+        socket.odRole = user.role;
         socket.odConnectionMode =
           socket.handshake.auth.connectionMode === 'spectate' ? 'spectate' : 'play';
         return next();
