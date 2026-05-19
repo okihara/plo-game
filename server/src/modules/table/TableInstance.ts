@@ -952,7 +952,8 @@ export class TableInstance {
 
     // ランアウト前のボードでEV計算（エクイティベース）
     // bomb pot は 2 ボード前提で equity 計算式が異なるため、ここではスキップ。
-    if (!isBombPot) {
+    // トーナメントは EV グラフを出さないので計算自体を省く（イベントループ負荷削減）。
+    if (!isBombPot && this.tournamentId == null) {
       try {
         const priorBoard = finalState.communityCards.slice(0, previousCardCount);
         const allPots = calculateSidePots(finalState.players);
@@ -1104,8 +1105,9 @@ export class TableInstance {
     // 部分オールイン時のEV計算: handleAllInRunOut を経由しなかった場合
     // （例: Turnでオールインしたが他プレイヤーがアクティブのままリバーまで進んだケース）
     // bomb pot は 2 ボード前提で式が異なるためスキップ
+    // トーナメントは EV グラフを出さないので計算自体を省く（イベントループ負荷削減）。
     const isBombPotForEV = this.gameState.variant === 'plo_double_board_bomb';
-    if (!isBombPotForEV && !this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
+    if (!isBombPotForEV && this.tournamentId == null && !this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
       try {
         const priorBoard = this.gameState.communityCards.slice(0, this.allInStreetCardCount);
         const allPots = calculateSidePots(this.gameState.players);
