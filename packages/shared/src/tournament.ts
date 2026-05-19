@@ -75,6 +75,22 @@ export interface TournamentLobbyInfo {
   gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
 }
 
+// --- Finished Tournaments Pagination Window ---
+
+/** /api/tournaments のレスポンスに付く、終了済みトーナメントの週ページネーション情報。 */
+export interface FinishedTournamentsWindow {
+  /** 今週=0, 先週=1, ... */
+  weekOffset: number;
+  /** 週の開始時刻 (JST 月曜 0:00) — ISO string */
+  weekStart: string;
+  /** 週の終了時刻 (翌週 JST 月曜 0:00, 半開) — ISO string */
+  weekEnd: string;
+  /** これより古い週に終了済みトーナメントが存在するか */
+  hasOlder: boolean;
+  /** これより新しい週があるか (weekOffset > 0 のとき true) */
+  hasNewer: boolean;
+}
+
 // --- Tournament Result ---
 
 export interface TournamentResult {

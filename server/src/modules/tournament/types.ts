@@ -7,6 +7,7 @@ export type {
   BlindLevel,
   ClientTournamentState,
   TournamentLobbyInfo,
+  FinishedTournamentsWindow,
   TournamentResult,
   TournamentEliminationInfo,
   TournamentPlayerEliminatedData,

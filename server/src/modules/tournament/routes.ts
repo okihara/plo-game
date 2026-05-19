@@ -4,9 +4,32 @@ import { createTournamentFromConfig } from './socket.js';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import { maskName } from '../../shared/utils.js';
-import { TournamentConfig, TournamentLobbyInfo, TournamentStatus } from './types.js';
+import { TournamentConfig, TournamentLobbyInfo, TournamentStatus, FinishedTournamentsWindow } from './types.js';
 import type { GameVariant } from '@plo/shared';
 import { resolveBlindSchedule, type BlindStructureId } from './constants.js';
+
+const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
+const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * 指定 weekOffset の週範囲を JST 月曜 0:00 起点で返す。
+ * weekOffset=0 = 今週、1 = 先週、...
+ */
+function jstWeekRange(weekOffset: number): { start: Date; end: Date } {
+  const nowJst = new Date(Date.now() + JST_OFFSET_MS);
+  const day = nowJst.getUTCDay(); // 0=日, 1=月, ..., 6=土
+  const daysSinceMonday = (day + 6) % 7;
+  const thisMondayJstUtcMs = Date.UTC(
+    nowJst.getUTCFullYear(),
+    nowJst.getUTCMonth(),
+    nowJst.getUTCDate() - daysSinceMonday,
+    0, 0, 0, 0,
+  );
+  // thisMondayJstUtcMs は「JST月曜0:00」を UTC 表記したもの → 実 UTC は -9h
+  const thisMondayUtcMs = thisMondayJstUtcMs - JST_OFFSET_MS;
+  const startMs = thisMondayUtcMs - weekOffset * ONE_WEEK_MS;
+  return { start: new Date(startMs), end: new Date(startMs + ONE_WEEK_MS) };
+}
 
 /** 管理エンドポイント認証（ADMIN_SECRET ベース） */
 async function requireAdmin(request: FastifyRequest, reply: FastifyReply): Promise<void> {
@@ -27,16 +50,24 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
     const { tournamentManager } = deps;
 
     // トーナメント一覧（公開、認証済みなら参加中トーナメントIDも返す）
-    fastify.get('/api/tournaments', async (request) => {
+    fastify.get<{ Querystring: { weekOffset?: string } }>('/api/tournaments', async (request) => {
       // メモリ上のアクティブトーナメント
       const activeTournaments = tournamentManager.getActiveTournaments();
       const activeIds = new Set(activeTournaments.map(t => t.id));
 
-      // DBから終了済みトーナメントを取得（新しい順、最大20件）
+      // 週ページネーション (終了済みのみ対象)
+      const rawWeekOffset = Number(request.query.weekOffset ?? 0);
+      const weekOffset = Number.isFinite(rawWeekOffset) && rawWeekOffset >= 0
+        ? Math.floor(rawWeekOffset)
+        : 0;
+      const { start: weekStart, end: weekEnd } = jstWeekRange(weekOffset);
+
+      // DBから指定週の終了済みトーナメントを取得（新しい順）
       const dbCompleted = await prisma.tournament.findMany({
         where: {
           status: { in: ['COMPLETED', 'CANCELLED'] },
           id: { notIn: [...activeIds] },
+          completedAt: { gte: weekStart, lt: weekEnd },
         },
         include: {
           _count: { select: { registrations: true } },
@@ -50,8 +81,23 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           },
         },
         orderBy: { completedAt: 'desc' },
-        take: 20,
       });
+
+      // より古い週にデータがあるか
+      const olderExists = await prisma.tournament.findFirst({
+        where: {
+          status: { in: ['COMPLETED', 'CANCELLED'] },
+          completedAt: { lt: weekStart },
+        },
+        select: { id: true },
+      });
+      const finishedWindow: FinishedTournamentsWindow = {
+        weekOffset,
+        weekStart: weekStart.toISOString(),
+        weekEnd: weekEnd.toISOString(),
+        hasOlder: !!olderExists,
+        hasNewer: weekOffset > 0,
+      };
 
       const completedTournaments: TournamentLobbyInfo[] = dbCompleted.map(t => {
         const top = t.results[0];
@@ -88,13 +134,29 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         };
       });
 
-      // アクティブ（waiting含む）を先頭、その後に終了済みを開始時刻降順
+      // アクティブ（waiting含む）は現在週(weekOffset=0)のときだけ先頭に並べる。
+      // 終了済みはメモリ・DB両方から、指定週に完了したものだけを集める。
       const finishedStatuses = new Set(['completed', 'cancelled']);
-      const active = activeTournaments.filter(t => !finishedStatuses.has(t.status));
-      const finished = [...activeTournaments.filter(t => finishedStatuses.has(t.status)), ...completedTournaments];
+      const isCurrentWeek = weekOffset === 0;
+      const active = isCurrentWeek
+        ? activeTournaments.filter(t => !finishedStatuses.has(t.status))
+        : [];
+
+      const weekStartMs = weekStart.getTime();
+      const weekEndMs = weekEnd.getTime();
+      const inMemoryFinished = activeTournaments
+        .filter(t => finishedStatuses.has(t.status))
+        .filter(t => {
+          const ts = t.completedAt ?? t.startedAt;
+          if (!ts) return false;
+          const ms = Date.parse(ts);
+          return ms >= weekStartMs && ms < weekEndMs;
+        });
+
+      const finished = [...inMemoryFinished, ...completedTournaments];
       finished.sort((a, b) => {
-        const timeA = a.startedAt ?? a.scheduledStartTime ?? '';
-        const timeB = b.startedAt ?? b.scheduledStartTime ?? '';
+        const timeA = a.completedAt ?? a.startedAt ?? a.scheduledStartTime ?? '';
+        const timeB = b.completedAt ?? b.startedAt ?? b.scheduledStartTime ?? '';
         return timeB.localeCompare(timeA);
       });
       const tournaments = [...active, ...finished];
@@ -150,7 +212,14 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         // 未認証
       }
 
-      return { tournaments, myTournamentId, canReenterTournamentId, myEliminatedTournamentId, myFinishedTournamentIds };
+      return {
+        tournaments,
+        myTournamentId,
+        canReenterTournamentId,
+        myEliminatedTournamentId,
+        myFinishedTournamentIds,
+        finishedWindow,
+      };
     });
 
     // トーナメント詳細（公開）
