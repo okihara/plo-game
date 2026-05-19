@@ -8,6 +8,7 @@ export const BADGE_CATEGORIES = {
   BAD_BEAT: 'bad_beat',
   DAILY_RANK: 'daily_rank',
   WEEKLY_RANK: 'weekly_rank',
+  TOURNAMENT: 'tournament',
   SPECIAL: 'special',
 } as const;
 
@@ -33,7 +34,9 @@ const BADGE_META: Record<string, BadgeMeta> = {
   bad_beat_straight_flush: { category: 'bad_beat', label: 'SF Cracked',        description: 'ストレートフラッシュで負けた',            flavor: '神に見放された',                       imageUrl: '/images/badges/bad_beat_straight_flush.png' },
   daily_rank_1:  { category: 'daily_rank',  label: 'Daily Crown',  description: 'デイリーランキング1位',  flavor: 'あの日のチップは全てあなたの手に',                           imageUrl: '/images/badges/daily_rank.png' },
   weekly_rank_1: { category: 'weekly_rank', label: 'Weekly Crown', description: 'ウィークリーランキング1位', flavor: '不眠不休の王',                          imageUrl: '/images/badges/weekly_rank.png' },
+  tournament_no1: { category: 'tournament', label: 'Tournament Winner', description: 'トーナメント優勝',     flavor: '賞金を全て持っていった',                  imageUrl: '/images/badges/tournament_no1.png' },
   first_penguin: { category: 'special', label: '1st Penguin', description: '2026/3/1以前に1ハンド以上をプレイ', flavor: '誰も知らないアプリに最初に飛び込んだ勇者の証 ありがとうございます', imageUrl: '/images/badges/penguin.png' },
+  special_guest_ryutaro: { category: 'special', label: 'Special Guest りゅうたろう', description: 'スペシャルゲスト りゅうたろう 参加記念', flavor: 'ダブルブレスレットホルダーと卓を囲んで戦った証', imageUrl: '/images/badges/special_guest_ryutaro.png' },
 };
 
 const HAND_MILESTONES = [
@@ -128,6 +131,13 @@ export async function checkBadBeatBadges(
 
 /** ランキングバッジの付与（毎回新レコードで回数蓄積） */
 export async function awardRankingBadge(userId: string, type: 'daily_rank_1' | 'weekly_rank_1'): Promise<void> {
+  await prisma.badge.create({
+    data: { userId, type },
+  });
+}
+
+/** トーナメント優勝バッジの付与（毎回新レコードで回数蓄積） */
+export async function awardTournamentBadge(userId: string, type: 'tournament_no1'): Promise<void> {
   await prisma.badge.create({
     data: { userId, type },
   });
@@ -243,6 +253,25 @@ export function groupBadgesForDisplay(badges: { type: string; awardedAt: Date }[
         flavor: meta.flavor,
         imageUrl: meta.imageUrl,
         count: rankBadges.length,
+        awardedAt: latest.awardedAt.toISOString(),
+      });
+    }
+  }
+
+  // トーナメントカテゴリ: 回数をカウント
+  for (const tournamentType of ['tournament_no1'] as const) {
+    const tournamentBadges = badges.filter(b => b.type === tournamentType);
+    if (tournamentBadges.length > 0) {
+      const meta = BADGE_META[tournamentType];
+      const latest = tournamentBadges[tournamentBadges.length - 1];
+      result.push({
+        category: meta.category,
+        type: tournamentType,
+        label: meta.label,
+        description: meta.description,
+        flavor: meta.flavor,
+        imageUrl: meta.imageUrl,
+        count: tournamentBadges.length,
         awardedAt: latest.awardedAt.toISOString(),
       });
     }

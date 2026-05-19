@@ -3,6 +3,7 @@ import { TournamentInstance } from './TournamentInstance.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentResult } from './types.js';
 import { prisma } from '../../config/database.js';
 import type { TableInstance } from '../table/TableInstance.js';
+import { awardTournamentBadge } from '../badges/badgeService.js';
 
 /**
  * 全トーナメントのレジストリ
@@ -97,6 +98,17 @@ export class TournamentManager {
     });
 
     console.log(`[TournamentManager] Results persisted for tournament ${tournamentId}: ${results.length} entries`);
+
+    // 4. 優勝バッジ付与（fire-and-forget、トランザクション外）
+    const winner = results.find(r => r.position === 1);
+    if (winner) {
+      try {
+        await awardTournamentBadge(winner.odId, 'tournament_no1');
+        console.log(`[TournamentManager] Awarded tournament_no1 to ${winner.odId} (tournament ${tournamentId})`);
+      } catch (err) {
+        console.error(`[TournamentManager] Failed to award tournament_no1 to ${winner.odId}:`, err);
+      }
+    }
   }
 
   /**
