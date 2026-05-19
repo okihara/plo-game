@@ -7,6 +7,8 @@ export interface TournamentBotConfig {
   tournamentId: string;
   noDelay?: boolean;
   chaosMode?: boolean; // true: ランダム切断→再接続で不具合を再現する
+  allInMode?: boolean; // true: 全ボットがオールインに向かう（EV計算経路の検証用）
+  noReentry?: boolean; // true: 脱落時にリエントリーを試行しない
 }
 
 /**
@@ -51,6 +53,8 @@ export class TournamentBotManager {
         botSecret: process.env.BOT_SECRET,
         tournamentMode: true,
         tournamentChaosMode: this.config.chaosMode,
+        allInMode: this.config.allInMode,
+        noReentry: this.config.noReentry,
         disconnectChance: 0,
         onTournamentEliminated: () => this.onBotEliminated(),
         onTournamentCompleted: () => this.onBotCompleted(),

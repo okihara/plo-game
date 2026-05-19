@@ -4,6 +4,7 @@ import { GameState, Card, Action, Player, Position, GameAction, GameVariant } fr
 import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
 import { AIContext } from '../shared/logic/ai/types.js';
 import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
+import { logSocketError } from './socketErrorLogger.js';
 
 const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
@@ -39,6 +40,9 @@ export interface BotConfig {
   onTournamentEliminated?: (bot: BotClient, position: number) => void;
   onTournamentCompleted?: (bot: BotClient) => void;
   botSecret?: string; // 本番環境でのBot認証シークレット
+  // --- 検証用 ---
+  allInMode?: boolean; // true: AI判断を無視して常にオールイン（部分オールインも含めEV計算を多発させる）
+  noReentry?: boolean; // true: 脱落時にリエントリーを試行しない（denied ログを出さない）
 }
 
 // デフォルト: 2% の確率で切断（約50ハンドに1回）
@@ -121,11 +125,16 @@ export class BotClient {
 
       this.socket.on('connect_error', (err) => {
         console.error(`[${this.config.name}] Connection error:`, err.message);
+        logSocketError(this.config.name, 'connect_error', err.message);
         reject(err);
       });
 
-      this.socket.on('disconnect', () => {
-        console.log(`[${this.config.name}] Disconnected from server`);
+      this.socket.on('disconnect', (reason) => {
+        console.log(`[${this.config.name}] Disconnected from server (${reason})`);
+        // サーバー切断などの異常系のみログ。クライアント主導の意図的切断は除外。
+        if (reason !== 'io client disconnect') {
+          logSocketError(this.config.name, 'disconnect', String(reason));
+        }
         this.isConnected = false;
         this.connectedAt = null;
         this.tableId = null;
@@ -199,6 +208,7 @@ export class BotClient {
 
     this.socket.on('table:error', (data: { message: string }) => {
       console.log(`[${this.config.name}] Table error: ${data.message}`);
+      logSocketError(this.config.name, 'table:error', data.message);
       if (!this.tableId && this.config.onJoinFailed) {
         this.config.onJoinFailed(this, data.message);
       }
@@ -300,8 +310,8 @@ export class BotClient {
       this.tournamentId = null;
       this.isTournamentEliminated = true;
 
-      // リエントリー試行（トーナメントモードのみ）
-      if (eliminatedTournamentId && this.config.tournamentMode) {
+      // リエントリー試行（トーナメントモードのみ、noReentry なら省略）
+      if (eliminatedTournamentId && this.config.tournamentMode && !this.config.noReentry) {
         this.attemptReentry(eliminatedTournamentId).then(reentered => {
           if (!reentered) {
             this.config.onTournamentEliminated?.(this, data.position);
@@ -331,6 +341,7 @@ export class BotClient {
 
     this.socket.on('tournament:error', (data: { message: string }) => {
       console.error(`[${this.config.name}] Tournament error: ${data.message}`);
+      logSocketError(this.config.name, 'tournament:error', data.message);
     });
   }
 
@@ -350,6 +361,12 @@ export class BotClient {
     const validActions = (this.gameState?.validActions as { action: Action; minAmount: number; maxAmount: number }[]) ?? [];
 
     if (validActions.length === 0) {
+      return;
+    }
+
+    // allInMode: AI判断を無視して常にオールインに向かう（EV計算経路の検証用）
+    if (this.config.allInMode) {
+      this.handleAllInTurn(validActions);
       return;
     }
 
@@ -435,6 +452,45 @@ export class BotClient {
         }, fallbackDelay);
       }
     }
+  }
+
+  /**
+   * allInMode: validActions に 'allin' があれば常にオールイン、
+   * なければ raise/bet 最大 → call → check → fold の順でフォールバックする。
+   * bet/raise は maxAmount > 0 を要求（ポットが空のときに 0 を送って無限リトライしない）。
+   * 思考時間は短め（noDelayでなければ 300〜800ms）。
+   */
+  private handleAllInTurn(
+    validActions: { action: Action; minAmount: number; maxAmount: number }[],
+  ): void {
+    const gen = this.actionGeneration;
+    const delay = this.config.noDelay ? 0 : 300 + Math.random() * 500;
+
+    const allin = validActions.find(a => a.action === 'allin');
+    const raise = validActions.find(a => a.action === 'raise');
+    const bet = validActions.find(a => a.action === 'bet');
+    const call = validActions.find(a => a.action === 'call');
+    const check = validActions.find(a => a.action === 'check');
+
+    let chosen: { action: Action; amount: number };
+    if (allin && allin.maxAmount > 0) {
+      chosen = { action: 'allin', amount: allin.maxAmount };
+    } else if (raise && raise.maxAmount >= raise.minAmount && raise.maxAmount > 0) {
+      chosen = { action: 'raise', amount: raise.maxAmount };
+    } else if (bet && bet.maxAmount >= bet.minAmount && bet.maxAmount > 0) {
+      chosen = { action: 'bet', amount: bet.maxAmount };
+    } else if (call && call.minAmount > 0) {
+      chosen = { action: 'call', amount: call.minAmount };
+    } else if (check) {
+      chosen = { action: 'check', amount: 0 };
+    } else {
+      chosen = { action: 'fold', amount: 0 };
+    }
+
+    setTimeout(() => {
+      if (this.actionGeneration !== gen) return;
+      this.sendAction(chosen.action, chosen.amount);
+    }, delay);
   }
 
   private buildGameStateForAI(): GameState | null {

@@ -6,17 +6,22 @@ import type {
   TournamentEliminationInfo,
   TournamentCompletedData,
   TournamentPlayerEliminatedData,
+  FinishedTournamentsWindow,
 } from '@plo/shared';
 
 // Re-export shared types for components that import from this hook
-export type { TournamentLobbyInfo, ClientTournamentState, TournamentCompletedData, TournamentPlayerEliminatedData } from '@plo/shared';
+export type { TournamentLobbyInfo, ClientTournamentState, TournamentCompletedData, TournamentPlayerEliminatedData, FinishedTournamentsWindow } from '@plo/shared';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
 export function useTournamentState() {
   const [tournaments, setTournaments] = useState<TournamentLobbyInfo[]>([]);
   const [isListLoading, setIsListLoading] = useState(true);
+  const [finishedWindow, setFinishedWindow] = useState<FinishedTournamentsWindow | null>(null);
+  const [weekOffset, setWeekOffset] = useState(0);
+  const weekOffsetRef = useRef(0);
   const initialListFetchedRef = useRef(false);
+  const listRequestSeqRef = useRef(0);
   const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
   const [registeredTournamentId, setRegisteredTournamentId] = useState<string | null>(null);
   const [isConnected, setIsConnected] = useState(false);
@@ -59,28 +64,40 @@ export function useTournamentState() {
     setRegisteredTournamentId(null);
   }, []);
 
-  const refreshList = useCallback(async () => {
+  const refreshList = useCallback(async (nextWeekOffset?: number) => {
+    const offset = nextWeekOffset ?? weekOffsetRef.current;
+    const requestSeq = ++listRequestSeqRef.current;
     const isFirst = !initialListFetchedRef.current;
     if (isFirst) setIsListLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/tournaments`, { credentials: 'include' });
+      const url = `${API_BASE}/api/tournaments?weekOffset=${offset}`;
+      const res = await fetch(url, { credentials: 'include' });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (requestSeq !== listRequestSeqRef.current) return;
       const data = (await res.json()) as {
         tournaments?: TournamentLobbyInfo[];
         myTournamentId?: string | null;
         canReenterTournamentId?: string | null;
         myEliminatedTournamentId?: string | null;
         myFinishedTournamentIds?: string[];
+        finishedWindow?: FinishedTournamentsWindow;
       };
       setTournaments(data.tournaments ?? []);
+      setFinishedWindow(data.finishedWindow ?? null);
+      if (nextWeekOffset !== undefined) {
+        weekOffsetRef.current = offset;
+        setWeekOffset(offset);
+      }
       // DB参加記録に基づいて参加状態を更新
       setRegisteredTournamentId(data.myTournamentId ?? null);
       setCanReenterTournamentId(data.canReenterTournamentId ?? null);
       setMyEliminatedTournamentId(data.myEliminatedTournamentId ?? null);
       setMyFinishedTournamentIds(new Set(data.myFinishedTournamentIds ?? []));
     } catch {
+      if (requestSeq !== listRequestSeqRef.current) return;
       if (isFirst) setTournaments([]);
     } finally {
+      if (requestSeq !== listRequestSeqRef.current) return;
       if (isFirst) {
         setIsListLoading(false);
         initialListFetchedRef.current = true;
@@ -223,6 +240,8 @@ export function useTournamentState() {
     tournaments,
     refreshList,
     isListLoading,
+    finishedWindow,
+    weekOffset,
 
     // Registration
     registeredTournamentId,

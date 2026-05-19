@@ -1,12 +1,12 @@
 import { useEffect, useState } from 'react';
-import { useTournamentState, TournamentLobbyInfo } from '../hooks/useTournamentState';
+import { useTournamentState, TournamentLobbyInfo, FinishedTournamentsWindow } from '../hooks/useTournamentState';
 import {
   useTournamentEvaluations,
   type TournamentEvalEligibleMeta,
   type TournamentEvalQuota,
 } from '../hooks/useTournamentEvaluations';
 import { useAuth } from '../contexts/AuthContext';
-import { Trophy, Clock, Loader2 } from 'lucide-react';
+import { Trophy, Clock, Loader2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AlertDialogOverlay } from './AlertDialog';
 import { TournamentEvaluationPopup } from './TournamentEvaluationPopup';
 import { VariantBadge } from './VariantBadge';
@@ -24,6 +24,19 @@ function formatTime(isoString?: string): string {
   if (!isoString) return '-';
   const d = new Date(isoString);
   return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+
+const JST_MD_FORMATTER = new Intl.DateTimeFormat('ja-JP', {
+  timeZone: 'Asia/Tokyo',
+  month: 'numeric',
+  day: 'numeric',
+});
+
+function formatWeekRange(w: FinishedTournamentsWindow): string {
+  // weekEnd は半開区間 (翌週月曜 0:00) なので 1ms 引いて日曜側に丸める
+  const start = new Date(w.weekStart);
+  const endInclusive = new Date(new Date(w.weekEnd).getTime() - 1);
+  return `${JST_MD_FORMATTER.format(start)}〜${JST_MD_FORMATTER.format(endInclusive)}`;
 }
 
 function statusLabel(status: string): { text: string; color: string } {
@@ -45,6 +58,8 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     tournaments,
     refreshList,
     isListLoading,
+    finishedWindow,
+    weekOffset,
     registeredTournamentId,
     canReenterTournamentId,
     myEliminatedTournamentId,
@@ -53,6 +68,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     reenter,
     error,
   } = useTournamentState();
+  const [isWeekLoading, setIsWeekLoading] = useState(false);
 
   const [registering, setRegistering] = useState<string | null>(null);
   const [reentering, setReentering] = useState<string | null>(null);
@@ -172,54 +188,143 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
 
         {!isListLoading && (
           <div className="px-[4cqw] py-[4cqw] space-y-[3cqw] pb-[18cqw]">
-            {tournaments.length === 0 && (
-              <div className="text-center py-[16cqw] text-[3cqw] text-cream-700">
-                <Trophy className="w-[12cqw] h-[12cqw] mx-auto mb-[3cqw] opacity-30" />
-                <p>トーナメントはありません</p>
-              </div>
-            )}
-
-            {tournaments.map((t) => {
-              const evalMeta: TournamentEvalEligibleMeta | null | undefined = !user
-                ? null
-                : evalMetaLoading
-                  ? undefined
-                  : evalEligible.find((e) => e.id === t.id) ?? null;
-              const evalGenerateBlockedElsewhere =
-                (generatingEvalTournamentId !== null && generatingEvalTournamentId !== t.id) ||
-                evalEligible.some((e) => e.id !== t.id && e.evaluationPending === true);
+            {(() => {
+              const finishedStatuses = new Set(['completed', 'cancelled']);
+              const activeTournaments = tournaments.filter((t) => !finishedStatuses.has(t.status));
+              const finishedTournaments = tournaments.filter((t) => finishedStatuses.has(t.status));
+              const handleWeekChange = async (next: number) => {
+                if (next < 0) return;
+                setIsWeekLoading(true);
+                try {
+                  await refreshList(next);
+                } finally {
+                  setIsWeekLoading(false);
+                }
+              };
+              const renderCard = (t: TournamentLobbyInfo) => {
+                const evalMeta: TournamentEvalEligibleMeta | null | undefined = !user
+                  ? null
+                  : evalMetaLoading
+                    ? undefined
+                    : evalEligible.find((e) => e.id === t.id) ?? null;
+                const evalGenerateBlockedElsewhere =
+                  (generatingEvalTournamentId !== null && generatingEvalTournamentId !== t.id) ||
+                  evalEligible.some((e) => e.id !== t.id && e.evaluationPending === true);
+                return (
+                  <TournamentCard
+                    key={t.id}
+                    tournament={t}
+                    winner={t.winner ?? null}
+                    isRegistered={registeredTournamentId === t.id}
+                    isRegistering={registering === t.id}
+                    canReenter={canReenterTournamentId === t.id}
+                    isReentering={reentering === t.id}
+                    isLoggedIn={!!user}
+                    hasParticipated={myFinishedTournamentIds.has(t.id)}
+                    isEliminated={myEliminatedTournamentId === t.id}
+                    onRegister={() => handleRegister(t.id)}
+                    onReenter={() => handleReenter(t.id)}
+                    onEnter={() => onJoinTournament(t.id)}
+                    onViewMyResult={() => onViewMyResult(t.id)}
+                    onViewResults={() => onViewResults(t.id)}
+                    onWatchFinalTable={t.finalTableId ? () => onWatchFinalTable(t.id, t.finalTableId!) : undefined}
+                    evalEligibleMeta={evalMeta}
+                    evalQuota={evalQuota}
+                    isEvalGenerating={
+                      generatingEvalTournamentId === t.id || evalMeta?.evaluationPending === true
+                    }
+                    evalGenerateBlockedElsewhere={evalGenerateBlockedElsewhere}
+                    evalErrorMessage={evalSubmitError?.tournamentId === t.id ? evalSubmitError.message : null}
+                    onEvalGenerate={() => handleEvalGenerate(t.id)}
+                    onEvalViewResult={() => setEvalViewPopup({ id: t.id, title: t.name })}
+                  />
+                );
+              };
               return (
-                <TournamentCard
-                  key={t.id}
-                  tournament={t}
-                  winner={t.winner ?? null}
-                  isRegistered={registeredTournamentId === t.id}
-                  isRegistering={registering === t.id}
-                  canReenter={canReenterTournamentId === t.id}
-                  isReentering={reentering === t.id}
-                  isLoggedIn={!!user}
-                  hasParticipated={myFinishedTournamentIds.has(t.id)}
-                  isEliminated={myEliminatedTournamentId === t.id}
-                  onRegister={() => handleRegister(t.id)}
-                  onReenter={() => handleReenter(t.id)}
-                  onEnter={() => onJoinTournament(t.id)}
-                  onViewMyResult={() => onViewMyResult(t.id)}
-                  onViewResults={() => onViewResults(t.id)}
-                  onWatchFinalTable={t.finalTableId ? () => onWatchFinalTable(t.id, t.finalTableId!) : undefined}
-                  evalEligibleMeta={evalMeta}
-                  evalQuota={evalQuota}
-                  isEvalGenerating={
-                    generatingEvalTournamentId === t.id || evalMeta?.evaluationPending === true
-                  }
-                  evalGenerateBlockedElsewhere={evalGenerateBlockedElsewhere}
-                  evalErrorMessage={evalSubmitError?.tournamentId === t.id ? evalSubmitError.message : null}
-                  onEvalGenerate={() => handleEvalGenerate(t.id)}
-                  onEvalViewResult={() => setEvalViewPopup({ id: t.id, title: t.name })}
-                />
+                <>
+                  {activeTournaments.map(renderCard)}
+
+                  {/* 終了済みセクション: 週ページネーション */}
+                  <WeekPager
+                    finishedWindow={finishedWindow}
+                    weekOffset={weekOffset}
+                    isLoading={isWeekLoading}
+                    onPrev={() => handleWeekChange(weekOffset + 1)}
+                    onNext={() => handleWeekChange(weekOffset - 1)}
+                  />
+
+                  {finishedTournaments.map(renderCard)}
+
+                  {activeTournaments.length === 0 && finishedTournaments.length === 0 && (
+                    <div className="text-center py-[16cqw] text-[3cqw] text-cream-700">
+                      <Trophy className="w-[12cqw] h-[12cqw] mx-auto mb-[3cqw] opacity-30" />
+                      <p>
+                        {weekOffset === 0
+                          ? 'トーナメントはありません'
+                          : 'この週に終了したトーナメントはありません'}
+                      </p>
+                    </div>
+                  )}
+                </>
               );
-            })}
+            })()}
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function WeekPager({
+  finishedWindow,
+  weekOffset,
+  isLoading,
+  onPrev,
+  onNext,
+}: {
+  finishedWindow: FinishedTournamentsWindow | null;
+  weekOffset: number;
+  isLoading: boolean;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const rangeLabel = finishedWindow ? formatWeekRange(finishedWindow) : '';
+  const hasOlder = finishedWindow?.hasOlder ?? false;
+  const hasNewer = finishedWindow?.hasNewer ?? weekOffset > 0;
+  return (
+    <div className="flex items-center gap-[2cqw] px-[1cqw] pt-[1cqw]">
+      <div className="text-[3cqw] font-semibold text-cream-800 shrink-0">終了済み</div>
+      <div className="flex-1 flex items-center justify-end gap-[2cqw]">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={!hasOlder || isLoading}
+          className="p-[1.5cqw] rounded-[2cqw] border border-cream-300 bg-white text-cream-900 disabled:text-cream-400 disabled:bg-cream-50 hover:bg-cream-100 transition-colors"
+          aria-label="前の週"
+        >
+          <ChevronLeft className="w-[4cqw] h-[4cqw]" />
+        </button>
+        <div className="min-w-[24cqw] text-center text-[3cqw] font-semibold text-cream-900 tabular-nums flex items-center justify-center gap-[1.5cqw]">
+          {isLoading ? (
+            <Loader2 className="w-[3.5cqw] h-[3.5cqw] animate-spin text-cream-600" />
+          ) : (
+            <>
+              <span>{rangeLabel}</span>
+              {weekOffset === 0 && (
+                <span className="text-[2.4cqw] font-medium text-cream-600">(今週)</span>
+              )}
+            </>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={!hasNewer || isLoading}
+          className="p-[1.5cqw] rounded-[2cqw] border border-cream-300 bg-white text-cream-900 disabled:text-cream-400 disabled:bg-cream-50 hover:bg-cream-100 transition-colors"
+          aria-label="次の週"
+        >
+          <ChevronRight className="w-[4cqw] h-[4cqw]" />
+        </button>
       </div>
     </div>
   );
