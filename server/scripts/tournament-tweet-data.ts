@@ -84,7 +84,7 @@ async function main() {
   const winner = results[0];
   const winnerUserId = winner?.userId ?? null;
 
-  const topResults = results.slice(0, 5).map((r) => ({
+  const topResults = results.slice(0, 8).map((r) => ({
     position: r.position,
     userId: r.userId,
     displayName: resolveDisplay(r.user),
