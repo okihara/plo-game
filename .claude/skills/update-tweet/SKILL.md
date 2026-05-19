@@ -57,7 +57,7 @@ git log <ref>..origin/main --no-merges --pretty=format:'%h %ci %s'
 形式は固定:
 
 ```
-【M/D アップデート ver.<commit-id>】
+【BabyPLO M/D アップデート ver.<commit-id>】
 ・<項目1>
 ・<項目2>
 ・<項目3>
@@ -65,7 +65,8 @@ git log <ref>..origin/main --no-merges --pretty=format:'%h %ci %s'
 
 ルール:
 
-- タイトルは **`【M/D アップデート】`**。範囲指定で複数日にまたがる場合は `【M/D-M/D アップデート】`
+- タイトルは **`【BabyPLO M/D アップデート ver.<commit-id>】`**。範囲指定で複数日にまたがる場合は `【BabyPLO M/D-M/D アップデート ver.<commit-id>】`
+- `<commit-id>` は `git rev-parse --short origin/main` で取得した最新の short hash (7文字)
 - 箇条書きは **中黒 `・`** 始まり (ハイフン `-` は使わない)
 - **絵文字なし、ハッシュタグなし、URL なし** (アップデート報告は素のテキストで出すのが既存スタイル)
 - 1ツイート (140字) に収まらない場合は、ユーザー視点で重要度の低い項目をばっさり削る。「他N件」のような注釈は付けない
@@ -78,7 +79,7 @@ git log <ref>..origin/main --no-merges --pretty=format:'%h %ci %s'
 > 対象: 2026-05-07 の main 取り込み 3 コミット
 >
 > ```
-> 【5/7 アップデート】
+> 【BabyPLO 5/7 アップデート ver.ac07fae】
 > ・…
 > ・…
 > ・…
@@ -93,7 +94,7 @@ git log <ref>..origin/main --no-merges --pretty=format:'%h %ci %s'
 ## 参考: 既知の良い文体
 
 ```
-【5/7 アップデート】
+【BabyPLO 5/7 アップデート ver.ac07fae】
 ・フォールド予約のチェックが残って次のターンで勝手にフォールドされる不具合を修正
 ・Hi-Lo ロー単独勝ち時の役名表示が崩れる不具合を修正
 ・PLO のフラッシュ表示をホール由来の最高ランクに変更（"Aフラ" → "Jフラ" など）
