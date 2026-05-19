@@ -3,11 +3,37 @@
  * - ハンド数バッジ (1000/3000/10000)
  * - デイリーランキング1位バッジ（過去全日分）
  * - ウィークリーランキング1位バッジ（過去全週分）
+ * - トーナメント優勝バッジ（過去全トーナメント分、Bot含む）
  *
- * 実行: cd server && DATABASE_URL="..." npx tsx scripts/award-all-badges.ts
+ * 実行:
+ *   cd server && npx tsx scripts/award-all-badges.ts            # ローカルDB
+ *   cd server && npx tsx scripts/award-all-badges.ts --prod     # 本番DB (.env の DATABASE_PROD_PUBLIC_URL)
+ *   cd server && npx tsx scripts/award-all-badges.ts --only-tournament [--prod]
  */
-import { Prisma } from '@prisma/client';
-import { prisma } from '../src/config/database.js';
+import { Prisma, PrismaClient } from '@prisma/client';
+import { config as loadDotenv } from 'dotenv';
+import { join } from 'path';
+import { fileURLToPath } from 'url';
+
+const __dirname = fileURLToPath(new URL('.', import.meta.url));
+loadDotenv({ path: join(__dirname, '..', '.env') });
+
+const isProd = process.argv.includes('--prod');
+const onlyTournament = process.argv.includes('--only-tournament');
+
+if (isProd) {
+  if (!process.env.DATABASE_PROD_PUBLIC_URL) {
+    console.error('ERROR: DATABASE_PROD_PUBLIC_URL が server/.env に設定されていません');
+    process.exit(1);
+  }
+  console.log('🔗 本番DBに接続します');
+}
+
+const prisma = new PrismaClient({
+  datasources: isProd
+    ? { db: { url: process.env.DATABASE_PROD_PUBLIC_URL } }
+    : undefined,
+});
 
 const HAND_MILESTONES = [
   { threshold: 1000, type: 'hands_1000' },
@@ -177,10 +203,64 @@ async function awardWeeklyRankingBadges() {
   }
 }
 
+async function awardTournamentWinnerBadges() {
+  console.log('\n=== トーナメント優勝バッジ ===');
+
+  // 完了済みトーナメントの優勝者を取得（Bot含む）
+  const winners = await prisma.tournamentResult.findMany({
+    where: {
+      position: 1,
+      tournament: { status: 'COMPLETED' },
+    },
+    select: { userId: true, tournamentId: true },
+  });
+
+  // ユーザーごとの優勝回数を集計
+  const winCountByUser = new Map<string, number>();
+  for (const w of winners) {
+    winCountByUser.set(w.userId, (winCountByUser.get(w.userId) ?? 0) + 1);
+  }
+
+  // 既存の tournament_no1 バッジをユーザー別に集計
+  const existing = await prisma.badge.findMany({
+    where: { type: 'tournament_no1' },
+    select: { userId: true },
+  });
+  const existingCountByUser = new Map<string, number>();
+  for (const b of existing) {
+    existingCountByUser.set(b.userId, (existingCountByUser.get(b.userId) ?? 0) + 1);
+  }
+
+  // 差分を付与
+  const toCreate: { userId: string; type: string }[] = [];
+  for (const [userId, winCount] of winCountByUser) {
+    const have = existingCountByUser.get(userId) ?? 0;
+    const missing = winCount - have;
+    if (missing > 0) {
+      for (let i = 0; i < missing; i++) {
+        toCreate.push({ userId, type: 'tournament_no1' });
+      }
+      console.log(`  ${userId}: 優勝${winCount}回 / 既存${have}件 → +${missing}`);
+    }
+  }
+
+  if (toCreate.length === 0) {
+    console.log('新規付与なし');
+  } else {
+    const result = await prisma.badge.createMany({ data: toCreate });
+    console.log(`✅ ${result.count} 件付与`);
+  }
+}
+
 async function main() {
-  await awardHandCountBadges();
-  await awardDailyRankingBadges();
-  await awardWeeklyRankingBadges();
+  if (onlyTournament) {
+    await awardTournamentWinnerBadges();
+  } else {
+    await awardHandCountBadges();
+    await awardDailyRankingBadges();
+    await awardWeeklyRankingBadges();
+    await awardTournamentWinnerBadges();
+  }
   console.log('\n完了');
 }
 
