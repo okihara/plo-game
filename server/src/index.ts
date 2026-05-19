@@ -1,3 +1,6 @@
+// Sentry は他モジュールより前に初期化する必要がある
+import { Sentry, sentryEnabled, installConsoleErrorBridge } from './config/sentry.js';
+installConsoleErrorBridge();
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
@@ -59,10 +62,66 @@ await fastify.register(view, {
 // Decorate fastify with prisma
 fastify.decorate('prisma', prisma);
 
+// Sentry: Fastify のエラーフック（ハンドラ内で throw された例外を捕捉）
+if (sentryEnabled) {
+  fastify.addHook('onError', (request, _reply, error, done) => {
+    Sentry.withScope((scope) => {
+      scope.setTag('source', 'fastify');
+      scope.setContext('request', {
+        method: request.method,
+        url: request.url,
+        routerPath: request.routeOptions?.url,
+      });
+      Sentry.captureException(error);
+    });
+    done();
+  });
+}
+
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
+
+// Sentry 動作確認用（開発環境のみ）
+if (env.NODE_ENV !== 'production') {
+  // 同期 throw → Fastify の onError フックで捕捉
+  fastify.get('/api/debug/sentry/throw', async () => {
+    throw new Error('Debug: synchronous throw from /api/debug/sentry/throw');
+  });
+
+  // 非同期 reject → Fastify の onError フックで捕捉
+  fastify.get('/api/debug/sentry/reject', async () => {
+    await Promise.reject(new Error('Debug: rejected promise from /api/debug/sentry/reject'));
+  });
+
+  // setTimeout 内で throw → ハンドラ外なので uncaughtException 経由で捕捉
+  fastify.get('/api/debug/sentry/async-throw', async (_req, reply) => {
+    setTimeout(() => {
+      throw new Error('Debug: async throw outside handler');
+    }, 10);
+    return reply.send({ ok: true, note: 'thrown asynchronously in 10ms' });
+  });
+
+  // 手動 captureMessage
+  fastify.get('/api/debug/sentry/message', async () => {
+    if (sentryEnabled) {
+      Sentry.captureMessage('Debug: manual captureMessage from server', 'info');
+    }
+    return { ok: true, sentryEnabled };
+  });
+
+  // try-catch で握り潰される系（プロジェクトでよくあるパターン）。
+  // console.error ブリッジで Sentry に転送されることを確認するため。
+  fastify.get('/api/debug/sentry/swallowed', async () => {
+    try {
+      throw new Error('Debug: swallowed error captured via console.error bridge');
+    } catch (err) {
+      console.error('Debug swallowed error:', err);
+    }
+    return { ok: true };
+  });
+}
 
 // API Routes
 await fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -272,5 +331,17 @@ const shutdown = async () => {
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// プロセスレベルの未捕捉例外 / 未処理 Promise rejection を Sentry に送る
+if (sentryEnabled) {
+  process.on('uncaughtException', (err) => {
+    console.error('[uncaughtException]', err);
+    Sentry.captureException(err);
+  });
+  process.on('unhandledRejection', (reason) => {
+    console.error('[unhandledRejection]', reason);
+    Sentry.captureException(reason);
+  });
+}
 
 start();

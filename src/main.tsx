@@ -1,3 +1,5 @@
+// Sentry は他モジュールより前に初期化する
+import { Sentry, sentryEnabled } from './lib/sentry';
 import { StrictMode, useState, useEffect } from 'react';
 import { createRoot } from 'react-dom/client';
 import { SimpleLobby } from './pages/SimpleLobby';
@@ -8,6 +10,7 @@ import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { EliminationDebug } from './pages/EliminationDebug';
 import { TournamentCardDebug } from './pages/TournamentCardDebug';
+import { SentryDebug } from './pages/SentryDebug';
 import { TournamentMyResult } from './pages/TournamentMyResult';
 import { TournamentResults } from './pages/TournamentResults';
 import { HandHistory } from './pages/HandHistory';
@@ -93,6 +96,8 @@ function App() {
     page = <EliminationDebug />;
   } else if (currentPath === '/debug/tournament-card') {
     page = <TournamentCardDebug />;
+  } else if (currentPath === '/debug/sentry') {
+    page = <SentryDebug />;
   } else if (currentPath.startsWith('/hand/')) {
     const handId = currentPath.replace('/hand/', '');
     page = <HandDetailPage handId={handId} onBack={goBackToLobby} />;
@@ -186,7 +191,7 @@ function App() {
   );
 }
 
-createRoot(document.getElementById('app')!).render(
+const tree = (
   <StrictMode>
     <AuthProvider>
       <GameSettingsProvider>
@@ -194,4 +199,20 @@ createRoot(document.getElementById('app')!).render(
       </GameSettingsProvider>
     </AuthProvider>
   </StrictMode>
+);
+
+createRoot(document.getElementById('app')!).render(
+  sentryEnabled ? (
+    <Sentry.ErrorBoundary
+      fallback={
+        <div className="min-h-[100dvh] flex items-center justify-center bg-black text-white px-[8%] text-center">
+          予期しないエラーが発生しました。ページを再読み込みしてください。
+        </div>
+      }
+    >
+      {tree}
+    </Sentry.ErrorBoundary>
+  ) : (
+    tree
+  )
 );

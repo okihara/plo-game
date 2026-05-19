@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { FastifyInstance } from 'fastify';
+import { Sentry, sentryEnabled } from '../../config/sentry.js';
 import { TableManager } from '../table/TableManager.js';
 import { TournamentManager } from '../tournament/TournamentManager.js';
 import { registerTournamentHandlers } from '../tournament/socket.js';
@@ -39,6 +40,44 @@ const SERVER_CAUSED_DISCONNECT_REASONS = new Set<string>([
   'ping timeout',                 // ping 応答が来なかった（サーバー負荷の可能性）
 ]);
 
+// Socket イベントハンドラを Sentry でラップする。
+// async/sync 両対応で、例外はキャプチャしつつ再 throw しないことで切断連鎖を防ぐ。
+function wrapSocketHandler<Args extends unknown[]>(
+  socket: AuthenticatedSocket,
+  event: string,
+  handler: (...args: Args) => unknown | Promise<unknown>,
+): (...args: Args) => void {
+  return (...args: Args) => {
+    try {
+      const result = handler(...args);
+      if (result instanceof Promise) {
+        result.catch((err) => reportSocketError(err, socket, event));
+      }
+    } catch (err) {
+      reportSocketError(err, socket, event);
+    }
+  };
+}
+
+function reportSocketError(err: unknown, socket: AuthenticatedSocket, event: string): void {
+  console.error(`[Socket] handler error: event=${event}, odId=${socket.odId}, socket=${socket.id}`, err);
+  if (!sentryEnabled) return;
+  Sentry.withScope((scope) => {
+    scope.setTag('source', 'socket.io');
+    scope.setTag('socket.event', event);
+    scope.setContext('socket', {
+      id: socket.id,
+      odId: socket.odId,
+      username: socket.odUsername,
+      mode: socket.odConnectionMode,
+    });
+    if (socket.odId) {
+      scope.setUser({ id: socket.odId, username: socket.odUsername });
+    }
+    Sentry.captureException(err);
+  });
+}
+
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
   const tournamentManager = new TournamentManager(io);
@@ -61,6 +100,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       message: err.message,
       context: err.context,
     });
+    if (sentryEnabled) {
+      Sentry.withScope((scope) => {
+        scope.setTag('source', 'socket.io');
+        scope.setTag('socket.phase', 'connection');
+        scope.setContext('connection_error', {
+          code: err.code,
+          message: err.message,
+        });
+        Sentry.captureMessage(`Socket.io connection_error: ${err.message ?? err.code ?? 'unknown'}`, 'error');
+      });
+    }
   });
 
   io.on('connection', (socket: AuthenticatedSocket) => {
@@ -97,19 +147,27 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.emit('announcement:status', announcementService.getStatus());
     }
 
-    socket.on('table:leave', () => handleTableLeave(socket, tableManager));
-    socket.on('table:spectate_join', (data) =>
-      handleSpectateJoin(socket, data ?? {}, tableManager, tournamentManager)
-    );
-    socket.on('table:spectate_leave', () =>
+    socket.on('table:leave', wrapSocketHandler(socket, 'table:leave', () => handleTableLeave(socket, tableManager)));
+    socket.on('table:spectate_join', wrapSocketHandler(socket, 'table:spectate_join', (data: unknown) =>
+      handleSpectateJoin(socket, (data as Parameters<typeof handleSpectateJoin>[1]) ?? {}, tableManager, tournamentManager)
+    ));
+    socket.on('table:spectate_leave', wrapSocketHandler(socket, 'table:spectate_leave', () =>
       handleSpectateLeave(socket, tableManager, tournamentManager)
-    );
-    socket.on('game:action', (data) => handleGameAction(socket, data, tableManager, tournamentManager));
-    socket.on('game:fast_fold', () => handleFastFold(socket, tableManager));
-    socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager));
-    socket.on('matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager));
-    socket.on('private:create', (data) => handlePrivateCreate(socket, data, tableManager));
-    socket.on('private:join', (data) => handlePrivateJoin(socket, data, tableManager));
+    ));
+    socket.on('game:action', wrapSocketHandler(socket, 'game:action', (data: Parameters<typeof handleGameAction>[1]) =>
+      handleGameAction(socket, data, tableManager, tournamentManager)
+    ));
+    socket.on('game:fast_fold', wrapSocketHandler(socket, 'game:fast_fold', () => handleFastFold(socket, tableManager)));
+    socket.on('matchmaking:join', wrapSocketHandler(socket, 'matchmaking:join', (data: Parameters<typeof handleMatchmakingJoin>[1]) =>
+      handleMatchmakingJoin(socket, data, tableManager)
+    ));
+    socket.on('matchmaking:leave', wrapSocketHandler(socket, 'matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager)));
+    socket.on('private:create', wrapSocketHandler(socket, 'private:create', (data: Parameters<typeof handlePrivateCreate>[1]) =>
+      handlePrivateCreate(socket, data, tableManager)
+    ));
+    socket.on('private:join', wrapSocketHandler(socket, 'private:join', (data: Parameters<typeof handlePrivateJoin>[1]) =>
+      handlePrivateJoin(socket, data, tableManager)
+    ));
 
     // トーナメントイベント登録
     registerTournamentHandlers(socket, tournamentManager);
@@ -150,7 +208,9 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     });
 
     if (process.env.NODE_ENV !== 'production') {
-      socket.on('debug:set_chips', (data) => handleDebugSetChips(socket, data, tableManager));
+      socket.on('debug:set_chips', wrapSocketHandler(socket, 'debug:set_chips', (data: Parameters<typeof handleDebugSetChips>[1]) =>
+        handleDebugSetChips(socket, data, tableManager)
+      ));
     }
   });
 
