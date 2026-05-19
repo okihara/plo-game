@@ -116,12 +116,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     socket.on('disconnect', (reason: string) => {
       const role = isSpectate ? 'Spectator' : 'Player';
+      const username = socket.odUsername ?? '(unknown)';
       // サーバー起因の切断（transport error / ping timeout / 強制切断 等）は error として残し、
       // クライアントが明示的に切断したケース（client namespace disconnect 等）は info で十分
       if (SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
-        console.error(`[Socket] ${role} disconnected (server-caused): odId=${odId}, socket=${socket.id}, reason=${reason}`);
+        console.error(`[Socket] ${role} disconnected (server-caused): odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
       } else {
-        console.log(`[Socket] ${role} disconnected: odId=${odId}, socket=${socket.id}, reason=${reason}`);
+        console.log(`[Socket] ${role} disconnected: odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
       }
 
       // displaced されたsocketはクリーンアップをスキップ
