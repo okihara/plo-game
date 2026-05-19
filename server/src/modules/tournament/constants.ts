@@ -115,16 +115,17 @@ export const DEFAULT_MAX_PLAYERS = 102;
 // 登録可能レベル（開始からこのレベルまで参加可能）
 export const DEFAULT_REGISTRATION_LEVELS = 8;
 
-// リエントリーを含む総エントリー数に対して、上位15%を入賞圏にする。
+// リエントリーを含む総エントリー数に対して、上位15%（切り捨て、最低1名）を入賞圏にする。
 export const DEFAULT_PAYOUT_RATE = 0.15;
 
 // 入賞順位数に応じた賞金配分。6位以上は PrizeCalculator で動的生成する。
+// 各構造は線形配分から 1 位に概ね +5pt 寄せた値を採用し、優勝者に少し厚くしている。
 export const PAYOUT_STRUCTURES: { paidPlaces: number; percentages: number[] }[] = [
   { paidPlaces: 1, percentages: [100] },
-  { paidPlaces: 2, percentages: [65, 35] },
-  { paidPlaces: 3, percentages: [50, 30, 20] },
-  { paidPlaces: 4, percentages: [45, 25, 18, 12] },
-  { paidPlaces: 5, percentages: [40, 23, 16, 12, 9] },
+  { paidPlaces: 2, percentages: [70, 30] },
+  { paidPlaces: 3, percentages: [55, 28, 17] },
+  { paidPlaces: 4, percentages: [50, 24, 16, 10] },
+  { paidPlaces: 5, percentages: [45, 22, 15, 11, 7] },
 ];
 
 // リエントリー可能回数
