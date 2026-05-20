@@ -4,6 +4,7 @@ import { TournamentManager } from './TournamentManager.js';
 import { TournamentConfig } from './types.js';
 import { DEFAULT_BLIND_SCHEDULE, DEFAULT_BOMB_POT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
+import { wrapSocketHandler } from '../game/socketErrorReporter.js';
 import { prisma } from '../../config/database.js';
 import { hasWeeklyChampionBadge } from '../badges/badgeService.js';
 
@@ -64,7 +65,7 @@ export function registerTournamentHandlers(
 
   // トーナメントテーブルの状態を再送信（ページ遷移でゲーム画面に入った時用）
   // DB登録済みだがメモリ未着席のプレイヤーは自動的にenterPlayerで着席させる
-  socket.on('tournament:request_state', async (data: { tournamentId: string }) => {
+  socket.on('tournament:request_state', wrapSocketHandler(socket, 'tournament:request_state', async (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);
     if (!tournament) return;
 
@@ -147,7 +148,7 @@ export function registerTournamentHandlers(
         table.reconnectPlayer(odId, socket);
       }
     }
-  });
+  }));
 
   // トーナメントゲーム中のアクション（game:action はキャッシュゲームと共通）
   // → game/socket.ts の game:action ハンドラで処理される

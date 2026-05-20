@@ -1,5 +1,5 @@
 // Sentry は他モジュールより前に初期化する必要がある
-import { Sentry, sentryEnabled, installConsoleErrorBridge } from './config/sentry.js';
+import { Sentry, sentryEnabled, installConsoleErrorBridge, withConsoleErrorBridgeSuppressed } from './config/sentry.js';
 installConsoleErrorBridge();
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
@@ -335,11 +335,15 @@ process.on('SIGINT', shutdown);
 // プロセスレベルの未捕捉例外 / 未処理 Promise rejection を Sentry に送る
 if (sentryEnabled) {
   process.on('uncaughtException', (err) => {
-    console.error('[uncaughtException]', err);
+    withConsoleErrorBridgeSuppressed(() => {
+      console.error('[uncaughtException]', err);
+    });
     Sentry.captureException(err);
   });
   process.on('unhandledRejection', (reason) => {
-    console.error('[unhandledRejection]', reason);
+    withConsoleErrorBridgeSuppressed(() => {
+      console.error('[unhandledRejection]', reason);
+    });
     Sentry.captureException(reason);
   });
 }

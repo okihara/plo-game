@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { FastifyInstance } from 'fastify';
-import { Sentry, sentryEnabled } from '../../config/sentry.js';
+import { Sentry, sentryEnabled, withConsoleErrorBridgeSuppressed } from '../../config/sentry.js';
 import { TableManager } from '../table/TableManager.js';
 import { TournamentManager } from '../tournament/TournamentManager.js';
 import { registerTournamentHandlers } from '../tournament/socket.js';
@@ -8,6 +8,7 @@ import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
 import { setupAuthMiddleware, AuthenticatedSocket } from './authMiddleware.js';
 import { setupFastFoldCallback } from './fastFoldService.js';
+import { wrapSocketHandler } from './socketErrorReporter.js';
 import {
   handleTableLeave,
   handleGameAction,
@@ -40,44 +41,6 @@ const SERVER_CAUSED_DISCONNECT_REASONS = new Set<string>([
   'ping timeout',                 // ping 応答が来なかった（サーバー負荷の可能性）
 ]);
 
-// Socket イベントハンドラを Sentry でラップする。
-// async/sync 両対応で、例外はキャプチャしつつ再 throw しないことで切断連鎖を防ぐ。
-function wrapSocketHandler<Args extends unknown[]>(
-  socket: AuthenticatedSocket,
-  event: string,
-  handler: (...args: Args) => unknown | Promise<unknown>,
-): (...args: Args) => void {
-  return (...args: Args) => {
-    try {
-      const result = handler(...args);
-      if (result instanceof Promise) {
-        result.catch((err) => reportSocketError(err, socket, event));
-      }
-    } catch (err) {
-      reportSocketError(err, socket, event);
-    }
-  };
-}
-
-function reportSocketError(err: unknown, socket: AuthenticatedSocket, event: string): void {
-  console.error(`[Socket] handler error: event=${event}, odId=${socket.odId}, socket=${socket.id}`, err);
-  if (!sentryEnabled) return;
-  Sentry.withScope((scope) => {
-    scope.setTag('source', 'socket.io');
-    scope.setTag('socket.event', event);
-    scope.setContext('socket', {
-      id: socket.id,
-      odId: socket.odId,
-      username: socket.odUsername,
-      mode: socket.odConnectionMode,
-    });
-    if (socket.odId) {
-      scope.setUser({ id: socket.odId, username: socket.odUsername });
-    }
-    Sentry.captureException(err);
-  });
-}
-
 export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocketDependencies {
   const tableManager = new TableManager(io);
   const tournamentManager = new TournamentManager(io);
@@ -95,10 +58,12 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
   // Engine 層の接続エラー（ハンドシェイク失敗・トランスポートエラーなど）を error ログに残す
   io.engine.on('connection_error', (err: { code?: number; message?: string; context?: unknown }) => {
-    console.error('[Socket.io] connection_error:', {
-      code: err.code,
-      message: err.message,
-      context: err.context,
+    withConsoleErrorBridgeSuppressed(() => {
+      console.error('[Socket.io] connection_error:', {
+        code: err.code,
+        message: err.message,
+        context: err.context,
+      });
     });
     if (sentryEnabled) {
       Sentry.withScope((scope) => {

@@ -23,6 +23,17 @@ if (dsn) {
 export const sentryEnabled = Boolean(dsn);
 export { Sentry };
 
+let consoleErrorBridgeSuppressDepth = 0;
+
+export function withConsoleErrorBridgeSuppressed<T>(fn: () => T): T {
+  consoleErrorBridgeSuppressDepth += 1;
+  try {
+    return fn();
+  } finally {
+    consoleErrorBridgeSuppressDepth -= 1;
+  }
+}
+
 /**
  * console.error を hook して Sentry に転送する。
  * プロジェクト内の多くの箇所が「try-catch → console.error で握り潰し」パターンで
@@ -38,6 +49,7 @@ export function installConsoleErrorBridge(): void {
   const originalError = console.error;
   console.error = (...args: unknown[]) => {
     originalError(...args);
+    if (consoleErrorBridgeSuppressDepth > 0) return;
     try {
       const errArg = args.find((a): a is Error => a instanceof Error);
       if (errArg) {
