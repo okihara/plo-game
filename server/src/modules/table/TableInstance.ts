@@ -175,7 +175,7 @@ export class TableInstance {
   public unseatPlayer(odId: string): { odId: string; chips: number } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) {
-      console.error(`Player ${odId} not found in table ${this.id}`);
+      console.warn(`Player ${odId} not found in table ${this.id}`);
       return null;
     }
 

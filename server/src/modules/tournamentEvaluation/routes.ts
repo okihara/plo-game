@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
+import { reportError } from '../../config/sentry.js';
 import { fetchTournamentHandsForUser } from '../history/tournamentHandsForUser.js';
 import { getJstDateString } from './jstDate.js';
 import { generateTournamentEvaluationMarkdown } from './callEvalLlm.js';
@@ -271,7 +272,7 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
       promptVersion = out.promptVersion;
     } catch (e) {
       const message = e instanceof Error ? e.message : 'LLM request failed';
-      console.error('[tournamentEvaluation] LLM error:', message);
+      reportError(e, '[tournamentEvaluation] LLM error', { userId, evaluationId: pendingRow.id });
       await prisma.tournamentUserEvaluation.update({
         where: { id: pendingRow.id },
         data: {
@@ -323,7 +324,7 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
           nextJstDate: jstToday,
         });
       }
-      console.error('[tournamentEvaluation] persist error:', e);
+      reportError(e, '[tournamentEvaluation] persist error', { userId, evaluationId: pendingRow.id });
       await prisma.tournamentUserEvaluation.update({
         where: { id: pendingRow.id },
         data: {

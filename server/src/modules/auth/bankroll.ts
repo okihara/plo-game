@@ -1,5 +1,6 @@
 import { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
+import { reportError } from '../../config/sentry.js';
 
 const DAILY_BONUS = 1000;
 const LOGIN_BONUS_TARGET = 3000;
@@ -20,7 +21,7 @@ export async function deductBuyIn(odId: string, amount: number): Promise<boolean
     });
     return true;
   } catch (e) {
-    console.error('deductBuyIn failed:', odId, amount, e);
+    reportError(e, 'deductBuyIn failed', { odId, amount });
     return false;
   }
 }
@@ -37,7 +38,7 @@ export async function cashOutPlayer(odId: string, chips: number, tableId?: strin
       data: { userId: odId, type: 'CASH_OUT', amount: chips, tableId },
     });
   } catch (e) {
-    console.error('Cash-out failed:', odId, chips, e);
+    reportError(e, 'Cash-out failed', { odId, chips, tableId });
   }
 }
 

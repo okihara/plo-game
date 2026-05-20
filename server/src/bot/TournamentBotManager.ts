@@ -67,7 +67,7 @@ export class TournamentBotManager {
         // 接続間隔（サーバー負荷軽減）
         await sleep(200);
       } catch (err) {
-        console.error(`[TournamentBotManager] Failed to connect bot ${names[i]}:`, err);
+        console.warn(`[TournamentBotManager] Failed to connect bot ${names[i]}:`, err);
       }
     }
 
