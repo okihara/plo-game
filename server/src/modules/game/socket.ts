@@ -1,6 +1,6 @@
 import { Server } from 'socket.io';
 import { FastifyInstance } from 'fastify';
-import { Sentry, sentryEnabled, withConsoleErrorBridgeSuppressed } from '../../config/sentry.js';
+import { Sentry, sentryEnabled } from '../../config/sentry.js';
 import { TableManager } from '../table/TableManager.js';
 import { TournamentManager } from '../tournament/TournamentManager.js';
 import { registerTournamentHandlers } from '../tournament/socket.js';
@@ -58,12 +58,10 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
   // Engine 層の接続エラー（ハンドシェイク失敗・トランスポートエラーなど）を error ログに残す
   io.engine.on('connection_error', (err: { code?: number; message?: string; context?: unknown }) => {
-    withConsoleErrorBridgeSuppressed(() => {
-      console.error('[Socket.io] connection_error:', {
-        code: err.code,
-        message: err.message,
-        context: err.context,
-      });
+    console.error('[Socket.io] connection_error:', {
+      code: err.code,
+      message: err.message,
+      context: err.context,
     });
     if (sentryEnabled) {
       Sentry.withScope((scope) => {

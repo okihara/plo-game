@@ -112,7 +112,7 @@ export class BotManager {
         if (!bot) break; // No more names available
         await this.sleep(500);
       } catch (err) {
-        console.error(`Failed to create bot ${i + 1}:`, err);
+        console.warn(`Failed to create bot ${i + 1}:`, err);
       }
     }
 
@@ -136,7 +136,7 @@ export class BotManager {
 
     // 全ボットを並行してクリーンに切断（各ボットが table:leave 等を送信してから disconnect）
     const disconnectPromises = Array.from(this.bots.values()).map(bot =>
-      bot.disconnect().catch(err => console.error('Bot disconnect error:', err))
+      bot.disconnect().catch(err => console.warn('Bot disconnect error:', err))
     );
     await Promise.all(disconnectPromises);
 
@@ -149,7 +149,7 @@ export class BotManager {
   private async createBot(): Promise<BotClient | null> {
     const name = this.getAvailableName();
     if (!name) {
-      console.error('No available bot names');
+      console.warn('No available bot names');
       return null;
     }
 
@@ -199,7 +199,7 @@ export class BotManager {
         return bot;
       }
     } catch (err) {
-      console.error(`Failed to connect bot ${name}:`, err);
+      console.warn(`Failed to connect bot ${name}:`, err);
       bot.disconnect();
       this.usedNames.delete(name);
     }
@@ -303,7 +303,7 @@ export class BotManager {
         for (const [playerId, bot] of candidates) {
           this.bots.delete(playerId);
           this.usedNames.delete(bot.getName());
-          bot.disconnect().catch(err => console.error('Bot reduction disconnect error:', err));
+          bot.disconnect().catch(err => console.warn('Bot reduction disconnect error:', err));
         }
         if (candidates.length > 0) {
           console.log(`[HealthCheck] Reduced ${candidates.length} bots (total: ${totalPlayers}, target: ${this.config.botCount})`);
@@ -323,7 +323,7 @@ export class BotManager {
           if (!bot) break; // No more names available
           await this.sleep(500);
         } catch (err) {
-          console.error('Failed to replace bot:', err);
+          console.warn('Failed to replace bot:', err);
         }
       }
     }, 10000);

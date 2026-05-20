@@ -1,4 +1,4 @@
-import { Sentry, sentryEnabled, withConsoleErrorBridgeSuppressed } from '../../config/sentry.js';
+import { Sentry, sentryEnabled } from '../../config/sentry.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
 
 // Socket イベントハンドラを Sentry でラップする。
@@ -21,9 +21,7 @@ export function wrapSocketHandler<Args extends unknown[]>(
 }
 
 function reportSocketError(err: unknown, socket: AuthenticatedSocket, event: string): void {
-  withConsoleErrorBridgeSuppressed(() => {
-    console.error(`[Socket] handler error: event=${event}, odId=${socket.odId}, socket=${socket.id}`, err);
-  });
+  console.error(`[Socket] handler error: event=${event}, odId=${socket.odId}, socket=${socket.id}`, err);
   if (!sentryEnabled) return;
   Sentry.withScope((scope) => {
     scope.setTag('source', 'socket.io');

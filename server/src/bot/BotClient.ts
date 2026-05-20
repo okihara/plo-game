@@ -124,7 +124,7 @@ export class BotClient {
       });
 
       this.socket.on('connect_error', (err) => {
-        console.error(`[${this.config.name}] Connection error:`, err.message);
+        console.warn(`[${this.config.name}] Connection error:`, err.message);
         logSocketError(this.config.name, 'connect_error', err.message);
         reject(err);
       });
@@ -340,7 +340,7 @@ export class BotClient {
     });
 
     this.socket.on('tournament:error', (data: { message: string }) => {
-      console.error(`[${this.config.name}] Tournament error: ${data.message}`);
+      console.warn(`[${this.config.name}] Tournament error: ${data.message}`);
       logSocketError(this.config.name, 'tournament:error', data.message);
     });
   }
@@ -807,7 +807,7 @@ export class BotClient {
       this.socket.emit('tournament:request_state', { tournamentId });
       return true;
     } catch (err) {
-      console.error(`[${this.config.name}] Reentry error:`, err);
+      console.warn(`[${this.config.name}] Reentry error:`, err);
       this.disconnect();
       return false;
     }
@@ -909,7 +909,7 @@ export class BotClient {
           await this.chaosReconnect(tournamentId);
           console.log(`[${this.config.name}] 🔥 Chaos: reconnected to tournament ${tournamentId}`);
         } catch (err) {
-          console.error(`[${this.config.name}] 🔥 Chaos: reconnect failed:`, err);
+          console.warn(`[${this.config.name}] 🔥 Chaos: reconnect failed:`, err);
         }
       }, reconnectDelay);
     }, disconnectDelay);

@@ -1,6 +1,5 @@
 // Sentry は他モジュールより前に初期化する必要がある
-import { Sentry, sentryEnabled, installConsoleErrorBridge, withConsoleErrorBridgeSuppressed } from './config/sentry.js';
-installConsoleErrorBridge();
+import { Sentry, sentryEnabled } from './config/sentry.js';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
@@ -95,12 +94,14 @@ if (env.NODE_ENV !== 'production') {
     await Promise.reject(new Error('Debug: rejected promise from /api/debug/sentry/reject'));
   });
 
-  // setTimeout 内で throw → ハンドラ外なので uncaughtException 経由で捕捉
+  // setTimeout 内で throw → ハンドラ外なので uncaughtException 経由で捕捉。
+  // 捕捉後にプロセスが exit(1) する（Sentry 有効時は flush 後）ので、ローカル dev で
+  // 叩くとサーバーが落ちる点に注意。
   fastify.get('/api/debug/sentry/async-throw', async (_req, reply) => {
     setTimeout(() => {
       throw new Error('Debug: async throw outside handler');
     }, 10);
-    return reply.send({ ok: true, note: 'thrown asynchronously in 10ms' });
+    return reply.send({ ok: true, note: 'thrown asynchronously in 10ms (server will exit)' });
   });
 
   // 手動 captureMessage
@@ -111,16 +112,6 @@ if (env.NODE_ENV !== 'production') {
     return { ok: true, sentryEnabled };
   });
 
-  // try-catch で握り潰される系（プロジェクトでよくあるパターン）。
-  // console.error ブリッジで Sentry に転送されることを確認するため。
-  fastify.get('/api/debug/sentry/swallowed', async () => {
-    try {
-      throw new Error('Debug: swallowed error captured via console.error bridge');
-    } catch (err) {
-      console.error('Debug swallowed error:', err);
-    }
-    return { ok: true };
-  });
 }
 
 // API Routes
@@ -326,25 +317,34 @@ const shutdown = async () => {
   console.log('Shutting down...');
   await fastify.close();
   await prisma.$disconnect();
+  if (sentryEnabled) {
+    await Sentry.close(2000);
+  }
   process.exit(0);
 };
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
-// プロセスレベルの未捕捉例外 / 未処理 Promise rejection を Sentry に送る
+// プロセスレベルの未捕捉例外 / 未処理 Promise rejection を Sentry に送る。
+// uncaughtException 後は state corruption の可能性があるため、flush してプロセスを終了する
+// （Railway 等のスーパーバイザが自動再起動する想定）。unhandledRejection は将来の Node で
+// プロセス終了になる方針なので、こちらも同様に flush してから exit する。
 if (sentryEnabled) {
+  const flushAndExit = async (err: unknown, label: string) => {
+    console.error(`[${label}]`, err);
+    try {
+      Sentry.captureException(err);
+      await Sentry.close(2000);
+    } finally {
+      process.exit(1);
+    }
+  };
   process.on('uncaughtException', (err) => {
-    withConsoleErrorBridgeSuppressed(() => {
-      console.error('[uncaughtException]', err);
-    });
-    Sentry.captureException(err);
+    void flushAndExit(err, 'uncaughtException');
   });
   process.on('unhandledRejection', (reason) => {
-    withConsoleErrorBridgeSuppressed(() => {
-      console.error('[unhandledRejection]', reason);
-    });
-    Sentry.captureException(reason);
+    void flushAndExit(reason, 'unhandledRejection');
   });
 }
 
