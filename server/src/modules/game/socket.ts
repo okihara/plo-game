@@ -8,7 +8,7 @@ import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
 import { setupAuthMiddleware, AuthenticatedSocket } from './authMiddleware.js';
 import { setupFastFoldCallback } from './fastFoldService.js';
-import { wrapSocketHandler } from './socketErrorReporter.js';
+import { wrapSocketHandler, reportSocketError } from './socketErrorReporter.js';
 import {
   handleTableLeave,
   handleGameAction,
@@ -170,21 +170,25 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         return;
       }
 
-      if (socket.odConnectionMode === 'spectate') {
-        handleSpectatorDisconnect(socket, tableManager, tournamentManager);
-        return;
-      }
+      try {
+        if (socket.odConnectionMode === 'spectate') {
+          handleSpectatorDisconnect(socket, tableManager, tournamentManager);
+          return;
+        }
 
-      if (activePlayerConnections.get(odId)?.id === socket.id) {
-        activePlayerConnections.delete(odId);
-      }
+        if (activePlayerConnections.get(odId)?.id === socket.id) {
+          activePlayerConnections.delete(odId);
+        }
 
-      handleDisconnect(socket, tableManager);
+        handleDisconnect(socket, tableManager);
 
-      const tournamentId = tournamentManager.getPlayerTournament(odId);
-      if (tournamentId) {
-        const tournament = tournamentManager.getTournament(tournamentId);
-        tournament?.handleDisconnect(odId);
+        const tournamentId = tournamentManager.getPlayerTournament(odId);
+        if (tournamentId) {
+          const tournament = tournamentManager.getTournament(tournamentId);
+          tournament?.handleDisconnect(odId);
+        }
+      } catch (err) {
+        reportSocketError(err, socket, 'disconnect');
       }
     });
 
