@@ -17,6 +17,9 @@ if (dsn) {
     // エラー監視のみ。Performance / Profiling は使わない。
     tracesSampleRate: 0,
     profilesSampleRate: 0,
+    // [調査用] MaxListenersExceededWarning の原因切り分け。
+    // httpIntegration が res に close リスナーを足している疑いがあるので一時的に外す。
+    integrations: (defaults) => defaults.filter((i) => i.name !== 'Http'),
   });
 }
 
