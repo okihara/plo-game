@@ -6,6 +6,7 @@ import { DEFAULT_BLIND_SCHEDULE, DEFAULT_BOMB_POT_BLIND_SCHEDULE, DEFAULT_STARTI
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { wrapSocketHandler } from '../game/socketErrorReporter.js';
 import { prisma } from '../../config/database.js';
+import { reportError } from '../../config/sentry.js';
 import { hasWeeklyChampionBadge } from '../badges/badgeService.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
@@ -34,7 +35,7 @@ async function withDbAndMemory(opts: {
     if (err instanceof Error && err.message === 'INSUFFICIENT_BALANCE') {
       return { success: false, error: 'チップが不足しています' };
     }
-    console.error(`[Tournament] ${label} DB error for ${odId}:`, err);
+    reportError(err, '[Tournament] DB error', { label, odId });
     return { success: false, error: 'データベースエラーが発生しました' };
   }
 
@@ -45,7 +46,7 @@ async function withDbAndMemory(opts: {
     try {
       await prisma.$transaction(compensate);
     } catch (err) {
-      console.error(`[Tournament] ${label} rollback error for ${odId}:`, err);
+      reportError(err, '[Tournament] rollback error', { label, odId });
     }
     return result;
   }
@@ -104,7 +105,7 @@ export function registerTournamentHandlers(
         prisma.tournament.update({
           where: { id: data.tournamentId },
           data: { status: 'RUNNING', startedAt: new Date() },
-        }).catch(err => console.error('[Tournament] Failed to update DB on auto-start:', err));
+        }).catch(err => reportError(err, '[Tournament] Failed to update DB on auto-start', { tournamentId: data.tournamentId }));
       }
 
       player = tournament.getPlayer(odId)!;

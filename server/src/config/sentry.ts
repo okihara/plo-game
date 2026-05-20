@@ -22,3 +22,38 @@ if (dsn) {
 
 export const sentryEnabled = Boolean(dsn);
 export { Sentry };
+
+/**
+ * 本物のエラーを Sentry に送りつつ、stderr にもログを残す。
+ * catch ブロックで「ログだけ吐いて握り潰す」既存パターンの置き換え用。
+ *
+ * - `err` が Error なら captureException、それ以外なら message で captureMessage
+ * - `context` は scope.setExtra で添える
+ */
+export function reportError(
+  err: unknown,
+  message: string,
+  context?: Record<string, unknown>,
+): void {
+  if (context) {
+    console.error(message, context, err);
+  } else {
+    console.error(message, err);
+  }
+  if (!sentryEnabled) return;
+  Sentry.withScope((scope) => {
+    if (context) {
+      for (const [k, v] of Object.entries(context)) {
+        scope.setExtra(k, v);
+      }
+    }
+    if (err instanceof Error) {
+      Sentry.captureException(err);
+    } else {
+      if (err !== undefined && err !== null) {
+        scope.setExtra('thrown_value', err);
+      }
+      Sentry.captureMessage(message, 'error');
+    }
+  });
+}
