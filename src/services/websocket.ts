@@ -10,9 +10,20 @@ import type {
   BlindLevel,
 } from '@plo/shared';
 import type { Card, Action } from '../logic/types';
+import { Sentry, sentryEnabled } from '../lib/sentry';
 
 // 本番では同一オリジン（空文字）、開発ではlocalhost:3001
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
+
+// socket.io-client が emit する disconnect reason のうち、サーバー側に原因があるものだけ Sentry に送る。
+// クライアントの明示切断 ('io client disconnect') やユーザー側ネットワーク事情 ('transport close') は除外。
+// 参考: https://socket.io/docs/v4/client-socket-instance/#disconnect
+const SERVER_CAUSED_DISCONNECT_REASONS = new Set<string>([
+  'io server disconnect', // サーバーが socket.disconnect() を呼んだ
+  'ping timeout',         // ping 応答が来なかった
+  'transport error',      // トランスポート層のエラー
+  'parse error',          // 不正パケット
+]);
 
 const wsLog = (event: string, ...args: unknown[]) => {
   const t = new Date();
@@ -138,6 +149,13 @@ class WebSocketService {
 
       this.socket.on('connect_error', (err) => {
         wsLog('connect_error', err.message);
+        if (sentryEnabled) {
+          Sentry.withScope((scope) => {
+            scope.setTag('source', 'socket.io');
+            scope.setTag('socket.phase', 'connect_error');
+            Sentry.captureException(err);
+          });
+        }
         this.emit('onError', err.message);
         if (!settled) {
           settle();
@@ -147,6 +165,14 @@ class WebSocketService {
 
       this.socket.on('disconnect', (reason) => {
         wsLog('disconnect', reason);
+        if (sentryEnabled && SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
+          Sentry.withScope((scope) => {
+            scope.setTag('source', 'socket.io');
+            scope.setTag('socket.phase', 'disconnect');
+            scope.setTag('socket.disconnect_reason', reason);
+            Sentry.captureMessage(`Socket disconnected (server-caused): ${reason}`, 'error');
+          });
+        }
         this.emit('onDisconnected', reason);
       });
 
