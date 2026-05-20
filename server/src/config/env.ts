@@ -18,6 +18,12 @@ const envSchema = z.object({
   /** トーナメントAI評価（OpenAI Chat Completions）。未設定時は生成APIは503。 */
   TOURNAMENT_EVAL_OPENAI_API_KEY: z.string().optional(),
   TOURNAMENT_EVAL_MODEL: z.string().default('gpt-5.4'),
+  /** Sentry エラー監視。未設定時は無効。 */
+  SENTRY_DSN: z.string().optional(),
+  /** Sentry に送る environment タグ。未設定時は NODE_ENV を使う。 */
+  SENTRY_ENVIRONMENT: z.string().optional(),
+  /** Sentry に送る release タグ（コミットハッシュ等）。未設定時は Railway の値を使う。 */
+  SENTRY_RELEASE: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

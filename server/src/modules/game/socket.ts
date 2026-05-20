@@ -1,5 +1,6 @@
 import { Server } from 'socket.io';
 import { FastifyInstance } from 'fastify';
+import { Sentry, sentryEnabled } from '../../config/sentry.js';
 import { TableManager } from '../table/TableManager.js';
 import { TournamentManager } from '../tournament/TournamentManager.js';
 import { registerTournamentHandlers } from '../tournament/socket.js';
@@ -7,6 +8,7 @@ import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
 import { setupAuthMiddleware, AuthenticatedSocket } from './authMiddleware.js';
 import { setupFastFoldCallback } from './fastFoldService.js';
+import { wrapSocketHandler, reportSocketError } from './socketErrorReporter.js';
 import {
   handleTableLeave,
   handleGameAction,
@@ -61,6 +63,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       message: err.message,
       context: err.context,
     });
+    if (sentryEnabled) {
+      Sentry.withScope((scope) => {
+        scope.setTag('source', 'socket.io');
+        scope.setTag('socket.phase', 'connection');
+        scope.setContext('connection_error', {
+          code: err.code,
+          message: err.message,
+        });
+        Sentry.captureMessage(`Socket.io connection_error: ${err.message ?? err.code ?? 'unknown'}`, 'error');
+      });
+    }
   });
 
   io.on('connection', (socket: AuthenticatedSocket) => {
@@ -97,19 +110,27 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.emit('announcement:status', announcementService.getStatus());
     }
 
-    socket.on('table:leave', () => handleTableLeave(socket, tableManager));
-    socket.on('table:spectate_join', (data) =>
-      handleSpectateJoin(socket, data ?? {}, tableManager, tournamentManager)
-    );
-    socket.on('table:spectate_leave', () =>
+    socket.on('table:leave', wrapSocketHandler(socket, 'table:leave', () => handleTableLeave(socket, tableManager)));
+    socket.on('table:spectate_join', wrapSocketHandler(socket, 'table:spectate_join', (data: unknown) =>
+      handleSpectateJoin(socket, (data as Parameters<typeof handleSpectateJoin>[1]) ?? {}, tableManager, tournamentManager)
+    ));
+    socket.on('table:spectate_leave', wrapSocketHandler(socket, 'table:spectate_leave', () =>
       handleSpectateLeave(socket, tableManager, tournamentManager)
-    );
-    socket.on('game:action', (data) => handleGameAction(socket, data, tableManager, tournamentManager));
-    socket.on('game:fast_fold', () => handleFastFold(socket, tableManager));
-    socket.on('matchmaking:join', (data) => handleMatchmakingJoin(socket, data, tableManager));
-    socket.on('matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager));
-    socket.on('private:create', (data) => handlePrivateCreate(socket, data, tableManager));
-    socket.on('private:join', (data) => handlePrivateJoin(socket, data, tableManager));
+    ));
+    socket.on('game:action', wrapSocketHandler(socket, 'game:action', (data: Parameters<typeof handleGameAction>[1]) =>
+      handleGameAction(socket, data, tableManager, tournamentManager)
+    ));
+    socket.on('game:fast_fold', wrapSocketHandler(socket, 'game:fast_fold', () => handleFastFold(socket, tableManager)));
+    socket.on('matchmaking:join', wrapSocketHandler(socket, 'matchmaking:join', (data: Parameters<typeof handleMatchmakingJoin>[1]) =>
+      handleMatchmakingJoin(socket, data, tableManager)
+    ));
+    socket.on('matchmaking:leave', wrapSocketHandler(socket, 'matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager)));
+    socket.on('private:create', wrapSocketHandler(socket, 'private:create', (data: Parameters<typeof handlePrivateCreate>[1]) =>
+      handlePrivateCreate(socket, data, tableManager)
+    ));
+    socket.on('private:join', wrapSocketHandler(socket, 'private:join', (data: Parameters<typeof handlePrivateJoin>[1]) =>
+      handlePrivateJoin(socket, data, tableManager)
+    ));
 
     // トーナメントイベント登録
     registerTournamentHandlers(socket, tournamentManager);
@@ -121,6 +142,24 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       // クライアントが明示的に切断したケース（client namespace disconnect 等）は info で十分
       if (SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
         console.error(`[Socket] ${role} disconnected (server-caused): odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
+        if (sentryEnabled) {
+          Sentry.withScope((scope) => {
+            scope.setTag('source', 'socket.io');
+            scope.setTag('socket.phase', 'disconnect');
+            scope.setTag('socket.disconnect_reason', reason);
+            scope.setContext('socket', {
+              id: socket.id,
+              odId,
+              username,
+              role,
+              mode: socket.odConnectionMode,
+            });
+            if (odId) {
+              scope.setUser({ id: odId, username });
+            }
+            Sentry.captureMessage(`Socket disconnected (server-caused): ${reason}`, 'error');
+          });
+        }
       } else {
         console.log(`[Socket] ${role} disconnected: odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
       }
@@ -131,26 +170,32 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         return;
       }
 
-      if (socket.odConnectionMode === 'spectate') {
-        handleSpectatorDisconnect(socket, tableManager, tournamentManager);
-        return;
-      }
+      try {
+        if (socket.odConnectionMode === 'spectate') {
+          handleSpectatorDisconnect(socket, tableManager, tournamentManager);
+          return;
+        }
 
-      if (activePlayerConnections.get(odId)?.id === socket.id) {
-        activePlayerConnections.delete(odId);
-      }
+        if (activePlayerConnections.get(odId)?.id === socket.id) {
+          activePlayerConnections.delete(odId);
+        }
 
-      handleDisconnect(socket, tableManager);
+        handleDisconnect(socket, tableManager);
 
-      const tournamentId = tournamentManager.getPlayerTournament(odId);
-      if (tournamentId) {
-        const tournament = tournamentManager.getTournament(tournamentId);
-        tournament?.handleDisconnect(odId);
+        const tournamentId = tournamentManager.getPlayerTournament(odId);
+        if (tournamentId) {
+          const tournament = tournamentManager.getTournament(tournamentId);
+          tournament?.handleDisconnect(odId);
+        }
+      } catch (err) {
+        reportSocketError(err, socket, 'disconnect');
       }
     });
 
     if (process.env.NODE_ENV !== 'production') {
-      socket.on('debug:set_chips', (data) => handleDebugSetChips(socket, data, tableManager));
+      socket.on('debug:set_chips', wrapSocketHandler(socket, 'debug:set_chips', (data: Parameters<typeof handleDebugSetChips>[1]) =>
+        handleDebugSetChips(socket, data, tableManager)
+      ));
     }
   });
 

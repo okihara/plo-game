@@ -60,6 +60,17 @@ PostgreSQL の接続文字列（`DATABASE_URL`、Railway の URL など）は **
 
 新規の本番集計・メンテ作業は、この形でスクリプト化してから実行すると、URL を LLM に渡さずに済む。
 
+### エラー監視 (Sentry)
+
+未捕捉例外をサーバー・クライアント両方で Sentry に送る。**Performance/Replay は無効、エラー監視のみ**。
+
+- 初期化: サーバー `server/src/config/sentry.ts`（`server/src/index.ts` の最上段で import）、クライアント `src/lib/sentry.ts`（`src/main.tsx` の先頭で import）
+- 環境変数: サーバー `SENTRY_DSN` / `SENTRY_ENVIRONMENT` / `SENTRY_RELEASE`、クライアント `VITE_SENTRY_DSN` / `VITE_SENTRY_ENVIRONMENT` / `VITE_SENTRY_RELEASE`。DSN 未設定なら自動で無効化される
+- 捕捉対象:
+  - サーバー: Fastify `onError` フック、`process.uncaughtException` / `unhandledRejection`、Socket.io `connection_error`、各 `socket.on(...)` ハンドラ（`wrapSocketHandler` 経由）
+  - クライアント: `Sentry.ErrorBoundary` でレンダリング時例外、Sentry SDK 標準のグローバル `error` / `unhandledrejection` リスナーでブラウザ未捕捉エラー
+- DSN は Railway / `.env` に置き、**会話に貼らない**
+
 ## Tech Stack
 
 ### フロントエンド

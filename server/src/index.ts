@@ -1,3 +1,5 @@
+// Sentry は他モジュールより前に初期化する必要がある
+import { Sentry, sentryEnabled } from './config/sentry.js';
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import cookie from '@fastify/cookie';
@@ -59,10 +61,58 @@ await fastify.register(view, {
 // Decorate fastify with prisma
 fastify.decorate('prisma', prisma);
 
+// Sentry: Fastify のエラーフック（ハンドラ内で throw された例外を捕捉）
+if (sentryEnabled) {
+  fastify.addHook('onError', (request, _reply, error, done) => {
+    Sentry.withScope((scope) => {
+      scope.setTag('source', 'fastify');
+      scope.setContext('request', {
+        method: request.method,
+        url: request.url,
+        routerPath: request.routeOptions?.url,
+      });
+      Sentry.captureException(error);
+    });
+    done();
+  });
+}
+
 // Health check
 fastify.get('/health', async () => {
   return { status: 'ok', timestamp: new Date().toISOString() };
 });
+
+// Sentry 動作確認用（開発環境のみ）
+if (env.NODE_ENV !== 'production') {
+  // 同期 throw → Fastify の onError フックで捕捉
+  fastify.get('/api/debug/sentry/throw', async () => {
+    throw new Error('Debug: synchronous throw from /api/debug/sentry/throw');
+  });
+
+  // 非同期 reject → Fastify の onError フックで捕捉
+  fastify.get('/api/debug/sentry/reject', async () => {
+    await Promise.reject(new Error('Debug: rejected promise from /api/debug/sentry/reject'));
+  });
+
+  // setTimeout 内で throw → ハンドラ外なので uncaughtException 経由で捕捉。
+  // 捕捉後にプロセスが exit(1) する（Sentry 有効時は flush 後）ので、ローカル dev で
+  // 叩くとサーバーが落ちる点に注意。
+  fastify.get('/api/debug/sentry/async-throw', async (_req, reply) => {
+    setTimeout(() => {
+      throw new Error('Debug: async throw outside handler');
+    }, 10);
+    return reply.send({ ok: true, note: 'thrown asynchronously in 10ms (server will exit)' });
+  });
+
+  // 手動 captureMessage
+  fastify.get('/api/debug/sentry/message', async () => {
+    if (sentryEnabled) {
+      Sentry.captureMessage('Debug: manual captureMessage from server', 'info');
+    }
+    return { ok: true, sentryEnabled };
+  });
+
+}
 
 // API Routes
 await fastify.register(authRoutes, { prefix: '/api/auth' });
@@ -267,10 +317,35 @@ const shutdown = async () => {
   console.log('Shutting down...');
   await fastify.close();
   await prisma.$disconnect();
+  if (sentryEnabled) {
+    await Sentry.close(2000);
+  }
   process.exit(0);
 };
 
 process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
+
+// プロセスレベルの未捕捉例外 / 未処理 Promise rejection を Sentry に送る。
+// uncaughtException 後は state corruption の可能性があるため、flush してプロセスを終了する
+// （Railway 等のスーパーバイザが自動再起動する想定）。unhandledRejection は将来の Node で
+// プロセス終了になる方針なので、こちらも同様に flush してから exit する。
+if (sentryEnabled) {
+  const flushAndExit = async (err: unknown, label: string) => {
+    console.error(`[${label}]`, err);
+    try {
+      Sentry.captureException(err);
+      await Sentry.close(2000);
+    } finally {
+      process.exit(1);
+    }
+  };
+  process.on('uncaughtException', (err) => {
+    void flushAndExit(err, 'uncaughtException');
+  });
+  process.on('unhandledRejection', (reason) => {
+    void flushAndExit(reason, 'unhandledRejection');
+  });
+}
 
 start();
