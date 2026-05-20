@@ -142,6 +142,24 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       // クライアントが明示的に切断したケース（client namespace disconnect 等）は info で十分
       if (SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
         console.error(`[Socket] ${role} disconnected (server-caused): odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
+        if (sentryEnabled) {
+          Sentry.withScope((scope) => {
+            scope.setTag('source', 'socket.io');
+            scope.setTag('socket.phase', 'disconnect');
+            scope.setTag('socket.disconnect_reason', reason);
+            scope.setContext('socket', {
+              id: socket.id,
+              odId,
+              username,
+              role,
+              mode: socket.odConnectionMode,
+            });
+            if (odId) {
+              scope.setUser({ id: odId, username });
+            }
+            Sentry.captureMessage(`Socket disconnected (server-caused): ${reason}`, 'error');
+          });
+        }
       } else {
         console.log(`[Socket] ${role} disconnected: odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
       }
