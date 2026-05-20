@@ -94,7 +94,7 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --tsv
 
 | スクリプト                    | 説明                                              |
 | ------------------------ | ----------------------------------------------- |
-| `restart-bots.sh`        | Bot プロセスの停止・再起動。引数: `[BOT_COUNT] [SERVER_URL]`  |
+| `restart-bots.sh`        | Bot プロセスの停止・再起動。`--stop-only` で停止のみ。引数: `[BOT_COUNT] [SERVER_URL]`  |
 | `process-badge-image.py` | バッジ元画像を 256x256 / 512x512 に加工。引数: `<元画像> <出力名>` |
 
 
