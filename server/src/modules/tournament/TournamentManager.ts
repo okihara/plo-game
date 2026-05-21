@@ -4,6 +4,7 @@ import { TournamentConfig, TournamentLobbyInfo, TournamentResult } from './types
 import { prisma } from '../../config/database.js';
 import type { TableInstance } from '../table/TableInstance.js';
 import { awardTournamentBadge } from '../badges/badgeService.js';
+import { enqueueResultAndRanking } from '../tweet/onTournamentComplete.js';
 
 /**
  * 全トーナメントのレジストリ
@@ -38,9 +39,16 @@ export class TournamentManager {
 
       // 賞金支払い・結果DB保存（fire-and-forget）
       const prizePool = tournament.getPrizePool();
-      this.persistTournamentResults(tournamentId, results, prizePool).catch(err => {
-        console.error(`[TournamentManager] Failed to persist results for ${tournamentId}:`, err);
-      });
+      this.persistTournamentResults(tournamentId, results, prizePool)
+        .then(() => {
+          // 表彰ツイートのドラフトを enqueue（fire-and-forget）
+          enqueueResultAndRanking(tournamentId).catch(err => {
+            console.error(`[TournamentManager] Failed to enqueue tweet draft for ${tournamentId}:`, err);
+          });
+        })
+        .catch(err => {
+          console.error(`[TournamentManager] Failed to persist results for ${tournamentId}:`, err);
+        });
     };
 
     this.tournaments.set(config.id, tournament);

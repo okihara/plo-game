@@ -30,6 +30,10 @@ vi.mock('../../../shared/logic/equityCalculator.js', () => ({
   calculateAllInEVProfits: vi.fn().mockReturnValue(new Map()),
 }));
 
+vi.mock('../../tweet/onTournamentComplete.js', () => ({
+  enqueueResultAndRanking: vi.fn().mockResolvedValue(undefined),
+}));
+
 // ============================================
 // ヘルパー
 // ============================================
