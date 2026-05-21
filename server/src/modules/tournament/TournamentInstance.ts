@@ -737,9 +737,13 @@ export class TournamentInstance {
         this.broadcastTournamentState();
       }
     } else if (remaining <= PLAYERS_PER_TABLE && this.tables.size > 1) {
-      // レイト登録中はFT形成を保留（バランス調整も行わず、現状維持）。
+      // レイト登録中はFT形成を保留し、空き席を維持するためバランス調整のみ走らせる
+      // （checkAndExecuteBalance 側で maxTotalForBreak=5 が指定され、5人以下のときだけ統合される）。
       // 締切後は onBlindLevelUp で改めてFT形成判定が走る。
-      if (this.isRegistrationOpen()) return;
+      if (this.isRegistrationOpen()) {
+        this.checkAndExecuteBalance();
+        return;
+      }
       this.scheduleFormFinalTable();
     } else {
       this.checkAndExecuteBalance();
@@ -801,10 +805,17 @@ export class TournamentInstance {
       isHandInProgress: table.isHandInProgress,
     }));
 
+    // レイト登録中は空き席を維持したいので、テーブル破壊は残り5人以下に限定する。
+    // move-balance（diff ≥ 2）は通常通り走らせる。
+    const options = this.isRegistrationOpen()
+      ? { maxTotalForBreak: 5 }
+      : undefined;
+
     const actions = TableBalancer.checkBalance(
       tableInfos,
       (tableId) => this.getTablePlayerIds(tableId),
-      this.config.playersPerTable
+      this.config.playersPerTable,
+      options
     );
 
     for (const action of actions) {

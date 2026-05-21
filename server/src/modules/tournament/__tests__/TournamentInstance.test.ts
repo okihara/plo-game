@@ -1058,10 +1058,15 @@ describe('TournamentInstance', () => {
     /**
      * ヘルパー: 2テーブルトーナメントを作成し、テーブル情報を返す
      */
-    function setup2Tables(ioRef: Server, playerCount = 8) {
+    function setup2Tables(
+      ioRef: Server,
+      playerCount = 8,
+      configOverrides: Partial<TournamentConfig> = {}
+    ) {
       const tournament = new TournamentInstance(ioRef, createTestConfig({
         playersPerTable: 6,
         minPlayers: 2,
+        ...configOverrides,
       }));
       const { odIds, sockets } = startAndEnterNPlayers(tournament, playerCount);
 
@@ -1253,7 +1258,14 @@ describe('TournamentInstance', () => {
     });
 
     it('pendingFinalTable中のonHandSettledでファイナルテーブルが正しく形成される', () => {
-      const { tournament, tableAPlayers, tableBPlayers } = setup2Tables(io, 10);
+      // pendingFinalTable=true は本番ではレイト登録締切後にしか発生しないため、
+      // registrationLevels: 1 を超える時間を進めて締切後の状態にする
+      const { tournament, tableAPlayers, tableBPlayers } = setup2Tables(
+        io,
+        10,
+        { registrationLevels: 1 }
+      );
+      vi.advanceTimersByTime(5 * 60 * 1000);
 
       // テーブルAから4人バスト → 残り6人（= PLAYERS_PER_TABLE）
       for (let i = 1; i < tableAPlayers.length; i++) {

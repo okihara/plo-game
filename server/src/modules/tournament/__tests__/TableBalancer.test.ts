@@ -157,4 +157,119 @@ describe('TableBalancer', () => {
       expect(actions).toEqual([]);
     });
   });
+
+  describe('checkBalance with maxTotalForBreak (レイト登録中)', () => {
+    it('残り5人 (3+2) なら統合する', () => {
+      // 2テーブル: 3+2=5人 → 5 ≤ maxTotalForBreak=5 で統合
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 3, isHandInProgress: false },
+          { tableId: 't2', playerCount: 2, isHandInProgress: false },
+        ],
+        (id) => id === 't1' ? ['p1', 'p2', 'p3'] : ['p4', 'p5'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      expect(actions).toHaveLength(2);
+      expect(actions.every(a => a.fromTableId === 't2')).toBe(true);
+      expect(actions.every(a => a.toTableId === 't1')).toBe(true);
+    });
+
+    it('残り5人 (1+4) なら統合する', () => {
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 1, isHandInProgress: false },
+          { tableId: 't2', playerCount: 4, isHandInProgress: false },
+        ],
+        (id) => id === 't1' ? ['p1'] : ['p2', 'p3', 'p4', 'p5'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0].fromTableId).toBe('t1');
+      expect(actions[0].toTableId).toBe('t2');
+    });
+
+    it('残り6人 (4+2) は統合せず move-balance のみ', () => {
+      // 6 > maxTotalForBreak=5 → 破壊しない
+      // diff = 4 - 2 = 2 → 1人移動して 3+3 に
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 4, isHandInProgress: false },
+          { tableId: 't2', playerCount: 2, isHandInProgress: false },
+        ],
+        (id) => id === 't1' ? ['p1', 'p2', 'p3', 'p4'] : ['p5', 'p6'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0].type).toBe('move');
+      expect(actions[0].fromTableId).toBe('t1');
+      expect(actions[0].toTableId).toBe('t2');
+    });
+
+    it('残り6人 (3+3) は何もしない', () => {
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 3, isHandInProgress: false },
+          { tableId: 't2', playerCount: 3, isHandInProgress: false },
+        ],
+        (id) => id === 't1' ? ['p1', 'p2', 'p3'] : ['p4', 'p5', 'p6'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+      expect(actions).toEqual([]);
+    });
+
+    it('残り12人 (5+4+3) は本来3→2卓に統合可能だが、レイト中なら維持', () => {
+      // (3-1)*6=12, totalPlayers=12 → 通常なら破壊可能
+      // が maxTotalForBreak=5 で阻止される
+      // diff = 5 - 3 = 2 → move-balance で 4+4+4 に近づく
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 5, isHandInProgress: false },
+          { tableId: 't2', playerCount: 4, isHandInProgress: false },
+          { tableId: 't3', playerCount: 3, isHandInProgress: false },
+        ],
+        (id) => {
+          if (id === 't1') return ['p1', 'p2', 'p3', 'p4', 'p5'];
+          if (id === 't2') return ['p6', 'p7', 'p8', 'p9'];
+          return ['p10', 'p11', 'p12'];
+        },
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      // 破壊ではなく move（diff=2 で max→min へ1人）
+      expect(actions).toHaveLength(1);
+      expect(actions[0].type).toBe('move');
+      expect(actions[0].fromTableId).toBe('t1');
+      expect(actions[0].toTableId).toBe('t3');
+    });
+
+    it('オプション未指定なら従来通り破壊する', () => {
+      // 12人 5+4+3 → (3-1)*6=12, 収まる → 破壊
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 5, isHandInProgress: false },
+          { tableId: 't2', playerCount: 4, isHandInProgress: false },
+          { tableId: 't3', playerCount: 3, isHandInProgress: false },
+        ],
+        (id) => {
+          if (id === 't1') return ['p1', 'p2', 'p3', 'p4', 'p5'];
+          if (id === 't2') return ['p6', 'p7', 'p8', 'p9'];
+          return ['p10', 'p11', 'p12'];
+        },
+        6
+      );
+
+      // t3(最少) が破壊対象
+      expect(actions.length).toBeGreaterThan(0);
+      expect(actions.every(a => a.fromTableId === 't3')).toBe(true);
+      expect(actions.every(a => a.type === 'break')).toBe(true);
+    });
+  });
 });
