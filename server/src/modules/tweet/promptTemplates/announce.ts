@@ -9,7 +9,7 @@
  */
 import type { AnnounceContext } from '../data/announceData.js';
 
-export const ANNOUNCE_PROMPT_VERSION = 'announce-v1';
+export const ANNOUNCE_PROMPT_VERSION = 'announce-v2';
 
 const SYSTEM_PROMPT = `あなたはオンラインPLOコミュニティ「BabyPLO」の運営アシスタントです。今夜開催されるトーナメントの告知ツイートを日本語で1本だけ作成してください。
 
@@ -21,6 +21,11 @@ const SYSTEM_PROMPT = `あなたはオンラインPLOコミュニティ「BabyPL
 - 絵文字は 💪 を基本に、🏆 は「昨夜の結果」行で使ってよい。🔥 / 🎯 は控えめに1個まで。増やしすぎない。
 - 「AIレビュー」「新機能」など直近のアップデートには **触れない**（古い情報の使い回しになるため）。
 - 改行は適度に。
+- **今夜のトナメの種目に必ず触れる**。\`today.gameVariant\` の値で書き分ける:
+  - \`plo\` → 「PLO（Pot Limit Omaha）」または単に「PLO」
+  - \`plo5\` → 「PLO5（5枚PLO）」または「PLO5」
+  - その他の値 → 値をそのままアルファベット表記で使う
+  本文中で1回触れれば十分（くどく繰り返さない）。
 
 ## 冒頭2行は固定（順序・文言とも改変禁止）
 \`\`\`

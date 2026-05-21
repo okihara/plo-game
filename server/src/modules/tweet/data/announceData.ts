@@ -106,6 +106,8 @@ export interface AnnounceContextTournament {
   scheduledStartTime: string;
   buyIn: number;
   maxPlayers: number;
+  /** 'plo' / 'plo5' などのゲーム種目（プロンプトで触れる） */
+  gameVariant: string;
 }
 
 export interface AnnounceContext {
@@ -126,6 +128,7 @@ export async function fetchAnnounceContext(
       scheduledStartTime: true,
       buyIn: true,
       maxPlayers: true,
+      gameVariant: true,
     },
   });
   if (!tournament || !tournament.scheduledStartTime) return null;
@@ -137,6 +140,7 @@ export async function fetchAnnounceContext(
       scheduledStartTime: tournament.scheduledStartTime.toISOString(),
       buyIn: tournament.buyIn,
       maxPlayers: tournament.maxPlayers,
+      gameVariant: tournament.gameVariant,
     },
     previousResult,
   };
