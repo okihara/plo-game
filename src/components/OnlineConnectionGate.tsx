@@ -64,43 +64,54 @@ export function OnlineConnectionGate({
 
   const copy = DISPLACED_COPY[displacedVariant];
 
-  const overlayProps = isDisplaced
+  const alertOverlayProps = isDisplaced
     ? {
         title: '別のタブで接続されました' as const,
         description: copy.subtitle,
         primaryLabel: copy.backLabel,
         onPrimary: onBack,
-        adornment: undefined as ReactNode | undefined,
       }
-    : isReconnecting
+    : showConnectionError && !isReconnecting
       ? {
-          title: '再接続中' as const,
-          description: 'サーバーとの接続が一時的に切れました。復旧するまでお待ちください。',
-          primaryLabel: '戻る',
-          onPrimary: onBack,
-          adornment: <ReconnectingSpinner /> as ReactNode | undefined,
+          title: 'エラー' as const,
+          description: connectionError as string,
+          primaryLabel: connectionErrorPrimaryLabel,
+          onPrimary: onConnectionErrorPrimary ?? onBack,
         }
-      : showConnectionError
-        ? {
-            title: 'エラー' as const,
-            description: connectionError as string,
-            primaryLabel: connectionErrorPrimaryLabel,
-            onPrimary: onConnectionErrorPrimary ?? onBack,
-            adornment: undefined as ReactNode | undefined,
-          }
-        : null;
+      : null;
+
+  // 再接続中は displaced を優先しつつ、エラーオーバーレイより上に出す
+  const showReconnecting = isReconnecting && !isDisplaced;
 
   return (
     <>
       {children}
-      {overlayProps && (
+      {alertOverlayProps && (
         <AlertDialogOverlay
-          title={overlayProps.title}
-          description={overlayProps.description}
-          primaryLabel={overlayProps.primaryLabel}
-          onPrimary={overlayProps.onPrimary}
-          adornment={overlayProps.adornment}
+          title={alertOverlayProps.title}
+          description={alertOverlayProps.description}
+          primaryLabel={alertOverlayProps.primaryLabel}
+          onPrimary={alertOverlayProps.onPrimary}
         />
+      )}
+      {showReconnecting && (
+        <div
+          className="fixed inset-0 z-[240] flex items-center justify-center bg-black/50 px-[5cqw]"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="text-center border border-cream-300 rounded-[4cqw] px-[8cqw] py-[10cqw] w-full max-w-[min(92vw,36rem)] shadow-[0_4px_24px_rgba(0,0,0,0.35)] bg-white">
+            <div className="mb-[3cqw]">
+              <ReconnectingSpinner />
+            </div>
+            <h2 className="text-cream-900 font-bold mb-[2cqw]" style={{ fontSize: '5cqw' }}>
+              再接続中
+            </h2>
+            <p className="text-cream-700" style={{ fontSize: '3.5cqw' }}>
+              サーバーとの接続が一時的に切れました。復旧するまでお待ちください。
+            </p>
+          </div>
+        </div>
       )}
     </>
   );
