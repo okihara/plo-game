@@ -34,8 +34,8 @@ stop_bots() {
   echo "既存のbotプロセスを停止: $PIDS"
   kill $PIDS 2>/dev/null || true
 
-  # SIGTERM で graceful shutdown を待つ（最大5秒）
-  for _ in {1..10}; do
+  # SIGTERM で graceful shutdown を待つ（最大10秒）
+  for _ in {1..20}; do
     sleep 0.5
     PIDS=$(pgrep -f "src/bot/index.ts" || true)
     [ -z "$PIDS" ] && return
