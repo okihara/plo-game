@@ -1,10 +1,13 @@
 /**
- * TweetDraft の生成ループ。
+ * TweetDraft の polling ループ。
  *
- * 60秒ごとに PENDING → GENERATING → DRAFT/FAILED を進める。
- * 時刻ベースの enqueue（tickAnnounce / tickStart / tickProgress）は
- * P4/P5 で実装予定で、現状は RESULT/RANKING を onTournamentComplete 経由で
- * enqueue した後の生成だけを担当する。
+ * 60 秒ごとに 2 つのことをする:
+ *  1. tickFinishedTournaments: COMPLETED で RESULT ドラフト未作成のトナメを enqueue
+ *  2. runDuePendingGenerations: PENDING → GENERATING → DRAFT/FAILED を進める
+ *
+ * TournamentManager 側にフックを差し込まず、DB を polling することで
+ * ドメインへの侵襲を避けている。時刻ベースの enqueue（ANNOUNCE / START
+ * / PROGRESS）は P4/P5 で追加予定。
  *
  * 既存 rankingBadgeScheduler.ts の setInterval パターンを踏襲。
  */
@@ -12,11 +15,34 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { Sentry, sentryEnabled } from '../../config/sentry.js';
 import { env } from '../../config/env.js';
+import { enqueueResultAndRanking } from './enqueue.js';
 import { generate } from './generator.js';
-import { TweetStatus } from './types.js';
+import { TweetKind, TweetStatus } from './types.js';
 
 const CHECK_INTERVAL_MS = 60_000;
 const MAX_BATCH = 5;
+/** 過去 N 時間以内に完了したトナメだけを検知対象にする（ずっと古いものは拾わない） */
+const FINISHED_LOOKBACK_HOURS = 24;
+
+/**
+ * COMPLETED で RESULT ドラフトがまだ無いトナメを見つけて enqueue する。
+ * @@unique([kind, tournamentId]) のおかげで多重 enqueue は upsert で吸収。
+ */
+export async function tickFinishedTournaments(): Promise<void> {
+  const since = new Date(Date.now() - FINISHED_LOOKBACK_HOURS * 60 * 60 * 1000);
+  const finished = await prisma.tournament.findMany({
+    where: {
+      status: 'COMPLETED',
+      completedAt: { gte: since },
+      tweetDrafts: { none: { kind: TweetKind.RESULT } },
+    },
+    select: { id: true },
+    take: MAX_BATCH,
+  });
+  for (const t of finished) {
+    await enqueueResultAndRanking(t.id);
+  }
+}
 
 /**
  * PENDING な行を見つけて、楽観ロックで GENERATING に遷移させ、
@@ -77,6 +103,7 @@ export function startTweetScheduler(): void {
   }
   const tick = async () => {
     try {
+      await tickFinishedTournaments();
       await runDuePendingGenerations();
     } catch (err) {
       console.error('[TweetScheduler] tick error:', err);

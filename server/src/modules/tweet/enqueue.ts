@@ -1,9 +1,9 @@
 /**
- * TournamentManager.onTournamentComplete から呼ばれるフック。
+ * scheduler の tickFinishedTournaments から呼ばれる enqueue 関数。
  * RESULT（と将来は RANKING）の TweetDraft を PENDING で upsert する。
  *
- * fire-and-forget で呼ばれる前提なので、内部例外は console.error のみ出して
- * 上位に伝播させない。
+ * @@unique([kind, tournamentId]) + update:{} のおかげで、同一トナメに対する
+ * 多重 enqueue は弾かれる（手動 DISCARD したドラフトも勝手に復活しない）。
  */
 import { prisma } from '../../config/database.js';
 import { Sentry, sentryEnabled } from '../../config/sentry.js';
