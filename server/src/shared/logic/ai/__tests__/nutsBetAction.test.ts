@@ -163,7 +163,7 @@ describe('ナッツ級ハンドのベットアクション', () => {
       expect(result.checkRate).toBeLessThanOrEqual(0.10);
     });
 
-    it('ドライボード → スロープレイ混在（80%以上ベット）', () => {
+    it('ドライボード → リバーではスロープレイしない（常にベット）', () => {
       mathRandomSpy.mockRestore();
       const result = measureBetBehavior({
         madeHandRank: 6, nutRank: 1, isNuts: true,
@@ -171,10 +171,10 @@ describe('ナッツ級ハンドのベットアクション', () => {
         board: { isWet: false },
         character: 'TatsuyaN',
       });
-      // slowplayFreq=0.10 → 約90%ベット
-      expect(result.betRate).toBeGreaterThanOrEqual(0.78);
-      expect(result.betRate).toBeLessThanOrEqual(0.98);
+      // リバーは次ストリート無し → スロープレイ無効化（バリュー逃し回避）
+      expect(result.betRate).toBeGreaterThanOrEqual(0.90);
       expect(result.foldRate).toBe(0);
+      expect(result.checkRate).toBeLessThanOrEqual(0.10);
     });
 
     it('全キャラ共通 → フォールド率 0%', () => {

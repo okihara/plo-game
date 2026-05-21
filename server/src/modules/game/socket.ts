@@ -99,6 +99,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const tournament = tournamentManager.getTournament(tournamentId);
         tournament?.handleReconnect(odId, socket);
       }
+
+      // キャッシュテーブルに席が残っていれば socket を差し替えて状態を再送する。
+      // grace 期間中の auto-reconnect、別タブによる displacement のどちらにも効く。
+      const cashTable = tableManager.getPlayerTable(odId);
+      if (cashTable) {
+        tableManager.clearDisconnectTimer(odId);
+        const ok = cashTable.reconnectPlayer(odId, socket);
+        if (ok) {
+          console.log(`[Reconnect] Player ${odId} reconnected to cash table ${cashTable.id}`);
+        }
+      }
     }
 
     socket.emit('connection:established', { playerId: odId });
@@ -196,6 +207,14 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.on('debug:set_chips', wrapSocketHandler(socket, 'debug:set_chips', (data: Parameters<typeof handleDebugSetChips>[1]) =>
         handleDebugSetChips(socket, data, tableManager)
       ));
+
+      // auto-reconnect の動作確認用: サーバープロセスを生かしたまま、対象ソケットの
+      // underlying engine.io transport だけを閉じる。socket.disconnect() は
+      // 'io server disconnect' 扱いになって client が auto-reconnect しないので使わない。
+      socket.on('debug:force_disconnect', () => {
+        console.log(`[debug] Closing transport for odId=${odId}, socket=${socket.id}`);
+        socket.conn?.close();
+      });
     }
   });
 

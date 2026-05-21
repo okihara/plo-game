@@ -37,6 +37,8 @@ function resolveTableInstance(
 
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
+  // unseat 経路に乗ったら、もう grace 復帰の対象ではないのでタイマーを止める
+  tableManager.clearDisconnectTimer(odId);
   const result = table.unseatPlayer(odId);
   tableManager.removePlayerFromTracking(odId);
   if (result) {
@@ -122,15 +124,22 @@ export async function handleFastFold(socket: AuthenticatedSocket, tableManager: 
   }
 }
 
-export async function handleDisconnect(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
-  try {
-    const table = tableManager.getPlayerTable(socket.odId!);
-    if (table) {
-      await unseatAndCashOut(table, socket.odId!, tableManager);
-    }
-  } catch (err) {
-    console.error(`Error during disconnect cleanup for ${socket.odId}:`, err);
-  }
+export function handleDisconnect(socket: AuthenticatedSocket, tableManager: TableManager): void {
+  const odId = socket.odId;
+  if (!odId) return;
+  const table = tableManager.getPlayerTable(odId);
+  if (!table) return;
+
+  // 切断猶予: クライアントが auto-reconnect で復帰したら socket.ts 側で
+  // clearDisconnectTimer + reconnectPlayer される。期限切れまで戻らなければ unseat。
+  console.log(`[Disconnect] Starting grace period for ${odId} at table ${table.id}`);
+  tableManager.scheduleDisconnectCleanup(odId, async () => {
+    // タイマー満了時点で席が残っているなら片付ける
+    const currentTable = tableManager.getPlayerTable(odId);
+    if (!currentTable) return;
+    console.log(`[Disconnect] Grace expired for ${odId}, cashing out from ${currentTable.id}`);
+    await unseatAndCashOut(currentTable, odId, tableManager);
+  });
 }
 
 /** 観戦ソケット切断時: ルーム退出のみ（着席プレイヤーのキャッシュアウトはしない） */

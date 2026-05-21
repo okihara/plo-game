@@ -245,13 +245,13 @@ function playRiver(
       const callAction = canCall();
       if (callAction) return { action: 'call', amount: callAction.minAmount };
     }
-    // バリューベット（ベット非直面時）
+    // バリューベット（ベット非直面時）。リバーはバリュー逃し回避のため強気
     let valueBetChance: number;
     if (nr === 2) {
-      valueBetChance = 0.80 + personality.aggression * 0.10;
+      valueBetChance = 0.90 + personality.aggression * 0.05;
       if (boardTexture.isWet) valueBetChance += 0.05;
     } else {
-      valueBetChance = 0.55 + personality.aggression * 0.15;
+      valueBetChance = 0.75 + personality.aggression * 0.15;
       if (boardTexture.isWet) valueBetChance += 0.05;
     }
     if (Math.random() < valueBetChance) {
@@ -404,8 +404,8 @@ function playMonster(
 ): { action: Action; amount: number } {
   const random = Math.random();
 
-  // スロープレイ判断
-  if (!boardTexture.isWet && random < personality.slowplayFreq) {
+  // スロープレイ判断（リバーは次ストリートが無いのでバリュー逃しになる、フロップ/ターン限定）
+  if (state.currentStreet !== 'river' && !boardTexture.isWet && random < personality.slowplayFreq) {
     const checkAction = validActions.find(a => a.action === 'check');
     if (checkAction) return { action: 'check', amount: 0 };
     const callAction = validActions.find(a => a.action === 'call');
