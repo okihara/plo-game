@@ -99,6 +99,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         const tournament = tournamentManager.getTournament(tournamentId);
         tournament?.handleReconnect(odId, socket);
       }
+
+      // キャッシュテーブルに席が残っていれば socket を差し替えて状態を再送する。
+      // grace 期間中の auto-reconnect、別タブによる displacement のどちらにも効く。
+      const cashTable = tableManager.getPlayerTable(odId);
+      if (cashTable) {
+        tableManager.clearDisconnectTimer(odId);
+        const ok = cashTable.reconnectPlayer(odId, socket);
+        if (ok) {
+          console.log(`[Reconnect] Player ${odId} reconnected to cash table ${cashTable.id}`);
+        }
+      }
     }
 
     socket.emit('connection:established', { playerId: odId });
