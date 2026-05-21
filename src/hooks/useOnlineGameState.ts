@@ -251,12 +251,18 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onError: (message) => {
         setConnectionError(message);
       },
-      onTableJoined: (tid, seat) => {
+      onTableJoined: (tid, seat, isReconnect) => {
         setTableId(tid);
         setMySeat(seat);
-        setMyHoleCards([]);
-        isNewHandRef.current = true;
-        prevIsHandInProgressRef.current = false;
+        // 再接続による席復帰ではディール演出を抑制し、既存のホールカードもそのまま残す
+        // (続けて来る game:hole_cards で同じカードに上書きされる)
+        if (!isReconnect) {
+          setMyHoleCards([]);
+          isNewHandRef.current = true;
+          prevIsHandInProgressRef.current = false;
+        } else {
+          isNewHandRef.current = false;
+        }
       },
       onTableLeft: () => {
         setTableId(null);
