@@ -1,13 +1,13 @@
 /**
  * TweetDraft の polling ループ。
  *
- * 60 秒ごとに 2 つのことをする:
+ * 60 秒ごとに 3 つのことをする:
  *  1. tickFinishedTournaments: COMPLETED で RESULT ドラフト未作成のトナメを enqueue
- *  2. runDuePendingGenerations: PENDING → GENERATING → DRAFT/FAILED を進める
+ *  2. tickUpcomingTournaments: 24h 以内に始まる WAITING で ANNOUNCE 未作成のトナメを enqueue
+ *  3. runDuePendingGenerations: PENDING → GENERATING → DRAFT/FAILED を進める
  *
  * TournamentManager 側にフックを差し込まず、DB を polling することで
- * ドメインへの侵襲を避けている。時刻ベースの enqueue（ANNOUNCE / START
- * / PROGRESS）は P4/P5 で追加予定。
+ * ドメインへの侵襲を避けている。START / PROGRESS は P5 で追加予定。
  *
  * 既存 rankingBadgeScheduler.ts の setInterval パターンを踏襲。
  */
@@ -15,7 +15,8 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { Sentry, sentryEnabled } from '../../config/sentry.js';
 import { env } from '../../config/env.js';
-import { enqueueResultAndRanking } from './enqueue.js';
+import { fetchUpcomingTournaments } from './data/announceData.js';
+import { enqueueAnnounce, enqueueResultAndRanking } from './enqueue.js';
 import { generate } from './generator.js';
 import { TweetKind, TweetStatus } from './types.js';
 
@@ -41,6 +42,17 @@ export async function tickFinishedTournaments(): Promise<void> {
   });
   for (const t of finished) {
     await enqueueResultAndRanking(t.id);
+  }
+}
+
+/**
+ * 24時間以内に開始予定の WAITING トナメで ANNOUNCE ドラフトがまだ無いものを enqueue する。
+ */
+export async function tickUpcomingTournaments(): Promise<void> {
+  const upcoming = await fetchUpcomingTournaments(prisma, MAX_BATCH);
+  for (const t of upcoming) {
+    if (!t.scheduledStartTime) continue;
+    await enqueueAnnounce(t.id, t.scheduledStartTime);
   }
 }
 
@@ -104,6 +116,7 @@ export function startTweetScheduler(): void {
   const tick = async () => {
     try {
       await tickFinishedTournaments();
+      await tickUpcomingTournaments();
       await runDuePendingGenerations();
     } catch (err) {
       console.error('[TweetScheduler] tick error:', err);

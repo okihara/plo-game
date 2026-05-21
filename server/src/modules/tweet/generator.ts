@@ -8,7 +8,9 @@
 import type { TweetDraft } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { callAnthropic } from './anthropicClient.js';
+import { fetchAnnounceContext } from './data/announceData.js';
 import { fetchResultData } from './data/resultData.js';
+import { buildAnnouncePrompt } from './promptTemplates/announce.js';
 import { buildResultPrompt } from './promptTemplates/result.js';
 import type { PromptResult } from './types.js';
 import { TweetKind } from './types.js';
@@ -18,6 +20,7 @@ export async function generate(draft: TweetDraft): Promise<PromptResult> {
     case TweetKind.RESULT:
       return generateResult(draft);
     case TweetKind.ANNOUNCE:
+      return generateAnnounce(draft);
     case TweetKind.START:
     case TweetKind.PROGRESS:
     case TweetKind.RANKING:
@@ -43,6 +46,27 @@ async function generateResult(draft: TweetDraft): Promise<PromptResult> {
     system: prompt.system,
     user: prompt.user,
     maxTokens: 800,
+  });
+  return {
+    text: llm.text,
+    promptVersion: prompt.promptVersion,
+    promptInputJson: prompt.inputJson,
+  };
+}
+
+async function generateAnnounce(draft: TweetDraft): Promise<PromptResult> {
+  if (!draft.tournamentId) {
+    throw new Error('ANNOUNCE draft must have tournamentId');
+  }
+  const context = await fetchAnnounceContext(prisma, draft.tournamentId);
+  if (!context) {
+    throw new Error(`tournament ${draft.tournamentId} not found or has no scheduledStartTime`);
+  }
+  const prompt = buildAnnouncePrompt(context);
+  const llm = await callAnthropic({
+    system: prompt.system,
+    user: prompt.user,
+    maxTokens: 600,
   });
   return {
     text: llm.text,
