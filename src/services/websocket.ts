@@ -25,6 +25,15 @@ const SERVER_CAUSED_DISCONNECT_REASONS = new Set<string>([
   'parse error',          // 不正パケット
 ]);
 
+// socket.io-client が auto-reconnect を試みる disconnect reason の集合。
+// 'io server disconnect' / 'io client disconnect' はライブラリ側で auto-reconnect しないので除外。
+const AUTO_RECONNECT_DISCONNECT_REASONS = new Set<string>([
+  'transport close',
+  'transport error',
+  'ping timeout',
+  'parse error',
+]);
+
 const wsLog = (event: string, ...args: unknown[]) => {
   const t = new Date();
   const ts = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}.${String(t.getMilliseconds()).padStart(3, '0')}`;
@@ -37,6 +46,8 @@ type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 export type WsListeners = {
   onConnected?: (playerId: string) => void;
   onDisconnected?: (reason: string) => void;
+  /** auto-reconnect を試みる disconnect の直後に呼ばれる。UI は「再接続中」を出す想定。 */
+  onReconnecting?: (reason: string) => void;
   onError?: (message: string) => void;
   onTableJoined?: (tableId: string, seat: number) => void;
   onTableLeft?: () => void;
@@ -193,6 +204,12 @@ class WebSocketService {
           });
         }
         this.emit('onDisconnected', reason);
+        // auto-reconnect が走るケースでは UI 側で「再接続中」表示に切り替えてもらう。
+        // React 18 の自動バッチで onDisconnected/onReconnecting の setState がまとめられるので、
+        // エラーダイアログがちらつくことはない。
+        if (AUTO_RECONNECT_DISCONNECT_REASONS.has(reason)) {
+          this.emit('onReconnecting', reason);
+        }
       });
 
       this.socket.on('connection:displaced', ({ reason }) => {

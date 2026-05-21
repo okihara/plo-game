@@ -31,6 +31,7 @@ export interface OnlineGameHookResult {
   isConnected: boolean;
   connectionError: string | null;
   isDisplaced: boolean;
+  isReconnecting: boolean;
 
   // ゲーム状態
   gameState: GameState | null;
@@ -74,6 +75,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [isConnected, setIsConnected] = useState(wsService.isConnected());
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isDisplaced, setIsDisplaced] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // ゲーム状態
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
@@ -228,11 +230,17 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     wsService.addListeners('game', {
       onConnected: () => {
         setIsConnected(true);
+        setIsReconnecting(false);
         setConnectionError(null);
       },
       onDisconnected: (message) => {
         setIsConnected(false);
         setConnectionError(message);
+      },
+      onReconnecting: () => {
+        // auto-reconnect が走るケース: エラー扱いではなく「再接続中」表示にする
+        setIsReconnecting(true);
+        setConnectionError(null);
       },
       onError: (message) => {
         setConnectionError(message);
@@ -497,6 +505,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     isConnected,
     connectionError,
     isDisplaced,
+    isReconnecting,
     gameState,
     tableId,
     mySeat,
