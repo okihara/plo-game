@@ -20,6 +20,7 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
     isConnecting,
     connectionError,
     isDisplaced,
+    isReconnecting,
     gameState,
     mySeat,
     myHoleCards,
@@ -71,7 +72,7 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
   }
 
   return (
-    <OnlineConnectionGate isDisplaced={isDisplaced} connectionError={connectionError} onBack={onBack}>
+    <OnlineConnectionGate isDisplaced={isDisplaced} isReconnecting={isReconnecting} connectionError={connectionError} onBack={onBack}>
       {!gameState ? (
         bustedMessage ? (
           <BustedScreen message={bustedMessage} />

@@ -47,6 +47,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     isWaitingForPlayers,
     connectionError,
     isDisplaced,
+    isReconnecting,
   } = useOnlineGameState(blinds);
 
   // まずAPIでトーナメント状態を確認。終了済みなら結果を表示、進行中ならソケット接続
@@ -96,12 +97,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     onBack();
   }, [elimination, completedData, clearElimination, clearCompleted, onBack]);
 
-  const handleReconnect = useCallback(() => {
-    connect().then(() => {
-      wsService.requestTournamentState(tournamentId);
-    });
-  }, [connect, tournamentId]);
-
   // 脱落 or 完了 → 結果ページへ遷移
   useEffect(() => {
     if (elimination || completedData) {
@@ -124,10 +119,9 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
   return (
     <OnlineConnectionGate
       isDisplaced={isDisplaced}
+      isReconnecting={isReconnecting}
       connectionError={connectionError}
       onBack={handleBack}
-      connectionErrorPrimaryLabel="再接続"
-      onConnectionErrorPrimary={handleReconnect}
     >
       {!gameState ? (
         <div className="flex items-center justify-center h-full w-full min-h-0 bg-gray-950">

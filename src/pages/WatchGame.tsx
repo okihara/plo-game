@@ -21,6 +21,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     isConnecting,
     connectionError,
     isDisplaced,
+    isReconnecting,
     gameState,
     myHoleCards,
     holeCardsBySeat,
@@ -117,6 +118,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     <OnlineConnectionGate
       isDisplaced={isDisplaced}
       displacedVariant="spectate"
+      isReconnecting={isReconnecting}
       connectionError={connectionError}
       connectionErrorPolicy="without-game-state"
       hasGameState={!!gameState}

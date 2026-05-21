@@ -2,11 +2,14 @@ import { Server } from 'socket.io';
 import { GameVariant, getVariantConfig } from '../../shared/logic/types.js';
 import { TableInstance } from './TableInstance.js';
 import { NullHandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { TABLE_CONSTANTS } from './constants.js';
 
 export class TableManager {
   private tables: Map<string, TableInstance> = new Map();
   private playerTables: Map<string, string> = new Map(); // odId -> tableId
   private inviteCodeToTable: Map<string, string> = new Map(); // inviteCode -> tableId
+  /** 切断猶予中のクリーンアップタイマー（odId -> Timer）。 */
+  private disconnectTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private io: Server;
 
   constructor(io: Server) {
@@ -130,6 +133,37 @@ export class TableManager {
   // Remove player from tracking
   public removePlayerFromTracking(odId: string): void {
     this.playerTables.delete(odId);
+  }
+
+  /**
+   * 切断猶予タイマーを開始する。期限内に再接続があれば clearDisconnectTimer を呼んでキャンセル。
+   * 期限切れで onTimeout が実行され、典型的には unseatAndCashOut を呼ぶ。
+   */
+  public scheduleDisconnectCleanup(odId: string, onTimeout: () => void | Promise<void>): void {
+    this.clearDisconnectTimer(odId);
+    const timer = setTimeout(() => {
+      this.disconnectTimers.delete(odId);
+      try {
+        const result = onTimeout();
+        if (result instanceof Promise) {
+          result.catch((err) => console.error(`[TableManager] disconnect cleanup failed for ${odId}:`, err));
+        }
+      } catch (err) {
+        console.error(`[TableManager] disconnect cleanup failed for ${odId}:`, err);
+      }
+    }, TABLE_CONSTANTS.DISCONNECT_GRACE_MS);
+    this.disconnectTimers.set(odId, timer);
+  }
+
+  /** 切断猶予タイマーをキャンセル。タイマーが存在した場合は true。 */
+  public clearDisconnectTimer(odId: string): boolean {
+    const timer = this.disconnectTimers.get(odId);
+    if (timer) {
+      clearTimeout(timer);
+      this.disconnectTimers.delete(odId);
+      return true;
+    }
+    return false;
   }
 
   // ========== Private table methods ==========

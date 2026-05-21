@@ -15,14 +15,14 @@ import { Sentry, sentryEnabled } from '../lib/sentry';
 // 本番では同一オリジン（空文字）、開発ではlocalhost:3001
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
-// socket.io-client が emit する disconnect reason のうち、サーバー側に原因があるものだけ Sentry に送る。
-// クライアントの明示切断 ('io client disconnect') やユーザー側ネットワーク事情 ('transport close') は除外。
+// socket.io-client が auto-reconnect を試みる disconnect reason の集合。
+// 'io server disconnect' / 'io client disconnect' はライブラリ側で auto-reconnect しないので除外。
 // 参考: https://socket.io/docs/v4/client-socket-instance/#disconnect
-const SERVER_CAUSED_DISCONNECT_REASONS = new Set<string>([
-  'io server disconnect', // サーバーが socket.disconnect() を呼んだ
-  'ping timeout',         // ping 応答が来なかった
-  'transport error',      // トランスポート層のエラー
-  'parse error',          // 不正パケット
+const AUTO_RECONNECT_DISCONNECT_REASONS = new Set<string>([
+  'transport close',
+  'transport error',
+  'ping timeout',
+  'parse error',
 ]);
 
 const wsLog = (event: string, ...args: unknown[]) => {
@@ -37,6 +37,10 @@ type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
 export type WsListeners = {
   onConnected?: (playerId: string) => void;
   onDisconnected?: (reason: string) => void;
+  /** auto-reconnect を試みる disconnect の直後に呼ばれる。UI は「再接続中」を出す想定。 */
+  onReconnecting?: (reason: string) => void;
+  /** reconnectionAttempts を使い切って再接続を諦めた時に呼ばれる。UI はエラーダイアログに切り替える。 */
+  onReconnectFailed?: () => void;
   onError?: (message: string) => void;
   onTableJoined?: (tableId: string, seat: number) => void;
   onTableLeft?: () => void;
@@ -122,11 +126,22 @@ class WebSocketService {
 
       // httpOnly cookieはdocument.cookieで読めないため、
       // サーバー側がhandshake headerからcookieを読み取る
+      //
+      // 自動再接続: Railway の 15 分接続上限、モバイルのスリープ復帰、
+      // 一時的なネットワーク断などで切れた際に socket.io-client が再接続を試みる。
+      // Cookie ベース認証なので再接続時も同じ odId で繋がり、
+      // サーバー側の io.on('connection') がトーナメントなら handleReconnect で席復帰する。
+      // 'io server disconnect' / 'io client disconnect' では auto-reconnect は走らない（標準仕様）。
+      // reconnectionAttempts: 1〜5秒の指数バックオフで 10 回 ≈ 約 30 秒の試行。
+      // 長く粘っても繋がらないなら諦めてエラーダイアログに切り替える。
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
-        reconnection: false,
+        reconnection: true,
+        reconnectionAttempts: 6,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
         auth: { connectionMode },
       });
 
@@ -149,31 +164,55 @@ class WebSocketService {
 
       this.socket.on('connect_error', (err) => {
         wsLog('connect_error', err.message);
-        if (sentryEnabled) {
-          Sentry.withScope((scope) => {
-            scope.setTag('source', 'socket.io');
-            scope.setTag('socket.phase', 'connect_error');
-            Sentry.captureException(err);
-          });
-        }
-        this.emit('onError', err.message);
+        // 初回接続失敗時のみ Sentry / onError に流す。
+        // 再接続試行中の連続失敗は disconnect イベントで既に捕捉済みなので、ここではログのみ。
         if (!settled) {
+          if (sentryEnabled) {
+            Sentry.withScope((scope) => {
+              scope.setTag('source', 'socket.io');
+              scope.setTag('socket.phase', 'connect_error');
+              Sentry.captureException(err);
+            });
+          }
+          this.emit('onError', err.message);
           settle();
           reject(new Error(err.message));
         }
       });
 
-      this.socket.on('disconnect', (reason) => {
-        wsLog('disconnect', reason);
-        if (sentryEnabled && SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
+      // 再接続のライフサイクルを記録（manager レベルのイベント）
+      this.socket.io.on('reconnect_attempt', (attempt) => {
+        wsLog('reconnect_attempt', attempt);
+      });
+      this.socket.io.on('reconnect', (attempt) => {
+        wsLog('reconnect', attempt);
+      });
+      this.socket.io.on('reconnect_failed', () => {
+        wsLog('reconnect_failed', 'giving up after max attempts');
+        // auto-reconnect が走った末に復旧できなかったケースだけを Sentry に送る。
+        // 一時的な切断（即座に再接続成功）は本番運用上ノイズなので報告しない。
+        if (sentryEnabled) {
           Sentry.withScope((scope) => {
             scope.setTag('source', 'socket.io');
-            scope.setTag('socket.phase', 'disconnect');
-            scope.setTag('socket.disconnect_reason', reason);
-            Sentry.captureMessage(`Socket disconnected (server-caused): ${reason}`, 'error');
+            scope.setTag('socket.phase', 'reconnect_failed');
+            Sentry.captureMessage('Socket reconnection failed after max attempts', 'error');
           });
         }
+        // 再接続を諦めたので socket を明示的に閉じておく
+        // (this.socket は次回 connect() で再生成される)
+        this.socket?.disconnect();
+        this.emit('onReconnectFailed');
+      });
+
+      this.socket.on('disconnect', (reason) => {
+        wsLog('disconnect', reason);
         this.emit('onDisconnected', reason);
+        // auto-reconnect が走るケースでは UI 側で「再接続中」表示に切り替えてもらう。
+        // React 18 の自動バッチで onDisconnected/onReconnecting の setState がまとめられるので、
+        // エラーダイアログがちらつくことはない。
+        if (AUTO_RECONNECT_DISCONNECT_REASONS.has(reason)) {
+          this.emit('onReconnecting', reason);
+        }
       });
 
       this.socket.on('connection:displaced', ({ reason }) => {
@@ -416,7 +455,27 @@ class WebSocketService {
     this.socket?.emit('tournament:request_state', { tournamentId });
   }
 
+  /**
+   * 開発用: サーバーに transport を閉じさせて auto-reconnect の動作確認をする。
+   * サーバープロセスを生かしたまま WS だけ落とせるので、テーブル状態を保ったまま再接続テストできる。
+   * DevTools Console から `wsService.debugForceDisconnect()` で呼ぶ想定。
+   */
+  debugForceDisconnect(): void {
+    if (!this.socket) {
+      console.warn('[wsService] socket not connected');
+      return;
+    }
+    console.log('[wsService] requesting server to force-close transport');
+    // dev 専用イベントで protocol 型には載せていないので emit にキャストが必要
+    (this.socket as unknown as { emit: (ev: string) => void }).emit('debug:force_disconnect');
+  }
+
 }
 
 // Singleton instance
 export const wsService = new WebSocketService();
+
+// 開発時のみ DevTools Console から wsService にアクセスできるよう window に露出
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { wsService: WebSocketService }).wsService = wsService;
+}

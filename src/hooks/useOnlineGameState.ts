@@ -31,6 +31,7 @@ export interface OnlineGameHookResult {
   isConnected: boolean;
   connectionError: string | null;
   isDisplaced: boolean;
+  isReconnecting: boolean;
 
   // ゲーム状態
   gameState: GameState | null;
@@ -74,6 +75,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [isConnected, setIsConnected] = useState(wsService.isConnected());
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isDisplaced, setIsDisplaced] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   // ゲーム状態
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
@@ -102,6 +104,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clientStateRef = useRef<ClientGameState | null>(null);
   const mySeatRef = useRef<number | null>(null);
+  const myHoleCardsRef = useRef<Card[]>([]);
   /** 直前の game:state で自分のターンだったか（重複再生防止） */
   const wasMyTurnRef = useRef(false);
 
@@ -225,14 +228,30 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   }, [mySeat]);
 
   useEffect(() => {
+    myHoleCardsRef.current = myHoleCards;
+  }, [myHoleCards]);
+
+  useEffect(() => {
     wsService.addListeners('game', {
       onConnected: () => {
         setIsConnected(true);
+        setIsReconnecting(false);
         setConnectionError(null);
       },
       onDisconnected: (message) => {
         setIsConnected(false);
         setConnectionError(message);
+      },
+      onReconnecting: () => {
+        // auto-reconnect が走るケース: エラー扱いではなく「再接続中」表示にする
+        setIsReconnecting(true);
+        setConnectionError(null);
+      },
+      onReconnectFailed: () => {
+        // 再接続を諦めた: 「再接続中」を解除してエラーダイアログに切り替える
+        setIsReconnecting(false);
+        setIsConnected(false);
+        setConnectionError('再接続できませんでした。通信環境をご確認ください。');
       },
       onError: (message) => {
         setConnectionError(message);
@@ -240,9 +259,15 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onTableJoined: (tid, seat) => {
         setTableId(tid);
         setMySeat(seat);
-        setMyHoleCards([]);
-        isNewHandRef.current = true;
-        prevIsHandInProgressRef.current = false;
+        // 既にホールカードが画面に出ている = ディール演出は配り済み (=ハンド途中の席復帰)。
+        // その場合はカード/フラグを触らず、続く game:hole_cards でも演出させない。
+        if (myHoleCardsRef.current.length === 0) {
+          setMyHoleCards([]);
+          isNewHandRef.current = true;
+          prevIsHandInProgressRef.current = false;
+        } else {
+          isNewHandRef.current = false;
+        }
       },
       onTableLeft: () => {
         setTableId(null);
@@ -497,6 +522,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     isConnected,
     connectionError,
     isDisplaced,
+    isReconnecting,
     gameState,
     tableId,
     mySeat,

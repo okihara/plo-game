@@ -11,6 +11,7 @@ export interface SpectatorGameHookResult {
   isConnected: boolean;
   connectionError: string | null;
   isDisplaced: boolean;
+  isReconnecting: boolean;
   gameState: GameState | null;
   tableId: string | null;
   myHoleCards: Card[];
@@ -37,6 +38,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isDisplaced, setIsDisplaced] = useState(false);
+  const [isReconnecting, setIsReconnecting] = useState(false);
 
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
   const [tableId, setTableId] = useState<string | null>(null);
@@ -120,11 +122,21 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     wsService.addListeners('spectator', {
       onConnected: () => {
         setIsConnected(true);
+        setIsReconnecting(false);
         setConnectionError(null);
       },
       onDisconnected: (message) => {
         setIsConnected(false);
         setConnectionError(message);
+      },
+      onReconnecting: () => {
+        setIsReconnecting(true);
+        setConnectionError(null);
+      },
+      onReconnectFailed: () => {
+        setIsReconnecting(false);
+        setIsConnected(false);
+        setConnectionError('再接続できませんでした。通信環境をご確認ください。');
       },
       onError: (message) => {
         setConnectionError(message);
@@ -276,6 +288,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     isConnected,
     connectionError,
     isDisplaced,
+    isReconnecting,
     gameState,
     tableId,
     myHoleCards,

@@ -37,4 +37,10 @@ export const TABLE_CONSTANTS = {
 
   /** 1卓あたりの同時観戦者上限 */
   MAX_SPECTATORS_PER_TABLE: 50,
+
+  /**
+   * キャッシュゲームの切断猶予。WS が切れてもこの時間内に同じユーザーが再接続すれば
+   * 席に戻れる。クライアントの auto-reconnect (約15秒) + ユーザー操作の余裕を見て 30 秒。
+   */
+  DISCONNECT_GRACE_MS: 30_000,
 } as const;
