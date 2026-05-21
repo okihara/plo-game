@@ -44,16 +44,21 @@ export class TableBalancer {
    * ルール:
    * 1. テーブルが1つなら何もしない
    * 2. 全プレイヤー数 ≤ (テーブル数-1) × playersPerTable → 最少テーブルを破壊
+   *    （ただし options.maxTotalForBreak が指定された場合は totalPlayers ≤ maxTotalForBreak も必須）
    * 3. テーブル間のプレイヤー差 ≥ 2 → 多いテーブルから少ないテーブルへ移動
    *
    * @param tables 各テーブルの情報
    * @param getPlayerIds テーブルIDからプレイヤーodIdリストを取得する関数
+   * @param playersPerTable テーブルあたりの定員
+   * @param options.maxTotalForBreak テーブル破壊を許可する残り合計人数の上限。
+   *   レイト登録中など、空き席を維持したい場面で指定する。省略時は無制限。
    * @returns 実行すべき移動アクション（ハンド中のテーブルは移動元から除外）
    */
   static checkBalance(
     tables: TablePlayerInfo[],
     getPlayerIds: (tableId: string) => string[],
-    playersPerTable: number = PLAYERS_PER_TABLE
+    playersPerTable: number = PLAYERS_PER_TABLE,
+    options?: { maxTotalForBreak?: number }
   ): BalanceAction[] {
     if (tables.length <= 1) return [];
 
@@ -61,7 +66,10 @@ export class TableBalancer {
     const totalPlayers = tables.reduce((sum, t) => sum + t.playerCount, 0);
 
     // テーブル破壊判定: プレイヤー数が (テーブル数-1) × 定員以内に収まるか
-    const canReduceTable = totalPlayers <= (tables.length - 1) * playersPerTable;
+    const fitsInFewerTables = totalPlayers <= (tables.length - 1) * playersPerTable;
+    const withinBreakLimit =
+      options?.maxTotalForBreak === undefined || totalPlayers <= options.maxTotalForBreak;
+    const canReduceTable = fitsInFewerTables && withinBreakLimit;
 
     if (canReduceTable) {
       // 最少人数のテーブルを破壊対象に（ハンド中でないテーブル優先）
