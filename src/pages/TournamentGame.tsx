@@ -97,12 +97,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     onBack();
   }, [elimination, completedData, clearElimination, clearCompleted, onBack]);
 
-  const handleReconnect = useCallback(() => {
-    connect().then(() => {
-      wsService.requestTournamentState(tournamentId);
-    });
-  }, [connect, tournamentId]);
-
   // 脱落 or 完了 → 結果ページへ遷移
   useEffect(() => {
     if (elimination || completedData) {
@@ -128,8 +122,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
       isReconnecting={isReconnecting}
       connectionError={connectionError}
       onBack={handleBack}
-      connectionErrorPrimaryLabel="再接続"
-      onConnectionErrorPrimary={handleReconnect}
     >
       {!gameState ? (
         <div className="flex items-center justify-center h-full w-full min-h-0 bg-gray-950">
