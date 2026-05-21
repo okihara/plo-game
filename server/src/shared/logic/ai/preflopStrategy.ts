@@ -27,7 +27,8 @@ export function getPreflopDecision(
   const random = Math.random();
 
   const facingRaise = state.currentBet > state.bigBlind;
-  const facingBigRaise = facingRaise && toCall > state.pot * 0.5;
+  // PLO の標準オープンは 3.5BB。ここまでは「ビッグレイズ」扱いせず、フォールド頻度を上げない。
+  const facingBigRaise = facingRaise && state.currentBet > state.bigBlind * 3.5;
 
   // プリフロップのレイズ回数で3bet/4bet状況を検出
   // raiseCount=1: オープンレイズ, =2: 3bet, >=3: 4bet+
