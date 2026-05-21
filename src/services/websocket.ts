@@ -48,6 +48,8 @@ export type WsListeners = {
   onDisconnected?: (reason: string) => void;
   /** auto-reconnect を試みる disconnect の直後に呼ばれる。UI は「再接続中」を出す想定。 */
   onReconnecting?: (reason: string) => void;
+  /** reconnectionAttempts を使い切って再接続を諦めた時に呼ばれる。UI はエラーダイアログに切り替える。 */
+  onReconnectFailed?: () => void;
   onError?: (message: string) => void;
   onTableJoined?: (tableId: string, seat: number) => void;
   onTableLeft?: () => void;
@@ -139,12 +141,14 @@ class WebSocketService {
       // Cookie ベース認証なので再接続時も同じ odId で繋がり、
       // サーバー側の io.on('connection') がトーナメントなら handleReconnect で席復帰する。
       // 'io server disconnect' / 'io client disconnect' では auto-reconnect は走らない（標準仕様）。
+      // reconnectionAttempts: 1〜5秒の指数バックオフで 20 回 ≈ 約 95 秒の試行。
+      // トーナメントの切断猶予 2 分以内に収まる範囲で、無駄に長く粘らない上限。
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
         reconnection: true,
-        reconnectionAttempts: Infinity,
+        reconnectionAttempts: 20,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         auth: { connectionMode },
@@ -191,6 +195,13 @@ class WebSocketService {
       });
       this.socket.io.on('reconnect', (attempt) => {
         wsLog('reconnect', attempt);
+      });
+      this.socket.io.on('reconnect_failed', () => {
+        wsLog('reconnect_failed', 'giving up after max attempts');
+        // 再接続を諦めたので socket を明示的に閉じておく
+        // (this.socket は次回 connect() で再生成される)
+        this.socket?.disconnect();
+        this.emit('onReconnectFailed');
       });
 
       this.socket.on('disconnect', (reason) => {

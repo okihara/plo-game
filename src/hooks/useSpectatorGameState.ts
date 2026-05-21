@@ -133,6 +133,11 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         setIsReconnecting(true);
         setConnectionError(null);
       },
+      onReconnectFailed: () => {
+        setIsReconnecting(false);
+        setIsConnected(false);
+        setConnectionError('再接続できませんでした。通信環境をご確認ください。');
+      },
       onError: (message) => {
         setConnectionError(message);
       },

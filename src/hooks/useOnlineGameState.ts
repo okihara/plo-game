@@ -242,6 +242,12 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsReconnecting(true);
         setConnectionError(null);
       },
+      onReconnectFailed: () => {
+        // 再接続を諦めた: 「再接続中」を解除してエラーダイアログに切り替える
+        setIsReconnecting(false);
+        setIsConnected(false);
+        setConnectionError('再接続できませんでした。通信環境をご確認ください。');
+      },
       onError: (message) => {
         setConnectionError(message);
       },
