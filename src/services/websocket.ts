@@ -122,11 +122,20 @@ class WebSocketService {
 
       // httpOnly cookieはdocument.cookieで読めないため、
       // サーバー側がhandshake headerからcookieを読み取る
+      //
+      // 自動再接続: Railway の 15 分接続上限、モバイルのスリープ復帰、
+      // 一時的なネットワーク断などで切れた際に socket.io-client が再接続を試みる。
+      // Cookie ベース認証なので再接続時も同じ odId で繋がり、
+      // サーバー側の io.on('connection') がトーナメントなら handleReconnect で席復帰する。
+      // 'io server disconnect' / 'io client disconnect' では auto-reconnect は走らない（標準仕様）。
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
-        reconnection: false,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000,
+        reconnectionDelayMax: 5000,
         auth: { connectionMode },
       });
 
@@ -149,18 +158,28 @@ class WebSocketService {
 
       this.socket.on('connect_error', (err) => {
         wsLog('connect_error', err.message);
-        if (sentryEnabled) {
-          Sentry.withScope((scope) => {
-            scope.setTag('source', 'socket.io');
-            scope.setTag('socket.phase', 'connect_error');
-            Sentry.captureException(err);
-          });
-        }
-        this.emit('onError', err.message);
+        // 初回接続失敗時のみ Sentry / onError に流す。
+        // 再接続試行中の連続失敗は disconnect イベントで既に捕捉済みなので、ここではログのみ。
         if (!settled) {
+          if (sentryEnabled) {
+            Sentry.withScope((scope) => {
+              scope.setTag('source', 'socket.io');
+              scope.setTag('socket.phase', 'connect_error');
+              Sentry.captureException(err);
+            });
+          }
+          this.emit('onError', err.message);
           settle();
           reject(new Error(err.message));
         }
+      });
+
+      // 再接続のライフサイクルを記録（manager レベルのイベント）
+      this.socket.io.on('reconnect_attempt', (attempt) => {
+        wsLog('reconnect_attempt', attempt);
+      });
+      this.socket.io.on('reconnect', (attempt) => {
+        wsLog('reconnect', attempt);
       });
 
       this.socket.on('disconnect', (reason) => {
