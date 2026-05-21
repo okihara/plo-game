@@ -139,7 +139,7 @@ class WebSocketService {
         autoConnect: true,
         withCredentials: true,
         reconnection: true,
-        reconnectionAttempts: 10,
+        reconnectionAttempts: 6,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         auth: { connectionMode },
