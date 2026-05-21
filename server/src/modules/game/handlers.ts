@@ -281,10 +281,12 @@ export async function handleMatchmakingJoin(
       return;
     }
 
-    // Leave current table if any (with cashout)
+    // 既に席があれば何もしない（再接続後の自動 matchmaking 再投与でも二重 buy-in にならないように）。
+    // 別ステークスへの移動などで明示的にテーブルを変えたい場合は、UI 側で先に table:leave を投げる前提。
     const currentTable = tableManager.getPlayerTable(socket.odId!);
     if (currentTable) {
-      await unseatAndCashOut(currentTable, socket.odId!, tableManager);
+      console.log(`[matchmaking] Already seated at ${currentTable.id}, skipping rejoin for ${socket.odId}`);
+      return;
     }
 
     // Find available table or create one

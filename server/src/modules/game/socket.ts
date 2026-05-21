@@ -110,6 +110,13 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           console.log(`[Reconnect] Player ${odId} reconnected to cash table ${cashTable.id}`);
         }
       }
+
+      // どちらにも席がなければクライアントに通知する。
+      // 例: FastFold で切断中に move-and-cashout された後の再接続。
+      // 初回接続でロビーから繋いだだけのケースでも emit されるが、UI 側で「元々席があったか」を見て判断する。
+      if (!tournamentId && !cashTable) {
+        socket.emit('session:no_seat');
+      }
     }
 
     socket.emit('connection:established', { playerId: odId });
