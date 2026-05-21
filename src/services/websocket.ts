@@ -15,18 +15,9 @@ import { Sentry, sentryEnabled } from '../lib/sentry';
 // 本番では同一オリジン（空文字）、開発ではlocalhost:3001
 const SERVER_URL = import.meta.env.VITE_SERVER_URL || '';
 
-// socket.io-client が emit する disconnect reason のうち、サーバー側に原因があるものだけ Sentry に送る。
-// クライアントの明示切断 ('io client disconnect') やユーザー側ネットワーク事情 ('transport close') は除外。
-// 参考: https://socket.io/docs/v4/client-socket-instance/#disconnect
-const SERVER_CAUSED_DISCONNECT_REASONS = new Set<string>([
-  'io server disconnect', // サーバーが socket.disconnect() を呼んだ
-  'ping timeout',         // ping 応答が来なかった
-  'transport error',      // トランスポート層のエラー
-  'parse error',          // 不正パケット
-]);
-
 // socket.io-client が auto-reconnect を試みる disconnect reason の集合。
 // 'io server disconnect' / 'io client disconnect' はライブラリ側で auto-reconnect しないので除外。
+// 参考: https://socket.io/docs/v4/client-socket-instance/#disconnect
 const AUTO_RECONNECT_DISCONNECT_REASONS = new Set<string>([
   'transport close',
   'transport error',
@@ -141,14 +132,14 @@ class WebSocketService {
       // Cookie ベース認証なので再接続時も同じ odId で繋がり、
       // サーバー側の io.on('connection') がトーナメントなら handleReconnect で席復帰する。
       // 'io server disconnect' / 'io client disconnect' では auto-reconnect は走らない（標準仕様）。
-      // reconnectionAttempts: 1〜5秒の指数バックオフで 5 回 ≈ 約 15 秒の試行。
+      // reconnectionAttempts: 1〜5秒の指数バックオフで 10 回 ≈ 約 30 秒の試行。
       // 長く粘っても繋がらないなら諦めてエラーダイアログに切り替える。
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
         reconnection: true,
-        reconnectionAttempts: 5,
+        reconnectionAttempts: 10,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         auth: { connectionMode },
@@ -198,6 +189,15 @@ class WebSocketService {
       });
       this.socket.io.on('reconnect_failed', () => {
         wsLog('reconnect_failed', 'giving up after max attempts');
+        // auto-reconnect が走った末に復旧できなかったケースだけを Sentry に送る。
+        // 一時的な切断（即座に再接続成功）は本番運用上ノイズなので報告しない。
+        if (sentryEnabled) {
+          Sentry.withScope((scope) => {
+            scope.setTag('source', 'socket.io');
+            scope.setTag('socket.phase', 'reconnect_failed');
+            Sentry.captureMessage('Socket reconnection failed after max attempts', 'error');
+          });
+        }
         // 再接続を諦めたので socket を明示的に閉じておく
         // (this.socket は次回 connect() で再生成される)
         this.socket?.disconnect();
@@ -206,14 +206,6 @@ class WebSocketService {
 
       this.socket.on('disconnect', (reason) => {
         wsLog('disconnect', reason);
-        if (sentryEnabled && SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
-          Sentry.withScope((scope) => {
-            scope.setTag('source', 'socket.io');
-            scope.setTag('socket.phase', 'disconnect');
-            scope.setTag('socket.disconnect_reason', reason);
-            Sentry.captureMessage(`Socket disconnected (server-caused): ${reason}`, 'error');
-          });
-        }
         this.emit('onDisconnected', reason);
         // auto-reconnect が走るケースでは UI 側で「再接続中」表示に切り替えてもらう。
         // React 18 の自動バッチで onDisconnected/onReconnecting の setState がまとめられるので、
