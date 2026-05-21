@@ -141,14 +141,14 @@ class WebSocketService {
       // Cookie ベース認証なので再接続時も同じ odId で繋がり、
       // サーバー側の io.on('connection') がトーナメントなら handleReconnect で席復帰する。
       // 'io server disconnect' / 'io client disconnect' では auto-reconnect は走らない（標準仕様）。
-      // reconnectionAttempts: 1〜5秒の指数バックオフで 20 回 ≈ 約 95 秒の試行。
-      // トーナメントの切断猶予 2 分以内に収まる範囲で、無駄に長く粘らない上限。
+      // reconnectionAttempts: 1〜5秒の指数バックオフで 5 回 ≈ 約 15 秒の試行。
+      // 長く粘っても繋がらないなら諦めてエラーダイアログに切り替える。
       this.socket = io(SERVER_URL, {
         transports: ['websocket'],
         autoConnect: true,
         withCredentials: true,
         reconnection: true,
-        reconnectionAttempts: 20,
+        reconnectionAttempts: 5,
         reconnectionDelay: 1000,
         reconnectionDelayMax: 5000,
         auth: { connectionMode },
