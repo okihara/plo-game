@@ -104,6 +104,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clientStateRef = useRef<ClientGameState | null>(null);
   const mySeatRef = useRef<number | null>(null);
+  const myHoleCardsRef = useRef<Card[]>([]);
   /** 直前の game:state で自分のターンだったか（重複再生防止） */
   const wasMyTurnRef = useRef(false);
 
@@ -227,6 +228,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   }, [mySeat]);
 
   useEffect(() => {
+    myHoleCardsRef.current = myHoleCards;
+  }, [myHoleCards]);
+
+  useEffect(() => {
     wsService.addListeners('game', {
       onConnected: () => {
         setIsConnected(true);
@@ -251,12 +256,12 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onError: (message) => {
         setConnectionError(message);
       },
-      onTableJoined: (tid, seat, isReconnect) => {
+      onTableJoined: (tid, seat) => {
         setTableId(tid);
         setMySeat(seat);
-        // 再接続による席復帰ではディール演出を抑制し、既存のホールカードもそのまま残す
-        // (続けて来る game:hole_cards で同じカードに上書きされる)
-        if (!isReconnect) {
+        // 既にホールカードが画面に出ている = ディール演出は配り済み (=ハンド途中の席復帰)。
+        // その場合はカード/フラグを触らず、続く game:hole_cards でも演出させない。
+        if (myHoleCardsRef.current.length === 0) {
           setMyHoleCards([]);
           isNewHandRef.current = true;
           prevIsHandInProgressRef.current = false;

@@ -42,7 +42,7 @@ export type WsListeners = {
   /** reconnectionAttempts を使い切って再接続を諦めた時に呼ばれる。UI はエラーダイアログに切り替える。 */
   onReconnectFailed?: () => void;
   onError?: (message: string) => void;
-  onTableJoined?: (tableId: string, seat: number, isReconnect: boolean) => void;
+  onTableJoined?: (tableId: string, seat: number) => void;
   onTableLeft?: () => void;
   onGameState?: (state: ClientGameState) => void;
   onHoleCards?: (data: { cards: Card[]; seatIndex?: number }) => void;
@@ -226,9 +226,9 @@ class WebSocketService {
       });
 
       // Table events
-      this.socket.on('table:joined', ({ tableId, seat, isReconnect }) => {
-        wsLog('table:joined', { tableId, seat, isReconnect });
-        this.emit('onTableJoined', tableId, seat, isReconnect ?? false);
+      this.socket.on('table:joined', ({ tableId, seat }) => {
+        wsLog('table:joined', { tableId, seat });
+        this.emit('onTableJoined', tableId, seat);
       });
 
       this.socket.on('table:left', () => {

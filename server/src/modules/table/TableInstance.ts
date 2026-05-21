@@ -461,9 +461,8 @@ export class TableInstance {
     seat.socket = socket;
     socket.join(this.roomName);
 
-    // 現在のゲーム状態を再送信。
-    // isReconnect: true でクライアントは席復帰と判別でき、ディール演出をスキップできる。
-    socket.emit('table:joined', { tableId: this.id, seat: seatIndex, isReconnect: true });
+    // 現在のゲーム状態を再送信
+    socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
 
     // startNewHand と同じ順序で hole_cards → game:state を送る
     if (this.gameState && !this.gameState.isHandComplete) {

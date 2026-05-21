@@ -45,8 +45,7 @@ export interface ServerToClientEvents {
   'connection:displaced': (data: { reason: string }) => void;
 
   // Table events
-  /** isReconnect: true は切断猶予/displacement からの席復帰。クライアント側でディール演出をスキップする目印。 */
-  'table:joined': (data: { tableId: string; seat: number; isReconnect?: boolean }) => void;
+  'table:joined': (data: { tableId: string; seat: number }) => void;
   'table:spectate_joined': (data: { tableId: string }) => void;
   'table:spectate_left': () => void;
   'table:left': () => void;
