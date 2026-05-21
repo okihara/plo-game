@@ -196,6 +196,14 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       socket.on('debug:set_chips', wrapSocketHandler(socket, 'debug:set_chips', (data: Parameters<typeof handleDebugSetChips>[1]) =>
         handleDebugSetChips(socket, data, tableManager)
       ));
+
+      // auto-reconnect の動作確認用: サーバープロセスを生かしたまま、対象ソケットの
+      // underlying engine.io transport だけを閉じる。socket.disconnect() は
+      // 'io server disconnect' 扱いになって client が auto-reconnect しないので使わない。
+      socket.on('debug:force_disconnect', () => {
+        console.log(`[debug] Closing transport for odId=${odId}, socket=${socket.id}`);
+        socket.conn?.close();
+      });
     }
   });
 

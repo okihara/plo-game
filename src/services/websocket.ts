@@ -435,7 +435,27 @@ class WebSocketService {
     this.socket?.emit('tournament:request_state', { tournamentId });
   }
 
+  /**
+   * 開発用: サーバーに transport を閉じさせて auto-reconnect の動作確認をする。
+   * サーバープロセスを生かしたまま WS だけ落とせるので、テーブル状態を保ったまま再接続テストできる。
+   * DevTools Console から `wsService.debugForceDisconnect()` で呼ぶ想定。
+   */
+  debugForceDisconnect(): void {
+    if (!this.socket) {
+      console.warn('[wsService] socket not connected');
+      return;
+    }
+    console.log('[wsService] requesting server to force-close transport');
+    // dev 専用イベントで protocol 型には載せていないので emit にキャストが必要
+    (this.socket as unknown as { emit: (ev: string) => void }).emit('debug:force_disconnect');
+  }
+
 }
 
 // Singleton instance
 export const wsService = new WebSocketService();
+
+// 開発時のみ DevTools Console から wsService にアクセスできるよう window に露出
+if (import.meta.env.DEV && typeof window !== 'undefined') {
+  (window as unknown as { wsService: WebSocketService }).wsService = wsService;
+}
