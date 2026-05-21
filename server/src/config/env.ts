@@ -7,8 +7,17 @@ config();
 const envSchema = z.object({
   DATABASE_URL: z.string(),
   JWT_SECRET: z.string().min(32),
+  /** OAuth ログイン用の App。Read-only 権限で十分（ユーザーに書き込み権限を求めない） */
   TWITTER_API_KEY: z.string().optional(),
   TWITTER_API_KEY_SECRET: z.string().optional(),
+  /**
+   * ツイート投稿用の別 App。Read and Write 権限が必要。
+   * 公式アカウントから発行する Access Token と組み合わせて使う。
+   */
+  TWITTER_POST_API_KEY: z.string().optional(),
+  TWITTER_POST_API_KEY_SECRET: z.string().optional(),
+  TWITTER_POST_ACCESS_TOKEN: z.string().optional(),
+  TWITTER_POST_ACCESS_TOKEN_SECRET: z.string().optional(),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
