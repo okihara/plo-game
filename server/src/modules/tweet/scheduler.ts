@@ -82,6 +82,7 @@ export async function runDuePendingGenerations(): Promise<void> {
           generatedText: result.text,
           promptVersion: result.promptVersion,
           promptInputJson: result.promptInputJson as Prisma.InputJsonValue,
+          attachedImagePath: result.attachedImagePath ?? null,
           errorMessage: null,
         },
       });

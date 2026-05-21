@@ -8,6 +8,7 @@
 import type { TweetDraft } from '@prisma/client';
 import { prisma } from '../../config/database.js';
 import { callAnthropic } from './anthropicClient.js';
+import { resolveAnnounceImagePath } from './announceImage.js';
 import { fetchAnnounceContext } from './data/announceData.js';
 import { fetchResultData } from './data/resultData.js';
 import { buildAnnouncePrompt } from './promptTemplates/announce.js';
@@ -68,9 +69,14 @@ async function generateAnnounce(draft: TweetDraft): Promise<PromptResult> {
     user: prompt.user,
     maxTokens: 600,
   });
+  const attachedImagePath = resolveAnnounceImagePath(
+    new Date(context.today.scheduledStartTime),
+    context.today.gameVariant,
+  );
   return {
     text: llm.text,
     promptVersion: prompt.promptVersion,
     promptInputJson: prompt.inputJson,
+    attachedImagePath,
   };
 }
