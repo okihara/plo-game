@@ -192,6 +192,12 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     }
   }, [blinds, isFastFold, privateMode, variant]);
 
+  // 再接続時の自動再マッチング用に最新値を ref で持つ
+  const joinMatchmakingRef = useRef(joinMatchmaking);
+  const privateModeRef = useRef(privateMode);
+  useEffect(() => { joinMatchmakingRef.current = joinMatchmaking; }, [joinMatchmaking]);
+  useEffect(() => { privateModeRef.current = privateMode; }, [privateMode]);
+
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();
   }, []);
@@ -252,6 +258,15 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsReconnecting(false);
         setIsConnected(false);
         setConnectionError('再接続できませんでした。通信環境をご確認ください。');
+      },
+      onSessionNoSeat: () => {
+        // サーバーには席がない: 元々席に着いていた前提のとき (mySeat あり) のみ反応する。
+        // 例: FastFold で切断中に move-and-cashout されて再接続したケース。
+        // プライベートテーブルは自動で作り直すと別 invite code になるので除外。
+        if (mySeatRef.current !== null && !privateModeRef.current) {
+          console.log('[session:no_seat] re-joining matchmaking after losing seat');
+          joinMatchmakingRef.current();
+        }
       },
       onError: (message) => {
         setConnectionError(message);

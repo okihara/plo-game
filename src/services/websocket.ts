@@ -58,6 +58,8 @@ export type WsListeners = {
   onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
   onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   onDisplaced?: () => void;
+  /** サーバーに自分の席がない: 再接続時にキャッシュ席が失われていた等。UI 側で再マッチング判断する。 */
+  onSessionNoSeat?: () => void;
   onSpectateJoined?: (tableId: string) => void;
   onSpectateLeft?: () => void;
   // Tournament events
@@ -223,6 +225,11 @@ class WebSocketService {
         this.socket?.disconnect();
         this.socket = null;
         this.playerId = null;
+      });
+
+      this.socket.on('session:no_seat', () => {
+        wsLog('session:no_seat');
+        this.emit('onSessionNoSeat');
       });
 
       // Table events

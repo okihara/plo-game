@@ -94,6 +94,11 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
 
     // トーナメント参加中なら再接続処理（観戦接続ではプレイ座席のソケット置換をしない）
     if (!isSpectate) {
+      // 再接続が確立した時点で grace timer は不要。
+      // FastFold で切断中に move-and-cashout されて席を失った後、新テーブルに着いてから
+      // 古いタイマーが発火して新テーブルから蹴られる事故を防ぐため、必ず冒頭でクリアする。
+      tableManager.clearDisconnectTimer(odId);
+
       const tournamentId = tournamentManager.getPlayerTournament(odId);
       if (tournamentId) {
         const tournament = tournamentManager.getTournament(tournamentId);
@@ -104,11 +109,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       // grace 期間中の auto-reconnect、別タブによる displacement のどちらにも効く。
       const cashTable = tableManager.getPlayerTable(odId);
       if (cashTable) {
-        tableManager.clearDisconnectTimer(odId);
         const ok = cashTable.reconnectPlayer(odId, socket);
         if (ok) {
           console.log(`[Reconnect] Player ${odId} reconnected to cash table ${cashTable.id}`);
         }
+      }
+
+      // どちらにも席がなければクライアントに通知する。
+      // 例: FastFold で切断中に move-and-cashout された後の再接続。
+      // 初回接続でロビーから繋いだだけのケースでも emit されるが、UI 側で「元々席があったか」を見て判断する。
+      if (!tournamentId && !cashTable) {
+        socket.emit('session:no_seat');
       }
     }
 
@@ -187,7 +198,14 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           return;
         }
 
-        if (activePlayerConnections.get(odId)?.id === socket.id) {
+        // 既により新しい socket が active として登録されていたら（再接続済み・別タブ等）、
+        // この古い socket のクリーンアップは飛ばす。odDisplacedByNewConnection の保険でもある。
+        const activeSocket = activePlayerConnections.get(odId);
+        if (activeSocket && activeSocket.id !== socket.id) {
+          return;
+        }
+
+        if (activeSocket?.id === socket.id) {
           activePlayerConnections.delete(odId);
         }
 
