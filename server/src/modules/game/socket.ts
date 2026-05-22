@@ -202,7 +202,6 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
         // この古い socket のクリーンアップは飛ばす。odDisplacedByNewConnection の保険でもある。
         const activeSocket = activePlayerConnections.get(odId);
         if (activeSocket && activeSocket.id !== socket.id) {
-          console.log(`[Disconnect] Skipping cleanup for stale socket ${socket.id} (active=${activeSocket.id}) odId=${odId}`);
           return;
         }
 
