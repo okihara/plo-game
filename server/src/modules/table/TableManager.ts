@@ -140,8 +140,9 @@ export class TableManager {
    * 期限切れで onTimeout が実行され、典型的には unseatAndCashOut を呼ぶ。
    */
   public scheduleDisconnectCleanup(odId: string, onTimeout: () => void | Promise<void>): void {
-    this.clearDisconnectTimer(odId);
+    const had = this.clearDisconnectTimer(odId);
     const timer = setTimeout(() => {
+      console.log(`[TableManager] disconnect timer fired for ${odId}`);
       this.disconnectTimers.delete(odId);
       try {
         const result = onTimeout();
@@ -153,6 +154,7 @@ export class TableManager {
       }
     }, TABLE_CONSTANTS.DISCONNECT_GRACE_MS);
     this.disconnectTimers.set(odId, timer);
+    console.log(`[TableManager] disconnect timer scheduled for ${odId} (replaced=${had})`);
   }
 
   /** 切断猶予タイマーをキャンセル。タイマーが存在した場合は true。 */
@@ -161,6 +163,7 @@ export class TableManager {
     if (timer) {
       clearTimeout(timer);
       this.disconnectTimers.delete(odId);
+      console.log(`[TableManager] disconnect timer cleared for ${odId}`);
       return true;
     }
     return false;

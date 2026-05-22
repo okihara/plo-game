@@ -194,7 +194,15 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
           return;
         }
 
-        if (activePlayerConnections.get(odId)?.id === socket.id) {
+        // 既により新しい socket が active として登録されていたら（再接続済み・別タブ等）、
+        // この古い socket のクリーンアップは飛ばす。odDisplacedByNewConnection の保険でもある。
+        const activeSocket = activePlayerConnections.get(odId);
+        if (activeSocket && activeSocket.id !== socket.id) {
+          console.log(`[Disconnect] Skipping cleanup for stale socket ${socket.id} (active=${activeSocket.id}) odId=${odId}`);
+          return;
+        }
+
+        if (activeSocket?.id === socket.id) {
           activePlayerConnections.delete(odId);
         }
 
