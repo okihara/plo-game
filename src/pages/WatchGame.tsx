@@ -9,14 +9,13 @@ import { TournamentHUD } from '../components/TournamentHUD';
 
 interface WatchGameProps {
   tableId: string;
-  inviteCode?: string;
   /** 付与するとトーナメント内の他卓へ前後移動できる（URL: ?tournament=） */
   tournamentId?: string;
-  onNavigateWatchTable?: (tableId: string, query?: { tournament?: string; invite?: string }) => void;
+  onNavigateWatchTable?: (tableId: string, query?: { tournament?: string }) => void;
   onBack: () => void;
 }
 
-export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTable, onBack }: WatchGameProps) {
+export function WatchGame({ tableId, tournamentId, onNavigateWatchTable, onBack }: WatchGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -35,7 +34,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     tournamentState,
     connectAndWatch,
     disconnect,
-  } = useSpectatorGameState(tableId, inviteCode);
+  } = useSpectatorGameState(tableId);
 
   useEffect(() => {
     connectAndWatch();
@@ -61,7 +60,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     if (!shouldAutoJump) return;
     if (attemptedTableIdsRef.current.has(tableId)) return;
     attemptedTableIdsRef.current.add(tableId);
-    const q = { tournament: tournamentId, invite: inviteCode };
+    const q = { tournament: tournamentId };
     const pickOther = (ids: string[]) =>
       ids.find(id => id !== tableId && !attemptedTableIdsRef.current.has(id));
     let cancelled = false;
@@ -76,14 +75,14 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
       cancelled = true;
       clearTimeout(handle);
     };
-  }, [connectionError, tournamentId, tableId, inviteCode, onNavigateWatchTable, tournamentTableIds, refreshTournamentTableIds]);
+  }, [connectionError, tournamentId, tableId, onNavigateWatchTable, tournamentTableIds, refreshTournamentTableIds]);
   const spectateNav = useMemo(() => {
     if (!tournamentId?.trim() || !onNavigateWatchTable || tournamentTableIds.length < 2) {
       return undefined;
     }
     const idx = tournamentTableIds.indexOf(tableId);
     const total = tournamentTableIds.length;
-    const q = { tournament: tournamentId, invite: inviteCode };
+    const q = { tournament: tournamentId };
     if (idx < 0) {
       return {
         label: `テーブル —/${total}`,
@@ -106,7 +105,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
       canGoPrevious: idx > 0,
       canGoNext: idx < total - 1,
     };
-  }, [tournamentId, onNavigateWatchTable, tournamentTableIds, tableId, inviteCode]);
+  }, [tournamentId, onNavigateWatchTable, tournamentTableIds, tableId]);
 
   const blindsLabel = gameState ? `${gameState.smallBlind}/${gameState.bigBlind}` : '—';
 

@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useOnlineGameState, PrivateMode } from '../hooks/useOnlineGameState';
+import { useOnlineGameState } from '../hooks/useOnlineGameState';
 import { GameTable } from '../components/GameTable';
 
 import { ConnectingScreen } from '../components/ConnectingScreen';
@@ -10,12 +10,11 @@ import { BustedScreen } from '../components/BustedScreen';
 interface NormalGameProps {
   blinds: string;
   isFastFold?: boolean;
-  privateMode?: PrivateMode;
   variant?: string;
   onBack: () => void;
 }
 
-export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }: NormalGameProps) {
+export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGameProps) {
   const {
     isConnecting,
     connectionError,
@@ -36,13 +35,12 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
-    privateTableInfo,
     connect,
     disconnect,
     joinMatchmaking,
     handleAction,
     handleFastFold,
-  } = useOnlineGameState(blinds, isFastFold, privateMode, variant);
+  } = useOnlineGameState(blinds, isFastFold, variant);
 
   // 接続と参加
   useEffect(() => {
@@ -98,7 +96,6 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
           maintenanceStatus={maintenanceStatus}
           announcementStatus={announcementStatus}
           bustedMessage={bustedMessage}
-          privateTableInfo={privateTableInfo}
           isChangingTable={isChangingTable}
           isWaitingForPlayers={isWaitingForPlayers}
           seatedPlayerCount={seatedPlayerCount}

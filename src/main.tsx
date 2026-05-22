@@ -6,7 +6,6 @@ import { SimpleLobby } from './pages/SimpleLobby';
 import { NormalGame } from './pages/NormalGame';
 import { TournamentLobby } from './pages/TournamentLobby';
 import { TournamentGame } from './pages/TournamentGame';
-import type { PrivateMode } from './hooks/useOnlineGameState';
 import { PlayerDebug } from './pages/PlayerDebug';
 import { EliminationDebug } from './pages/EliminationDebug';
 import { TournamentCardDebug } from './pages/TournamentCardDebug';
@@ -36,7 +35,6 @@ function App() {
   const [blinds, setBlinds] = useState<string | null>(null);
   const [isFastFold, setIsFastFold] = useState(false);
   const [variant, setVariant] = useState<string | undefined>(undefined);
-  const [privateMode, setPrivateMode] = useState<PrivateMode | null>(null);
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [lobbyInitialTab, setLobbyInitialTab] = useState<'home' | 'tournament'>('home');
@@ -55,9 +53,7 @@ function App() {
 
   const isGameScreen =
     !!blinds ||
-    !!privateMode ||
     !!tournamentId ||
-    currentPath.startsWith('/private/') ||
     currentPath.startsWith('/tournament/') ||
     currentPath.startsWith('/watch/');
   const bgClass = isGameScreen ? 'game-bg' : 'bg-cream-200';
@@ -66,7 +62,6 @@ function App() {
     setBlinds(null);
     setIsFastFold(false);
     setVariant(undefined);
-    setPrivateMode(null);
     setTournamentId(null);
     setLobbyInitialTab('home');
     window.history.pushState({}, '', '/');
@@ -80,10 +75,9 @@ function App() {
     setCurrentPath('/');
   };
 
-  const navigateWatchTable = (tableId: string, query?: { tournament?: string; invite?: string }) => {
+  const navigateWatchTable = (tableId: string, query?: { tournament?: string }) => {
     const params = new URLSearchParams();
     if (query?.tournament) params.set('tournament', query.tournament);
-    if (query?.invite) params.set('invite', query.invite);
     const search = params.toString();
     const pathname = `/watch/${encodeURIComponent(tableId)}`;
     const full = search ? `${pathname}?${search}` : pathname;
@@ -130,7 +124,6 @@ function App() {
   } else if (currentPath.startsWith('/watch/')) {
     const raw = currentPath.slice('/watch/'.length);
     const tableIdForWatch = raw.split('/')[0] || '';
-    const inviteFromQuery = new URLSearchParams(window.location.search).get('invite') ?? undefined;
     const tournamentIdFromQuery = new URLSearchParams(window.location.search).get('tournament') ?? undefined;
     page = !tableIdForWatch.trim() ? (
       <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-black text-white px-[8%]">
@@ -149,25 +142,17 @@ function App() {
     ) : (
       <WatchGame
         tableId={tableIdForWatch}
-        inviteCode={inviteFromQuery}
         tournamentId={tournamentIdFromQuery}
         onNavigateWatchTable={navigateWatchTable}
         onBack={goBackToLobby}
       />
     );
-  } else if (currentPath.startsWith('/private/')) {
-    const code = currentPath.replace('/private/', '');
-    page = <NormalGame blinds="1/3" privateMode={{ type: 'join', inviteCode: code }} onBack={goBackToLobby} />;
-  } else if (privateMode) {
-    page = <NormalGame blinds={blinds || '1/3'} isFastFold={false} privateMode={privateMode} onBack={goBackToLobby} />;
   } else if (blinds) {
     page = <NormalGame blinds={blinds} isFastFold={isFastFold} variant={variant} onBack={goBackToLobby} />;
   } else {
     page = (
       <SimpleLobby
         onPlayOnline={(selectedBlinds, fastFold, selectedVariant) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); setVariant(selectedVariant); }}
-        onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
-        onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
         onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}
         onViewResults={(id) => { window.history.pushState({}, '', `/tournament/${id}/results`); setCurrentPath(`/tournament/${id}/results`); }}
