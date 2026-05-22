@@ -32,8 +32,6 @@ export class TableInstance {
   public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
   public isFastFold: boolean = false;
   public readonly variant: GameVariant = 'plo';
-  public readonly isPrivate: boolean = false;
-  public readonly inviteCode: string | null = null;
 
   // ゲームモード（キャッシュ / トーナメント）
   public readonly gameMode: GameMode = 'cash';
@@ -81,14 +79,12 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
     this.isHorse = options?.isHorse ?? false;
     this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
-    this.isPrivate = options?.isPrivate ?? false;
-    this.inviteCode = options?.inviteCode ?? null;
     this.gameMode = options?.gameMode ?? 'cash';
     this.tournamentId = options?.tournamentId ?? null;
 
@@ -422,7 +418,6 @@ export class TableInstance {
       players: this.getPlayerCount(),
       maxPlayers: this.maxPlayers,
       isFastFold: this.isFastFold,
-      isPrivate: this.isPrivate,
       variant: this.currentVariant,
       isHorse: this.isHorse,
     };
@@ -668,7 +663,6 @@ export class TableInstance {
 
   private get minPlayersToStart(): number {
     if (this._minPlayersToStart !== null) return this._minPlayersToStart;
-    if (this.isPrivate) return 2;
     return this.isFastFold ? TABLE_CONSTANTS.MAX_PLAYERS : TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
   }
 

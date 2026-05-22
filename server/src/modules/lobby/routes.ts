@@ -11,7 +11,7 @@ export function lobbyRoutes(deps: LobbyDependencies) {
   return async function (fastify: FastifyInstance) {
     // Player counts per blind level
     fastify.get('/api/lobby/tables', async () => {
-      const tablesInfo = tableManager.getTablesInfo().filter(t => !t.isPrivate);
+      const tablesInfo = tableManager.getTablesInfo();
       // 実テーブルから blinds × isFastFold ごとにプレイヤー数を集計
       const key = (blinds: string, isFastFold: boolean, isHorse?: boolean) => `${blinds}:${isFastFold}:${isHorse ?? false}`;
       const map = new Map<string, { blinds: string; playerCount: number; isFastFold: boolean; isHorse?: boolean }>();

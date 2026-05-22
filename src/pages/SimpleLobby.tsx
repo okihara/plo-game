@@ -14,8 +14,6 @@ import { WeeklyChampions } from '../components/WeeklyChampions';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
-  onCreatePrivate: (blinds: string) => void;
-  onJoinPrivate: (inviteCode: string) => void;
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
@@ -43,18 +41,16 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, initialTab = 'home' }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, initialTab = 'home' }: SimpleLobbyProps) {
   const { user, loading, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<LobbyTab>(initialTab);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const [claimingBonus, setClaimingBonus] = useState(false);
-  const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
-  const [showPrivateDialog, setShowPrivateDialog] = useState(false);
   const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string; isRegistrationOpen?: boolean; deadlineTime?: string }>({ status: 'none' });
 
 
@@ -381,60 +377,6 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         />
       )}
 
-      {/* Private Table Dialog */}
-      {showPrivateDialog && (
-        <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={() => setShowPrivateDialog(false)}>
-          <div className="absolute inset-0 bg-black/50" />
-          <div
-            className="relative w-[85cqw] bg-white rounded-[4cqw] shadow-2xl overflow-hidden p-[5cqw]"
-            onClick={e => e.stopPropagation()}
-          >
-            <h2 className="text-[4cqw] font-bold text-cream-900 text-center mb-[4cqw]">プライベートテーブル</h2>
-
-            {/* 招待コードで参加 */}
-            <div className="mb-[4cqw]">
-              <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">招待コードで参加</p>
-              <div className="flex gap-[2cqw]">
-                <input
-                  type="text"
-                  placeholder="コード入力"
-                  value={inviteCodeInput}
-                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
-                  maxLength={5}
-                  className="w-[52cqw] px-[3cqw] py-[2.5cqw] text-[3.5cqw] border border-cream-300 rounded-[2cqw] text-cream-900 placeholder-cream-400 text-center tracking-[0.3em] font-mono uppercase bg-cream-50"
-                />
-                <button
-                  onClick={() => { if (inviteCodeInput.length >= 4) { onJoinPrivate(inviteCodeInput); setInviteCodeInput(''); setShowPrivateDialog(false); } }}
-                  disabled={inviteCodeInput.length < 4 || !!maintenance?.isActive}
-                  className="w-[21cqw] py-[2.5cqw] text-[3cqw] bg-forest text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97]"
-                >
-                  参加
-                </button>
-              </div>
-            </div>
-
-            {/* テーブル作成 */}
-            <div className="border-t border-cream-200 pt-[4cqw]">
-              <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">新しいテーブルを作成</p>
-              <button
-                onClick={() => { onCreatePrivate('1/3'); setShowPrivateDialog(false); }}
-                disabled={!!maintenance?.isActive}
-                className="w-full py-[3cqw] text-[3.5cqw] bg-cream-800 text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97] shadow-[0_4px_12px_rgba(139,126,106,0.3)]"
-              >
-                PLO 1/3 テーブルを作成
-              </button>
-            </div>
-
-            {/* 閉じるボタン */}
-            <button
-              onClick={() => setShowPrivateDialog(false)}
-              className="mt-[4cqw] w-full py-[2.5cqw] text-[3cqw] text-cream-700 hover:text-cream-900 transition-colors"
-            >
-              閉じる
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

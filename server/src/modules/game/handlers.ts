@@ -44,11 +44,6 @@ export async function unseatAndCashOut(table: TableInstance, odId: string, table
   if (result) {
     await cashOutPlayer(result.odId, result.chips, table.id);
   }
-  // プライベートテーブルが空になったら自動削除
-  if (table.isPrivate && table.getPlayerCount() === 0) {
-    console.log(`[Private] Table ${table.id} (code: ${table.inviteCode}) removed (empty)`);
-    tableManager.removeTable(table.id);
-  }
 }
 
 export async function handleTableLeave(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
@@ -160,7 +155,7 @@ export function handleSpectatorDisconnect(
 
 export function handleSpectateJoin(
   socket: AuthenticatedSocket,
-  data: { tableId?: string; inviteCode?: string },
+  data: { tableId?: string },
   tableManager: TableManager,
   tournamentManager: TournamentManager
 ): void {
@@ -187,14 +182,6 @@ export function handleSpectateJoin(
   if (!table) {
     socket.emit('table:error', { message: 'テーブルが見つかりません' });
     return;
-  }
-
-  if (table.isPrivate) {
-    const code = data.inviteCode?.toUpperCase().trim();
-    if (!code || code !== table.inviteCode) {
-      socket.emit('table:error', { message: '招待コードが必要です' });
-      return;
-    }
   }
 
   if (!checkSpectateRateLimit(odId)) {
@@ -366,187 +353,5 @@ export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: 
     console.log(`[debug] Set chips for ${socket.odId} to ${data.chips}`);
   } else {
     socket.emit('table:error', { message: '[debug] Failed to set chips' });
-  }
-}
-
-// ========== Private table handlers ==========
-
-export async function handlePrivateCreate(
-  socket: AuthenticatedSocket,
-  data: { blinds: string },
-  tableManager: TableManager
-): Promise<void> {
-  if (maintenanceService.isMaintenanceActive()) {
-    socket.emit('table:error', { message: 'メンテナンス中のため作成できません' });
-    return;
-  }
-
-  if (!socket.odId) {
-    socket.emit('table:error', { message: 'ログインが必要です' });
-    return;
-  }
-
-  const MAX_PRIVATE_TABLES = 5;
-  if (tableManager.getPrivateTableCount() >= MAX_PRIVATE_TABLES) {
-    socket.emit('table:error', { message: `プライベートテーブルの上限（${MAX_PRIVATE_TABLES}）に達しています` });
-    return;
-  }
-
-  const { blinds } = data;
-
-  try {
-    const parts = blinds.split('/');
-    if (parts.length !== 2 || parts.some(p => isNaN(Number(p)) || Number(p) <= 0)) {
-      socket.emit('table:error', { message: 'Invalid blinds format' });
-      return;
-    }
-    const [, bb] = parts.map(Number);
-    const buyIn = bb * 100;
-
-    const user = await prisma.user.findUnique({
-      where: { id: socket.odId },
-      include: { bankroll: true },
-    });
-
-    if (!user?.bankroll || user.bankroll.balance < buyIn) {
-      socket.emit('table:error', { message: 'Insufficient balance' });
-      return;
-    }
-
-    // Leave current table if any
-    const currentTable = tableManager.getPlayerTable(socket.odId);
-    if (currentTable) {
-      await unseatAndCashOut(currentTable, socket.odId, tableManager);
-    }
-
-    // Create private table
-    const { table, inviteCode } = tableManager.createPrivateTable(blinds);
-
-    // Deduct buy-in
-    const deducted = await deductBuyIn(socket.odId, buyIn);
-    if (!deducted) {
-      tableManager.removeTable(table.id);
-      socket.emit('table:error', { message: 'Insufficient balance' });
-      return;
-    }
-
-    if (!socket.connected) {
-      await cashOutPlayer(socket.odId, buyIn);
-      tableManager.removeTable(table.id);
-      return;
-    }
-
-    // Seat player
-    const weeklyChamp = await hasWeeklyChampionBadge(socket.odId);
-    const seatNumber = table.seatPlayer(
-      socket.odId,
-      user.username,
-      socket,
-      buyIn,
-      user.avatarUrl || "/images/icons/anonymous.svg",
-      undefined,
-      undefined,
-      user.nameMasked,
-      user.displayName,
-      weeklyChamp
-    );
-
-    if (seatNumber !== null) {
-      tableManager.setPlayerTable(socket.odId, table.id);
-      socket.emit('private:created', { tableId: table.id, inviteCode });
-      console.log(`[Private] Table created: ${table.id} (code: ${inviteCode}) by ${socket.odId}`);
-      // triggerMaybeStartHand は呼ばない（1人では開始しない）
-    } else {
-      await cashOutPlayer(socket.odId, buyIn);
-      tableManager.removeTable(table.id);
-      socket.emit('table:error', { message: 'Failed to create table' });
-    }
-  } catch (err) {
-    console.error('Error creating private table:', err);
-    socket.emit('table:error', { message: 'Failed to create table' });
-  }
-}
-
-export async function handlePrivateJoin(
-  socket: AuthenticatedSocket,
-  data: { inviteCode: string },
-  tableManager: TableManager
-): Promise<void> {
-  if (maintenanceService.isMaintenanceActive()) {
-    socket.emit('table:error', { message: 'メンテナンス中のため参加できません' });
-    return;
-  }
-
-  const { inviteCode } = data;
-  const table = tableManager.getTableByInviteCode(inviteCode);
-
-  if (!table) {
-    socket.emit('table:error', { message: 'テーブルが見つかりません' });
-    return;
-  }
-
-  if (!table.hasAvailableSeat()) {
-    socket.emit('table:error', { message: 'テーブルが満席です' });
-    return;
-  }
-
-  try {
-    const [, bb] = table.blinds.split('/').map(Number);
-    const buyIn = bb * 100;
-
-    const user = await prisma.user.findUnique({
-      where: { id: socket.odId },
-      include: { bankroll: true },
-    });
-
-    if (!user?.bankroll || user.bankroll.balance < buyIn) {
-      socket.emit('table:error', { message: 'Insufficient balance' });
-      return;
-    }
-
-    // Leave current table if any
-    const currentTable = tableManager.getPlayerTable(socket.odId!);
-    if (currentTable) {
-      await unseatAndCashOut(currentTable, socket.odId!, tableManager);
-    }
-
-    // Deduct buy-in
-    const deducted = await deductBuyIn(socket.odId!, buyIn);
-    if (!deducted) {
-      socket.emit('table:error', { message: 'Insufficient balance' });
-      return;
-    }
-
-    if (!socket.connected) {
-      await cashOutPlayer(socket.odId!, buyIn);
-      return;
-    }
-
-    // Seat player
-    const weeklyChamp = await hasWeeklyChampionBadge(socket.odId!);
-    const seatNumber = table.seatPlayer(
-      socket.odId!,
-      user.username,
-      socket,
-      buyIn,
-      user.avatarUrl || "/images/icons/anonymous.svg",
-      undefined,
-      undefined,
-      user.nameMasked,
-      user.displayName,
-      weeklyChamp
-    );
-
-    if (seatNumber !== null) {
-      tableManager.setPlayerTable(socket.odId!, table.id);
-      socket.emit('private:created', { tableId: table.id, inviteCode });
-      table.triggerMaybeStartHand();
-    } else {
-      await cashOutPlayer(socket.odId!, buyIn);
-      socket.emit('table:error', { message: 'No available seat' });
-    }
-  } catch (err) {
-    console.error('Error joining private table:', err);
-    socket.emit('table:error', { message: 'Failed to join table' });
   }
 }

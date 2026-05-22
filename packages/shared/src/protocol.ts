@@ -15,7 +15,7 @@ export interface ClientToServerEvents {
   // Table actions
   'table:leave': () => void;
   /** 観戦入室（connectionMode: spectate の接続のみ可） */
-  'table:spectate_join': (data: { tableId: string; inviteCode?: string }) => void;
+  'table:spectate_join': (data: { tableId: string }) => void;
   'table:spectate_leave': () => void;
 
   // Game actions
@@ -25,10 +25,6 @@ export interface ClientToServerEvents {
   // Matchmaking pool
   'matchmaking:join': (data: { blinds: string; isFastFold?: boolean; variant?: string }) => void;
   'matchmaking:leave': () => void;
-
-  // Private table
-  'private:create': (data: { blinds: string }) => void;
-  'private:join': (data: { inviteCode: string }) => void;
 
   // Tournament
   'tournament:register': (data: { tournamentId: string }) => void;
@@ -79,9 +75,6 @@ export interface ServerToClientEvents {
 
   // Announcement (no play restriction)
   'announcement:status': (data: { isActive: boolean; message: string }) => void;
-
-  // Private table
-  'private:created': (data: { tableId: string; inviteCode: string }) => void;
 
   // Tournament
   'tournament:registered': (data: { tournamentId: string }) => void;
@@ -156,7 +149,6 @@ export interface TableInfo {
   players: number;
   maxPlayers: number;
   isFastFold: boolean;
-  isPrivate?: boolean;
 }
 
 // Socket authentication data

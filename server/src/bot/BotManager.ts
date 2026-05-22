@@ -78,7 +78,6 @@ interface BotManagerConfig {
   midHandDisconnectChance?: number;
   maxHandsPerSession?: number; // セッション上限ハンド数
   noDelay?: boolean; // 思考時間を0にする
-  inviteCode?: string; // プライベートテーブル招待コード
 }
 
 export class BotManager {
@@ -189,12 +188,8 @@ export class BotManager {
           return bot;
         }
 
-        // Join matchmaking pool or private table
-        if (this.config.inviteCode) {
-          await bot.joinPrivateTable(this.config.inviteCode);
-        } else {
-          await bot.joinMatchmaking(this.config.blinds, this.config.variant);
-        }
+        // Join matchmaking pool
+        await bot.joinMatchmaking(this.config.blinds, this.config.variant);
 
         return bot;
       }
@@ -266,11 +261,7 @@ export class BotManager {
         // メンテ中にマッチメイキング未参加だったボットを参加させる
         for (const bot of this.bots.values()) {
           if (bot.isActive() && !bot.isInGame()) {
-            if (this.config.inviteCode) {
-              bot.joinPrivateTable(this.config.inviteCode).catch(() => {});
-            } else {
-              bot.joinMatchmaking(this.config.blinds, this.config.variant).catch(() => {});
-            }
+            bot.joinMatchmaking(this.config.blinds, this.config.variant).catch(() => {});
           }
         }
       }

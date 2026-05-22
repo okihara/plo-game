@@ -7,7 +7,6 @@ import { TABLE_CONSTANTS } from './constants.js';
 export class TableManager {
   private tables: Map<string, TableInstance> = new Map();
   private playerTables: Map<string, string> = new Map(); // odId -> tableId
-  private inviteCodeToTable: Map<string, string> = new Map(); // inviteCode -> tableId
   /** 切断猶予中のクリーンアップタイマー（odId -> Timer）。 */
   private disconnectTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private io: Server;
@@ -44,7 +43,6 @@ export class TableManager {
         table.isFastFold === isFastFold &&
         table.isHorse === isHorse &&
         (isHorse || table.variant === variant) &&
-        !table.isPrivate &&
         table.hasAvailableSeat() &&
         table.id !== excludeTableId
       ) {
@@ -90,8 +88,7 @@ export class TableManager {
         table.blinds === blinds &&
         table.isFastFold === isFastFold &&
         table.isHorse === isHorse &&
-        (isHorse || table.variant === variant) &&
-        !table.isPrivate
+        (isHorse || table.variant === variant)
       ) {
         return table;
       }
@@ -106,9 +103,6 @@ export class TableManager {
       console.warn(`[TableManager] removeTable: table ${tableId} not found`);
     } else {
       table.disconnectAllSpectators('テーブルが閉じられました');
-      if (table.inviteCode) {
-        this.inviteCodeToTable.delete(table.inviteCode);
-      }
     }
     this.tables.delete(tableId);
   }
@@ -166,50 +160,11 @@ export class TableManager {
     return false;
   }
 
-  // ========== Private table methods ==========
-
-  private generateInviteCode(): string {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // I,O,0,1を除外
-    let code: string;
-    do {
-      code = Array.from({ length: 5 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
-    } while (this.inviteCodeToTable.has(code));
-    return code;
-  }
-
-  public getPrivateTableCount(): number {
-    let count = 0;
-    for (const table of this.tables.values()) {
-      if (table.isPrivate) count++;
-    }
-    return count;
-  }
-
-  public createPrivateTable(blinds: string): { table: TableInstance; inviteCode: string } {
-    const inviteCode = this.generateInviteCode();
-    const table = new TableInstance(this.io, blinds, false, { isPrivate: true, inviteCode });
-    this.tables.set(table.id, table);
-    this.inviteCodeToTable.set(inviteCode, table.id);
-    return { table, inviteCode };
-  }
-
-  public getTableByInviteCode(inviteCode: string): TableInstance | undefined {
-    const tableId = this.inviteCodeToTable.get(inviteCode.toUpperCase());
-    if (!tableId) return undefined;
-    return this.tables.get(tableId);
-  }
-
   // Clean up empty tables (except one for each blind level)
   public cleanupEmptyTables(): void {
     const tablesByBlinds: Map<string, TableInstance[]> = new Map();
 
     for (const table of this.tables.values()) {
-      // プライベートテーブルは空なら即削除
-      if (table.isPrivate && table.getPlayerCount() === 0) {
-        this.removeTable(table.id);
-        continue;
-      }
-
       const key = `${table.blinds}-${table.isFastFold}-${table.variant}-${table.isHorse}`;
       const tables = tablesByBlinds.get(key) || [];
       tables.push(table);
