@@ -43,6 +43,12 @@ export interface ServerToClientEvents {
   // Connection
   'connection:established': (data: { playerId: string }) => void;
   'connection:displaced': (data: { reason: string }) => void;
+  /**
+   * 接続時にトーナメント・キャッシュテーブルのいずれにも席がないことを伝える。
+   * FastFold で切断中に move-and-cashout された後の再接続などで、
+   * 「席に戻ったつもりで居る」クライアントを再マッチング等へ誘導する目印。
+   */
+  'session:no_seat': () => void;
 
   // Table events
   'table:joined': (data: { tableId: string; seat: number }) => void;
