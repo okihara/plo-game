@@ -21,6 +21,9 @@ function movePlayerToNewTable(params: {
   const { odId, odName, displayName, socket, chips, avatarUrl, nameMasked, sourceTable, tableManager, hasWeeklyChampion } = params;
 
   tableManager.removePlayerFromTracking(odId);
+  // 切断猶予中に FastFold で席を失うケースでも、grace timer を持ち越して新テーブルで
+  // 蹴られないように、ここで明示的にクリアしておく（io.on('connection') 側でもクリアしているが防御）
+  tableManager.clearDisconnectTimer(odId);
 
   if (chips <= 0) {
     cashOutPlayer(odId, 0, sourceTable.id).catch(e => console.error('[FastFold] cashOut error:', e));
