@@ -2,6 +2,36 @@
 
 `/morning-bot-improve` ルーティンによる Bot AI 調整の履歴。直近の変更箇所を確認して **3 日連続で同じ箇所を触らない** ためのログ。
 
+## 2026-05-25
+
+### 仮説
+ポジション別中央 BB/100 を見ると **EP +14.9 のみ黒字、MP/CO/BTN が軒並み赤字**（MP -31.5 / CO -29.8 / BTN -12.0 / SB -19.9 / BB -62.1）。EP は positionBonus=0 で「素の handStrength でしか参加しない」ため勝てている。late position（特に BTN +0.10）の bonus が大きすぎて、effectiveStrength が膨らみすぎ → 後付け IP で広く参加 → postflop で負けているのが構造的な原因と推定。
+
+3 personality は 5-15 の集約で収束済み（weighted BB/100: TatsuyaN -15.2 / YuHayashi -9.9 / yuna0312 -16.3）、ベスト10 vs ワースト10 の差も WSD +22.5 が主でサンプル変動が支配的。BB は推移を見ると改善傾向（-77.2 → -71.6 → -62.1）なので今回は触らず、late position の中でも一番マイナスを引きずっている BTN だけ一段下げて反応を見る。
+
+### 観測（集団・直近24h, 20,037 ハンド, hands>=100 の 239 bot）
+- 全体: Bot 総損益 -53,563 / Human +22,510
+- Personality 別 weighted BB/100: TatsuyaN -15.2 / YuHayashi -9.9 / yuna0312 -16.3（収束済み）
+- ベスト10 vs ワースト10: WSD +22.5 / AFq +7.3 / Cbet +3.3、VPIP/PFR/WTSD はほぼ同等
+- ポジション別中央 BB/100: EP +14.9 / MP -31.5 / CO -29.8 / BTN -12.0 / SB -19.9 / BB -62.1
+- BB の推移: 5-09 -77.2 → 5-15 -71.6 → 今 -62.1（改善継続中）
+
+### 変更
+- `server/src/shared/logic/cpuAI.ts`
+  - `getPositionBonus('BTN')`: 0.10 → 0.09 (-10%)
+- 効果: BTN での effectiveStrength が 0.01 ぶん下がり、marginal hand の preflop call / postflop continuation が少し締まる。CO/HJ や BB は据え置き
+- 影響範囲: 全 bot 382 体（全 personality 共通）。ただし変更が効くのは BTN ポジション限定
+
+### PR
+（未定）
+
+### 評価予定
+2026-05-26 以降のレポートで:
+- BTN 中央 BB/100 が -12 から 0 以上に近づくか
+- 全体損益が悪化していないか
+- 他 position（特に CO/MP）に副作用が出ていないか
+を確認。改善が見えれば次は CO も同様に検討。悪化していたら revert。
+
 ## 2026-05-15
 
 ### 仮説
