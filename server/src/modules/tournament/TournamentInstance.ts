@@ -14,6 +14,7 @@ import {
   PendingMove,
   TournamentResult,
 } from './types.js';
+import { computeBubbleFactors } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
 import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
 
@@ -407,7 +408,37 @@ export class TournamentInstance {
       averageStack: stackSummary.averageStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       gameVariant: this.config.gameVariant,
+      bubbleFactors: this.computeBubbleFactorsForClient(),
     };
+  }
+
+  /**
+   * 2 卓以下まで絞られたら ICM ベースのバブルファクターを計算して
+   * 各プレイヤー (odId) に対する数値の Map を返す。
+   * それ以前は計算コスト・情報過多の観点から undefined。
+   */
+  private computeBubbleFactorsForClient(): Record<string, number> | undefined {
+    if (this.tables.size > 2) return undefined;
+    if (this.prizes.length === 0) return undefined;
+
+    const odIds: string[] = [];
+    const stacks: number[] = [];
+    for (const p of this.players.values()) {
+      if (p.status === 'playing' || p.status === 'disconnected') {
+        odIds.push(p.odId);
+        stacks.push(p.chips);
+      }
+    }
+    if (odIds.length === 0) return undefined;
+
+    const payouts = this.prizes.map(p => p.amount);
+    const bfs = computeBubbleFactors(stacks, payouts);
+    const out: Record<string, number> = {};
+    for (let i = 0; i < odIds.length; i++) {
+      const bf = bfs[i];
+      if (Number.isFinite(bf)) out[odIds[i]] = bf;
+    }
+    return out;
   }
 
   public getLobbyInfo() {
