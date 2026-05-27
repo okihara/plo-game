@@ -9,8 +9,14 @@
 //                "individual" bubble factor:
 //                  BF = (ICM lost when busting from current stack)
 //                     / (ICM gained when doubling current stack)
-//                where the doubling scenario takes chips proportionally from
-//                the other players so that total chips are preserved.
+//                Bust: player finishes at the next-eliminated position and
+//                receives whatever payout that position pays (0 once past the
+//                money).
+//                Double: player's stack grows by their own stack worth of
+//                chips, taken proportionally from every other player so that
+//                total chips are preserved. When the player has more chips
+//                than the others combined, the take is capped at the others'
+//                total (full coverage).
 //
 //                BF = 1.0  → chips and $ trade 1:1 (cash-game-like)
 //                BF > 1.0  → ICM pressure (losing chips costs more $ than winning gains)
@@ -84,6 +90,13 @@ export function computeICM(stacks: number[], payouts: number[]): number[] {
  * Standard "individual" bubble factor per player.
  * Returns NaN for a player when the win scenario provides zero $ gain
  * (e.g. they already have all chips and a payout structure that maxes out).
+ *
+ * Bust scenario uses the deterministic "next-place finish" prize rather than
+ * running ICM on a zero-stack input. Setting a player's stack to 0 and re-running
+ * `computeICM` would short-circuit the recursive sub-game (total chips become 0
+ * once the surviving players are removed), so the busted player would receive
+ * $0 instead of the payout for the position they actually finish at. Computing
+ * the prize directly avoids that edge case.
  */
 export function computeBubbleFactors(stacks: number[], payouts: number[]): number[] {
   const n = stacks.length;
@@ -94,15 +107,17 @@ export function computeBubbleFactors(stacks: number[], payouts: number[]): numbe
   const totalChips = stacks.reduce((a, b) => a + b, 0);
   if (totalChips <= 0) return out;
 
+  const aliveCount = stacks.reduce((c, s) => c + (s > 0 ? 1 : 0), 0);
+  // If player i busts, they finish at position `aliveCount` among the originally
+  // alive players (last alive becomes the next eliminated). Their prize is the
+  // payout at that position, or 0 if the position is past the money.
+  const bustPrize = aliveCount - 1 < payouts.length ? payouts[aliveCount - 1] : 0;
+
   for (let i = 0; i < n; i++) {
     const myChips = stacks[i];
     if (myChips <= 0) continue;
 
-    // Bust scenario: player i has 0 chips.
-    const stacksZero = stacks.slice();
-    stacksZero[i] = 0;
-    const icmZero = computeICM(stacksZero, payouts);
-    const lossEv = icmNow[i] - icmZero[i];
+    const lossEv = icmNow[i] - bustPrize;
 
     // Double scenario: player i's stack doubles, the gain is taken
     // proportionally from every other player based on their current stack.
@@ -110,7 +125,6 @@ export function computeBubbleFactors(stacks: number[], payouts: number[]): numbe
     const others = totalChips - myChips;
     if (others <= 0) continue; // player already has all chips
     const stacksDouble = stacks.slice();
-    stacksDouble[i] = 2 * myChips;
     // The amount taken from each other player j: (stacks[j] / others) * myChips.
     // If myChips > others, the proportional take would exceed some j's stack,
     // so cap the take at the available chips and treat anything beyond that

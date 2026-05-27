@@ -79,4 +79,16 @@ describe('computeBubbleFactors', () => {
     expect(bfs[1]).toBeCloseTo(bfs[2], 6);
     expect(bfs[1]).toBeCloseTo(bfs[3], 6);
   });
+
+  it('heads-up in the money: short stack BF is ~1.0 (no remaining ICM pressure)', () => {
+    // Both players are already guaranteed a payout. The short stack's all-in
+    // is fully symmetric (lose -> 2nd place, win -> chips equalize), so chip
+    // and $ trade 1:1 for the short side.
+    const bfs = computeBubbleFactors([6000, 4000], [700, 300]);
+    expect(bfs[1]).toBeCloseTo(1.0, 6);
+    // The chip leader's "double" is capped at the opponent's stack (full
+    // coverage rather than a true doubling), so the leader's BF still sits
+    // above 1.0 — this is the standard Streib individual BF behavior.
+    expect(bfs[0]).toBeGreaterThan(1.0);
+  });
 });
