@@ -122,7 +122,8 @@ export function PokerTable({
           const isHiLoVariant =
             state.variant === 'plo_hilo' ||
             state.variant === 'omaha_hilo' ||
-            state.variant === 'stud_hilo';
+            state.variant === 'stud_hilo' ||
+            state.variant === 'big_o';
           const wonHiLoSides: ('high' | 'low')[] | undefined = isHiLoVariant
             ? playerWins.flatMap(w =>
                 w.hiLoType === 'scoop'

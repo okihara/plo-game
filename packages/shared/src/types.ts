@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'plo_hilo' | 'stud_hilo' | 'plo_double_board_bomb';
+export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'plo_hilo' | 'stud_hilo' | 'plo_double_board_bomb' | 'big_o';
 
 // --- Variant Config ---
 
@@ -40,6 +40,7 @@ export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   plo_hilo:                     { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
   stud_hilo:                    { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
   plo_double_board_bomb:        { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
+  big_o:                        { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 5, maxDraws: 0, usesBringIn: false },
 };
 
 export function getVariantConfig(variant: GameVariant): VariantConfig {
@@ -59,6 +60,7 @@ export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
   plo_hilo: 'PLO8',
   stud_hilo: 'Stud Hi-Lo',
   plo_double_board_bomb: 'DBBP',
+  big_o: 'Big-O',
 };
 
 /** トーナメントロビー / HUD で variant を区別表示するためのバッジ背景色。
@@ -70,6 +72,7 @@ export const VARIANT_BADGE_BG: Partial<Record<GameVariant, string>> = {
   plo5:                  'bg-violet-600',
   plo_hilo:              'bg-amber-600',
   plo_double_board_bomb: 'bg-rose-600',
+  big_o:                 'bg-emerald-600',
 };
 
 /** PokerStars Hand History のヘッダーで使う variant 名。
@@ -86,6 +89,7 @@ export const VARIANT_POKERSTARS_LABEL: Record<GameVariant, string> = {
   plo_hilo: 'Omaha Hi/Lo Pot Limit',
   stud_hilo: '7 Card Stud Hi/Lo',
   plo_double_board_bomb: 'Omaha Pot Limit Double Board Bomb Pot',
+  big_o: '5 Card Omaha Hi/Lo Pot Limit',
 };
 
 /** @deprecated Use getVariantConfig(variant).family === 'stud' */

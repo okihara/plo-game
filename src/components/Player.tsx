@@ -302,7 +302,7 @@ export function Player({
         }
 
         // Hi-Lo は常に 2 段表示。ロー不成立時は下段を "Lo なし" と表示
-        if (currentVariant === 'plo_hilo' || currentVariant === 'omaha_hilo' || currentVariant === 'stud_hilo') {
+        if (currentVariant === 'plo_hilo' || currentVariant === 'omaha_hilo' || currentVariant === 'stud_hilo' || currentVariant === 'big_o') {
           const hasLow = handName.includes(' / ');
           const [hiName, loName] = hasLow ? handName.split(' / ') : [handName, 'Lo なし'];
           const sides: { label: string; won: boolean; available: boolean }[] = [

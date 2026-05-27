@@ -22,6 +22,7 @@ const strategies: Record<GameVariant, AIVariantStrategy> = {
   'plo_hilo': new PLOStrategy(),    // PLO Hi-Lo: PLO ストラテジーを流用 (Hi-Lo 評価は今後)
   'stud_hilo': new StudStrategy(),  // Stud系なのでStudストラテジーを流用
   'plo_double_board_bomb': new PLOStrategy(),  // 暫定: PLO ストラテジーを流用 (ダブルボード対応の equity 評価は今後)
+  'big_o': new PLOStrategy(),       // Big-O (5 card PLO Hi-Lo): PLO ストラテジーを流用 (Hi-Lo 評価は今後)
 };
 
 export function getVariantStrategy(variant: GameVariant): AIVariantStrategy {
