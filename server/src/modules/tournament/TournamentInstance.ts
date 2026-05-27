@@ -16,7 +16,7 @@ import {
 } from './types.js';
 import { computeBubbleFactors } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
-import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
+import { BUBBLE_FACTOR_PLAYER_THRESHOLD, PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
 import { TABLE_CONSTANTS } from '../table/constants.js';
 
 /**
@@ -414,12 +414,11 @@ export class TournamentInstance {
   }
 
   /**
-   * 2 卓以下まで絞られたら ICM ベースのバブルファクターを計算して
-   * 各プレイヤー (odId) に対する数値の Map を返す。
+   * 残り人数が BUBBLE_FACTOR_PLAYER_THRESHOLD 以下まで絞られたら ICM ベースの
+   * バブルファクターを計算して各プレイヤー (odId) に対する数値の Map を返す。
    * それ以前は計算コスト・情報過多の観点から undefined。
    */
   private computeBubbleFactorsForClient(): Record<string, number> | undefined {
-    if (this.tables.size > 2) return undefined;
     if (this.prizes.length === 0) return undefined;
 
     const odIds: string[] = [];
@@ -430,7 +429,7 @@ export class TournamentInstance {
         stacks.push(p.chips);
       }
     }
-    if (odIds.length === 0) return undefined;
+    if (odIds.length === 0 || odIds.length > BUBBLE_FACTOR_PLAYER_THRESHOLD) return undefined;
 
     const payouts = this.prizes.map(p => p.amount);
     const bfs = computeBubbleFactors(stacks, payouts);
