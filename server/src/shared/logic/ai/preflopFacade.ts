@@ -7,11 +7,11 @@ import { getPreFlopEvaluation, evaluatePreFlopStrength, PreFlopEvaluation } from
 import { evaluatePreflopPLO5, evaluatePreflopStrengthPLO5 } from './preflopEvaluatorPLO5.js';
 
 export function evaluatePreflopByVariant(holeCards: Card[], variant: GameVariant): PreFlopEvaluation {
-  if (variant === 'plo5') return evaluatePreflopPLO5(holeCards);
+  if (variant === 'plo5' || variant === 'big_o') return evaluatePreflopPLO5(holeCards);
   return getPreFlopEvaluation(holeCards);
 }
 
 export function evaluatePreflopStrengthByVariant(holeCards: Card[], variant: GameVariant): number {
-  if (variant === 'plo5') return evaluatePreflopStrengthPLO5(holeCards);
+  if (variant === 'plo5' || variant === 'big_o') return evaluatePreflopStrengthPLO5(holeCards);
   return evaluatePreFlopStrength(holeCards);
 }

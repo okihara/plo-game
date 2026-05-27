@@ -642,13 +642,14 @@ function evaluateOmaha8OrBetterLow(holeCards: Card[], communityCards: Card[]): H
  * Omaha Hi-Lo: ハイとローの両方を評価
  * - ハイ: PLOと同じ（ホール2枚+コミュ3枚で最強ハイハンド）
  * - ロー: ホール2枚+コミュ3枚で最良の8-or-betterロー
+ * ホールカードは 4 枚 (Omaha Hi-Lo / PLO8) または 5 枚 (Big-O) を受け付ける。
  */
 export function evaluateOmahaHiLoHand(
   holeCards: Card[],
   communityCards: Card[],
 ): { high: HandRank; low: HandRank | null } {
-  if (holeCards.length !== 4 || communityCards.length !== 5) {
-    throw new Error('Omaha Hi-Lo requires 4 hole cards and 5 community cards');
+  if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length !== 5) {
+    throw new Error('Omaha Hi-Lo requires 4 or 5 hole cards and 5 community cards');
   }
   return {
     high: evaluatePLOHand(holeCards, communityCards),
@@ -658,12 +659,13 @@ export function evaluateOmahaHiLoHand(
 
 /**
  * Omaha Hi-Lo: コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
+ * ホールカードは 4 枚 (PLO8) または 5 枚 (Big-O) を受け付ける。
  */
 export function evaluateCurrentOmahaHiLoHand(
   holeCards: Card[],
   communityCards: Card[],
 ): { high: HandRank; low: HandRank | null } | null {
-  if (holeCards.length !== 4 || communityCards.length < 3) {
+  if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length < 3) {
     return null;
   }
   return {

@@ -777,8 +777,8 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
 
   newState.sidePots = contestedPots;
 
-  // === PLO Hi-Lo (PLO8) は別パスでスプリット解決 ===
-  if (newState.variant === 'plo_hilo') {
+  // === PLO Hi-Lo (PLO8) / Big-O は別パスでスプリット解決 ===
+  if (newState.variant === 'plo_hilo' || newState.variant === 'big_o') {
     const showdownPlayers = activePlayers.map(p => ({ id: p.id, holeCards: p.holeCards }));
     const community = newState.communityCards;
     const potWinners = resolveHiLoShowdown(
