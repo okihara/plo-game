@@ -9,7 +9,6 @@ const IS_FAST_FOLD = process.env.FAST_FOLD === 'true';
 const MID_HAND_DISCONNECT_CHANCE = parseFloat(process.env.MID_HAND_DISCONNECT_CHANCE || '0');
 const MAX_HANDS_PER_SESSION = parseInt(process.env.BOT_MAX_HANDS_PER_SESSION || '80', 10);
 const NO_DELAY = process.env.NO_DELAY === 'true';
-const INVITE_CODE = process.env.INVITE_CODE || '';
 
 console.log('=================================');
 console.log('  Poker Bot Manager');
@@ -22,9 +21,6 @@ if (VARIANT) {
 }
 console.log(`Fast Fold: ${IS_FAST_FOLD}`);
 console.log(`Session limit: ${MAX_HANDS_PER_SESSION} hands`);
-if (INVITE_CODE) {
-  console.log(`Private table: ${INVITE_CODE}`);
-}
 if (NO_DELAY) {
   console.log(`No delay: ON (instant actions)`);
 }
@@ -42,7 +38,6 @@ const botManager = new BotManager({
   midHandDisconnectChance: MID_HAND_DISCONNECT_CHANCE,
   maxHandsPerSession: MAX_HANDS_PER_SESSION,
   noDelay: NO_DELAY,
-  inviteCode: INVITE_CODE || undefined,
 });
 
 // Handle shutdown gracefully

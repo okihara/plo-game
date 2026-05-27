@@ -3,7 +3,7 @@ import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Copy, Check } from 'lucide-react';
+import { DoorOpen, Settings, History } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
@@ -43,7 +43,6 @@ export interface GameTableProps {
   maintenanceStatus?: { isActive: boolean; message: string } | null;
   announcementStatus?: { isActive: boolean; message: string } | null;
   bustedMessage?: string | null;
-  privateTableInfo?: { inviteCode: string } | null;
   isChangingTable?: boolean;
   isWaitingForPlayers?: boolean;
   seatedPlayerCount?: number;
@@ -59,6 +58,9 @@ export interface GameTableProps {
 
   /** トーナメントプレイ中（プロフィールのスタッツタブ初期値をトナメにする等） */
   isTournament?: boolean;
+
+  /** トナメ ICM バブルファクター (odId → 数値)。2 卓以下のときのみ供給される。 */
+  bubbleFactors?: Record<string, number>;
 }
 
 export function GameTable({
@@ -79,7 +81,6 @@ export function GameTable({
   maintenanceStatus,
   announcementStatus,
   bustedMessage,
-  privateTableInfo,
   isChangingTable,
   isWaitingForPlayers,
   seatedPlayerCount,
@@ -87,6 +88,7 @@ export function GameTable({
   children,
   isSpectator = false,
   isTournament = false,
+  bubbleFactors,
 }: GameTableProps) {
   const { settings, setBigBlind } = useGameSettings();
   const { user } = useAuth();
@@ -97,8 +99,6 @@ export function GameTable({
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
-  const [inviteCopied, setInviteCopied] = useState(false);
-  const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [centerNotice, setCenterNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -261,46 +261,6 @@ export function GameTable({
             : `ante ${gameState.ante}`}
         </span>
       </div>
-      {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}
-      {!isSpectator && privateTableInfo && (
-        <div className="absolute top-[9cqh] right-[4cqw] z-[160]">
-          <div className="relative">
-            <button
-              onClick={() => setShowInvitePopover(!showInvitePopover)}
-              className="flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] bg-white/90 rounded-full shadow-md text-cream-800 transition-all active:scale-[0.97]"
-              style={{ fontSize: '2.5cqw' }}
-            >
-              <span className="font-mono font-bold tracking-wider">招待コード</span>
-            </button>
-            {showInvitePopover && (
-              <>
-                <div className="fixed inset-0 z-[159]" onClick={() => setShowInvitePopover(false)} />
-                <div className="absolute top-full right-0 mt-1 z-[160] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw]">
-                  <p className="text-cream-700 mb-[1cqw]" style={{ fontSize: '2.5cqw' }}>招待コード</p>
-                  <p className="font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw]" style={{ fontSize: '6cqw' }}>
-                    {privateTableInfo.inviteCode}
-                  </p>
-                  <button
-                    onClick={() => {
-                      const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
-                      navigator.clipboard.writeText(url).then(() => {
-                        setInviteCopied(true);
-                        setTimeout(() => setInviteCopied(false), NOTICE_DISPLAY_MS);
-                      });
-                    }}
-                    className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
-                    style={{ fontSize: '2.8cqw' }}
-                  >
-                    {inviteCopied
-                      ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
-                      : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
 
           {/* バリアント変更通知（テーブル中央） */}
           {centerNotice && (
@@ -322,6 +282,7 @@ export function GameTable({
             onPlayerClick={setSelectedPlayer}
             showdownHandNames={showdownHandNames}
             getLabel={getLabel}
+            bubbleFactors={bubbleFactors}
           />
 
           {!isSpectator && (

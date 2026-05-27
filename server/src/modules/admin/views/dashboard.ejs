@@ -309,7 +309,6 @@
       var base = (window.adminClientAppUrl || '').replace(/\/$/, '');
       var path = '/watch/' + encodeURIComponent(t.id);
       var qs = [];
-      if (t.isPrivate && t.inviteCode) qs.push('invite=' + encodeURIComponent(t.inviteCode));
       if (tournamentId) qs.push('tournament=' + encodeURIComponent(tournamentId));
       if (qs.length) path += '?' + qs.join('&');
       var href = base + path;

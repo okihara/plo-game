@@ -41,6 +41,21 @@ const FAST_BLIND_SCHEDULE = FAST_BLIND_UNITS.map((unit, i) => ({
   durationMinutes: BLIND_DURATION,
 }));
 
+// 新規トーナメント作成時のパラメータ。手で書き換えるのはここ。
+const TOURNAMENT_CONFIG = {
+  name: TOURNAMENT_NAME,
+  gameVariant: GAME_VARIANT,
+  buyIn: BUY_IN,
+  startingChips: STARTING_CHIPS,
+  minPlayers: 3,
+  maxPlayers: Math.max(BOT_COUNT + 2, 18),
+  blindSchedule: FAST_BLIND_SCHEDULE,
+  registrationLevels: 2,
+  reentryDeadlineLevel: 2,
+  allowReentry: !NO_REENTRY,
+  maxReentries: 1,
+};
+
 async function main(): Promise<void> {
   console.log('=================================');
   console.log('  Tournament Bot Runner');
@@ -83,19 +98,7 @@ async function main(): Promise<void> {
     const createRes = await fetch(`${SERVER_URL}/api/tournaments`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: TOURNAMENT_NAME,
-        buyIn: BUY_IN,
-        startingChips: STARTING_CHIPS,
-        minPlayers: 2,
-        maxPlayers: Math.max(BOT_COUNT + 2, 18),
-        blindSchedule: FAST_BLIND_SCHEDULE,
-        registrationLevels: 30,
-        allowReentry: !NO_REENTRY,
-        maxReentries: 0,
-        reentryDeadlineLevel: 30,
-        gameVariant: GAME_VARIANT,
-      }),
+      body: JSON.stringify(TOURNAMENT_CONFIG),
     });
 
     if (!createRes.ok) {

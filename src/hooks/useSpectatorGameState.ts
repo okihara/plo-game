@@ -33,7 +33,7 @@ export interface SpectatorGameHookResult {
 /**
  * 観戦モード（table:spectate_join）。接続は connectionMode: spectate のみ。
  */
-export function useSpectatorGameState(watchTableId: string, inviteCode?: string): SpectatorGameHookResult {
+export function useSpectatorGameState(watchTableId: string): SpectatorGameHookResult {
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
@@ -95,13 +95,13 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     try {
       await wsService.connect({ connectionMode: 'spectate' });
       setIsConnected(true);
-      wsService.joinSpectate(watchTableId, inviteCode);
+      wsService.joinSpectate(watchTableId);
     } catch (err) {
       setConnectionError(err instanceof Error ? err.message : 'Connection failed');
     } finally {
       setIsConnecting(false);
     }
-  }, [watchTableId, inviteCode]);
+  }, [watchTableId]);
 
   const disconnect = useCallback(() => {
     wsService.leaveSpectate();
