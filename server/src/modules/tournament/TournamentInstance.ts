@@ -46,6 +46,7 @@ export class TournamentInstance {
   private pendingMoves: PendingMove[] = [];
   private pendingBusts: { odId: string; socket: Socket | null; chipsAtHandStart: number }[] = [];
   private disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+  private bfCache: { key: string; value: Record<string, number> | undefined } | null = null;
   private readonly io: Server;
   private readonly roomName: string;
 
@@ -417,6 +418,10 @@ export class TournamentInstance {
    * 残り人数が BUBBLE_FACTOR_PLAYER_THRESHOLD 以下まで絞られたら ICM ベースの
    * バブルファクターを計算して各プレイヤー (odId) に対する数値の Map を返す。
    * それ以前は計算コスト・情報過多の観点から undefined。
+   *
+   * broadcastTournamentState() はバスト/フェーズ遷移/FT 形成/ブラインドアップ等で
+   * チップが動かなくても連続して呼ばれる。スタック＋ペイアウトを fingerprint にして
+   * メモ化し、同一状態の再計算を避ける。
    */
   private computeBubbleFactorsForClient(): Record<string, number> | undefined {
     if (this.prizes.length === 0) return undefined;
@@ -432,12 +437,18 @@ export class TournamentInstance {
     if (odIds.length === 0 || odIds.length > BUBBLE_FACTOR_PLAYER_THRESHOLD) return undefined;
 
     const payouts = this.prizes.map(p => p.amount);
+
+    const pairs = odIds.map((id, i) => `${id}:${stacks[i]}`).sort();
+    const key = `${pairs.join('|')}#${payouts.join(',')}`;
+    if (this.bfCache && this.bfCache.key === key) return this.bfCache.value;
+
     const bfs = computeBubbleFactors(stacks, payouts);
     const out: Record<string, number> = {};
     for (let i = 0; i < odIds.length; i++) {
       const bf = bfs[i];
       if (Number.isFinite(bf)) out[odIds[i]] = bf;
     }
+    this.bfCache = { key, value: out };
     return out;
   }
 
