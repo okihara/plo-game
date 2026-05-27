@@ -26,6 +26,8 @@ interface PlayerProps {
   wonBoards?: number[];
   /** Hi-Lo: このプレイヤーが勝ったサイドの配列（['high'], ['low'], ['high','low']）。非Hi-Lo では未定義 */
   wonHiLoSides?: ('high' | 'low')[];
+  /** トナメ ICM バブルファクター。残 2 卓以下のとき各席に表示される。 */
+  bubbleFactor?: number;
 }
 
 function formatAction(
@@ -68,6 +70,12 @@ const betPositionStyles: Record<number, string> = {
 
 const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
 
+function bubbleFactorColor(bf: number): string {
+  if (bf < 1.3) return '#86efac';  // green-300: 低 ICM 圧
+  if (bf < 1.7) return '#fcd34d';  // amber-300: 中
+  return '#fca5a5';                // red-300:   高 ICM 圧
+}
+
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
   check: 'text-blue-400 border-blue-400',
@@ -98,6 +106,7 @@ export function Player({
   labelColor,
   wonBoards,
   wonHiLoSides,
+  bubbleFactor,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   const currentVariant = variant;
@@ -244,6 +253,14 @@ export function Player({
           )}
           <div className="text-[3.5cqw] text-white truncate">{player.name}</div>
           <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
+          {bubbleFactor !== undefined && (
+            <div
+              className="absolute -top-[2cqw] -right-[1cqw] px-[1.2cqw] py-[0.2cqw] bg-black/90 border border-white/40 rounded text-[2.8cqw] leading-none whitespace-nowrap z-[26]"
+              style={{ color: bubbleFactorColor(bubbleFactor) }}
+            >
+              BF{bubbleFactor.toFixed(2)}
+            </div>
+          )}
         </div>
       </div>
 

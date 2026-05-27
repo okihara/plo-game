@@ -14,8 +14,10 @@ import {
   PendingMove,
   TournamentResult,
 } from './types.js';
+import { computeBubbleFactors } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
-import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
+import { BUBBLE_FACTOR_PLAYER_THRESHOLD, PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
+import { TABLE_CONSTANTS } from '../table/constants.js';
 
 /**
  * BlindLevel から TableInstance に渡す blinds 文字列を生成。
@@ -44,6 +46,7 @@ export class TournamentInstance {
   private pendingMoves: PendingMove[] = [];
   private pendingBusts: { odId: string; socket: Socket | null; chipsAtHandStart: number }[] = [];
   private disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
+  private bfCache: { key: string; value: Record<string, number> | undefined } | null = null;
   private readonly io: Server;
   private readonly roomName: string;
 
@@ -407,7 +410,46 @@ export class TournamentInstance {
       averageStack: stackSummary.averageStack,
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       gameVariant: this.config.gameVariant,
+      bubbleFactors: this.computeBubbleFactorsForClient(),
     };
+  }
+
+  /**
+   * 残り人数が BUBBLE_FACTOR_PLAYER_THRESHOLD 以下まで絞られたら ICM ベースの
+   * バブルファクターを計算して各プレイヤー (odId) に対する数値の Map を返す。
+   * それ以前は計算コスト・情報過多の観点から undefined。
+   *
+   * broadcastTournamentState() はバスト/フェーズ遷移/FT 形成/ブラインドアップ等で
+   * チップが動かなくても連続して呼ばれる。スタック＋ペイアウトを fingerprint にして
+   * メモ化し、同一状態の再計算を避ける。
+   */
+  private computeBubbleFactorsForClient(): Record<string, number> | undefined {
+    if (this.prizes.length === 0) return undefined;
+
+    const odIds: string[] = [];
+    const stacks: number[] = [];
+    for (const p of this.players.values()) {
+      if (p.status === 'playing' || p.status === 'disconnected') {
+        odIds.push(p.odId);
+        stacks.push(p.chips);
+      }
+    }
+    if (odIds.length === 0 || odIds.length > BUBBLE_FACTOR_PLAYER_THRESHOLD) return undefined;
+
+    const payouts = this.prizes.map(p => p.amount);
+
+    const pairs = odIds.map((id, i) => `${id}:${stacks[i]}`).sort();
+    const key = `${pairs.join('|')}#${payouts.join(',')}`;
+    if (this.bfCache && this.bfCache.key === key) return this.bfCache.value;
+
+    const bfs = computeBubbleFactors(stacks, payouts);
+    const out: Record<string, number> = {};
+    for (let i = 0; i < odIds.length; i++) {
+      const bf = bfs[i];
+      if (Number.isFinite(bf)) out[odIds[i]] = bf;
+    }
+    this.bfCache = { key, value: out };
+    return out;
   }
 
   public getLobbyInfo() {
@@ -807,7 +849,13 @@ export class TournamentInstance {
 
     // レイト登録中は空き席を維持したいので、テーブル破壊は残り5人以下に限定する。
     // move-balance（diff ≥ 2）は通常通り走らせる。
-    const options = this.isRegistrationOpen()
+    // ただし、minPlayersToStart 未満の卓があると次ハンドが始まらず詰むため、
+    // その場合は制約を外して通常通り統合する（例: 5卓×2人=10人で全卓 stuck するケース）。
+    const minPlayers = TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
+    const hasStuckTable = tableInfos.some(
+      t => t.playerCount > 0 && t.playerCount < minPlayers
+    );
+    const options = (this.isRegistrationOpen() && !hasStuckTable)
       ? { maxTotalForBreak: 5 }
       : undefined;
 

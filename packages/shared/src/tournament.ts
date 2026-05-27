@@ -37,6 +37,12 @@ export interface ClientTournamentState {
   averageStack: number;
   payoutStructure: { position: number; amount: number }[];
   gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
+  /**
+   * ICM ベースのバブルファクター（odId → 数値）。
+   * 残テーブル数が少なくなった段階（実装では 2 卓以下）でのみ提供される。
+   * 値の意味: 1.0=リング相当、>1.0=ICM 圧あり。
+   */
+  bubbleFactors?: Record<string, number>;
 }
 
 // --- Tournament Lobby Info ---

@@ -224,6 +224,59 @@ describe('TableBalancer', () => {
       expect(actions).toEqual([]);
     });
 
+    it('残り4人 (2+2) なら統合する (両卓idle)', () => {
+      // レイト中、両テーブルでほぼ同時にバストして 2-2 になったケース。
+      // totalPlayers=4 ≤ maxTotalForBreak=5 で統合発火する。
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 2, isHandInProgress: false },
+          { tableId: 't2', playerCount: 2, isHandInProgress: false },
+        ],
+        (id) => id === 't1' ? ['p1', 'p2'] : ['p3', 'p4'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      // 破壊対象は人数同点なので最初のテーブル (t1) が選ばれる
+      expect(actions).toHaveLength(2);
+      expect(actions.every(a => a.type === 'break')).toBe(true);
+      expect(actions.every(a => a.fromTableId === 't1')).toBe(true);
+      expect(actions.every(a => a.toTableId === 't2')).toBe(true);
+      expect(actions.map(a => a.odId).sort()).toEqual(['p1', 'p2']);
+    });
+
+    it('残り4人 (2+2) で片方ハンド中なら、idle 側を破壊して統合する', () => {
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 2, isHandInProgress: true },
+          { tableId: 't2', playerCount: 2, isHandInProgress: false },
+        ],
+        (id) => id === 't1' ? ['p1', 'p2'] : ['p3', 'p4'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      // sort で isHandInProgress=false を優先 → t2 が破壊対象
+      expect(actions).toHaveLength(2);
+      expect(actions.every(a => a.fromTableId === 't2')).toBe(true);
+      expect(actions.every(a => a.toTableId === 't1')).toBe(true);
+    });
+
+    it('残り4人 (2+2) で両卓ハンド中なら、移動は保留する', () => {
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 2, isHandInProgress: true },
+          { tableId: 't2', playerCount: 2, isHandInProgress: true },
+        ],
+        (id) => id === 't1' ? ['p1', 'p2'] : ['p3', 'p4'],
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      // 両方ハンド中 → 次のハンド完了後に再チェックされるはず
+      expect(actions).toEqual([]);
+    });
+
     it('残り12人 (5+4+3) は本来3→2卓に統合可能だが、レイト中なら維持', () => {
       // (3-1)*6=12, totalPlayers=12 → 通常なら破壊可能
       // が maxTotalForBreak=5 で阻止される
@@ -248,6 +301,59 @@ describe('TableBalancer', () => {
       expect(actions[0].type).toBe('move');
       expect(actions[0].fromTableId).toBe('t1');
       expect(actions[0].toTableId).toBe('t3');
+    });
+
+    // バグ報告 (tournamentId=46HiV79XbW5L) 再現:
+    // レイト中に複数卓が minPlayersToStart 未満になり全卓 stuck したケース。
+    // TournamentInstance 側で maxTotalForBreak 制約を外した呼び出しを想定し、
+    // checkBalance が統合 action を返すことを確認する。
+    it('5卓×2人 (合計10人) を options なしで呼ぶと統合される', () => {
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 2, isHandInProgress: false },
+          { tableId: 't2', playerCount: 2, isHandInProgress: false },
+          { tableId: 't3', playerCount: 2, isHandInProgress: false },
+          { tableId: 't4', playerCount: 2, isHandInProgress: false },
+          { tableId: 't5', playerCount: 2, isHandInProgress: false },
+        ],
+        (id) => {
+          const map: Record<string, string[]> = {
+            t1: ['p1', 'p2'], t2: ['p3', 'p4'], t3: ['p5', 'p6'],
+            t4: ['p7', 'p8'], t5: ['p9', 'p10'],
+          };
+          return map[id] ?? [];
+        },
+        6
+      );
+
+      // canReduceTable: 10 ≤ (5-1)*6 = 24 → true → 統合 action が返る
+      expect(actions.length).toBeGreaterThan(0);
+      expect(actions.every(a => a.type === 'break')).toBe(true);
+    });
+
+    it('5卓×2人 でも maxTotalForBreak=5 が指定されると統合しない (バグの旧挙動)', () => {
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 2, isHandInProgress: false },
+          { tableId: 't2', playerCount: 2, isHandInProgress: false },
+          { tableId: 't3', playerCount: 2, isHandInProgress: false },
+          { tableId: 't4', playerCount: 2, isHandInProgress: false },
+          { tableId: 't5', playerCount: 2, isHandInProgress: false },
+        ],
+        (id) => {
+          const map: Record<string, string[]> = {
+            t1: ['p1', 'p2'], t2: ['p3', 'p4'], t3: ['p5', 'p6'],
+            t4: ['p7', 'p8'], t5: ['p9', 'p10'],
+          };
+          return map[id] ?? [];
+        },
+        6,
+        { maxTotalForBreak: 5 }
+      );
+
+      // 10 > maxTotalForBreak=5 で破壊不可、 diff=0 で move-balance も走らない
+      // → 何もしない (これが旧挙動: 全卓 stuck の原因)
+      expect(actions).toEqual([]);
     });
 
     it('オプション未指定なら従来通り破壊する', () => {

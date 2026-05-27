@@ -131,6 +131,14 @@ export const PAYOUT_STRUCTURES: { paidPlaces: number; percentages: number[] }[] 
 // リエントリー可能回数
 export const DEFAULT_MAX_REENTRIES = 2;
 
+// ICM バブルファクターを計算・配信する残り人数の閾値。
+// この人数以下になったら各席に BF を出す。それより多い間は計算コストと
+// 情報過多を避けるため undefined を返す。
+// 計算量は O(n * sum_{i=0}^{K} C(n,i) * n^2)。K (入賞人数) は総エントリーの
+// 15% で、大規模トナメだと最大 ~15 になりうる。実測で n=12, K=10 でも
+// 30ms 程度に収まるため、broadcast がブロックされない上限として 12 を採用。
+export const BUBBLE_FACTOR_PLAYER_THRESHOLD = 12;
+
 /**
  * structureId と variant からブラインド表を組み立てる。
  * ベース ladder は variant に応じて DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE。
