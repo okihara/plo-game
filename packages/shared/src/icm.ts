@@ -5,22 +5,29 @@
 //                a payout structure.
 //
 // computeBubbleFactors:
-//                For each player returns the standard (Tysen Streib style)
-//                "individual" bubble factor:
-//                  BF = (ICM lost when busting from current stack)
-//                     / (ICM gained when doubling current stack)
-//                Bust: player finishes at the next-eliminated position and
-//                receives whatever payout that position pays (0 once past the
-//                money).
-//                Double: player's stack grows by their own stack worth of
-//                chips, taken proportionally from every other player so that
-//                total chips are preserved. When the player has more chips
-//                than the others combined, the take is capped at the others'
-//                total (full coverage).
+//                Symmetric "fair exchange" bubble factor:
+//                  BF = ($EV lost when risking X chips)
+//                     / ($EV gained when winning X chips)
+//                where X = min(myChips, others_total) — i.e. the maximum amount
+//                that can change hands in a single all-in against the field.
+//                Both the win and loss scenarios trade the same X, so chip and
+//                $ exchange rates are compared symmetrically.
+//                The win scenario takes X chips proportionally from every other
+//                player; the loss scenario hands X chips back to them by the same
+//                proportional split. If the loss would bring the player to 0
+//                chips they're treated as busting at the next-eliminated
+//                position (deterministic payout for that finish).
 //
 //                BF = 1.0  → chips and $ trade 1:1 (cash-game-like)
 //                BF > 1.0  → ICM pressure (losing chips costs more $ than winning gains)
 //                BF < 1.0  → reverse pressure (rare, e.g. heads-up satellites)
+//
+//                Note: the canonical Tysen Streib BF uses "lose all chips
+//                (bust)" vs "double up (capped)" which makes the formula
+//                asymmetric when the player has more chips than the others
+//                combined. The symmetric formulation here keeps HU in-the-money
+//                BFs near 1.0 for both players, matching the theoretical
+//                "no remaining ICM pressure" property of HU IM.
 
 /**
  * Pure-function ICM with bitmask memoization. O(2^n * n) per call.
@@ -87,16 +94,15 @@ export function computeICM(stacks: number[], payouts: number[]): number[] {
 }
 
 /**
- * Standard "individual" bubble factor per player.
- * Returns NaN for a player when the win scenario provides zero $ gain
+ * Symmetric "fair exchange" bubble factor per player.
+ * Returns NaN for a player when the gain scenario provides zero $ gain
  * (e.g. they already have all chips and a payout structure that maxes out).
  *
- * Bust scenario uses the deterministic "next-place finish" prize rather than
- * running ICM on a zero-stack input. Setting a player's stack to 0 and re-running
- * `computeICM` would short-circuit the recursive sub-game (total chips become 0
- * once the surviving players are removed), so the busted player would receive
- * $0 instead of the payout for the position they actually finish at. Computing
- * the prize directly avoids that edge case.
+ * Both the win and loss scenarios trade the same chip amount X = min(myChips,
+ * others_total) so that BF reflects the marginal $/chip exchange rate rather
+ * than the asymmetric "bust vs capped double" of the classic Streib BF. When
+ * the loss leaves the player at 0 chips they're treated as busting at the
+ * next-eliminated position (deterministic finish-position prize).
  */
 export function computeBubbleFactors(stacks: number[], payouts: number[]): number[] {
   const n = stacks.length;
@@ -117,26 +123,41 @@ export function computeBubbleFactors(stacks: number[], payouts: number[]): numbe
     const myChips = stacks[i];
     if (myChips <= 0) continue;
 
-    const lossEv = icmNow[i] - bustPrize;
-
-    // Double scenario: player i's stack doubles, the gain is taken
-    // proportionally from every other player based on their current stack.
-    // Skip if it would require more chips than the others combined have.
     const others = totalChips - myChips;
     if (others <= 0) continue; // player already has all chips
-    const stacksDouble = stacks.slice();
-    // The amount taken from each other player j: (stacks[j] / others) * myChips.
-    // If myChips > others, the proportional take would exceed some j's stack,
-    // so cap the take at the available chips and treat anything beyond that
-    // as "i takes as many chips as available" (still a fair upper bound).
-    const take = Math.min(myChips, others);
-    stacksDouble[i] = myChips + take;
+    // Maximum symmetric trade — both the win and loss scenarios move this many
+    // chips. Capped at the smaller of "what I can lose" and "what the others
+    // can collectively cover".
+    const tradeAmount = Math.min(myChips, others);
+
+    // Win scenario: gain `tradeAmount` chips, taken proportionally from every
+    // other player based on their current stack.
+    const stacksWin = stacks.slice();
+    stacksWin[i] = myChips + tradeAmount;
     for (let j = 0; j < n; j++) {
       if (j === i) continue;
-      stacksDouble[j] = stacks[j] - (stacks[j] / others) * take;
+      stacksWin[j] = stacks[j] - (stacks[j] / others) * tradeAmount;
     }
-    const icmDouble = computeICM(stacksDouble, payouts);
-    const gainEv = icmDouble[i] - icmNow[i];
+    const icmWin = computeICM(stacksWin, payouts);
+    const gainEv = icmWin[i] - icmNow[i];
+
+    // Loss scenario: give `tradeAmount` chips back to the field by the same
+    // proportional split. If this empties the player's stack they're busted
+    // and finish at the deterministic next-elimination position.
+    let lossEv: number;
+    const newStack = myChips - tradeAmount;
+    if (newStack <= 0) {
+      lossEv = icmNow[i] - bustPrize;
+    } else {
+      const stacksLose = stacks.slice();
+      stacksLose[i] = newStack;
+      for (let j = 0; j < n; j++) {
+        if (j === i) continue;
+        stacksLose[j] = stacks[j] + (stacks[j] / others) * tradeAmount;
+      }
+      const icmLose = computeICM(stacksLose, payouts);
+      lossEv = icmNow[i] - icmLose[i];
+    }
 
     if (gainEv > 0) out[i] = lossEv / gainEv;
   }

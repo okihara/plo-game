@@ -80,15 +80,20 @@ describe('computeBubbleFactors', () => {
     expect(bfs[1]).toBeCloseTo(bfs[3], 6);
   });
 
-  it('heads-up in the money: short stack BF is ~1.0 (no remaining ICM pressure)', () => {
-    // Both players are already guaranteed a payout. The short stack's all-in
-    // is fully symmetric (lose -> 2nd place, win -> chips equalize), so chip
-    // and $ trade 1:1 for the short side.
+  it('heads-up in the money: both BFs are ~1.0 (no remaining ICM pressure)', () => {
+    // Both players are already guaranteed a payout. With the symmetric "fair
+    // exchange" formulation, chip and $ trade 1:1 for both sides — the chip
+    // leader can only really risk what the opponent covers (=opponent stack),
+    // so risking and gaining that amount produces equal $EV deltas.
     const bfs = computeBubbleFactors([6000, 4000], [700, 300]);
+    expect(bfs[0]).toBeCloseTo(1.0, 6);
     expect(bfs[1]).toBeCloseTo(1.0, 6);
-    // The chip leader's "double" is capped at the opponent's stack (full
-    // coverage rather than a true doubling), so the leader's BF still sits
-    // above 1.0 — this is the standard Streib individual BF behavior.
-    expect(bfs[0]).toBeGreaterThan(1.0);
+  });
+
+  it('WTA reduces to chip-EV: all BFs are exactly 1.0', () => {
+    // Winner-take-all with any stack distribution. $EV is linear in chips,
+    // so chip and $ trade 1:1 for every player.
+    const bfs = computeBubbleFactors([3500, 2500, 2000, 1500, 500], [1000]);
+    bfs.forEach(bf => expect(bf).toBeCloseTo(1.0, 6));
   });
 });
