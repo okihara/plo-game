@@ -154,6 +154,7 @@ export function WatchGame({ tableId, tournamentId, onNavigateWatchTable, onBack 
             blindsLabel={blindsLabel}
             isSpectator
             isTournament={!!tournamentState}
+            bubbleFactors={tournamentState?.bubbleFactors}
             maintenanceStatus={maintenanceStatus}
             announcementStatus={announcementStatus}
           >
