@@ -1315,6 +1315,93 @@ describe('TournamentInstance', () => {
       expect(tables.has(tableAId)).toBe(false);
       expect(tournament.getTableCount()).toBe(1);
     });
+
+    /**
+     * 本番の finalizeHand を模した bust ヘルパー:
+     * - TournamentInstance.onPlayerBusted を呼ぶ
+     * - TableInstance.unseatPlayer も呼ぶ (本番では line 1245 で行う処理)
+     */
+    function simulateBustWithUnseat(
+      tournament: TournamentInstance,
+      odId: string,
+      chipsAtHandStart: number,
+    ): void {
+      const player = tournament.getPlayer(odId);
+      const tableId = player?.tableId;
+      const tables = (tournament as any).tables as Map<string, any>;
+      const table = tableId ? tables.get(tableId) : undefined;
+      simulateBust(tournament, odId, chipsAtHandStart);
+      table?.unseatPlayer(odId);
+    }
+
+    // バグ報告再現: レイト登録中に「2-2」(両卓2人ずつ・合計4人)になっても
+    // 統合されず、各テーブル2人のままハンドが始まらない。
+    // 期待動作: maxTotalForBreak=5 で 4 ≤ 5 のため統合される。
+    it('レイト中 2-2 (合計4人) は1テーブルに統合される', () => {
+      const { tournament, tableAPlayers, tableBPlayers } = setup2Tables(io, 8);
+
+      // レイト登録中であることを確認 (registrationLevels: 2 デフォルト)
+      expect((tournament as any).isRegistrationOpen()).toBe(true);
+
+      // 各テーブルから 2人ずつバスト → 2-2 (合計4人残り)
+      simulateBustWithUnseat(tournament, tableAPlayers[0], 300);
+      simulateBustWithUnseat(tournament, tableAPlayers[1], 300);
+      simulateBustWithUnseat(tournament, tableBPlayers[0], 300);
+      simulateBustWithUnseat(tournament, tableBPlayers[1], 300);
+
+      const survivors = [
+        tableAPlayers[2], tableAPlayers[3],
+        tableBPlayers[2], tableBPlayers[3],
+      ];
+      const seatChips = survivors.map((id, i) => ({
+        odId: id, seatIndex: i, chips: 3000,
+      }));
+
+      // ハンド完了をシミュレート (onHandSettled → finalize → onHandPresentationComplete)
+      simulateHandSettled(tournament, seatChips);
+
+      // 1テーブルに統合されている
+      expect(tournament.getTableCount()).toBe(1);
+
+      // 全生き残り4人が同一テーブルに集まっている
+      const tableIds = new Set<string>();
+      for (const odId of survivors) {
+        const p = tournament.getPlayer(odId);
+        if (p?.status === 'playing' && p.tableId) {
+          tableIds.add(p.tableId);
+        }
+      }
+      expect(tableIds.size).toBe(1);
+    });
+
+    // 「次ハンドが始まらず止まった」シナリオ:
+    // 2-2 状態で統合が発火しないと、各テーブル2人ずつでは
+    // MIN_PLAYERS_TO_START=3 を下回ってハンドが始まらず詰む。
+    it('レイト中 2-2 から統合後、移動先テーブルでハンドが開始可能になる', () => {
+      const { tournament, tableAPlayers, tableBPlayers } = setup2Tables(io, 8);
+
+      simulateBustWithUnseat(tournament, tableAPlayers[0], 300);
+      simulateBustWithUnseat(tournament, tableAPlayers[1], 300);
+      simulateBustWithUnseat(tournament, tableBPlayers[0], 300);
+      simulateBustWithUnseat(tournament, tableBPlayers[1], 300);
+
+      const survivors = [
+        tableAPlayers[2], tableAPlayers[3],
+        tableBPlayers[2], tableBPlayers[3],
+      ];
+      const seatChips = survivors.map((id, i) => ({
+        odId: id, seatIndex: i, chips: 3000,
+      }));
+
+      simulateHandSettled(tournament, seatChips);
+
+      // 統合後の残りテーブルの人数が MIN_PLAYERS_TO_START (=3) 以上であること
+      // これを満たさないと maybeStartHand() で next hand が発火しない
+      const tables = (tournament as any).tables as Map<string, any>;
+      const remainingTables = Array.from(tables.values()) as any[];
+      expect(remainingTables).toHaveLength(1);
+      expect(remainingTables[0].getPlayerCount()).toBeGreaterThanOrEqual(3);
+    });
   });
 
   // ============================================
