@@ -16,6 +16,7 @@ import {
 } from './types.js';
 import { maskName } from '../../shared/utils.js';
 import { PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
+import { TABLE_CONSTANTS } from '../table/constants.js';
 
 /**
  * BlindLevel から TableInstance に渡す blinds 文字列を生成。
@@ -807,7 +808,13 @@ export class TournamentInstance {
 
     // レイト登録中は空き席を維持したいので、テーブル破壊は残り5人以下に限定する。
     // move-balance（diff ≥ 2）は通常通り走らせる。
-    const options = this.isRegistrationOpen()
+    // ただし、minPlayersToStart 未満の卓があると次ハンドが始まらず詰むため、
+    // その場合は制約を外して通常通り統合する（例: 5卓×2人=10人で全卓 stuck するケース）。
+    const minPlayers = TABLE_CONSTANTS.MIN_PLAYERS_TO_START;
+    const hasStuckTable = tableInfos.some(
+      t => t.playerCount > 0 && t.playerCount < minPlayers
+    );
+    const options = (this.isRegistrationOpen() && !hasStuckTable)
       ? { maxTotalForBreak: 5 }
       : undefined;
 
