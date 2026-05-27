@@ -495,7 +495,7 @@ function getDummyCards(count: number, usedCards: Card[]): Card[] {
 
 export function getPositionBonus(position: string): number {
   switch (position) {
-    case 'BTN': return 0.1;
+    case 'BTN': return 0.09;
     case 'CO': return 0.08;
     case 'HJ': return 0.05;
     case 'UTG': return 0;
