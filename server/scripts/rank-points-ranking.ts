@@ -9,7 +9,7 @@
  *   cd server && npx tsx scripts/rank-points-ranking.ts --prod --diff   # 最新トナメ前後の順位差分をJSONで出力
  *
  * 付与ルール:
- *   - 対象: TournamentResult が存在する完了トナメ
+ *   - 対象: シーズン期間内（SEASON_START 〜 SEASON_END）に completedAt がある完了トナメ
  *   - 総エントリー数 N = results.length + sum(reentries)（Bot含む）
  *   - 賞金プール = Tournament.prizePool（DBに保存された実額）
  *   - 賞金分配 = 現行の PrizeCalculator デフォルトルール（上位15%ペイアウト + PAYOUT_STRUCTURES）を
@@ -50,6 +50,11 @@ const prisma = new PrismaClient({
   datasources: isProd ? { db: { url: process.env.DATABASE_PROD_PUBLIC_URL } } : undefined,
 });
 
+const SEASON_NAME = 'シーズン１';
+const SEASON_LABEL = '2026 1/1 - 6/30';
+const SEASON_START = new Date('2026-01-01T00:00:00+09:00');
+const SEASON_END = new Date('2026-06-30T23:59:59.999+09:00');
+
 function rpFromAmount(amount: number): number {
   if (amount <= 0) return 0;
   return Math.ceil(amount / 1000);
@@ -71,7 +76,10 @@ type TournamentRow = Awaited<ReturnType<typeof fetchTournaments>>[number];
 
 async function fetchTournaments() {
   return prisma.tournament.findMany({
-    where: { status: 'COMPLETED' },
+    where: {
+      status: 'COMPLETED',
+      completedAt: { gte: SEASON_START, lte: SEASON_END },
+    },
     select: {
       id: true,
       name: true,
@@ -242,8 +250,8 @@ async function main() {
     const limit = Math.min(TOP, ranking.length);
     const today = new Date().toISOString().slice(0, 10);
     const lines: string[] = [];
-    lines.push(`#title=BabyPLO トーナメント RP ランキング TOP ${limit}`);
-    lines.push(`#subtitle=完了トナメ ${tournamentsCounted} 本分の暫定集計（${today}時点）`);
+    lines.push(`#title=BabyPLO ${SEASON_NAME} RP ランキング TOP ${limit}`);
+    lines.push(`#subtitle=${SEASON_LABEL} / 完了トナメ ${tournamentsCounted} 本の集計（${today}時点）`);
     lines.push(`#footer=賞金額（上位15%へ再分配）の 1/1000 切り上げで RP 化`);
     ranking.slice(0, limit).forEach((u, i) => {
       lines.push([
@@ -273,6 +281,7 @@ async function main() {
     return;
   }
 
+  console.log(`シーズン: ${SEASON_NAME} (${SEASON_LABEL})`);
   console.log(`完了トナメ数: ${tournamentsCounted}（エントリー数<2 でスキップ: ${tournamentsSkipped}）`);
   console.log(`ランキング対象ユーザー: ${ranking.length} 人\n`);
 
