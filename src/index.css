@@ -260,8 +260,21 @@ body {
 }
 
 /* Dark gold gradient for game screen */
+/* スキン: 既定(classic)。data-skin で背景とカード裏面色を切り替える。
+   カード裏面色は CSS 変数で配下のカードに伝播する（Card.tsx が var() 参照）。
+   プレイ画面外ではこの変数は未定義なので、Card.tsx 側のフォールバック値が効く。 */
 .game-bg {
   background: url('/images/bg.png') center / cover no-repeat;
+  --card-back-from: #1e3a8a; /* blue-800 */
+  --card-back-to: #172554;   /* blue-950 */
+  --card-back-border: #3b82f6; /* blue-500 */
+}
+
+.game-bg[data-skin="midnight"] {
+  background: radial-gradient(ellipse 85% 60% at 50% 36%, #1b3b2b 0%, #0d2018 52%, #05100b 100%);
+  --card-back-from: #064e3b; /* emerald-900 */
+  --card-back-to: #022c22;
+  --card-back-border: #10b981; /* emerald-500 */
 }
 
 /* Debug outline toggle (Ctrl+Shift+D) */

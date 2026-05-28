@@ -16,7 +16,7 @@ import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
 import { WatchGame } from './pages/WatchGame';
-import { GameSettingsProvider } from './contexts/GameSettingsContext';
+import { GameSettingsProvider, useGameSettings } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
 
@@ -32,6 +32,7 @@ if (import.meta.env.DEV) {
 }
 
 function App() {
+  const { settings } = useGameSettings();
   const [blinds, setBlinds] = useState<string | null>(null);
   const [isFastFold, setIsFastFold] = useState(false);
   const [variant, setVariant] = useState<string | undefined>(undefined);
@@ -167,6 +168,7 @@ function App() {
       <div className="w-full h-[100dvh] flex items-center justify-center bg-black relative">
         <div
           id="plo-viewport"
+          data-skin={isGameScreen ? settings.tableSkin : undefined}
           className={`@container flex flex-col w-full h-full max-w-[calc(100dvh*9/16)] max-h-[calc(100vw*16/9)] aspect-[9/16] overflow-hidden relative ${bgClass}`}
         >
           {page}

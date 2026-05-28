@@ -3,6 +3,7 @@ import { Volume2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { getVolumeLevel, setVolumeLevel, type VolumeLevel } from '../services/actionSound';
+import { TABLE_SKINS } from '../theme/skins';
 
 interface SettingsPopupProps {
   onClose: () => void;
@@ -13,7 +14,7 @@ const VOLUME_LABELS: Record<VolumeLevel, string> = { 0: 'OFF', 1: '小', 2: '中
 
 export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps) {
   const { user, logout } = useAuth();
-  const { settings, setUseBBNotation, setShowHandName, setAnalysisEnabled } = useGameSettings();
+  const { settings, setUseBBNotation, setShowHandName, setAnalysisEnabled, setTableSkin } = useGameSettings();
   const [volume, setVolume] = useState<VolumeLevel>(getVolumeLevel());
 
   const handleVolumeChange = (level: VolumeLevel) => {
@@ -60,6 +61,29 @@ export function SettingsPopup({ onClose, showLogout = true }: SettingsPopupProps
                   }`}
                 >
                   {VOLUME_LABELS[level]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Table Skin */}
+          <div>
+            <div className="flex items-center gap-[1.5cqw] mb-[1.5cqw]">
+              <p className="text-[3.2cqw] font-bold text-cream-900">テーブルスキン</p>
+              <p className="text-[2.5cqw] text-cream-700 ml-auto">プレイ画面の見た目</p>
+            </div>
+            <div className="flex gap-[1.5cqw]">
+              {TABLE_SKINS.map(skin => (
+                <button
+                  key={skin.id}
+                  onClick={() => setTableSkin(skin.id)}
+                  className={`flex-1 h-[6cqw] rounded-[1.5cqw] text-[2.8cqw] font-bold transition-all ${
+                    settings.tableSkin === skin.id
+                      ? 'bg-forest text-white'
+                      : 'bg-cream-100 text-cream-700 hover:bg-cream-200'
+                  }`}
+                >
+                  {skin.label}
                 </button>
               ))}
             </div>

@@ -1,11 +1,13 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { formatChips as formatChipsAbsolute } from '../utils/formatChips';
+import { DEFAULT_TABLE_SKIN, isTableSkinId, type TableSkinId } from '../theme/skins';
 
 interface GameSettings {
   useBBNotation: boolean;
   bigBlind: number;
   showHandName: boolean;
   analysisEnabled: boolean;
+  tableSkin: TableSkinId;
 }
 
 interface GameSettingsContextValue {
@@ -14,6 +16,7 @@ interface GameSettingsContextValue {
   setBigBlind: (value: number) => void;
   setShowHandName: (value: boolean) => void;
   setAnalysisEnabled: (value: boolean) => void;
+  setTableSkin: (value: TableSkinId) => void;
   formatChips: (amount: number) => string;
 }
 
@@ -54,11 +57,15 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
     const loaded = loadSettings();
     return loaded.analysisEnabled ?? false;
   });
+  const [tableSkin, setTableSkinState] = useState<TableSkinId>(() => {
+    const loaded = loadSettings();
+    return isTableSkinId(loaded.tableSkin) ? loaded.tableSkin : DEFAULT_TABLE_SKIN;
+  });
   const [bigBlind, setBigBlind] = useState(100);
 
   useEffect(() => {
-    saveSettings({ useBBNotation, showHandName, analysisEnabled });
-  }, [useBBNotation, showHandName, analysisEnabled]);
+    saveSettings({ useBBNotation, showHandName, analysisEnabled, tableSkin });
+  }, [useBBNotation, showHandName, analysisEnabled, tableSkin]);
 
   const setUseBBNotation = (value: boolean) => {
     setUseBBNotationState(value);
@@ -70,6 +77,10 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
 
   const setAnalysisEnabled = (value: boolean) => {
     setAnalysisEnabledState(value);
+  };
+
+  const setTableSkin = (value: TableSkinId) => {
+    setTableSkinState(value);
   };
 
   const formatChips = (amount: number): string => {
@@ -85,11 +96,12 @@ export function GameSettingsProvider({ children }: { children: ReactNode }) {
   };
 
   const value: GameSettingsContextValue = {
-    settings: { useBBNotation, bigBlind, showHandName, analysisEnabled },
+    settings: { useBBNotation, bigBlind, showHandName, analysisEnabled, tableSkin },
     setUseBBNotation,
     setBigBlind,
     setShowHandName,
     setAnalysisEnabled,
+    setTableSkin,
     formatChips,
   };
 

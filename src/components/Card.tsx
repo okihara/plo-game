@@ -105,8 +105,8 @@ export function FaceDownCard({ size = 'sm' }: FaceDownCardProps) {
   return (
     <div
       className={`
-        bg-gradient-to-br from-blue-800 to-blue-950
-        border-[0.3cqw] border-blue-500 rounded-[1cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)]
+        bg-gradient-to-br from-[var(--card-back-from,#1e3a8a)] to-[var(--card-back-to,#172554)]
+        border-[0.3cqw] border-[var(--card-back-border,#3b82f6)] rounded-[1cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)]
         relative overflow-hidden
         ${faceDownSizeStyles[size]}
       `}
@@ -161,7 +161,7 @@ export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: Card
           style={{ backfaceVisibility: 'hidden' }}
         />
         <div
-          className="absolute inset-0 bg-gradient-to-br from-blue-800 to-blue-950 border-[0.3cqw] border-blue-500 rounded-[1.5cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)] overflow-hidden"
+          className="absolute inset-0 bg-gradient-to-br from-[var(--card-back-from,#1e3a8a)] to-[var(--card-back-to,#172554)] border-[0.3cqw] border-[var(--card-back-border,#3b82f6)] rounded-[1.5cqw] shadow-[0_1cqw_2cqw_rgba(0,0,0,0.15)] overflow-hidden"
           style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
         >
           <div
