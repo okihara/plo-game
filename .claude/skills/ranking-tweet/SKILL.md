@@ -61,7 +61,7 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 **フォーマット骨格（案）:**
 
 ```
-【RPランキング更新】<トナメ名>終了後
+【シーズン1 RPランキング更新】<トナメ名>終了後
 
 🏆 1位 <name1>（<totalRp> / <マーカー>）
   2位 <name2>（<totalRp> / <マーカー>）
@@ -72,6 +72,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 
 #BabyPLO
 ```
+
+**シーズン表記は必須。** タイトルの冒頭に必ず「シーズン1」（現行シーズン）を入れる。複数シーズン制を前提にしたランキングなので、どの期間の集計かを明示する。
 
 マーカーは以下の凡例を使う（本文に説明は入れない、直感で伝わる範囲で）:
 
@@ -103,7 +105,7 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 ## 参考: 望ましい出力例（架空）
 
 ```
-【RPランキング更新】BabyPLO Holiday 4/19 終了後
+【シーズン1 RPランキング更新】BabyPLO Holiday 4/19 終了後
 
 🏆 1位 ゆたちん（766 / --）
   2位 IOwOI9（703 / ↑1）
