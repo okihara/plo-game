@@ -1,6 +1,6 @@
 /// <reference types="node" />
 /**
- * 設計中の RP（ランクポイント）ルールで本番DBを集計し、通算ランキングをテキスト出力する。
+ * 賞金ベースの RP（ランクポイント）ルールで本番DBを集計し、通算ランキングをテキスト出力する。
  *
  *   cd server && npx tsx scripts/rank-points-ranking.ts --prod
  *   cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=50
@@ -8,15 +8,13 @@
  *   cd server && npx tsx scripts/rank-points-ranking.ts --prod --tsv
  *   cd server && npx tsx scripts/rank-points-ranking.ts --prod --diff   # 最新トナメ前後の順位差分をJSONで出力
  *
- * 付与ルール（案）:
- *   - 対象: TournamentResult が存在する完了トナメ
- *   - エントリー数 N = そのトナメの結果行数（Bot含む。リエントリーは最終順位のみカウント）
- *   - 付与人数 payoutCount(N):
- *       N<=6:3 / <=18:6 / <=27:9 / <=54:15 / <=100:25 / <=200:40 / それ以上: ceil(N*0.20)
- *   - RP(position, N) = round(BASE * positionFactor * fieldFactor)
- *       BASE=100
- *       positionFactor = 0.1 ^ ((pos-1)/(payoutCount-1))  ※payoutCount>=2 前提
- *       fieldFactor    = sqrt(N / 9)
+ * 付与ルール:
+ *   - 対象: シーズン期間内（SEASON_START 〜 SEASON_END）に completedAt がある完了トナメ
+ *   - 総エントリー数 N = results.length + sum(reentries)（Bot含む）
+ *   - 賞金プール = Tournament.prizePool（DBに保存された実額）
+ *   - 賞金分配 = 現行の PrizeCalculator デフォルトルール（上位15%ペイアウト + PAYOUT_STRUCTURES）を
+ *               過去トナメにも一律適用して再算定する（過去の実際の分配は無視）
+ *   - RP = ceil(再算定後の賞金額 / 1000)。賞金 0 円なら 0RP
  *   - Bot (User.provider='bot') はランキングから除外（エントリー数には含める）
  *   - 同順位（同時バスト）の扱いはデータ上 position が単純整数なのでそのまま
  */
@@ -26,6 +24,7 @@ import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 import { spawn } from 'child_process';
 import { maskName } from '../src/shared/utils.js';
+import { PrizeCalculator } from '../src/modules/tournament/PrizeCalculator.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -51,29 +50,14 @@ const prisma = new PrismaClient({
   datasources: isProd ? { db: { url: process.env.DATABASE_PROD_PUBLIC_URL } } : undefined,
 });
 
-const BASE = 100;
+const SEASON_NAME = 'シーズン１';
+const SEASON_LABEL = '2026 1/1 - 6/30';
+const SEASON_START = new Date('2026-01-01T00:00:00+09:00');
+const SEASON_END = new Date('2026-06-30T23:59:59.999+09:00');
 
-function payoutCount(n: number): number {
-  if (n <= 6) return Math.min(3, n);
-  if (n <= 18) return 6;
-  if (n <= 27) return 9;
-  if (n <= 54) return 15;
-  if (n <= 100) return 25;
-  if (n <= 200) return 40;
-  return Math.ceil(n * 0.20);
-}
-
-const POSITION_DECAY_BASE = 0.05; // 小さいほど上位偏重
-const WINNER_BONUS = 1.3;          // 1位のみ追加係数
-
-function computeRp(position: number, entries: number): number {
-  const pc = payoutCount(entries);
-  if (position > pc) return 0;
-  if (pc <= 1) return BASE;
-  const positionFactor = Math.pow(POSITION_DECAY_BASE, (position - 1) / (pc - 1));
-  const fieldFactor = Math.sqrt(entries / 9);
-  const winnerMul = position === 1 ? WINNER_BONUS : 1;
-  return Math.round(BASE * positionFactor * fieldFactor * winnerMul);
+function rpFromAmount(amount: number): number {
+  if (amount <= 0) return 0;
+  return Math.ceil(amount / 1000);
 }
 
 type UserAgg = {
@@ -92,16 +76,21 @@ type TournamentRow = Awaited<ReturnType<typeof fetchTournaments>>[number];
 
 async function fetchTournaments() {
   return prisma.tournament.findMany({
-    where: { status: 'COMPLETED' },
+    where: {
+      status: 'COMPLETED',
+      completedAt: { gte: SEASON_START, lte: SEASON_END },
+    },
     select: {
       id: true,
       name: true,
       completedAt: true,
+      prizePool: true,
       results: {
         select: {
           userId: true,
           position: true,
           prize: true,
+          reentries: true,
           user: { select: { username: true, displayName: true, provider: true, nameMasked: true } },
         },
       },
@@ -119,17 +108,22 @@ function aggregate(tournaments: TournamentRow[]): {
   let tournamentsSkipped = 0;
 
   for (const t of tournaments) {
-    const N = t.results.length;
-    if (N < 2) {
+    const totalEntries =
+      t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
+    if (totalEntries < 2) {
       tournamentsSkipped++;
       continue;
     }
     tournamentsCounted++;
-    const pc = payoutCount(N);
+
+    const prizes = PrizeCalculator.calculate(totalEntries, t.prizePool);
+    const amountByPosition = new Map<number, number>(prizes.map((p) => [p.position, p.amount]));
+    const itmCount = prizes.length;
 
     for (const r of t.results) {
       if (r.user.provider === 'bot') continue;
-      const rp = computeRp(r.position, N);
+      const amount = amountByPosition.get(r.position) ?? 0;
+      const rp = rpFromAmount(amount);
       const name = r.user.displayName
         ? r.user.displayName
         : (r.user.nameMasked ? maskName(r.user.username) : r.user.username);
@@ -147,9 +141,9 @@ function aggregate(tournaments: TournamentRow[]): {
       cur.totalRp += rp;
       cur.entries += 1;
       if (r.position === 1) cur.wins += 1;
-      if (r.position <= pc) cur.itm += 1;
+      if (r.position <= itmCount) cur.itm += 1;
       if (r.position < cur.best) cur.best = r.position;
-      cur.totalPrize += r.prize;
+      cur.totalPrize += amount;
       agg.set(r.userId, cur);
     }
   }
@@ -256,9 +250,9 @@ async function main() {
     const limit = Math.min(TOP, ranking.length);
     const today = new Date().toISOString().slice(0, 10);
     const lines: string[] = [];
-    lines.push(`#title=BabyPLO トーナメント RP ランキング TOP ${limit}`);
-    lines.push(`#subtitle=完了トナメ ${tournamentsCounted} 本分の暫定集計（${today}時点）`);
-    lines.push(`#footer=順位 × エントリー数で算出 / 1位ボーナス×1.3`);
+    lines.push(`#title=BabyPLO ${SEASON_NAME} RP ランキング TOP ${limit}`);
+    lines.push(`#subtitle=${SEASON_LABEL} / 完了トナメ ${tournamentsCounted} 本の集計（${today}時点）`);
+    lines.push(`#footer=賞金額（上位15%へ再分配）の 1/1000 切り上げで RP 化`);
     ranking.slice(0, limit).forEach((u, i) => {
       lines.push([
         i + 1,
@@ -287,17 +281,25 @@ async function main() {
     return;
   }
 
-  console.log(`完了トナメ数: ${tournamentsCounted}（結果数<2 でスキップ: ${tournamentsSkipped}）`);
+  console.log(`シーズン: ${SEASON_NAME} (${SEASON_LABEL})`);
+  console.log(`完了トナメ数: ${tournamentsCounted}（エントリー数<2 でスキップ: ${tournamentsSkipped}）`);
   console.log(`ランキング対象ユーザー: ${ranking.length} 人\n`);
 
-  console.log('付与人数テーブル（N→payoutCount）:');
+  console.log('付与人数テーブル（N→paidPlaces, 上位15%）:');
   for (const n of [6, 9, 12, 18, 27, 36, 54, 72, 100, 150, 200, 300, 500]) {
-    console.log(`  N=${n.toString().padStart(4)} → ${payoutCount(n)}`);
+    console.log(`  N=${n.toString().padStart(4)} → ${PrizeCalculator.getDefaultPaidPlaces(n)}`);
   }
-  console.log('\nRP例（N別の1位 / 最下位付賞）:');
+  console.log('\nRP例（buyIn=1000 サンプル / 1位・最下位付賞）:');
+  const SAMPLE_BUYIN = 1000;
   for (const n of [6, 9, 18, 27, 54, 100, 200]) {
-    const pc = payoutCount(n);
-    console.log(`  N=${n.toString().padStart(4)} (付与${pc}人): 1位=${computeRp(1, n)} / ${pc}位=${computeRp(pc, n)}`);
+    const pool = SAMPLE_BUYIN * n;
+    const prizes = PrizeCalculator.calculate(n, pool);
+    if (prizes.length === 0) continue;
+    const topAmt = prizes[0].amount;
+    const lastAmt = prizes[prizes.length - 1].amount;
+    console.log(
+      `  N=${n.toString().padStart(4)} (付与${prizes.length}人, pool=${pool}): 1位=${rpFromAmount(topAmt)}RP(${topAmt}) / ${prizes.length}位=${rpFromAmount(lastAmt)}RP(${lastAmt})`
+    );
   }
   console.log('');
 

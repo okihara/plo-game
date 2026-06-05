@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { useAuth } from '../contexts/AuthContext';
-import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_DISPLAY_NAMES } from '../logic';
+import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History } from 'lucide-react';
 import { PokerTable } from './PokerTable';
@@ -250,21 +250,32 @@ export function GameTable({
               <Settings className="w-[5cqw] h-[5cqw]" />
             </button>
           </div>
-      {/* バリアント + ブラインド（中央上部）。
+      {/* バリアント + ブラインド（中央上部）。タブ自体はクリーム。種目名を囲む小さな
+          ラベルボックスの背景色だけ variant ごとに変える（VARIANT_BADGE_BG）。色定義の
+          ない plo（デフォルト）はラベル背景なし。
           sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
       <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-        <span className="bg-cream-200 rounded-b-[3cqw] px-[3cqw] py-[0.5cqw] text-black text-[3.3cqw] font-medium tracking-wide whitespace-nowrap w-[40cqw] h-[7cqw] text-center inline-flex items-end justify-center">
-          {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant}
-          {' '}
-          {gameState.bigBlind > 0
-            ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
-            : `ante ${gameState.ante}`}
-        </span>
+        <div className="bg-cream-200 rounded-b-[3cqw] w-[44cqw] h-[7cqw] text-[3.2cqw] tracking-wide whitespace-nowrap shadow-sm flex items-center justify-center gap-[2cqw]">
+          <span
+            className={`${
+              VARIANT_BADGE_BG[gameState.variant]
+                ? `${VARIANT_BADGE_BG[gameState.variant]} text-white rounded-[1.2cqw] px-[1.5cqw] py-[0cqw]`
+                : 'text-black'
+            }`}
+          >
+            {VARIANT_DISPLAY_NAMES[gameState.variant] || gameState.variant}
+          </span>
+          <span className="text-black font-medium">
+            {gameState.bigBlind > 0
+              ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
+              : `ante ${gameState.ante}`}
+          </span>
+        </div>
       </div>
 
           {/* バリアント変更通知（テーブル中央） */}
           {centerNotice && (
-            <div className="absolute top-[40cqh] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
+            <div className="absolute top-[26cqh] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
               <div className="bg-cream-200/80 text-gray-800 font-bold w-[70cqw] min-h-[32cqw] py-[4cqw] flex items-center justify-center rounded-[2cqw] text-[6cqw] animate-fade-in whitespace-pre-line text-center leading-[1.4]">
                 {centerNotice}
               </div>

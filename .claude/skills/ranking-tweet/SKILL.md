@@ -55,13 +55,20 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 - 出力先は `/tmp/rp-ranking.png` 固定でよい（毎回上書き）
 - 生成後、Read ツールでパスを開いてユーザーに見せる（`/tmp/rp-ranking.png`）
 - 画像は cream/forest テーマで、優勝列はゴールド強調・1〜3位はメダル丸表示
+- **生成直後にクリップボードへ PNG をコピーする**（X の投稿欄に Cmd+V で貼れるように）:
+
+  ```bash
+  osascript -e 'set the clipboard to (read (POSIX file "/tmp/rp-ranking.png") as «class PNGf»)'
+  ```
+
+  macOS 専用。コピー完了後、ユーザーに一言「クリップボードにコピー済み」と伝える。
 
 ### Step 4: ツイート下書き生成
 
 **フォーマット骨格（案）:**
 
 ```
-【RPランキング更新】<トナメ名>終了後
+【シーズン1 RPランキング更新】<トナメ名>終了後
 
 🏆 1位 <name1>（<totalRp> / <マーカー>）
   2位 <name2>（<totalRp> / <マーカー>）
@@ -72,6 +79,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 
 #BabyPLO
 ```
+
+**シーズン表記は必須。** タイトルの冒頭に必ず「シーズン1」（現行シーズン）を入れる。複数シーズン制を前提にしたランキングなので、どの期間の集計かを明示する。
 
 マーカーは以下の凡例を使う（本文に説明は入れない、直感で伝わる範囲で）:
 
@@ -103,7 +112,7 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 ## 参考: 望ましい出力例（架空）
 
 ```
-【RPランキング更新】BabyPLO Holiday 4/19 終了後
+【シーズン1 RPランキング更新】BabyPLO Holiday 4/19 終了後
 
 🏆 1位 ゆたちん（766 / --）
   2位 IOwOI9（703 / ↑1）
