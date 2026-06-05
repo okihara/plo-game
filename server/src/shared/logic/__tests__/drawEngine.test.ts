@@ -907,4 +907,85 @@ describe('Single Draw (maxDraws=1)', () => {
       expect(state.winners.length).toBeGreaterThan(0);
     });
   });
+
+  describe('不均等オールインのサイドポット', () => {
+    /**
+     * 3人がそれぞれ異なる額でオールインしたショーダウン状態を組み立てる。
+     * contribs[i] = プレイヤー i のハンド全体の拠出額（totalBetThisRound）。
+     */
+    function makeDrawShowdownState(contribs: number[], holeCards: Card[][]): GameState {
+      const state = JSON.parse(JSON.stringify(startSingleDrawThreePlayerHand())) as GameState;
+      state.currentStreet = 'showdown';
+      state.pot = contribs.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < contribs.length; i++) {
+        state.players[i].totalBetThisRound = contribs[i];
+        state.players[i].currentBet = 0;
+        state.players[i].chips = 0;
+        state.players[i].folded = false;
+        state.players[i].isAllIn = true;
+        state.players[i].holeCards = holeCards[i];
+      }
+      return state;
+    }
+
+    // 2-7 ロー: 数字が低いほど強い。ストレート/フラッシュは役として不利。
+    const BEST = [card('7','h'), card('5','d'), card('4','c'), card('3','s'), card('2','h')]; // 7-5-4-3-2
+    const MID  = [card('8','h'), card('6','d'), card('4','s'), card('3','c'), card('2','d')]; // 8-6-4-3-2
+    const WORST = [card('K','h'), card('Q','d'), card('J','c'), card('9','s'), card('8','d')]; // K-high
+
+    it('ショートスタックの最強ハンドはメインポットのみ獲得、サイドポットはカバー側の勝者へ', () => {
+      // P0: 30でオールイン(最強) / P1: 60(中) / P2: 60(最弱)
+      const state = makeDrawShowdownState([30, 60, 60], [BEST, MID, WORST]);
+      const result = determineDrawWinner(state);
+
+      // メインポット 90 (30×3) → P0、サイドポット 60 ((60-30)×2、P1/P2) → P1
+      const w0 = result.winners.find(w => w.playerId === 0);
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w0?.amount).toBe(90);
+      expect(w1?.amount).toBe(60);
+      expect(result.winners.find(w => w.playerId === 2)).toBeUndefined();
+
+      expect(result.players[0].chips).toBe(90);
+      expect(result.players[1].chips).toBe(60);
+      expect(result.players[2].chips).toBe(0);
+
+      // チップ総和が保存される（拠出合計 150）
+      const total = result.players.slice(0, 3).reduce((s, p) => s + p.chips, 0);
+      expect(total).toBe(150);
+    });
+
+    it('カバー側のプレイヤーが最強ならメイン・サイド両方を獲得', () => {
+      // P0: 30(最弱) / P1: 60でオールイン(最強) / P2: 60(中)
+      const state = makeDrawShowdownState([30, 60, 60], [WORST, BEST, MID]);
+      const result = determineDrawWinner(state);
+
+      // メイン 90 → P1、サイド 60 → P1 → 合計 150
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w1?.amount).toBe(150);
+      expect(result.winners.filter(w => w.amount > 0)).toHaveLength(1);
+
+      expect(result.players[1].chips).toBe(150);
+      expect(result.players[0].chips).toBe(0);
+      expect(result.players[2].chips).toBe(0);
+    });
+
+    it('メインポットがタイなら山分け、サイドポットは別途分配', () => {
+      // P0: 30(BEST) と P1: 60(BEST) が同じ役でタイ / P2: 60(WORST)
+      const TIE_A = [card('7','h'), card('5','d'), card('4','c'), card('3','s'), card('2','h')];
+      const TIE_B = [card('7','s'), card('5','c'), card('4','d'), card('3','h'), card('2','s')];
+      const state = makeDrawShowdownState([30, 60, 60], [TIE_A, TIE_B, WORST]);
+      const result = determineDrawWinner(state);
+
+      // メイン 90 (P0/P1/P2対象) → P0,P1 がタイで 45 ずつ
+      // サイド 60 (P1/P2対象) → P1 が単独勝ち
+      const w0 = result.winners.find(w => w.playerId === 0);
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w0?.amount).toBe(45);
+      expect(w1?.amount).toBe(45 + 60);
+      expect(result.winners.find(w => w.playerId === 2)).toBeUndefined();
+
+      const total = result.players.slice(0, 3).reduce((s, p) => s + p.chips, 0);
+      expect(total).toBe(150);
+    });
+  });
 });
