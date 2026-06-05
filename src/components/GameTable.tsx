@@ -262,9 +262,9 @@ export function GameTable({
         </span>
       </div>
 
-          {/* バリアント変更通知（テーブル中央） */}
+          {/* バリアント変更／ブラインドアップ通知（テーブル上部中央：コミュニティカードに重ならない位置） */}
           {centerNotice && (
-            <div className="absolute top-[40cqh] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
+            <div className="absolute top-[26cqh] left-1/2 -translate-x-1/2 -translate-y-1/2 z-[180] pointer-events-none">
               <div className="bg-cream-200/80 text-gray-800 font-bold w-[70cqw] min-h-[32cqw] py-[4cqw] flex items-center justify-center rounded-[2cqw] text-[6cqw] animate-fade-in whitespace-pre-line text-center leading-[1.4]">
                 {centerNotice}
               </div>
