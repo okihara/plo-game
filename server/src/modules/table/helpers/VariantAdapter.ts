@@ -72,6 +72,9 @@ export class VariantAdapter {
         if (this.config.betting === 'no_limit') {
           state.bigBlind = bigBlind;
         }
+        // BBアンティ: ブラインド表に ante があれば反映（NL Single Draw のトナメ等）。
+        // ante=0 の種目（Triple Draw・キャッシュ）は従来通りアンティ無し。
+        state.ante = ante;
         return state;
       }
       case 'holdem':

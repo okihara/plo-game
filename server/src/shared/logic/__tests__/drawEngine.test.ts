@@ -988,4 +988,81 @@ describe('Single Draw (maxDraws=1)', () => {
       expect(total).toBe(150);
     });
   });
+
+  describe('BBアンティ', () => {
+    // 2-7 ロー: 数字が低いほど強い
+    const BEST = [card('7','h'), card('5','d'), card('4','c'), card('3','s'), card('2','h')];
+    const MID  = [card('8','h'), card('6','d'), card('4','s'), card('3','c'), card('2','d')];
+    const WORST = [card('K','h'), card('Q','d'), card('J','c'), card('9','s'), card('8','d')];
+
+    it('state.ante>0 のとき BB がブラインド+アンティを投入し pot に含まれる', () => {
+      let state = createDrawGameState(600, 2, 1); // NL Single Draw, SB=2/BB=4
+      state.players[3].isSittingOut = true;
+      state.players[4].isSittingOut = true;
+      state.players[5].isSittingOut = true;
+      state.ante = 4; // BBと同額
+      state = startDrawHand(state);
+
+      const bbIndex = state.players.findIndex(p => p.currentBet === state.bigBlind && !p.isSittingOut);
+      expect(bbIndex).toBeGreaterThanOrEqual(0);
+      const bb = state.players[bbIndex];
+
+      // BB は bb(4) + ante(4) = 8 をスタックから支払う
+      expect(bb.chips).toBe(600 - 4 - 4);
+      // アンティはライブベット(currentBet/totalBetThisRound)に含まれない
+      expect(bb.currentBet).toBe(4);
+      expect(bb.totalBetThisRound).toBe(4);
+      // pot = SB(2) + BB(4) + ante(4)
+      expect(state.pot).toBe(10);
+    });
+
+    it('ante=0 ならアンティは投入されない（Triple Draw・キャッシュ等）', () => {
+      let state = createDrawGameState(600, 2, 1);
+      state.players[3].isSittingOut = true;
+      state.players[4].isSittingOut = true;
+      state.players[5].isSittingOut = true;
+      // state.ante は既定 0
+      state = startDrawHand(state);
+      expect(state.pot).toBe(6); // SB(2)+BB(4) のみ
+    });
+
+    it('アンティのデッドマネーはショーダウンでメインポット勝者へ渡る', () => {
+      const state = JSON.parse(JSON.stringify(startSingleDrawThreePlayerHand())) as GameState;
+      state.currentStreet = 'showdown';
+      // P0/P1 が各100拠出、P2 はフォールド。アンティ4がデッドマネーとして pot に含まれる
+      state.players[0] = { ...state.players[0], totalBetThisRound: 100, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: BEST };
+      state.players[1] = { ...state.players[1], totalBetThisRound: 100, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: MID };
+      state.players[2] = { ...state.players[2], totalBetThisRound: 0, folded: true };
+      state.pot = 100 + 100 + 4; // + ante 4
+
+      const result = determineDrawWinner(state);
+
+      // P0(最強) がメインポット 200 + デッドマネー 4 = 204 を獲得
+      const w0 = result.winners.find(w => w.playerId === 0);
+      expect(w0?.amount).toBe(204);
+      expect(result.players[0].chips).toBe(204);
+      expect(result.players[1].chips).toBe(0);
+    });
+
+    it('サイドポットがある場合でもアンティのデッドマネーはメインポットへ加算される', () => {
+      const state = JSON.parse(JSON.stringify(startSingleDrawThreePlayerHand())) as GameState;
+      state.currentStreet = 'showdown';
+      // P0:30(最強) / P1:60(中) / P2:60(最弱) + アンティ4
+      state.players[0] = { ...state.players[0], totalBetThisRound: 30, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: BEST };
+      state.players[1] = { ...state.players[1], totalBetThisRound: 60, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: MID };
+      state.players[2] = { ...state.players[2], totalBetThisRound: 60, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: WORST };
+      state.pot = 30 + 60 + 60 + 4; // + ante 4
+
+      const result = determineDrawWinner(state);
+
+      // メイン 90 + デッドマネー 4 = 94 → P0、サイド 60 → P1
+      const w0 = result.winners.find(w => w.playerId === 0);
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w0?.amount).toBe(94);
+      expect(w1?.amount).toBe(60);
+
+      const total = result.players.slice(0, 3).reduce((s, p) => s + p.chips, 0);
+      expect(total).toBe(154); // 拠出150 + アンティ4
+    });
+  });
 });

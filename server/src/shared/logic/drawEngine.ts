@@ -193,7 +193,20 @@ export function startDrawHand(state: GameState): GameState {
   newState.players[bbIndex].chips -= bbAmount;
   if (newState.players[bbIndex].chips === 0) newState.players[bbIndex].isAllIn = true;
 
-  newState.pot = sbAmount + bbAmount;
+  // === BBアンティ（state.ante > 0 のときのみ。NL 2-7 Single Draw 等）===
+  // BB席がテーブル分のアンティをデッドマネーとして投入する（BBアンティ方式）。
+  // ライブベット(currentBet/totalBetThisRound)には含めず、ショーダウンで
+  // メインポットへ加算する（determineDrawWinner 側で処理）。
+  // BBがブラインドすら賄えずオールインの場合（chips===0）はアンテ無し。
+  const anteAmount = newState.ante > 0
+    ? Math.min(newState.ante, newState.players[bbIndex].chips)
+    : 0;
+  if (anteAmount > 0) {
+    newState.players[bbIndex].chips -= anteAmount;
+    if (newState.players[bbIndex].chips === 0) newState.players[bbIndex].isAllIn = true;
+  }
+
+  newState.pot = sbAmount + bbAmount + anteAmount;
   newState.currentBet = newState.bigBlind;
   newState.minRaise = isNoLimit(newState) ? newState.bigBlind : newState.smallBlind;
   newState.lastFullRaiseBet = newState.currentBet;
@@ -656,6 +669,16 @@ export function determineDrawWinner(
 
   // サイドポット計算
   const allPots = calculateSidePots(newState.players);
+
+  // デッドマネー（BBアンティ等、ライブベットに含まれない投入）をメインポットへ加算する。
+  // calculateSidePots は totalBetThisRound ベースなのでアンティ分が欠落する。
+  // 差分をショーダウンに残った全員が争うメインポット(=最低レベル=allPots[0])へ載せる。
+  const totalContributed = newState.players.reduce((s, p) => s + p.totalBetThisRound, 0);
+  const deadMoney = newState.pot - totalContributed;
+  if (deadMoney > 0 && allPots.length > 0) {
+    allPots[0].amount += deadMoney;
+  }
+
   const contestedPots = allPots.filter(p => p.eligiblePlayers.length >= 2);
   const uncontestedPots = allPots.filter(p => p.eligiblePlayers.length === 1);
 

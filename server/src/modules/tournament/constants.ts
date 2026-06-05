@@ -94,6 +94,13 @@ export const DEFAULT_BOMB_POT_BLIND_SCHEDULE: BlindLevel[] = DEFAULT_BLIND_SCHED
   durationMinutes: l.durationMinutes,
 }));
 
+// NL 2-7 Single Draw 用スケジュール: SB/BB は通常どおり + BBアンティ (= BB と同額)。
+// BB席がテーブル分のアンティをデッドマネーとして毎ハンド投入する（Lv1から）。
+export const DEFAULT_SINGLE_DRAW_BLIND_SCHEDULE: BlindLevel[] = DEFAULT_BLIND_SCHEDULE.map(l => ({
+  ...l,
+  ante: l.bigBlind,
+}));
+
 // デフォルト初期チップ
 export const DEFAULT_STARTING_CHIPS = 30000;
 
@@ -149,8 +156,13 @@ export function resolveBlindSchedule(
   variant: GameVariant,
 ): BlindLevel[] {
   const meta = BLIND_STRUCTURES.find(s => s.id === structureId) ?? BLIND_STRUCTURES[0];
-  const base = variant === 'plo_double_board_bomb'
-    ? DEFAULT_BOMB_POT_BLIND_SCHEDULE
-    : DEFAULT_BLIND_SCHEDULE;
+  let base: BlindLevel[];
+  if (variant === 'plo_double_board_bomb') {
+    base = DEFAULT_BOMB_POT_BLIND_SCHEDULE;
+  } else if (variant === 'no_limit_2-7_single_draw') {
+    base = DEFAULT_SINGLE_DRAW_BLIND_SCHEDULE;
+  } else {
+    base = DEFAULT_BLIND_SCHEDULE;
+  }
   return base.map(l => ({ ...l, durationMinutes: meta.durationMinutes }));
 }
