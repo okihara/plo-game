@@ -840,8 +840,11 @@ export class TableInstance {
 
     // currentPlayer がオールインの場合はスキップして次へ進む
     // （ブラインド投入でオールインになったケースなど）
+    // ただしドローフェーズではオールインでもカード交換が必要なのでスキップしない
     const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
-    if (currentPlayer && currentPlayer.isAllIn) {
+    const inDrawPhase = getVariantConfig(this.variant).family === 'draw'
+      && isDrawStreet(this.gameState.currentStreet);
+    if (currentPlayer && currentPlayer.isAllIn && !inDrawPhase) {
       this.advanceToNextPlayer();
       return;
     }

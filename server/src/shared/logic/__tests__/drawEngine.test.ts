@@ -747,6 +747,21 @@ describe('Single Draw (maxDraws=1)', () => {
       expect(raiseAction!.maxAmount).toBe(state.players[state.currentPlayerIndex].chips);
     });
 
+    it('NLではフルレイズ可能でも allin が valid actions に含まれる', () => {
+      // ディープスタックでフルレイズの余地が十分あるケース
+      const state = startSingleDrawThreePlayerHand();
+      const pi = state.currentPlayerIndex;
+      const actions = getDrawValidActions(state, pi);
+
+      // raise も allin も両方提示される
+      expect(actions.find(a => a.action === 'raise')).toBeDefined();
+      const allin = actions.find(a => a.action === 'allin');
+      expect(allin).toBeDefined();
+      // allin は全チップ
+      expect(allin!.minAmount).toBe(state.players[pi].chips);
+      expect(allin!.maxAmount).toBe(state.players[pi].chips);
+    });
+
     it('NLオールインでminRaiseが更新される', () => {
       let state = startSingleDrawThreePlayerHand();
       // チップを調整: player 0 に100チップ
@@ -828,6 +843,68 @@ describe('Single Draw (maxDraws=1)', () => {
       const result = determineDrawWinner(state);
       expect(result.winners).toHaveLength(1);
       expect(result.winners[0].playerId).toBe(0);
+    });
+  });
+
+  describe('オールインとドロー', () => {
+    it('オールインプレイヤーもドローフェーズではカード交換できる', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state); // → draw1
+      expect(state.currentStreet).toBe('draw1');
+
+      const pi = state.currentPlayerIndex;
+      state.players[pi].isAllIn = true;
+      const actions = getDrawValidActions(state, pi);
+      expect(actions).toEqual([{ action: 'draw', minAmount: 0, maxAmount: 5 }]);
+    });
+
+    it('オールインプレイヤーはベッティングフェーズではアクションできない', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state);  // → draw1
+      state = completeDrawStandPat(state); // → final
+
+      const pi = state.currentPlayerIndex;
+      state.players[pi].isAllIn = true;
+      expect(getDrawValidActions(state, pi)).toEqual([]);
+    });
+
+    it('プリフロップで両者オールインでもドローフェーズに到達する（showdown直行しない）', () => {
+      // ショートスタックの2人プレイ（Single Draw = NL）
+      let state = createDrawGameState(600, 2, 1);
+      for (let i = 2; i < 6; i++) state.players[i].isSittingOut = true;
+      state.players[0].chips = 20;
+      state.players[1].chips = 20;
+      state = startDrawHand(state);
+
+      // predraw: 双方がオールインになるまでアクション
+      let guard = 0;
+      while (state.currentStreet === 'predraw' && !state.isHandComplete && guard++ < 20) {
+        const pi = state.currentPlayerIndex;
+        const actions = getDrawValidActions(state, pi);
+        const allin = actions.find(a => a.action === 'allin');
+        const raise = actions.find(a => a.action === 'raise');
+        const call = actions.find(a => a.action === 'call');
+        if (allin) state = applyDrawAction(state, pi, 'allin', allin.minAmount);
+        else if (raise) state = applyDrawAction(state, pi, 'raise', raise.maxAmount);
+        else if (call) state = applyDrawAction(state, pi, 'call', call.minAmount);
+        else break;
+      }
+
+      // 両者オールインで draw1 に到達している（showdown へ直行していない）
+      expect(state.players[0].isAllIn).toBe(true);
+      expect(state.players[1].isAllIn).toBe(true);
+      expect(state.currentStreet).toBe('draw1');
+
+      // オールインの手番プレイヤーがドロー可能
+      const pi = state.currentPlayerIndex;
+      expect(state.players[pi].isAllIn).toBe(true);
+      expect(getDrawValidActions(state, pi).some(a => a.action === 'draw')).toBe(true);
+
+      // ドローを完了 → final（ベットスキップ）→ showdown
+      state = completeDrawStandPat(state);
+      expect(state.isHandComplete).toBe(true);
+      expect(state.currentStreet).toBe('showdown');
+      expect(state.winners.length).toBeGreaterThan(0);
     });
   });
 });

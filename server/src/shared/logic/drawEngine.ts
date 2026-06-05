@@ -229,7 +229,9 @@ export function getDrawValidActions(
   state: GameState, playerIndex: number
 ): { action: Action; minAmount: number; maxAmount: number }[] {
   const player = state.players[playerIndex];
-  if (player.folded || player.isAllIn) return [];
+  if (player.folded) return [];
+  // オールインプレイヤーはベットできないが、ドローフェーズではカード交換が可能
+  if (player.isAllIn && !isDrawStreet(state.currentStreet)) return [];
 
   // === ドローフェーズ ===
   if (isDrawStreet(state.currentStreet)) {
@@ -266,15 +268,14 @@ export function getDrawValidActions(
         const minRaiseAmount = minRaiseTotal - player.currentBet;
         if (player.chips >= minRaiseAmount) {
           actions.push({ action: 'raise', minAmount: minRaiseAmount, maxAmount: player.chips });
-        } else if (player.chips > toCall) {
-          // チップがminRaise未満だがコール以上 → オールイン
-          actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
         }
       }
     }
 
-    // オールイン（チップが足りない場合）
-    if (canRaise && player.chips > 0 && player.chips <= toCall) {
+    // オールイン: No-Limitではポット上限が無いため、レイズ権があり
+    // チップが残っている限り常に全額投入できる
+    // （フルレイズに満たない短スタックや、コール額に満たないケースも含む）
+    if (canRaise && player.chips > 0) {
       actions.push({ action: 'allin', minAmount: player.chips, maxAmount: player.chips });
     }
   } else {
@@ -539,11 +540,12 @@ function determineDrawNextAction(state: GameState): { nextPlayerIndex: number; m
     return { nextPlayerIndex: -1, moveToNextStreet: false };
   }
 
-  // ドロー可能なプレイヤー（フォールド/オールイン/アクション済みを除く）
+  // ドロー可能なプレイヤー（フォールド/アクション済みを除く）
+  // オールインでもショーダウンに残るためカード交換は行う
   let index = (state.currentPlayerIndex + 1) % MAX_PLAYERS;
   for (let i = 0; i < MAX_PLAYERS; i++) {
     const p = state.players[index];
-    if (!p.folded && !p.isAllIn && !p.isSittingOut && !p.hasActed) {
+    if (!p.folded && !p.isSittingOut && !p.hasActed) {
       return { nextPlayerIndex: index, moveToNextStreet: false };
     }
     index = (index + 1) % MAX_PLAYERS;
@@ -585,10 +587,8 @@ function moveToNextDrawStreet(state: GameState, rakePercent: number, rakeCapBB: 
 
   const canActPlayers = activePlayers.filter(p => !p.isAllIn);
 
-  // ドローフェーズでアクション可能なプレイヤーがいない場合スキップ
-  if (isDrawStreet(nextStreet) && canActPlayers.length === 0) {
-    return moveToNextDrawStreet(newState, rakePercent, rakeCapBB);
-  }
+  // ドローフェーズはオールインでもカード交換を行うためスキップしない
+  // （アクティブが1人のケースは上で勝者確定済み）
 
   // ベッティングフェーズでアクション可能なプレイヤーが1人以下ならスキップ
   if (isBettingStreet(nextStreet) && canActPlayers.length <= 1) {
@@ -607,11 +607,13 @@ function moveToNextDrawStreet(state: GameState, rakePercent: number, rakeCapBB: 
 
 /** ディーラーの左（SB側）からアクション可能な最初のプレイヤーを探す */
 function findFirstActor(state: GameState): number {
+  // ドローフェーズはオールインでもカード交換を行うため対象に含める
+  const includeAllIn = isDrawStreet(state.currentStreet);
   const sbIndex = (state.dealerPosition + 1) % MAX_PLAYERS;
   for (let i = 0; i < MAX_PLAYERS; i++) {
     const idx = (sbIndex + i) % MAX_PLAYERS;
     const p = state.players[idx];
-    if (!p.folded && !p.isAllIn && !p.isSittingOut) {
+    if (!p.folded && !p.isSittingOut && (includeAllIn || !p.isAllIn)) {
       return idx;
     }
   }
