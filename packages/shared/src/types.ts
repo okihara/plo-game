@@ -57,7 +57,7 @@ export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
   'limit_2-7_triple_draw': '2-7 TD',
   'no_limit_2-7_single_draw': 'NL 2-7 SD',
   omaha_hilo: 'FLO8',
-  plo_hilo: 'PLO8',
+  plo_hilo: 'PLO Hi/Lo',
   stud_hilo: 'Stud Hi-Lo',
   plo_double_board_bomb: 'DBBP',
   big_o: 'Big-O',

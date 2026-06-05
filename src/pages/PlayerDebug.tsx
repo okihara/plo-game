@@ -44,7 +44,7 @@ const sampleCardsDraw: CardType[] = [
 const variantOptions: { value: GameVariant; label: string }[] = [
   { value: 'plo', label: 'PLO (Omaha)' },
   { value: 'plo5', label: 'PLO5 (5 Card Omaha)' },
-  { value: 'plo_hilo', label: 'PLO8 (PLO Hi-Lo)' },
+  { value: 'plo_hilo', label: 'PLO Hi/Lo' },
   { value: 'plo_double_board_bomb', label: 'DBBP (Double Board Bomb Pot)' },
   { value: 'limit_holdem', label: "Limit Hold'em" },
   { value: 'stud', label: '7 Card Stud' },
