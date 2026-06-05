@@ -747,6 +747,21 @@ describe('Single Draw (maxDraws=1)', () => {
       expect(raiseAction!.maxAmount).toBe(state.players[state.currentPlayerIndex].chips);
     });
 
+    it('NLではフルレイズ可能でも allin が valid actions に含まれる', () => {
+      // ディープスタックでフルレイズの余地が十分あるケース
+      const state = startSingleDrawThreePlayerHand();
+      const pi = state.currentPlayerIndex;
+      const actions = getDrawValidActions(state, pi);
+
+      // raise も allin も両方提示される
+      expect(actions.find(a => a.action === 'raise')).toBeDefined();
+      const allin = actions.find(a => a.action === 'allin');
+      expect(allin).toBeDefined();
+      // allin は全チップ
+      expect(allin!.minAmount).toBe(state.players[pi].chips);
+      expect(allin!.maxAmount).toBe(state.players[pi].chips);
+    });
+
     it('NLオールインでminRaiseが更新される', () => {
       let state = startSingleDrawThreePlayerHand();
       // チップを調整: player 0 に100チップ
@@ -828,6 +843,226 @@ describe('Single Draw (maxDraws=1)', () => {
       const result = determineDrawWinner(state);
       expect(result.winners).toHaveLength(1);
       expect(result.winners[0].playerId).toBe(0);
+    });
+  });
+
+  describe('オールインとドロー', () => {
+    it('オールインプレイヤーもドローフェーズではカード交換できる', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state); // → draw1
+      expect(state.currentStreet).toBe('draw1');
+
+      const pi = state.currentPlayerIndex;
+      state.players[pi].isAllIn = true;
+      const actions = getDrawValidActions(state, pi);
+      expect(actions).toEqual([{ action: 'draw', minAmount: 0, maxAmount: 5 }]);
+    });
+
+    it('オールインプレイヤーはベッティングフェーズではアクションできない', () => {
+      let state = startSingleDrawThreePlayerHand();
+      state = completeCheckAround(state);  // → draw1
+      state = completeDrawStandPat(state); // → final
+
+      const pi = state.currentPlayerIndex;
+      state.players[pi].isAllIn = true;
+      expect(getDrawValidActions(state, pi)).toEqual([]);
+    });
+
+    it('プリフロップで両者オールインでもドローフェーズに到達する（showdown直行しない）', () => {
+      // ショートスタックの2人プレイ（Single Draw = NL）
+      let state = createDrawGameState(600, 2, 1);
+      for (let i = 2; i < 6; i++) state.players[i].isSittingOut = true;
+      state.players[0].chips = 20;
+      state.players[1].chips = 20;
+      state = startDrawHand(state);
+
+      // predraw: 双方がオールインになるまでアクション
+      let guard = 0;
+      while (state.currentStreet === 'predraw' && !state.isHandComplete && guard++ < 20) {
+        const pi = state.currentPlayerIndex;
+        const actions = getDrawValidActions(state, pi);
+        const allin = actions.find(a => a.action === 'allin');
+        const raise = actions.find(a => a.action === 'raise');
+        const call = actions.find(a => a.action === 'call');
+        if (allin) state = applyDrawAction(state, pi, 'allin', allin.minAmount);
+        else if (raise) state = applyDrawAction(state, pi, 'raise', raise.maxAmount);
+        else if (call) state = applyDrawAction(state, pi, 'call', call.minAmount);
+        else break;
+      }
+
+      // 両者オールインで draw1 に到達している（showdown へ直行していない）
+      expect(state.players[0].isAllIn).toBe(true);
+      expect(state.players[1].isAllIn).toBe(true);
+      expect(state.currentStreet).toBe('draw1');
+
+      // オールインの手番プレイヤーがドロー可能
+      const pi = state.currentPlayerIndex;
+      expect(state.players[pi].isAllIn).toBe(true);
+      expect(getDrawValidActions(state, pi).some(a => a.action === 'draw')).toBe(true);
+
+      // ドローを完了 → final（ベットスキップ）→ showdown
+      state = completeDrawStandPat(state);
+      expect(state.isHandComplete).toBe(true);
+      expect(state.currentStreet).toBe('showdown');
+      expect(state.winners.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('不均等オールインのサイドポット', () => {
+    /**
+     * 3人がそれぞれ異なる額でオールインしたショーダウン状態を組み立てる。
+     * contribs[i] = プレイヤー i のハンド全体の拠出額（totalBetThisRound）。
+     */
+    function makeDrawShowdownState(contribs: number[], holeCards: Card[][]): GameState {
+      const state = JSON.parse(JSON.stringify(startSingleDrawThreePlayerHand())) as GameState;
+      state.currentStreet = 'showdown';
+      state.pot = contribs.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < contribs.length; i++) {
+        state.players[i].totalBetThisRound = contribs[i];
+        state.players[i].currentBet = 0;
+        state.players[i].chips = 0;
+        state.players[i].folded = false;
+        state.players[i].isAllIn = true;
+        state.players[i].holeCards = holeCards[i];
+      }
+      return state;
+    }
+
+    // 2-7 ロー: 数字が低いほど強い。ストレート/フラッシュは役として不利。
+    const BEST = [card('7','h'), card('5','d'), card('4','c'), card('3','s'), card('2','h')]; // 7-5-4-3-2
+    const MID  = [card('8','h'), card('6','d'), card('4','s'), card('3','c'), card('2','d')]; // 8-6-4-3-2
+    const WORST = [card('K','h'), card('Q','d'), card('J','c'), card('9','s'), card('8','d')]; // K-high
+
+    it('ショートスタックの最強ハンドはメインポットのみ獲得、サイドポットはカバー側の勝者へ', () => {
+      // P0: 30でオールイン(最強) / P1: 60(中) / P2: 60(最弱)
+      const state = makeDrawShowdownState([30, 60, 60], [BEST, MID, WORST]);
+      const result = determineDrawWinner(state);
+
+      // メインポット 90 (30×3) → P0、サイドポット 60 ((60-30)×2、P1/P2) → P1
+      const w0 = result.winners.find(w => w.playerId === 0);
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w0?.amount).toBe(90);
+      expect(w1?.amount).toBe(60);
+      expect(result.winners.find(w => w.playerId === 2)).toBeUndefined();
+
+      expect(result.players[0].chips).toBe(90);
+      expect(result.players[1].chips).toBe(60);
+      expect(result.players[2].chips).toBe(0);
+
+      // チップ総和が保存される（拠出合計 150）
+      const total = result.players.slice(0, 3).reduce((s, p) => s + p.chips, 0);
+      expect(total).toBe(150);
+    });
+
+    it('カバー側のプレイヤーが最強ならメイン・サイド両方を獲得', () => {
+      // P0: 30(最弱) / P1: 60でオールイン(最強) / P2: 60(中)
+      const state = makeDrawShowdownState([30, 60, 60], [WORST, BEST, MID]);
+      const result = determineDrawWinner(state);
+
+      // メイン 90 → P1、サイド 60 → P1 → 合計 150
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w1?.amount).toBe(150);
+      expect(result.winners.filter(w => w.amount > 0)).toHaveLength(1);
+
+      expect(result.players[1].chips).toBe(150);
+      expect(result.players[0].chips).toBe(0);
+      expect(result.players[2].chips).toBe(0);
+    });
+
+    it('メインポットがタイなら山分け、サイドポットは別途分配', () => {
+      // P0: 30(BEST) と P1: 60(BEST) が同じ役でタイ / P2: 60(WORST)
+      const TIE_A = [card('7','h'), card('5','d'), card('4','c'), card('3','s'), card('2','h')];
+      const TIE_B = [card('7','s'), card('5','c'), card('4','d'), card('3','h'), card('2','s')];
+      const state = makeDrawShowdownState([30, 60, 60], [TIE_A, TIE_B, WORST]);
+      const result = determineDrawWinner(state);
+
+      // メイン 90 (P0/P1/P2対象) → P0,P1 がタイで 45 ずつ
+      // サイド 60 (P1/P2対象) → P1 が単独勝ち
+      const w0 = result.winners.find(w => w.playerId === 0);
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w0?.amount).toBe(45);
+      expect(w1?.amount).toBe(45 + 60);
+      expect(result.winners.find(w => w.playerId === 2)).toBeUndefined();
+
+      const total = result.players.slice(0, 3).reduce((s, p) => s + p.chips, 0);
+      expect(total).toBe(150);
+    });
+  });
+
+  describe('BBアンティ', () => {
+    // 2-7 ロー: 数字が低いほど強い
+    const BEST = [card('7','h'), card('5','d'), card('4','c'), card('3','s'), card('2','h')];
+    const MID  = [card('8','h'), card('6','d'), card('4','s'), card('3','c'), card('2','d')];
+    const WORST = [card('K','h'), card('Q','d'), card('J','c'), card('9','s'), card('8','d')];
+
+    it('state.ante>0 のとき BB がブラインド+アンティを投入し pot に含まれる', () => {
+      let state = createDrawGameState(600, 2, 1); // NL Single Draw, SB=2/BB=4
+      state.players[3].isSittingOut = true;
+      state.players[4].isSittingOut = true;
+      state.players[5].isSittingOut = true;
+      state.ante = 4; // BBと同額
+      state = startDrawHand(state);
+
+      const bbIndex = state.players.findIndex(p => p.currentBet === state.bigBlind && !p.isSittingOut);
+      expect(bbIndex).toBeGreaterThanOrEqual(0);
+      const bb = state.players[bbIndex];
+
+      // BB は bb(4) + ante(4) = 8 をスタックから支払う
+      expect(bb.chips).toBe(600 - 4 - 4);
+      // アンティはライブベット(currentBet/totalBetThisRound)に含まれない
+      expect(bb.currentBet).toBe(4);
+      expect(bb.totalBetThisRound).toBe(4);
+      // pot = SB(2) + BB(4) + ante(4)
+      expect(state.pot).toBe(10);
+    });
+
+    it('ante=0 ならアンティは投入されない（Triple Draw・キャッシュ等）', () => {
+      let state = createDrawGameState(600, 2, 1);
+      state.players[3].isSittingOut = true;
+      state.players[4].isSittingOut = true;
+      state.players[5].isSittingOut = true;
+      // state.ante は既定 0
+      state = startDrawHand(state);
+      expect(state.pot).toBe(6); // SB(2)+BB(4) のみ
+    });
+
+    it('アンティのデッドマネーはショーダウンでメインポット勝者へ渡る', () => {
+      const state = JSON.parse(JSON.stringify(startSingleDrawThreePlayerHand())) as GameState;
+      state.currentStreet = 'showdown';
+      // P0/P1 が各100拠出、P2 はフォールド。アンティ4がデッドマネーとして pot に含まれる
+      state.players[0] = { ...state.players[0], totalBetThisRound: 100, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: BEST };
+      state.players[1] = { ...state.players[1], totalBetThisRound: 100, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: MID };
+      state.players[2] = { ...state.players[2], totalBetThisRound: 0, folded: true };
+      state.pot = 100 + 100 + 4; // + ante 4
+
+      const result = determineDrawWinner(state);
+
+      // P0(最強) がメインポット 200 + デッドマネー 4 = 204 を獲得
+      const w0 = result.winners.find(w => w.playerId === 0);
+      expect(w0?.amount).toBe(204);
+      expect(result.players[0].chips).toBe(204);
+      expect(result.players[1].chips).toBe(0);
+    });
+
+    it('サイドポットがある場合でもアンティのデッドマネーはメインポットへ加算される', () => {
+      const state = JSON.parse(JSON.stringify(startSingleDrawThreePlayerHand())) as GameState;
+      state.currentStreet = 'showdown';
+      // P0:30(最強) / P1:60(中) / P2:60(最弱) + アンティ4
+      state.players[0] = { ...state.players[0], totalBetThisRound: 30, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: BEST };
+      state.players[1] = { ...state.players[1], totalBetThisRound: 60, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: MID };
+      state.players[2] = { ...state.players[2], totalBetThisRound: 60, currentBet: 0, chips: 0, folded: false, isAllIn: true, holeCards: WORST };
+      state.pot = 30 + 60 + 60 + 4; // + ante 4
+
+      const result = determineDrawWinner(state);
+
+      // メイン 90 + デッドマネー 4 = 94 → P0、サイド 60 → P1
+      const w0 = result.winners.find(w => w.playerId === 0);
+      const w1 = result.winners.find(w => w.playerId === 1);
+      expect(w0?.amount).toBe(94);
+      expect(w1?.amount).toBe(60);
+
+      const total = result.players.slice(0, 3).reduce((s, p) => s + p.chips, 0);
+      expect(total).toBe(154); // 拠出150 + アンティ4
     });
   });
 });

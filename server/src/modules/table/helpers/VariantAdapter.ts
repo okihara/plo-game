@@ -63,8 +63,20 @@ export class VariantAdapter {
         const studAnte = Math.ceil(smallBlind / 4);
         return createStudGameState(buyInChips, studAnte, smallBlind, this.variant);
       }
-      case 'draw':
-        return createDrawGameState(buyInChips, smallBlind, this.config.maxDraws);
+      case 'draw': {
+        const state = createDrawGameState(buyInChips, smallBlind, this.config.maxDraws);
+        // No-Limit Single Draw は実ブラインド (SB/BB) をそのまま使うため、
+        // ブラインド表の bigBlind を反映する（createDrawGameState は SB×2 を仮置きする）。
+        // Fixed-Limit (Triple Draw) は smallBlind/bigBlind を small bet/big bet のラダー
+        // (big bet = SB×2) として使うため、ここでは上書きしない。
+        if (this.config.betting === 'no_limit') {
+          state.bigBlind = bigBlind;
+        }
+        // BBアンティ: ブラインド表に ante があれば反映（NL Single Draw のトナメ等）。
+        // ante=0 の種目（Triple Draw・キャッシュ）は従来通りアンティ無し。
+        state.ante = ante;
+        return state;
+      }
       case 'holdem':
         return createLimitHoldemGameState(buyInChips, smallBlind, bigBlind);
       default: {

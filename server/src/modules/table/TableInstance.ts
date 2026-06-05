@@ -298,6 +298,25 @@ export class TableInstance {
 
     this.gameState = result.gameState;
 
+    // ドロー成功時: 引いたプレイヤーへ交換後のホールカードを即送信する。
+    // 通常は街遷移時の broadcastStreetChangeCards でカードが再送されるが、
+    // 全員オールイン等で final ベッティングがスキップされショーダウンへ直行する場合は
+    // 街遷移が起きずカードが更新されない。ショーダウンのカードは自席へは反映されない
+    // ため、ここで確実に交換後カードを届ける（オールインプレイヤーの役判定ズレ防止）。
+    if (action === 'draw') {
+      const drawSeat = this.playerManager.getSeat(seatIndex);
+      const drawnCards = this.gameState.players[seatIndex]?.holeCards;
+      if (drawnCards && drawnCards.length > 0) {
+        if (drawSeat?.socket) {
+          this.broadcast.emitToSocket(drawSeat.socket, drawSeat.odId, 'game:hole_cards', {
+            cards: drawnCards,
+            seatIndex,
+          });
+        }
+        this.emitHoleCardsToSpectators(seatIndex);
+      }
+    }
+
     // 新たにオールインしたプレイヤーがいれば、そのときのボード枚数を記録（最初の1回のみ）
     if (!hadAllInBefore && this.gameState.players.some(p => p.isAllIn)) {
       this.allInStreetCardCount = previousCardCount;
@@ -840,8 +859,11 @@ export class TableInstance {
 
     // currentPlayer がオールインの場合はスキップして次へ進む
     // （ブラインド投入でオールインになったケースなど）
+    // ただしドローフェーズではオールインでもカード交換が必要なのでスキップしない
     const currentPlayer = this.gameState.players[this.gameState.currentPlayerIndex];
-    if (currentPlayer && currentPlayer.isAllIn) {
+    const inDrawPhase = getVariantConfig(this.variant).family === 'draw'
+      && isDrawStreet(this.gameState.currentStreet);
+    if (currentPlayer && currentPlayer.isAllIn && !inDrawPhase) {
       this.advanceToNextPlayer();
       return;
     }
@@ -1099,9 +1121,11 @@ export class TableInstance {
     // 部分オールイン時のEV計算: handleAllInRunOut を経由しなかった場合
     // （例: Turnでオールインしたが他プレイヤーがアクティブのままリバーまで進んだケース）
     // bomb pot は 2 ボード前提で式が異なるためスキップ
+    // draw 系（2-7 等）はボードエクイティの概念が無く EV 計算が無意味なためスキップ
     // トーナメントは EV グラフを出さないので計算自体を省く（イベントループ負荷削減）。
     const isBombPotForEV = this.gameState.variant === 'plo_double_board_bomb';
-    if (!isBombPotForEV && this.tournamentId == null && !this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
+    const isDrawForEV = getVariantConfig(this.variant).family === 'draw';
+    if (!isBombPotForEV && !isDrawForEV && this.tournamentId == null && !this.showdownSentDuringRunOut && this.allInStreetCardCount !== null && this.allInStreetCardCount < 5) {
       try {
         const priorBoard = this.gameState.communityCards.slice(0, this.allInStreetCardCount);
         const allPots = calculateSidePots(this.gameState.players);
