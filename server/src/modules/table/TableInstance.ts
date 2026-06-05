@@ -298,6 +298,25 @@ export class TableInstance {
 
     this.gameState = result.gameState;
 
+    // ドロー成功時: 引いたプレイヤーへ交換後のホールカードを即送信する。
+    // 通常は街遷移時の broadcastStreetChangeCards でカードが再送されるが、
+    // 全員オールイン等で final ベッティングがスキップされショーダウンへ直行する場合は
+    // 街遷移が起きずカードが更新されない。ショーダウンのカードは自席へは反映されない
+    // ため、ここで確実に交換後カードを届ける（オールインプレイヤーの役判定ズレ防止）。
+    if (action === 'draw') {
+      const drawSeat = this.playerManager.getSeat(seatIndex);
+      const drawnCards = this.gameState.players[seatIndex]?.holeCards;
+      if (drawnCards && drawnCards.length > 0) {
+        if (drawSeat?.socket) {
+          this.broadcast.emitToSocket(drawSeat.socket, drawSeat.odId, 'game:hole_cards', {
+            cards: drawnCards,
+            seatIndex,
+          });
+        }
+        this.emitHoleCardsToSpectators(seatIndex);
+      }
+    }
+
     // 新たにオールインしたプレイヤーがいれば、そのときのボード枚数を記録（最初の1回のみ）
     if (!hadAllInBefore && this.gameState.players.some(p => p.isAllIn)) {
       this.allInStreetCardCount = previousCardCount;
