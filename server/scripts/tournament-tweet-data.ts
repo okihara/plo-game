@@ -84,7 +84,8 @@ async function main() {
   const winner = results[0];
   const winnerUserId = winner?.userId ?? null;
 
-  const topResults = results.slice(0, 8).map((r) => ({
+  // 入賞(prize>0)の人数は回によって変わるため、余裕を持って上位を返す（消費側で必要数だけ使う）
+  const topResults = results.slice(0, 30).map((r) => ({
     position: r.position,
     userId: r.userId,
     displayName: resolveDisplay(r.user),

@@ -10,6 +10,7 @@
     "build:server": "pnpm --filter plo-game-server build",
     "build:all": "pnpm run build && pnpm --filter plo-game-server build",
     "start": "pnpm --filter plo-game-server start",
+    "monitor:stats": "pnpm --filter plo-game-server monitor:stats",
     "preview": "vite preview",
     "setup": "pnpm install"
   },
