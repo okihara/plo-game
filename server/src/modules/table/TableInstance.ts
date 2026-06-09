@@ -2,7 +2,6 @@ import { Server, Socket } from 'socket.io';
 import { GameState, Action, GameVariant, getVariantConfig } from '../../shared/logic/types.js';
 import { isDrawStreet } from '../../shared/logic/drawEngine.js';
 import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
-import { calculateAllInEVProfits } from '../../shared/logic/equityCalculator.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
 import { nanoid } from 'nanoid';
 
@@ -978,9 +977,14 @@ export class TableInstance {
           totalBets.set(p.id, p.totalBetThisRound);
           return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
         });
-        const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
-        this.historyRecorder.setAllInEVProfits(evProfits);
-        console.log(`[Table ${this.id}] All-in EV profits:`, Object.fromEntries(evProfits));
+        // EV 計算自体はワーカーへオフロードし、結果が出たら履歴/スタッツを後追い更新する。
+        // ここではメインのイベントループを塞がないよう入力スナップショットを渡すだけ。
+        this.historyRecorder.setAllInEVInput({
+          communityCards: priorBoard,
+          allPlayers: allPlayerInfo,
+          sidePots: allPots,
+          totalBets: [...totalBets],
+        });
       } catch (err) {
         console.error(`[Table ${this.id}] EV calculation failed:`, err);
       }
@@ -1134,9 +1138,13 @@ export class TableInstance {
           totalBets.set(p.id, p.totalBetThisRound);
           return { playerId: p.id, holeCards: p.holeCards, folded: p.folded || p.isSittingOut };
         });
-        const evProfits = calculateAllInEVProfits(priorBoard, allPlayerInfo, allPots, totalBets);
-        this.historyRecorder.setAllInEVProfits(evProfits);
-        console.log(`[Table ${this.id}] Partial all-in EV profits (board=${this.allInStreetCardCount} cards):`, Object.fromEntries(evProfits));
+        // EV 計算自体はワーカーへオフロード（部分オールイン）。メインは入力を渡すだけ。
+        this.historyRecorder.setAllInEVInput({
+          communityCards: priorBoard,
+          allPlayers: allPlayerInfo,
+          sidePots: allPots,
+          totalBets: [...totalBets],
+        });
       } catch (err) {
         console.error(`[Table ${this.id}] Partial all-in EV calculation failed:`, err);
       }
