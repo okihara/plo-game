@@ -5,6 +5,8 @@ import { SeatInfo } from '../types.js';
 import { prisma } from '../../../config/database.js';
 import { evaluatePLOHand, evaluateStudHand, formatHandName } from '../../../shared/logic/handEvaluator.js';
 import { updatePlayerStats } from '../../stats/updateStatsIncremental.js';
+import { evWorkerPool } from './evWorkerPool.js';
+import type { EVJobInput } from './evWorker.js';
 
 /** ハンド履歴記録のインターフェイス */
 export interface IHandHistoryRecorder {
@@ -16,7 +18,7 @@ export interface IHandHistoryRecorder {
    * 保存される値はそのハンド開始時のものになる。
    */
   recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, blinds: string): void;
-  setAllInEVProfits(evProfits: Map<number, number>): void;
+  setAllInEVInput(input: EVJobInput | null): void;
   getStartChips(): Map<number, number>;
   recordHandComplete(
     tableId: string,
@@ -38,7 +40,7 @@ export class NullHandHistoryRecorder implements IHandHistoryRecorder {
     }
   }
 
-  setAllInEVProfits(_evProfits: Map<number, number>): void {}
+  setAllInEVInput(_input: EVJobInput | null): void {}
 
   getStartChips(): Map<number, number> {
     return this.startChips;
@@ -62,7 +64,7 @@ function isAuthenticatedUser(_odId: string): boolean {
 export class HandHistoryRecorder implements IHandHistoryRecorder {
   private handCount = 0;
   private startChips: Map<number, number> = new Map();
-  private allInEVProfits: Map<number, number> | null = null;
+  private allInEVInput: EVJobInput | null = null;
   private blinds: string = '';
   private readonly tournamentId: string | null;
 
@@ -78,7 +80,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   recordHandStart(seats: (SeatInfo | null)[], gameState: GameState, blinds: string): void {
     this.handCount++;
     this.startChips.clear();
-    this.allInEVProfits = null;
+    this.allInEVInput = null;
     this.blinds = blinds;
 
     for (let i = 0; i < seats.length; i++) {
@@ -92,9 +94,9 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
     }
   }
 
-  /** オールインランアウト時のEV利益をセット（seatIndex → evProfit） */
-  setAllInEVProfits(evProfits: Map<number, number>): void {
-    this.allInEVProfits = evProfits;
+  /** オールインEV計算の入力をセット。計算自体はワーカーで後追い実行する（seatIndex は playerId と一致）。 */
+  setAllInEVInput(input: EVJobInput | null): void {
+    this.allInEVInput = input;
   }
 
   /** ハンド開始時のチップを取得 */
@@ -134,6 +136,9 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
         .map(w => seats[w.playerId]?.odId ?? '')
         .filter(Boolean);
 
+      // seatIndex → profit（後追い EV 更新時の差分補正に使う）
+      const profitBySeat = new Map<number, number>();
+
       // 全プレイヤーの HandHistoryPlayer レコードを準備
       const playerRecords = seats
         .map((seat, seatIndex) => {
@@ -143,6 +148,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           const startChip = this.startChips.get(seatIndex)!;
           const endChip = gameState.players[seatIndex].chips;
           const profit = endChip - startChip;
+          profitBySeat.set(seatIndex, profit);
 
           const player = gameState.players[seatIndex];
           const winnerEntry = gameState.winners.find(w => w.playerId === seatIndex);
@@ -169,8 +175,6 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             }
           }
 
-          const allInEVProfit = this.allInEVProfits?.get(seatIndex) ?? null;
-
           return {
             userId: isAuthenticatedUser(seat.odId) ? seat.odId : null,
             username: seat.odName,
@@ -179,7 +183,8 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             finalHand,
             startChips: startChip,
             profit,
-            allInEVProfit,
+            // EV は即時には未確定。null で保存し、ワーカー計算後に後追い UPDATE する。
+            allInEVProfit: null as number | null,
           };
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -190,7 +195,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
       const board1 = isBombPot ? gameState.boards![0] : gameState.communityCards;
       const board2 = isBombPot ? gameState.boards![1] : [];
 
-      await prisma.handHistory.create({
+      const created = await prisma.handHistory.create({
         data: {
           tableId,
           ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
@@ -207,16 +212,53 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             create: playerRecords,
           },
         },
+        select: {
+          id: true,
+          players: { select: { id: true, seatPosition: true, userId: true } },
+        },
       });
 
-      // スタッツキャッシュ更新 (fire-and-forget) — tournamentIdの有無でキャッシュ先を切替
+      // スタッツキャッシュ更新 (fire-and-forget) — tournamentIdの有無でキャッシュ先を切替。
+      // EV は即時には渡さない（null）。後追いで totalAllInEVProfit を差分補正する。
       updatePlayerStats(
         gameState,
         seats,
         this.startChips,
-        this.allInEVProfits,
+        null,
         this.tournamentId != null,
       ).catch(err => console.error('Stats cache update failed:', err));
+
+      // オールインEV: ワーカーで計算し、結果が出たら履歴とスタッツを後追い更新（fire-and-forget）。
+      // EV はリアルタイム表示に使わないため、計算待ちでメインのイベントループを塞がない。
+      if (this.allInEVInput && this.tournamentId == null) {
+        const createdPlayers = created.players;
+        evWorkerPool
+          .enqueue(this.allInEVInput)
+          .then(async (evMap) => {
+            if (!evMap || evMap.size === 0) return;
+            for (const p of createdPlayers) {
+              const evProfit = evMap.get(p.seatPosition);
+              if (evProfit == null) continue;
+              const profit = profitBySeat.get(p.seatPosition) ?? 0;
+              try {
+                await prisma.handHistoryPlayer.update({
+                  where: { id: p.id },
+                  data: { allInEVProfit: evProfit },
+                });
+                if (p.userId) {
+                  // 即時に profit を加算済みなので、EV との差分だけ足して帳尻を合わせる。
+                  await prisma.playerStatsCache.update({
+                    where: { userId: p.userId },
+                    data: { totalAllInEVProfit: { increment: evProfit - profit } },
+                  });
+                }
+              } catch (err) {
+                console.error(`Deferred EV update failed for player ${p.id}:`, err);
+              }
+            }
+          })
+          .catch((err) => console.error('All-in EV deferred update failed:', err));
+      }
     } catch (error) {
       console.error('Failed to save hand history:', error);
     }
