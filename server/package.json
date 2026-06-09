@@ -10,6 +10,7 @@
     "bot:dev": "tsx watch src/bot/index.ts",
     "bot:prod": "SERVER_URL=https://baby-plo.app tsx src/bot/index.ts",
     "bot:tournament": "tsx src/bot/tournamentBot.ts",
+    "monitor:stats": "tsx scripts/poll-admin-stats.ts",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",

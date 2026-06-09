@@ -182,6 +182,30 @@
       </div>
       <div class="sb-sep"></div>
       <div class="sb-item">
+        <span class="sb-label">DB Lat</span>
+        <span class="sb-value" id="dbLatency">-</span>
+        <span class="sb-sub">p95 <span id="dbLatencyP95">-</span></span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">Loop</span>
+        <span class="sb-value" id="eventLoopDelay">-</span>
+        <span class="sb-sub">p99 <span id="eventLoopDelayP99">-</span></span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">CPU</span>
+        <span class="sb-value" id="cpuPercent">-</span>
+        <span class="sb-sub">sys <span id="cpuSystemPercent">-</span></span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
+        <span class="sb-label">Disc</span>
+        <span class="sb-value" id="disconnectTotal">-</span>
+        <span class="sb-sub" id="disconnectTopReason">-</span>
+      </div>
+      <div class="sb-sep"></div>
+      <div class="sb-item">
         <span class="sb-label">Mem</span>
         <span class="sb-value" id="heapUsed">-</span>
         <span class="sb-sub">RSS <span id="rss">-</span></span>
@@ -240,6 +264,8 @@
       if (m > 0) return m + 'm ' + sec + 's';
       return sec + 's';
     }
+    function formatMs(ms) { return (ms || 0).toFixed(1) + 'ms'; }
+    function formatPercent(value) { return (value || 0).toFixed(1) + '%'; }
     function formatChips(c) { return '$' + c.toLocaleString(); }
 
     async function fetchStats() {
@@ -267,6 +293,21 @@
       dbEl.textContent = d.database.connected ? 'OK' : 'NG';
       dbEl.className = 'sb-value ' + (d.database.connected ? 'success' : 'error');
       document.getElementById('userCount').textContent = d.database.userCount.toLocaleString();
+      document.getElementById('dbLatency').textContent = formatMs(d.database.queryLatency && d.database.queryLatency.avgMs);
+      document.getElementById('dbLatencyP95').textContent = formatMs(d.database.queryLatency && d.database.queryLatency.p95Ms);
+
+      var loop = d.runtime && d.runtime.eventLoopDelay;
+      document.getElementById('eventLoopDelay').textContent = formatMs(loop && loop.avgMs);
+      document.getElementById('eventLoopDelayP99').textContent = formatMs(loop && loop.p99Ms);
+
+      var cpu = d.runtime && d.runtime.cpu;
+      document.getElementById('cpuPercent').textContent = formatPercent(cpu && cpu.percentOfOneCore);
+      document.getElementById('cpuSystemPercent').textContent = formatPercent(cpu && cpu.percentOfSystem);
+
+      var disconnects = d.connections.disconnects || { total: 0, byReason: {} };
+      var topReason = Object.keys(disconnects.byReason || {})[0];
+      document.getElementById('disconnectTotal').textContent = disconnects.total || 0;
+      document.getElementById('disconnectTopReason').textContent = topReason ? topReason + ': ' + disconnects.byReason[topReason] : '-';
 
       document.getElementById('heapUsed').textContent = formatBytes(d.memory.heapUsed);
       document.getElementById('rss').textContent = formatBytes(d.memory.rss);

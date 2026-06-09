@@ -8,6 +8,14 @@ import type { MessageLog, PendingAction } from '../table/TableInstance.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
 import {
+  getDbQueryLatencyMetrics,
+  getRuntimeMetrics,
+  getSocketDisconnectMetrics,
+  type DbQueryLatencyMetrics,
+  type RuntimeMetrics,
+  type SocketDisconnectMetrics,
+} from './metrics.js';
+import {
   DEFAULT_BUY_IN,
   DEFAULT_STARTING_CHIPS,
   DEFAULT_MAX_PLAYERS,
@@ -72,6 +80,7 @@ interface ServerStats {
   connections: {
     total: number;
     authenticated: number;
+    disconnects: SocketDisconnectMetrics;
   };
   tables: {
     total: number;
@@ -83,7 +92,9 @@ interface ServerStats {
   database: {
     connected: boolean;
     userCount: number;
+    queryLatency: DbQueryLatencyMetrics;
   };
+  runtime: RuntimeMetrics;
   memory: {
     heapUsed: number;
     heapTotal: number;
@@ -228,6 +239,7 @@ export function adminRoutes(deps: AdminDependencies) {
       }
 
       const memUsage = process.memoryUsage();
+      const runtimeMetrics = getRuntimeMetrics();
 
       return {
         timestamp: new Date().toISOString(),
@@ -235,6 +247,7 @@ export function adminRoutes(deps: AdminDependencies) {
         connections: {
           total: sockets.length,
           authenticated: authenticatedCount,
+          disconnects: getSocketDisconnectMetrics(),
         },
         tables: {
           total: tablesInfo.length,
@@ -246,7 +259,9 @@ export function adminRoutes(deps: AdminDependencies) {
         database: {
           connected: dbConnected,
           userCount,
+          queryLatency: getDbQueryLatencyMetrics(),
         },
+        runtime: runtimeMetrics,
         tournaments: {
           total: tournamentDetails.length,
           details: tournamentDetails,

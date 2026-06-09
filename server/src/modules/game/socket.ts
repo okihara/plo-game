@@ -6,6 +6,7 @@ import { TournamentManager } from '../tournament/TournamentManager.js';
 import { registerTournamentHandlers } from '../tournament/socket.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { announcementService } from '../announcement/AnnouncementService.js';
+import { recordSocketDisconnect } from '../admin/metrics.js';
 import { setupAuthMiddleware, AuthenticatedSocket } from './authMiddleware.js';
 import { setupFastFoldCallback } from './fastFoldService.js';
 import { wrapSocketHandler, reportSocketError } from './socketErrorReporter.js';
@@ -152,9 +153,11 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('disconnect', (reason: string) => {
       const role = isSpectate ? 'Spectator' : 'Player';
       const username = socket.odUsername ?? '(unknown)';
+      const serverCaused = SERVER_CAUSED_DISCONNECT_REASONS.has(reason);
+      recordSocketDisconnect(reason, { role, serverCaused });
       // サーバー起因の切断（transport error / ping timeout / 強制切断 等）は error として残し、
       // クライアントが明示的に切断したケース（client namespace disconnect 等）は info で十分
-      if (SERVER_CAUSED_DISCONNECT_REASONS.has(reason)) {
+      if (serverCaused) {
         console.error(`[Socket] ${role} disconnected (server-caused): odId=${odId}, username=${username}, socket=${socket.id}, reason=${reason}`);
         if (sentryEnabled) {
           Sentry.withScope((scope) => {
