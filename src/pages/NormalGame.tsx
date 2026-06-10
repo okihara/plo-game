@@ -20,6 +20,7 @@ export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGamePr
     connectionError,
     isDisplaced,
     isReconnecting,
+    connectionEpoch,
     gameState,
     mySeat,
     myHoleCards,
@@ -88,6 +89,7 @@ export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGamePr
           actionTimeoutAt={actionTimeoutAt}
           actionTimeoutMs={actionTimeoutMs}
           showdownHandNames={showdownHandNames}
+          connectionEpoch={connectionEpoch}
           handleAction={handleAction}
           handleFastFold={handleFastFold}
           onBack={onBack}
