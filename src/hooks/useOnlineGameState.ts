@@ -34,6 +34,9 @@ export interface OnlineGameHookResult {
   tableId: string | null;
   mySeat: number | null;
   myHoleCards: Card[];
+  /** 現在の決定ポイント(actionSeq)に対してアクション送信済みか。
+   *  サーバー状態から導出されるため、新しい state が届けば自動的に false に戻る */
+  isActionPending: boolean;
 
   // UI状態
   lastActions: Map<number, LastAction>;
@@ -77,6 +80,13 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [tableId, setTableId] = useState<string | null>(null);
   const [mySeat, setMySeat] = useState<number | null>(null);
   const [myHoleCards, setMyHoleCards] = useState<Card[]>([]);
+
+  // 送信済みアクションの対象決定ポイント。clientState.actionSeq と突き合わせて
+  // isActionPending を導出する（ローカルにロックフラグは持たない）。
+  // - サーバーがアクションを処理すると actionSeq が進む → 自動解錠
+  // - ack が返らない（送信失敗）→ クリアして解錠
+  const [sentActionTarget, setSentActionTarget] = useState<{ tableId: string; seq: number } | null>(null);
+  const sentActionTargetRef = useRef<{ tableId: string; seq: number } | null>(null);
 
   // UI状態
   const [lastActions, setLastActions] = useState<Map<number, LastAction>>(new Map());
@@ -192,14 +202,41 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // ゲームアクション
   // ============================================
 
-  const handleAction = useCallback((action: Action, amount: number, discardIndices?: number[]) => {
-    wsService.sendAction(action, amount, discardIndices);
-    setActionTimeoutAt(null);
+  const clearSentActionTarget = useCallback(() => {
+    sentActionTargetRef.current = null;
+    setSentActionTarget(null);
   }, []);
 
+  /**
+   * 現在の決定ポイントを送信済みとしてマークし、ack の結果で後始末する共通処理。
+   * - 同一決定ポイントへの二重送信（連打）は無視
+   * - ack が返らなければマークを外して再操作可能に戻す
+   */
+  const sendWithActionLock = useCallback((send: () => Promise<boolean>) => {
+    const cs = clientStateRef.current;
+    const target = cs && cs.actionSeq != null ? { tableId: cs.tableId, seq: cs.actionSeq } : null;
+    if (target) {
+      const prev = sentActionTargetRef.current;
+      if (prev && prev.tableId === target.tableId && prev.seq === target.seq) return;
+      sentActionTargetRef.current = target;
+      setSentActionTarget(target);
+    }
+    send().then((delivered) => {
+      const current = sentActionTargetRef.current;
+      if (!delivered && target && current
+        && current.tableId === target.tableId && current.seq === target.seq) {
+        clearSentActionTarget();
+      }
+    });
+  }, [clearSentActionTarget]);
+
+  const handleAction = useCallback((action: Action, amount: number, discardIndices?: number[]) => {
+    sendWithActionLock(() => wsService.sendAction(action, amount, discardIndices));
+  }, [sendWithActionLock]);
+
   const handleFastFold = useCallback(() => {
-    wsService.sendFastFold();
-  }, []);
+    sendWithActionLock(() => wsService.sendFastFold());
+  }, [sendWithActionLock]);
 
   const startNextHand = useCallback(() => {
     // サーバー側で自動的に次のハンドが始まるので、クライアントでは何もしない
@@ -254,6 +291,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         }
       },
       onError: (message) => {
+        // table:error = サーバーがアクションを受領したが拒否したケースを含む。
+        // 拒否では actionSeq が進まないため、ここで送信済みマークを外して再操作可能にする
+        clearSentActionTarget();
         setConnectionError(message);
       },
       onTableJoined: (tid, seat) => {
@@ -274,6 +314,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setMySeat(null);
         setMyHoleCards([]);
         setClientState(null);
+        clearSentActionTarget();
         setActionTimeoutAt(null);
         setWinners([]);
         setShowdownCards(new Map());
@@ -305,12 +346,14 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           ante: prev?.ante ?? 0,
           bringIn: 0,
           validActions: null,
+          actionSeq: null,
         }));
         setMyHoleCards([]);
         setShowdownCards(new Map());
         setShowdownHandNames(new Map());
         setWinners([]);
         setLastActions(new Map());
+        clearSentActionTarget();
         setActionTimeoutAt(null);
         setActionTimeoutMs(null);
         prevStreetRef.current = null;
@@ -480,7 +523,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         winnersDisplayTimerRef.current = null;
       }
     };
-  }, [clearAllActionMarkers, recordAction, startDealingAnimation]);
+  }, [clearAllActionMarkers, clearSentActionTarget, recordAction, startDealingAnimation]);
 
   // ============================================
   // 変換されたGameState
@@ -504,6 +547,13 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     ? gameState.currentPlayerIndex !== mySeat
     : false;
 
+  // 現在の決定ポイントに対してアクション送信済みか（サーバー状態からの導出値）。
+  // サーバーがアクションを処理して actionSeq が進む・テーブルが変わる・
+  // ack 失敗でマークが外れる、のいずれかで自動的に false へ戻る
+  const isActionPending = sentActionTarget !== null && clientState !== null
+    && clientState.tableId === sentActionTarget.tableId
+    && clientState.actionSeq === sentActionTarget.seq;
+
   // 着席しているプレイヤー数
   const seatedPlayerCount = clientState
     ? clientState.players.filter(p => p !== null).length
@@ -522,6 +572,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     tableId,
     mySeat,
     myHoleCards,
+    isActionPending,
     lastActions,
     isProcessingCPU,
     isDealingCards,

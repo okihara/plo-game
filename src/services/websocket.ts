@@ -25,6 +25,11 @@ const AUTO_RECONNECT_DISCONNECT_REASONS = new Set<string>([
   'parse error',
 ]);
 
+// game:action / game:fast_fold の ack（サーバー受領通知）待ち時間。
+// サーバーのアクションタイムアウト（10秒）より十分短くし、
+// 失敗時にユーザーが再操作できる猶予を残す。
+const ACTION_ACK_TIMEOUT_MS = 4000;
+
 const wsLog = (event: string, ...args: unknown[]) => {
   const t = new Date();
   const ts = `${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}.${String(t.getMilliseconds()).padStart(3, '0')}`;
@@ -412,12 +417,28 @@ class WebSocketService {
   }
 
   // Game actions
-  sendAction(action: Action, amount?: number, discardIndices?: number[]): void {
-    this.socket?.emit('game:action', { action, amount, discardIndices });
+  //
+  // ack 付き送信: サーバーの受領通知が ACTION_ACK_TIMEOUT_MS 以内に返らなければ
+  // 「届かなかった」として false を解決する（reject はしない）。
+  // volatile を使うのは、切断中の emit を socket.io の sendBuffer に積ませないため。
+  // バッファされたアクションが再接続後に遅れて発射されると、その時点の決定ポイントに
+  // 対する誤アクションになりうる。volatile なら「即配送 or 即破棄」で決定的になる。
+  sendAction(action: Action, amount?: number, discardIndices?: number[]): Promise<boolean> {
+    const socket = this.socket;
+    if (!socket) return Promise.resolve(false);
+    return socket.volatile.timeout(ACTION_ACK_TIMEOUT_MS)
+      .emitWithAck('game:action', { action, amount, discardIndices })
+      .then((res) => res.received === true)
+      .catch(() => false);
   }
 
-  sendFastFold(): void {
-    this.socket?.emit('game:fast_fold');
+  sendFastFold(): Promise<boolean> {
+    const socket = this.socket;
+    if (!socket) return Promise.resolve(false);
+    return socket.volatile.timeout(ACTION_ACK_TIMEOUT_MS)
+      .emitWithAck('game:fast_fold')
+      .then((res) => res.received === true)
+      .catch(() => false);
   }
 
   // Matchmaking pool

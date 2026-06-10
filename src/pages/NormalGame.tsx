@@ -40,6 +40,7 @@ export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGamePr
     joinMatchmaking,
     handleAction,
     handleFastFold,
+    isActionPending,
   } = useOnlineGameState(blinds, isFastFold, variant);
 
   // 接続と参加
@@ -90,6 +91,7 @@ export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGamePr
           showdownHandNames={showdownHandNames}
           handleAction={handleAction}
           handleFastFold={handleFastFold}
+          isActionPending={isActionPending}
           onBack={onBack}
           blindsLabel={blindsLabel}
           isFastFold={isFastFold}

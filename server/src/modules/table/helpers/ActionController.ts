@@ -200,7 +200,10 @@ export class ActionController {
       Math.round(baseTimeoutMs * factor),
     );
 
-    // ダッシュボード用のpendingAction設定
+    // 世代カウンターを進める: タイムアウトの無効化判定と、クライアントへ配信する
+    // 決定ポイントID（actionSeq）を兼ねる
+    const gen = ++this.actionGeneration;
+
     this.pendingAction = {
       playerId: currentSeat.odId,
       playerName: currentSeat.odName,
@@ -212,12 +215,12 @@ export class ActionController {
       })),
       requestedAt: Date.now(),
       timeoutMs,
+      seq: gen,
     };
 
     // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）
     const playerIdForTimeout = currentSeat.odId;
     const seatIndexForTimeout = currentPlayerIndex;
-    const gen = ++this.actionGeneration;
 
     this.actionTimer = setTimeout(() => {
       if (this.actionGeneration !== gen) return;

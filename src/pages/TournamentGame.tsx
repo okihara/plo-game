@@ -44,6 +44,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     showdownHandNames,
     handleAction,
     handleFastFold,
+    isActionPending,
     isWaitingForPlayers,
     connectionError,
     isDisplaced,
@@ -144,6 +145,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
             showdownHandNames={showdownHandNames}
             handleAction={handleAction}
             handleFastFold={handleFastFold}
+            isActionPending={isActionPending}
             isWaitingForPlayers={isWaitingForPlayers}
             onBack={handleBack}
             blindsLabel={blinds}

@@ -73,7 +73,7 @@ export interface MessageLog {
   data: unknown;
 }
 
-// ダッシュボード用：待機中のアクションリクエスト
+// 待機中のアクションリクエスト（ダッシュボード表示 + 決定ポイントIDの配信元）
 export interface PendingAction {
   playerId: string;
   playerName: string;
@@ -81,6 +81,8 @@ export interface PendingAction {
   validActions: { action: string; minAmount: number; maxAmount: number }[];
   requestedAt: number;
   timeoutMs: number;
+  /** 決定ポイントID（ActionController.actionGeneration の値）。ClientGameState.actionSeq として配信する */
+  seq: number;
 }
 
 // ダッシュボード用：ゲーム状態デバッグ情報

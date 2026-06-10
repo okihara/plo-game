@@ -19,8 +19,13 @@ export interface ClientToServerEvents {
   'table:spectate_leave': () => void;
 
   // Game actions
-  'game:action': (data: { action: Action; amount?: number; discardIndices?: number[] }) => void;
-  'game:fast_fold': () => void;
+  // ack は「サーバーに届いた」ことの受領通知。クライアントはこれが返らない場合に
+  // 送信失敗（接続エラー等）と判定し、アクション UI のロックを解除する。
+  'game:action': (
+    data: { action: Action; amount?: number; discardIndices?: number[] },
+    ack: (res: { received: boolean }) => void,
+  ) => void;
+  'game:fast_fold': (ack: (res: { received: boolean }) => void) => void;
 
   // Matchmaking pool
   'matchmaking:join': (data: { blinds: string; isFastFold?: boolean; variant?: string }) => void;
@@ -137,6 +142,10 @@ export interface ClientGameState {
   ante: number;     // Stud: アンテ額
   bringIn: number;  // Stud: ブリングイン額
   validActions: { action: string; minAmount: number; maxAmount: number }[] | null;
+  /** 決定ポイントID。アクション要求のたびに増える単調増加値（アクション待ちでないときは null）。
+   *  クライアントは「seq X に対してアクション送信済み」をこの値と突き合わせて導出し、
+   *  新しい seq の state が届いたら送信ロックを自動解除する。 */
+  actionSeq: number | null;
   /** 最小チップ単位。クライアントの bet スライダーがこの倍数しか選べないように
    *  step を切り上げる用途。トーナメント=100、キャッシュ=undefined(1相当)。 */
   chipUnit?: number;

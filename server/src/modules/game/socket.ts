@@ -138,10 +138,17 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('table:spectate_leave', wrapSocketHandler(socket, 'table:spectate_leave', () =>
       handleSpectateLeave(socket, tableManager, tournamentManager)
     ));
-    socket.on('game:action', wrapSocketHandler(socket, 'game:action', (data: Parameters<typeof handleGameAction>[1]) =>
-      handleGameAction(socket, data, tableManager, tournamentManager)
-    ));
-    socket.on('game:fast_fold', wrapSocketHandler(socket, 'game:fast_fold', () => handleFastFold(socket, tableManager)));
+    // ack は「サーバーが受領した」ことの即時応答。クライアントは ack が返らなければ
+    // 送信失敗（接続エラー等）と判定してアクション UI のロックを解除する。
+    // 旧クライアントは ack なしで emit してくるため関数チェックが必要。
+    socket.on('game:action', wrapSocketHandler(socket, 'game:action', (data: Parameters<typeof handleGameAction>[1], ack?: (res: { received: boolean }) => void) => {
+      if (typeof ack === 'function') ack({ received: true });
+      return handleGameAction(socket, data, tableManager, tournamentManager);
+    }));
+    socket.on('game:fast_fold', wrapSocketHandler(socket, 'game:fast_fold', (ack?: (res: { received: boolean }) => void) => {
+      if (typeof ack === 'function') ack({ received: true });
+      return handleFastFold(socket, tableManager);
+    }));
     socket.on('matchmaking:join', wrapSocketHandler(socket, 'matchmaking:join', (data: Parameters<typeof handleMatchmakingJoin>[1]) =>
       handleMatchmakingJoin(socket, data, tableManager)
     ));

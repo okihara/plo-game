@@ -93,6 +93,7 @@ export function convertClientStateToGameState(
     betCount: 0,
     maxBetsPerRound: 4,
     validActions: clientState.validActions ?? null,
+    actionSeq: clientState.actionSeq ?? null,
     chipUnit: clientState.chipUnit,
   };
 }

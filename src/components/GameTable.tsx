@@ -33,6 +33,8 @@ export interface GameTableProps {
   // アクション
   handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
   handleFastFold?: () => void;
+  /** 現在の決定ポイントに対してアクション送信済みか（useOnlineGameState の導出値） */
+  isActionPending?: boolean;
   onBack: () => void;
 
   // 表示設定
@@ -75,6 +77,7 @@ export function GameTable({
   showdownHandNames,
   handleAction,
   handleFastFold,
+  isActionPending = false,
   onBack,
   blindsLabel,
   isFastFold,
@@ -314,6 +317,7 @@ export function GameTable({
               state={gameState}
               mySeat={myPlayerIdx}
               onAction={handleAction}
+              actionPending={isActionPending}
               isFastFold={isFastFold}
               onFastFold={handleFastFold}
               isDrawPhase={isDraw && isCurrentDrawStreet}

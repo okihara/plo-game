@@ -32,6 +32,9 @@ interface ActionPanelProps {
   state: GameState;
   mySeat: number;
   onAction: (action: Action, amount: number, discardIndices?: number[]) => void;
+  /** 現在の決定ポイントに対してアクション送信済みか（useOnlineGameState の導出値）。
+   *  ローカルにラッチを持たず、サーバー状態が進めば自動的に false へ戻る */
+  actionPending?: boolean;
   isFastFold?: boolean;
   onFastFold?: () => void;
   // Draw用
@@ -39,7 +42,7 @@ interface ActionPanelProps {
   selectedCardIndices?: Set<number>;
 }
 
-export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, isDrawPhase, selectedCardIndices }: ActionPanelProps) {
+export function ActionPanel({ state, mySeat, onAction, actionPending = false, isFastFold, onFastFold, isDrawPhase, selectedCardIndices }: ActionPanelProps) {
   const { formatChips } = useGameSettings();
   const myPlayer = state.players[mySeat];
   const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
@@ -75,7 +78,6 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   const maxSliderIndex = betSliderMaxIndex(minRaise, maxRaise, chipStep);
 
   const [sliderIndex, setSliderIndex] = useState(0);
-  const [actionSent, setActionSent] = useState(false);
   const [prefoldChecked, setPrefoldChecked] = useState(false);
   const prefoldTriggeredRef = useRef(false);
 
@@ -94,19 +96,14 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     setSliderIndex((i) => Math.min(i, betSliderMaxIndex(minRaise, maxRaise, chipStep)));
   }, [minRaise, maxRaise, chipStep]);
 
-  useEffect(() => {
-    setActionSent(false);
-  }, [isMyTurn, state.tableId]);
-
   // フォールド予約
   useEffect(() => {
-    if (isMyTurn && prefoldChecked && !actionSent && !prefoldTriggeredRef.current) {
+    if (isMyTurn && prefoldChecked && !actionPending && !prefoldTriggeredRef.current) {
       if (canCheck) {
         // チェック可能なターンが来た場合は自動foldはせず、予約だけ解除する
         setPrefoldChecked(false);
       } else {
         prefoldTriggeredRef.current = true;
-        setActionSent(true);
         setPrefoldChecked(false);
         onAction('fold', 0);
       }
@@ -114,7 +111,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     if (!isMyTurn) {
       prefoldTriggeredRef.current = false;
     }
-  }, [isMyTurn, prefoldChecked, actionSent, onAction, canCheck]);
+  }, [isMyTurn, prefoldChecked, actionPending, onAction, canCheck]);
 
   useEffect(() => {
     if (state.isHandComplete) {
@@ -139,7 +136,6 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     } else if (action === 'allin') {
       amount = allinInfo?.minAmount ?? myPlayer.chips;
     }
-    setActionSent(true);
     onAction(action, amount);
   }, [toCall, myPlayer.chips, sliderValue, onAction, callInfo, allinInfo]);
 
@@ -147,7 +143,6 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     if (isMyTurn) {
       handleAction('fold');
     } else if (canFastFold && onFastFold) {
-      setActionSent(true);
       onFastFold();
     }
   }, [isMyTurn, canFastFold, onFastFold, handleAction]);
@@ -160,10 +155,9 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
         <div className="flex justify-center">
           <ActionButton
             onClick={() => {
-              setActionSent(true);
               onAction('draw', 0, Array.from(selectedCardIndices));
             }}
-            disabled={!isMyTurn || actionSent}
+            disabled={!isMyTurn || actionPending}
             colorFrom={count === 0 ? 'from-blue-500' : 'from-amber-500'}
             colorTo={count === 0 ? 'to-blue-600' : 'to-amber-600'}
             borderColor={count === 0 ? 'border-blue-800' : 'border-amber-800'}
@@ -180,7 +174,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   // 中央ボタン: check or call
   const centerAction: Action = canCheck ? 'check' : 'call';
   const centerLabel = canCheck ? 'CHECK' : `CALL ${formatChips(myPlayer.currentBet + toCall)}`;
-  const centerDisabled = !isMyTurn || actionSent || (!canCheck && !callInfo) || isShortStack;
+  const centerDisabled = !isMyTurn || actionPending || (!canCheck && !callInfo) || isShortStack;
 
   // 右ボタン: bet/raise/allin
   const rightAction: Action = isShortStack || sliderValue >= myPlayer.chips ? 'allin'
@@ -193,7 +187,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     : isFixedLimit
       ? (betInfo ? `BET ${formatChips(minRaise)}` : `RAISE ${formatChips(raiseToChips)}`)
       : (betInfo ? `BET ${formatChips(sliderTotalChips)}` : `RAISE ${formatChips(sliderTotalChips)}`);
-  const rightDisabled = isShortStack ? (!isMyTurn || actionSent) : (!canRaise || !isMyTurn || actionSent);
+  const rightDisabled = isShortStack ? (!isMyTurn || actionPending) : (!canRaise || !isMyTurn || actionPending);
 
   // スライダー表示: 可変額のbet/raiseがある場合のみ（Fixed Limitでは非表示）
   const showSlider = !isFixedLimit;
@@ -202,7 +196,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw] relative overflow-visible`}>
       {/* Vertical Bet Slider (absolute, extends above ActionPanel) */}
       {showSlider && (
-        <div className={`absolute right-[4cqw] bottom-[15cqw] h-[50cqw] w-[17cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+        <div className={`absolute right-[4cqw] bottom-[15cqw] h-[50cqw] w-[17cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionPending) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           <span className="text-white text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[3cqw] px-[1.2cqw] py-[0.7cqw] bg-black backdrop-blur-sm w-full">
             {formatChips(sliderTotalChips)}
           </span>
@@ -213,7 +207,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
             value={sliderIndex}
             step={1}
             onChange={(e) => setSliderIndex(parseInt(e.target.value, 10))}
-            disabled={!canRaise || !isMyTurn || actionSent}
+            disabled={!canRaise || !isMyTurn || actionPending}
             style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
             className="bet-slider-vertical flex-1 w-[3cqw] rounded-full bg-gradient-to-b from-amber-500 to-gray-600 appearance-none cursor-pointer"
           />
@@ -222,7 +216,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
 
       {/* Preset Buttons */}
       {showSlider && (
-        <div className={`flex gap-[0.9cqw] mb-[2.2cqw] pr-[22cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+        <div className={`flex gap-[0.9cqw] mb-[2.2cqw] pr-[22cqw] ${(!canRaise || !isMyTurn || actionPending) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           {[
             { label: '33%', value: 0.33 },
             { label: '50%', value: 0.5 },
@@ -232,7 +226,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
             <button
               key={label}
               onClick={() => handlePreset(value)}
-              disabled={!canRaise || !isMyTurn || actionSent}
+              disabled={!canRaise || !isMyTurn || actionPending}
               className="flex-1 py-[0.8cqw] px-[0.9cqw] border-[0.3cqw] border-gray-500 rounded-[1cqw] bg-gray-700 text-gray-200 text-[4cqw] transition-all active:bg-gray-600 active:border-gray-400 whitespace-nowrap"
             >
               {label}
@@ -269,7 +263,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
           )}
           <ActionButton
             onClick={handleFoldClick}
-            disabled={!(isMyTurn && !actionSent && canFold) && !(canFastFold && !actionSent)}
+            disabled={!(isMyTurn && !actionPending && canFold) && !(canFastFold && !actionPending)}
             colorFrom={canFastFold && !isMyTurn ? 'from-red-500' : 'from-gray-500'}
             colorTo={canFastFold && !isMyTurn ? 'to-red-600' : 'to-gray-600'}
             borderColor={canFastFold && !isMyTurn ? 'border-red-800' : 'border-gray-800'}
