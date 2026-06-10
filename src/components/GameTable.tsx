@@ -33,6 +33,7 @@ export interface GameTableProps {
   // アクション
   handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
   handleFastFold?: () => void;
+  actionRetryKey?: number;
   onBack: () => void;
 
   // 表示設定
@@ -75,6 +76,7 @@ export function GameTable({
   showdownHandNames,
   handleAction,
   handleFastFold,
+  actionRetryKey,
   onBack,
   blindsLabel,
   isFastFold,
@@ -316,6 +318,7 @@ export function GameTable({
               onAction={handleAction}
               isFastFold={isFastFold}
               onFastFold={handleFastFold}
+              actionRetryKey={actionRetryKey}
               isDrawPhase={isDraw && isCurrentDrawStreet}
               selectedCardIndices={selectedCardIndices}
             />

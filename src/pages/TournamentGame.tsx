@@ -48,6 +48,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     connectionError,
     isDisplaced,
     isReconnecting,
+    actionRetryKey,
   } = useOnlineGameState(blinds);
 
   // まずAPIでトーナメント状態を確認。終了済みなら結果を表示、進行中ならソケット接続
@@ -144,6 +145,7 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
             showdownHandNames={showdownHandNames}
             handleAction={handleAction}
             handleFastFold={handleFastFold}
+            actionRetryKey={actionRetryKey}
             isWaitingForPlayers={isWaitingForPlayers}
             onBack={handleBack}
             blindsLabel={blinds}

@@ -34,12 +34,13 @@ interface ActionPanelProps {
   onAction: (action: Action, amount: number, discardIndices?: number[]) => void;
   isFastFold?: boolean;
   onFastFold?: () => void;
+  actionRetryKey?: number;
   // Draw用
   isDrawPhase?: boolean;
   selectedCardIndices?: Set<number>;
 }
 
-export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, isDrawPhase, selectedCardIndices }: ActionPanelProps) {
+export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, actionRetryKey, isDrawPhase, selectedCardIndices }: ActionPanelProps) {
   const { formatChips } = useGameSettings();
   const myPlayer = state.players[mySeat];
   const isMyTurn = state.currentPlayerIndex === mySeat && !state.isHandComplete;
@@ -97,6 +98,11 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
   useEffect(() => {
     setActionSent(false);
   }, [isMyTurn, state.tableId]);
+
+  useEffect(() => {
+    if (actionRetryKey === undefined) return;
+    setActionSent(false);
+  }, [actionRetryKey]);
 
   // フォールド予約
   useEffect(() => {

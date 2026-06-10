@@ -49,6 +49,8 @@ export interface OnlineGameHookResult {
   maintenanceStatus: { isActive: boolean; message: string } | null;
   announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
+  /** 再接続後にサーバー状態へ同期できた回数。送信ロック解除など、再試行可能化の合図に使う。 */
+  actionRetryKey: number;
 
   // アクション
   connect: () => Promise<void>;
@@ -91,6 +93,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
+  const [actionRetryKey, setActionRetryKey] = useState(0);
 
   // Refs
   const prevStreetRef = useRef<string | null>(null);
@@ -99,6 +102,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const clientStateRef = useRef<ClientGameState | null>(null);
   const mySeatRef = useRef<number | null>(null);
   const myHoleCardsRef = useRef<Card[]>([]);
+  const waitingForReconnectStateRef = useRef(false);
   /** 直前の game:state で自分のターンだったか（重複再生防止） */
   const wasMyTurnRef = useRef(false);
 
@@ -236,11 +240,13 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       },
       onReconnecting: () => {
         // auto-reconnect が走るケース: エラー扱いではなく「再接続中」表示にする
+        waitingForReconnectStateRef.current = true;
         setIsReconnecting(true);
         setConnectionError(null);
       },
       onReconnectFailed: () => {
         // 再接続を諦めた: 「再接続中」を解除してエラーダイアログに切り替える
+        waitingForReconnectStateRef.current = false;
         setIsReconnecting(false);
         setIsConnected(false);
         setConnectionError('再接続できませんでした。通信環境をご確認ください。');
@@ -324,6 +330,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onGameState: (state) => {
         // ファストフォールド移動後、新テーブルの状態が届いたらフラグクリア
         setIsChangingTable(false);
+        if (waitingForReconnectStateRef.current) {
+          waitingForReconnectStateRef.current = false;
+          setActionRetryKey(key => key + 1);
+        }
 
         const nowInProgress = state.isHandInProgress;
         const wasInProgress = prevIsHandInProgressRef.current;
@@ -535,6 +545,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
+    actionRetryKey,
     connect,
     disconnect,
     joinMatchmaking,

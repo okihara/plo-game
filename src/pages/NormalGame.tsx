@@ -35,6 +35,7 @@ export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGamePr
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
+    actionRetryKey,
     connect,
     disconnect,
     joinMatchmaking,
@@ -90,6 +91,7 @@ export function NormalGame({ blinds, isFastFold, variant, onBack }: NormalGamePr
           showdownHandNames={showdownHandNames}
           handleAction={handleAction}
           handleFastFold={handleFastFold}
+          actionRetryKey={actionRetryKey}
           onBack={onBack}
           blindsLabel={blindsLabel}
           isFastFold={isFastFold}
