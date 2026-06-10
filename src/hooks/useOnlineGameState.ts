@@ -28,6 +28,8 @@ export interface OnlineGameHookResult {
   connectionError: string | null;
   isDisplaced: boolean;
   isReconnecting: boolean;
+  /** 接続が確立するたびに増える世代番号。再接続成功時に UI ローカル state（actionSent 等）を入室直後と同じ状態へ戻すための key に使う */
+  connectionEpoch: number;
 
   // ゲーム状態
   gameState: GameState | null;
@@ -71,6 +73,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [isDisplaced, setIsDisplaced] = useState(false);
   const [isReconnecting, setIsReconnecting] = useState(false);
+  const [connectionEpoch, setConnectionEpoch] = useState(0);
 
   // ゲーム状態
   const [clientState, setClientState] = useState<ClientGameState | null>(null);
@@ -229,6 +232,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsConnected(true);
         setIsReconnecting(false);
         setConnectionError(null);
+        // 切断中に送ろうとしたアクションは失われている可能性がある。
+        // 世代番号を進めて ActionPanel を再マウントさせ、actionSent 等を入室直後と同じ状態に戻す
+        setConnectionEpoch((epoch) => epoch + 1);
       },
       onDisconnected: (message) => {
         setIsConnected(false);
@@ -518,6 +524,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     connectionError,
     isDisplaced,
     isReconnecting,
+    connectionEpoch,
     gameState,
     tableId,
     mySeat,

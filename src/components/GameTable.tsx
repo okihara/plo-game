@@ -29,6 +29,8 @@ export interface GameTableProps {
   actionTimeoutAt: ActionTimeoutAt | null;
   actionTimeoutMs: number | null;
   showdownHandNames: Map<number, string>;
+  /** 接続世代。再接続成功で変わり、ActionPanel を再マウントして actionSent 等を入室直後と同じ状態に戻す */
+  connectionEpoch?: number;
 
   // アクション
   handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
@@ -73,6 +75,7 @@ export function GameTable({
   actionTimeoutAt,
   actionTimeoutMs,
   showdownHandNames,
+  connectionEpoch,
   handleAction,
   handleFastFold,
   onBack,
@@ -311,6 +314,7 @@ export function GameTable({
 
           {!isSpectator && (
             <ActionPanel
+              key={connectionEpoch}
               state={gameState}
               mySeat={myPlayerIdx}
               onAction={handleAction}
