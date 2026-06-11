@@ -9,6 +9,7 @@ import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
 import { HandAnalysisOverlay } from './HandAnalysisOverlay';
 import { ProfilePopup } from './ProfilePopup';
+import { CompactProfileModal } from './CompactProfileModal';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from './HandHistoryPanel';
 import { BustedScreen } from './BustedScreen';
@@ -101,10 +102,21 @@ export function GameTable({
   const showHandName = settings.showHandName;
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
+  const [showFullProfile, setShowFullProfile] = useState(false);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [centerNotice, setCenterNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePlayerClick = useCallback((player: PlayerType) => {
+    setSelectedPlayer(player);
+    setShowFullProfile(false);
+  }, []);
+
+  const closeProfile = useCallback(() => {
+    setSelectedPlayer(null);
+    setShowFullProfile(false);
+  }, []);
 
   const showCenterNotice = useCallback((text: string) => {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
@@ -293,7 +305,7 @@ export function GameTable({
             humanIndex={myPlayerIdx}
             actionTimeoutAt={actionTimeoutAt}
             actionTimeoutMs={actionTimeoutMs}
-            onPlayerClick={setSelectedPlayer}
+            onPlayerClick={handlePlayerClick}
             showdownHandNames={showdownHandNames}
             getLabel={getLabel}
             bubbleFactors={bubbleFactors}
@@ -364,15 +376,31 @@ export function GameTable({
             </div>
           )}
 
-          {/* Profile Popup */}
-          {selectedPlayer && (
+          {/* プロフィール: まずコンパクトモーダル、「詳細を見る」でフルプロフィール */}
+          {selectedPlayer && !showFullProfile && (
+            <CompactProfileModal
+              name={selectedPlayer.name}
+              avatarUrl={selectedPlayer.avatarUrl}
+              avatarId={selectedPlayer.avatarId}
+              userId={selectedPlayer.odId}
+              mode={isTournament ? 'tournament' : 'cash'}
+              label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
+              onClose={closeProfile}
+              onShowDetail={
+                selectedPlayer.odId && !selectedPlayer.odId.startsWith('bot_')
+                  ? () => setShowFullProfile(true)
+                  : undefined
+              }
+            />
+          )}
+          {selectedPlayer && showFullProfile && (
             <ProfilePopup
               name={selectedPlayer.name}
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
               isSelf={mySeat !== null && selectedPlayer.id === mySeat}
-              onClose={() => setSelectedPlayer(null)}
+              onClose={closeProfile}
               twitterAvatarUrl={mySeat !== null && selectedPlayer.id === mySeat ? user?.twitterAvatarUrl : undefined}
               useTwitterAvatar={mySeat !== null && selectedPlayer.id === mySeat ? user?.useTwitterAvatar : undefined}
               label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
