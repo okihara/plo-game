@@ -29,7 +29,7 @@ import { fileURLToPath } from 'url';
 import { generateQuiz, parseQuizType } from '../src/modules/quiz/quizGenerator.js';
 import { setBoardQuizOptions } from '../src/modules/quiz/generators/boardQuiz.js';
 import { renderQuizImage, type QuizImageData } from '../src/modules/quiz/renderQuizImage.js';
-import { postTweet, getCredentialsFromEnv } from '../src/modules/quiz/twitterClient.js';
+import { postTweet, getCredentialsFromEnv } from '../src/shared/twitterClient.js';
 import type { Quiz, QuizHistory } from '../src/modules/quiz/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
