@@ -11,6 +11,7 @@ import { SettingsPopup } from '../components/SettingsPopup';
 
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 import { WeeklyChampions } from '../components/WeeklyChampions';
+import { TournamentOpenBanner } from '../components/TournamentOpenBanner';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
@@ -224,6 +225,14 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
 
       {/* Main Content */}
       <div className="w-[88%]">
+        {/* Tournament Open Banner */}
+        {tournamentSummary.status === 'running' && tournamentSummary.isRegistrationOpen && (
+          <TournamentOpenBanner
+            deadlineTime={tournamentSummary.deadlineTime}
+            onClick={() => setActiveTab('tournament')}
+          />
+        )}
+
         {/* Weekly Champions */}
         <WeeklyChampions />
 
