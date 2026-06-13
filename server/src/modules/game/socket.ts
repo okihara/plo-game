@@ -143,12 +143,12 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     ));
     socket.on('game:fast_fold', wrapSocketHandler(socket, 'game:fast_fold', () => handleFastFold(socket, tableManager)));
     socket.on('matchmaking:join', wrapSocketHandler(socket, 'matchmaking:join', (data: Parameters<typeof handleMatchmakingJoin>[1]) =>
-      handleMatchmakingJoin(socket, data, tableManager)
+      handleMatchmakingJoin(socket, data, tableManager, tournamentManager)
     ));
     socket.on('matchmaking:leave', wrapSocketHandler(socket, 'matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager)));
 
     // トーナメントイベント登録
-    registerTournamentHandlers(socket, tournamentManager);
+    registerTournamentHandlers(socket, tournamentManager, tableManager);
 
     socket.on('disconnect', (reason: string) => {
       const role = isSpectate ? 'Spectator' : 'Player';

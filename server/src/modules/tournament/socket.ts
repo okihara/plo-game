@@ -1,6 +1,7 @@
 import { nanoid } from 'nanoid';
 import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
+import { TableManager } from '../table/TableManager.js';
 import { TournamentConfig } from './types.js';
 import { DEFAULT_BLIND_SCHEDULE, DEFAULT_BOMB_POT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
@@ -60,7 +61,8 @@ async function withDbAndMemory(opts: {
  */
 export function registerTournamentHandlers(
   socket: AuthenticatedSocket,
-  tournamentManager: TournamentManager
+  tournamentManager: TournamentManager,
+  tableManager: TableManager
 ): void {
   const odId = socket.odId!;
 
@@ -69,6 +71,14 @@ export function registerTournamentHandlers(
   socket.on('tournament:request_state', wrapSocketHandler(socket, 'tournament:request_state', async (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);
     if (!tournament) return;
+
+    // リング戦に着席中はトーナメント卓に着席させない（1ユーザー1ソケットのため、両方に
+    // 着席すると単一ソケットが両卓のルームに入り、状態混線・アクション誤ルーティングが起きる）。
+    // REST で事前登録・課金済みのまま、先にリング戦へ座ってしまったケースをここで止める。
+    if (tableManager.getPlayerTable(odId)) {
+      socket.emit('tournament:error', { message: 'リング戦から退席してからトーナメントに参加してください' });
+      return;
+    }
 
     let player = tournament.getPlayer(odId);
 

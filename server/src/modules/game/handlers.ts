@@ -234,8 +234,16 @@ export function handleSpectateLeave(
 export async function handleMatchmakingJoin(
   socket: AuthenticatedSocket,
   data: { blinds: string; isFastFold?: boolean; variant?: string },
-  tableManager: TableManager
+  tableManager: TableManager,
+  tournamentManager?: TournamentManager
 ): Promise<void> {
+  // トーナメント着席中はリング戦に参加できない（1ユーザー1ソケットのため、両方に
+  // 着席すると単一ソケットが両卓のルームに入り、状態混線・アクション誤ルーティングが起きる）。
+  if (tournamentManager?.getPlayerTournament(socket.odId!)) {
+    socket.emit('table:error', { message: 'トーナメント参加中はリング戦に参加できません' });
+    return;
+  }
+
   if (maintenanceService.isMaintenanceActive()) {
     socket.emit('table:error', { message: 'メンテナンス中のため参加できません' });
     return;
