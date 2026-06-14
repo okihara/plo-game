@@ -1,10 +1,12 @@
 import { nanoid } from 'nanoid';
 import { PrismaClient } from '@prisma/client';
 import { TournamentManager } from './TournamentManager.js';
+import { TableManager } from '../table/TableManager.js';
 import { TournamentConfig } from './types.js';
 import { DEFAULT_BLIND_SCHEDULE, DEFAULT_BOMB_POT_BLIND_SCHEDULE, DEFAULT_STARTING_CHIPS, DEFAULT_BUY_IN, DEFAULT_MIN_PLAYERS, DEFAULT_MAX_PLAYERS, DEFAULT_REGISTRATION_LEVELS, DEFAULT_MAX_REENTRIES, PLAYERS_PER_TABLE } from './constants.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
 import { wrapSocketHandler } from '../game/socketErrorReporter.js';
+import { unseatAndCashOut } from '../game/handlers.js';
 import { prisma } from '../../config/database.js';
 import { reportError } from '../../config/sentry.js';
 import { hasWeeklyChampionBadge } from '../badges/badgeService.js';
@@ -60,7 +62,8 @@ async function withDbAndMemory(opts: {
  */
 export function registerTournamentHandlers(
   socket: AuthenticatedSocket,
-  tournamentManager: TournamentManager
+  tournamentManager: TournamentManager,
+  tableManager: TableManager
 ): void {
   const odId = socket.odId!;
 
@@ -69,6 +72,16 @@ export function registerTournamentHandlers(
   socket.on('tournament:request_state', wrapSocketHandler(socket, 'tournament:request_state', async (data: { tournamentId: string }) => {
     const tournament = tournamentManager.getTournament(data.tournamentId);
     if (!tournament) return;
+
+    // リング戦に着席中のままトーナメント卓に着席すると、1ユーザー1ソケットのため
+    // 単一ソケットが両卓のルームに入り、状態混線・アクション誤ルーティングが起きる。
+    // トーナメントを優先し、リング戦からは強制離席（キャッシュアウト）させる。
+    const ringTable = tableManager.getPlayerTable(odId);
+    if (ringTable) {
+      await unseatAndCashOut(ringTable, odId, tableManager);
+      socket.emit('table:left');
+      console.log(`[Tournament] Force-left ring table ${ringTable.id} for ${odId} on tournament entry`);
+    }
 
     let player = tournament.getPlayer(odId);
 

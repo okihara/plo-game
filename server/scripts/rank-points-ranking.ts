@@ -250,7 +250,7 @@ async function main() {
     const limit = Math.min(TOP, ranking.length);
     const today = new Date().toISOString().slice(0, 10);
     const lines: string[] = [];
-    lines.push(`#title=BabyPLO ${SEASON_NAME} RP ランキング TOP ${limit}`);
+    lines.push(`#title=BabyPLO トーナメントランキング ${SEASON_NAME}`);
     lines.push(`#subtitle=${SEASON_LABEL} / 完了トナメ ${tournamentsCounted} 本の集計（${today}時点）`);
     lines.push(`#footer=賞金額（上位15%へ再分配）の 1/1000 切り上げで RP 化`);
     ranking.slice(0, limit).forEach((u, i) => {
