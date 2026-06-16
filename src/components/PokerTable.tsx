@@ -133,9 +133,11 @@ export function PokerTable({
                     : []
               )
             : undefined;
-          // ショウダウンで公開中のカードのうち、ベストハンドに使った2枚を少し上げる
+          // ショウダウンで公開中のカードのうち、ベストハンドに使った2枚を少し上げる。
+          // 自分のカード（MyCards）と上がるタイミングを揃えるため、役名が適用される
+          // hand_complete（showdownHandNames が入る）まで待ってから上げる。
           const raisedCardIndices =
-            player.isShowdown && !player.folded
+            player.isShowdown && !player.folded && showdownHandNames?.get(playerIdx)
               ? findUsedHoleCardIndices(player.holeCards, state.communityCards, state.variant)
               : undefined;
           return (
