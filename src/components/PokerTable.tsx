@@ -1,4 +1,4 @@
-import { GameState, Player as PlayerType } from '../logic';
+import { GameState, Player as PlayerType, findUsedHoleCardIndices } from '../logic';
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { Player } from './Player';
 import { CommunityCards } from './CommunityCards';
@@ -133,6 +133,13 @@ export function PokerTable({
                     : []
               )
             : undefined;
+          // ショウダウンで公開中のカードのうち、ベストハンドに使った2枚を少し上げる。
+          // 自分のカード（MyCards）と上がるタイミングを揃えるため、役名が適用される
+          // hand_complete（showdownHandNames が入る）まで待ってから上げる。
+          const raisedCardIndices =
+            player.isShowdown && !player.folded && showdownHandNames?.get(playerIdx)
+              ? findUsedHoleCardIndices(player.holeCards, state.communityCards, state.variant)
+              : undefined;
           return (
             <Player
               key={player.id}
@@ -155,6 +162,7 @@ export function PokerTable({
               wonBoards={wonBoards}
               wonHiLoSides={wonHiLoSides}
               bubbleFactor={player.odId ? bubbleFactors?.[player.odId] : undefined}
+              raisedCardIndices={raisedCardIndices}
             />
           );
         })}

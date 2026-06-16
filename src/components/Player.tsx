@@ -28,6 +28,8 @@ interface PlayerProps {
   wonHiLoSides?: ('high' | 'low')[];
   /** トナメ ICM バブルファクター。残 2 卓以下のとき各席に表示される。 */
   bubbleFactor?: number;
+  /** ショウダウンでベストハンドに使ったホールカードのインデックス（少し上げて強調） */
+  raisedCardIndices?: number[];
 }
 
 function formatAction(
@@ -107,6 +109,7 @@ export function Player({
   wonBoards,
   wonHiLoSides,
   bubbleFactor,
+  raisedCardIndices,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
   const currentVariant = variant;
@@ -273,6 +276,7 @@ export function Player({
         dealOrder={dealOrder}
         lastAction={lastAction}
         variant={currentVariant}
+        raisedIndices={raisedCardIndices}
       />
 
       {/* Hand Name (showdown) */}

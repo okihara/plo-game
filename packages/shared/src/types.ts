@@ -12,7 +12,7 @@ export function getUpCards(cards: Card[]): Card[] {
   return cards.filter(c => c.isUp === true);
 }
 
-export type GameVariant = 'plo' | 'plo5' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'plo_hilo' | 'stud_hilo' | 'plo_double_board_bomb' | 'big_o';
+export type GameVariant = 'plo' | 'plo5' | 'plo6' | 'stud' | 'razz' | 'limit_2-7_triple_draw' | 'no_limit_2-7_single_draw' | 'limit_holdem' | 'omaha_hilo' | 'plo_hilo' | 'stud_hilo' | 'plo_double_board_bomb' | 'big_o';
 
 // --- Variant Config ---
 
@@ -31,6 +31,7 @@ export interface VariantConfig {
 export const VARIANT_CONFIGS: Record<GameVariant, VariantConfig> = {
   plo:                          { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 4, maxDraws: 0, usesBringIn: false },
   plo5:                         { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 5, maxDraws: 0, usesBringIn: false },
+  plo6:                         { family: 'omaha',  betting: 'pot_limit',   usesCommunityCards: true,  holeCardCount: 6, maxDraws: 0, usesBringIn: false },
   limit_holdem:                 { family: 'holdem', betting: 'fixed_limit', usesCommunityCards: true,  holeCardCount: 2, maxDraws: 0, usesBringIn: false },
   stud:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
   razz:                         { family: 'stud',   betting: 'fixed_limit', usesCommunityCards: false, holeCardCount: 7, maxDraws: 0, usesBringIn: true },
@@ -51,6 +52,7 @@ export function getVariantConfig(variant: GameVariant): VariantConfig {
 export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
   plo: 'PLO',
   plo5: 'PLO5',
+  plo6: 'PLO6',
   limit_holdem: 'FLH',
   stud: 'Stud',
   razz: 'Razz',
@@ -69,10 +71,11 @@ export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
  *  バッジに表示する文字列は `VARIANT_DISPLAY_NAMES` を参照する。
  *  値は Tailwind のクラス名。 */
 export const VARIANT_BADGE_BG: Partial<Record<GameVariant, string>> = {
-  plo5:                  'bg-violet-600',
-  plo_hilo:              'bg-amber-600',
-  plo_double_board_bomb: 'bg-rose-600',
-  big_o:                 'bg-emerald-600',
+  plo5:                  'bg-violet-700',
+  plo6:                  'bg-indigo-700',
+  plo_hilo:              'bg-amber-700',
+  plo_double_board_bomb: 'bg-rose-700',
+  big_o:                 'bg-emerald-700',
 };
 
 /** PokerStars Hand History のヘッダーで使う variant 名。
@@ -80,6 +83,7 @@ export const VARIANT_BADGE_BG: Partial<Record<GameVariant, string>> = {
 export const VARIANT_POKERSTARS_LABEL: Record<GameVariant, string> = {
   plo: 'Omaha Pot Limit',
   plo5: '5 Card Omaha Pot Limit',
+  plo6: '6 Card Omaha Pot Limit',
   limit_holdem: "Hold'em Limit",
   stud: '7 Card Stud',
   razz: 'Razz',

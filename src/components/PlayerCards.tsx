@@ -34,6 +34,8 @@ interface PlayerCardsProps {
   dealOrder: number;
   lastAction: LastAction | null;
   variant: GameVariant;
+  /** ショウダウンでベストハンドに使ったホールカードのインデックス（少し上げて強調） */
+  raisedIndices?: number[];
 }
 
 export function PlayerCards({
@@ -44,6 +46,7 @@ export function PlayerCards({
   dealOrder,
   lastAction,
   variant,
+  raisedIndices,
 }: PlayerCardsProps) {
   // ショウダウン時のカード公開アニメーション
   const [isRevealing, setIsRevealing] = useState(false);
@@ -62,13 +65,19 @@ export function PlayerCards({
   
   const variantConfig = getVariantConfig(variant);
   const holeCardCount = variantConfig.holeCardCount;
-  // 表向きカードの重なりマージン (stud: 7 枚で深く重ねる / PLO5: 5 枚で少し深く / PLO: 通常)
+  // 表向きカードの重なりマージン (stud: 7 枚で深く重ねる / PLO6: 6 枚で更に深く / PLO5: 5 枚で少し深く / PLO: 通常)
   const cardOverlapMargin =
     variantConfig.family === 'stud' ? '-ml-[5cqw]' :
+    holeCardCount >= 6 ? '-ml-[5cqw]' :
     holeCardCount >= 5 ? '-ml-[4cqw]' :
     '-ml-[2cqw]';
-  // 裏向きカードの重なりマージン (PLO: 6cqw / PLO5: 7cqw でやや深く)
-  const faceDownOverlapMargin = holeCardCount >= 5 ? '-ml-[7cqw]' : '-ml-[6cqw]';
+  // 裏向きカードの重なりマージン (PLO: 6cqw / PLO5: 7cqw / PLO6: 8cqw でやや深く)
+  const faceDownOverlapMargin =
+    holeCardCount >= 6 ? '-ml-[8cqw]' :
+    holeCardCount >= 5 ? '-ml-[7cqw]' :
+    '-ml-[6cqw]';
+  // 6 枚は深く重なるため、表向き時は rank/suit を左上コーナーに寄せて隠れないようにする
+  const useCorner = holeCardCount >= 6;
 
   return (
     <>
@@ -76,7 +85,10 @@ export function PlayerCards({
     <div className={`absolute flex ${showCards && !player.folded ? 'z-[15]' : 'z-[15]'} ${cardPositionStyle}`}>
         {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
-                <div key={i} className={i > 0 ? cardOverlapMargin : ''}>
+                <div
+                  key={i}
+                  className={`${i > 0 ? cardOverlapMargin : ''} transition-transform duration-200 ${raisedIndices?.includes(i) ? '-translate-y-[2.5cqw]' : ''}`}
+                >
                   {isRevealing ? (
                     <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '100cqw' }}>
                       <div
@@ -87,7 +99,7 @@ export function PlayerCards({
                         }}
                       >
                         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
-                          <Card card={card} variant={variant} />
+                          <Card card={card} variant={variant} corner={useCorner} />
                         </div>
                         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
                           <FaceDownCard />
@@ -95,7 +107,7 @@ export function PlayerCards({
                       </div>
                     </div>
                   ) : (
-                    <Card card={card} variant={variant} />
+                    <Card card={card} variant={variant} corner={useCorner} />
                   )}
                 </div>
               ))

@@ -3,6 +3,8 @@ export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
+    // クライアントで使う Tailwind クラス文字列（VARIANT_BADGE_BG 等）を含むため必須
+    "./packages/shared/src/**/*.{js,ts,jsx,tsx}",
   ],
   theme: {
     extend: {

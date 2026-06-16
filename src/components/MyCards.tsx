@@ -15,12 +15,16 @@ interface MyCardsProps {
   isDrawPhase?: boolean;
   selectedCardIndices?: Set<number>;
   onCardToggle?: (index: number) => void;
+  /** ショウダウンでベストハンドに使ったホールカードのインデックス（少し上げて強調） */
+  raisedIndices?: number[];
 }
 
-export function MyCards({ cards, dealOrder, folded = false, handName, variant, isDrawPhase, selectedCardIndices, onCardToggle }: MyCardsProps) {
+export function MyCards({ cards, dealOrder, folded = false, handName, variant, isDrawPhase, selectedCardIndices, onCardToggle, raisedIndices }: MyCardsProps) {
   const v = (variant ?? 'plo') as GameVariant;
   const config = getVariantConfig(v);
   const useSmallCards = config.family === 'stud' || config.family === 'draw';
+  // 大きいカードを横並びにする際の重なり。6 枚 (PLO6) は幅に収まらないので深めに重ねる。
+  const largeCardSpacing = config.holeCardCount >= 6 ? '-space-x-[3cqw]' : '-space-x-[1.5cqw]';
 
   // 前回のカードを保持して差分だけアニメーションさせる
   const prevCardsRef = useRef<string[]>([]);
@@ -52,7 +56,7 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
       className={`@container relative flex flex-col items-center justify-end h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
     >
       {cards.length > 0 && (
-      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : '-space-x-[1.5cqw]'} justify-center`}>
+      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : largeCardSpacing} justify-center`}>
         {(() => {
           // 差分カード内での順番マップ（cardIndex → 0,1,2...）
           const animOrderMap = new Map<number, number>();
@@ -64,7 +68,7 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
             return (
               <div
                 key={cardIndex}
-                className={`transition-transform duration-150 ${card.isUp ? '-translate-y-[4cqw]' : ''} ${isSelected ? '-translate-y-[3cqw]' : ''} ${shouldAnimate ? 'animate-deal-card' : ''} ${isDrawPhase ? 'cursor-pointer' : ''}`}
+                className={`transition-transform duration-150 ${card.isUp ? '-translate-y-[4cqw]' : ''} ${isSelected ? '-translate-y-[3cqw]' : ''} ${raisedIndices?.includes(cardIndex) ? '-translate-y-[4cqw]' : ''} ${shouldAnimate ? 'animate-deal-card' : ''} ${isDrawPhase ? 'cursor-pointer' : ''}`}
                 style={shouldAnimate ? {
                   opacity: 0,
                   animationDelay: `${dealDelay}ms`,

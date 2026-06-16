@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
-import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName } from '../logic/handEvaluator';
+import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName, findUsedHoleCardIndices } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
@@ -208,6 +208,14 @@ export function GameTable({
     return r ? formatHandName(r) : undefined;
   }, [myHoleCards, gameState.communityCards, gameState.boards, gameState.variant]);
 
+  // ショウダウン時、自分のベストハンドに使った2枚を少し上げる（showdownHandNames が
+  // 自席に入っている = ショウダウン到達のサイン）
+  const myRaisedCardIndices = useMemo(() => {
+    if (myPlayer?.folded) return undefined;
+    if (!showdownHandNames.get(myPlayerIdx)) return undefined;
+    return findUsedHoleCardIndices(myHoleCards, gameState.communityCards, gameState.variant);
+  }, [myHoleCards, gameState.communityCards, gameState.variant, showdownHandNames, myPlayerIdx, myPlayer?.folded]);
+
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
   const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
 
@@ -268,7 +276,7 @@ export function GameTable({
           <span
             className={`${
               VARIANT_BADGE_BG[gameState.variant]
-                ? `${VARIANT_BADGE_BG[gameState.variant]} text-white rounded-[1.2cqw] px-[1.5cqw] py-[0cqw]`
+                ? `${VARIANT_BADGE_BG[gameState.variant]} text-white font-bold rounded-[1.2cqw] px-[1.5cqw] py-[0cqw]`
                 : 'text-black'
             }`}
           >
@@ -315,6 +323,7 @@ export function GameTable({
               isDrawPhase={isDraw && isCurrentDrawStreet}
               selectedCardIndices={selectedCardIndices}
               onCardToggle={handleCardToggle}
+              raisedIndices={myRaisedCardIndices}
             />
           )}
 
