@@ -42,13 +42,17 @@ interface FaceCardProps {
   variant?: CardVariant;
   className?: string;
   style?: React.CSSProperties;
+  // 深く重ねるレイアウト（PLO6 など）で rank/suit を左上コーナーに寄せて、
+  // 重なっても見えるようにする。stud は variant から自動で有効。
+  corner?: boolean;
 }
 
-export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', style }: FaceCardProps) {
+export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', style, corner = false }: FaceCardProps) {
   const suitSymbol = SUIT_SYMBOLS[card.suit];
   const suitBg = SUIT_BG_COLORS[card.suit];
   const styles = sizeStyles[size];
-  const isTiny = getVariantConfig(variant as GameVariant).family === 'stud';
+  // stud は常にコーナー表示。それ以外も corner 指定で左上コーナーにできる。
+  const useCorner = getVariantConfig(variant as GameVariant).family === 'stud' || corner;
   // xs: 横並びコンパクト（rank 左 / suit 右）。bomb pot のダブルボード用。
   const isHorizontal = size === 'xs';
 
@@ -81,13 +85,13 @@ export function FaceCard({ card, size = 'sm', variant = 'plo', className = '', s
       `}
       style={style}
     >
-      {isTiny && (
+      {useCorner && (
         <div className={`absolute top-[0.5cqw] left-[0.5cqw] flex flex-col items-center leading-none font-bold ${styles.corner}`}>
           <span>{card.rank}</span>
           <span>{suitSymbol}</span>
         </div>
       )}
-      {!isTiny && (
+      {!useCorner && (
         <>
           <span className="leading-none font-bold">{card.rank}</span>
           <span className={`leading-none ${styles.suit}`}>{suitSymbol}</span>
@@ -134,11 +138,12 @@ interface CardProps {
   size?: CardSize;
   isNew?: boolean;
   variant?: CardVariant;
+  corner?: boolean;
 }
 
-export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: CardProps) {
+export function Card({ card, size = 'sm', isNew = false, variant = 'plo', corner = false }: CardProps) {
   if (!isNew) {
-    return <FaceCard card={card} size={size} variant={variant} />;
+    return <FaceCard card={card} size={size} variant={variant} corner={corner} />;
   }
 
   const styles = sizeStyles[size];
@@ -157,6 +162,7 @@ export function Card({ card, size = 'sm', isNew = false, variant = 'plo' }: Card
           card={card}
           size={size}
           variant={variant}
+          corner={corner}
           className="absolute inset-0"
           style={{ backfaceVisibility: 'hidden' }}
         />

@@ -23,6 +23,8 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
   const useSmallCards = config.family === 'stud' || config.family === 'draw';
   // 大きいカードを横並びにする際の重なり。6 枚 (PLO6) は幅に収まらないので深めに重ねる。
   const largeCardSpacing = config.holeCardCount >= 6 ? '-space-x-[4cqw]' : '-space-x-[1.5cqw]';
+  // 6 枚は深く重なるため、rank/suit を左上コーナーに寄せて隠れないようにする
+  const useCorner = config.holeCardCount >= 6;
 
   // 前回のカードを保持して差分だけアニメーションさせる
   const prevCardsRef = useRef<string[]>([]);
@@ -77,7 +79,7 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
                 onClick={isDrawPhase && onCardToggle ? () => onCardToggle(cardIndex) : undefined}
               >
                 <div className="relative">
-                <Card card={card} size={useSmallCards ? 'sm' : 'lg'} />
+                <Card card={card} size={useSmallCards ? 'sm' : 'lg'} corner={useCorner} />
                 {/* 丸のポッチ */}
                 {isSelected && (
                     <div className="absolute -top-[1.5cqw] left-1/2 -translate-x-1/2 w-[3cqw] h-[3cqw] rounded-full bg-red-500 border-2 border-white shadow-md" />

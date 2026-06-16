@@ -73,6 +73,8 @@ export function PlayerCards({
     holeCardCount >= 6 ? '-ml-[8cqw]' :
     holeCardCount >= 5 ? '-ml-[7cqw]' :
     '-ml-[6cqw]';
+  // 6 枚は深く重なるため、表向き時は rank/suit を左上コーナーに寄せて隠れないようにする
+  const useCorner = holeCardCount >= 6;
 
   return (
     <>
@@ -91,7 +93,7 @@ export function PlayerCards({
                         }}
                       >
                         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden' }}>
-                          <Card card={card} variant={variant} />
+                          <Card card={card} variant={variant} corner={useCorner} />
                         </div>
                         <div className="absolute inset-0" style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}>
                           <FaceDownCard />
@@ -99,7 +101,7 @@ export function PlayerCards({
                       </div>
                     </div>
                   ) : (
-                    <Card card={card} variant={variant} />
+                    <Card card={card} variant={variant} corner={useCorner} />
                   )}
                 </div>
               ))
