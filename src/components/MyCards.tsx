@@ -21,6 +21,8 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
   const v = (variant ?? 'plo') as GameVariant;
   const config = getVariantConfig(v);
   const useSmallCards = config.family === 'stud' || config.family === 'draw';
+  // 大きいカードを横並びにする際の重なり。6 枚 (PLO6) は幅に収まらないので深めに重ねる。
+  const largeCardSpacing = config.holeCardCount >= 6 ? '-space-x-[4cqw]' : '-space-x-[1.5cqw]';
 
   // 前回のカードを保持して差分だけアニメーションさせる
   const prevCardsRef = useRef<string[]>([]);
@@ -52,7 +54,7 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
       className={`@container relative flex flex-col items-center justify-end h-[24cqw] bg-transparent transition-all duration-300 ${folded ? 'brightness-[0.3]' : ''}`}
     >
       {cards.length > 0 && (
-      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : '-space-x-[1.5cqw]'} justify-center`}>
+      <div className={`flex ${useSmallCards ? 'gap-[1cqw]' : largeCardSpacing} justify-center`}>
         {(() => {
           // 差分カード内での順番マップ（cardIndex → 0,1,2...）
           const animOrderMap = new Map<number, number>();

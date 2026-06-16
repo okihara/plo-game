@@ -62,13 +62,17 @@ export function PlayerCards({
   
   const variantConfig = getVariantConfig(variant);
   const holeCardCount = variantConfig.holeCardCount;
-  // 表向きカードの重なりマージン (stud: 7 枚で深く重ねる / PLO5: 5 枚で少し深く / PLO: 通常)
+  // 表向きカードの重なりマージン (stud: 7 枚で深く重ねる / PLO6: 6 枚で更に深く / PLO5: 5 枚で少し深く / PLO: 通常)
   const cardOverlapMargin =
     variantConfig.family === 'stud' ? '-ml-[5cqw]' :
+    holeCardCount >= 6 ? '-ml-[5cqw]' :
     holeCardCount >= 5 ? '-ml-[4cqw]' :
     '-ml-[2cqw]';
-  // 裏向きカードの重なりマージン (PLO: 6cqw / PLO5: 7cqw でやや深く)
-  const faceDownOverlapMargin = holeCardCount >= 5 ? '-ml-[7cqw]' : '-ml-[6cqw]';
+  // 裏向きカードの重なりマージン (PLO: 6cqw / PLO5: 7cqw / PLO6: 8cqw でやや深く)
+  const faceDownOverlapMargin =
+    holeCardCount >= 6 ? '-ml-[8cqw]' :
+    holeCardCount >= 5 ? '-ml-[7cqw]' :
+    '-ml-[6cqw]';
 
   return (
     <>
