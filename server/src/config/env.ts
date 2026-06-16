@@ -35,7 +35,7 @@ const envSchema = z.object({
   SENTRY_RELEASE: z.string().optional(),
   /** ツイートドラフトの LLM 生成用。未設定時は生成不可（DRAFT が常に FAILED になる）。 */
   ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default('claude-opus-4-7'),
+  ANTHROPIC_MODEL: z.string().default('claude-opus-4-8'),
   /** false の間は tweetScheduler が起動しない（手動 enqueue/手動投稿のみ） */
   TWEET_SCHEDULER_ENABLED: z.coerce.boolean().default(false),
   /** true にすると承認なしで自動投稿。初期は必ず false。 */
