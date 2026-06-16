@@ -276,7 +276,9 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
                 <span className="text-[2.8cqw] font-normal text-white/80">エントリー締切</span>
               )
             ) : tournamentSummary.status === 'scheduled' ? (
-              <span className="text-[2.8cqw] font-normal text-white/80">開催予定 {tournamentSummary.time} から</span>
+              <span className="text-[3cqw] font-normal text-white/80 leading-tight">
+                開催予定 <span className="text-[4cqw] font-bold text-white">{tournamentSummary.time}</span> から
+              </span>
             ) : null}
           </button>
 
