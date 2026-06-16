@@ -41,6 +41,7 @@ export default {
         'fade-in': 'fade-in 0.3s ease',
         'scale-in': 'scale-in 0.2s ease-out forwards',
         'bounce-subtle': 'bounce-subtle 2s ease-in-out infinite',
+        'tournament-glow': 'tournament-glow 1.6s ease-in-out infinite',
       },
       keyframes: {
         'pulse-glow': {
@@ -75,6 +76,10 @@ export default {
         'bounce-subtle': {
           '0%, 100%': { transform: 'translateX(-50%) translateY(0)' },
           '50%': { transform: 'translateX(-50%) translateY(-15%)' },
+        },
+        'tournament-glow': {
+          '0%, 100%': { boxShadow: '0 0 16px rgba(251,191,36,0.55), 0 4px 12px rgba(180,120,30,0.45), inset 0 1px 0 rgba(255,255,255,0.45)' },
+          '50%': { boxShadow: '0 0 34px rgba(251,191,36,0.95), 0 4px 12px rgba(180,120,30,0.45), inset 0 1px 0 rgba(255,255,255,0.45)' },
         },
       },
     },

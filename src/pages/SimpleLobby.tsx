@@ -11,7 +11,6 @@ import { SettingsPopup } from '../components/SettingsPopup';
 
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 import { WeeklyChampions } from '../components/WeeklyChampions';
-import { TournamentOpenBanner } from '../components/TournamentOpenBanner';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
@@ -225,14 +224,6 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
 
       {/* Main Content */}
       <div className="w-[88%]">
-        {/* Tournament Open Banner */}
-        {tournamentSummary.status === 'running' && tournamentSummary.isRegistrationOpen && (
-          <TournamentOpenBanner
-            deadlineTime={tournamentSummary.deadlineTime}
-            onClick={() => setActiveTab('tournament')}
-          />
-        )}
-
         {/* Weekly Champions */}
         <WeeklyChampions />
 
@@ -255,22 +246,38 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
         </a>
 
         {/* Tournament & Fast Fold - Side by Side */}
+        {(() => {
+        const tournamentOpen = tournamentSummary.status === 'running' && tournamentSummary.isRegistrationOpen;
+        return (
         <div className="mt-[2cqw] flex gap-[2cqw]">
-          {/* Tournament Button */}
+          {/* Tournament Button — 受付中はボタン自体を派手にして目立たせる */}
           <button
             onClick={() => setActiveTab('tournament')}
-            className="flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw]"
+            className={`relative flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw] ${
+              tournamentOpen
+                ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-orange-600 border-amber-300 ring-[0.5cqw] ring-amber-300/80 animate-tournament-glow active:scale-[0.97]'
+                : 'bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
+            }`}
           >
+            {tournamentOpen && (
+              <span className="absolute -top-[1.5cqw] left-1/2 -translate-x-1/2 px-[2.5cqw] py-[0.4cqw] rounded-full bg-[#C0392B] text-white text-[2.6cqw] font-bold whitespace-nowrap shadow-[0_2px_6px_rgba(0,0,0,0.3)] flex items-center gap-[1cqw] animate-bounce-subtle">
+                <span className="w-[1.6cqw] h-[1.6cqw] rounded-full bg-white animate-pulse" />
+                受付中
+              </span>
+            )}
             <Trophy className="w-[6cqw] h-[6cqw]" />
             <span>トーナメント</span>
-            <span className="text-[2.8cqw] font-normal text-white/80">
-              {tournamentSummary.status === 'running'
-                ? tournamentSummary.isRegistrationOpen
-                  ? `進行中（${tournamentSummary.deadlineTime ? `${tournamentSummary.deadlineTime} まで受付` : 'エントリー受付中'}）`
-                  : '進行中（エントリー締切）'
-                : tournamentSummary.status === 'scheduled' ? `開催予定 ${tournamentSummary.time} から`
-                : ''}
-            </span>
+            {tournamentSummary.status === 'running' ? (
+              tournamentSummary.isRegistrationOpen ? (
+                <span className="text-[4cqw] font-bold text-white leading-tight">
+                  {tournamentSummary.deadlineTime ? `${tournamentSummary.deadlineTime} まで受付` : 'エントリー受付中'}
+                </span>
+              ) : (
+                <span className="text-[2.8cqw] font-normal text-white/80">エントリー締切</span>
+              )
+            ) : tournamentSummary.status === 'scheduled' ? (
+              <span className="text-[2.8cqw] font-normal text-white/80">開催予定 {tournamentSummary.time} から</span>
+            ) : null}
           </button>
 
           {/* Fast Fold Button */}
@@ -295,6 +302,8 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
             );
           })}
         </div>
+        );
+        })()}
 
         {/* Spacer for bottom nav */}
         <div className="h-[16cqw]" />
