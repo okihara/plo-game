@@ -5,7 +5,7 @@
 import fs from 'fs';
 import { prisma } from '../../config/database.js';
 import { Sentry, sentryEnabled } from '../../config/sentry.js';
-import { getCredentialsFromEnv, postTweet } from '../quiz/twitterClient.js';
+import { getCredentialsFromEnv, postTweet } from './twitterClient.js';
 import { TweetStatus } from './types.js';
 
 export interface PostResult {
