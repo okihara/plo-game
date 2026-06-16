@@ -2,22 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { Pencil, Share2, Link, Check, X } from 'lucide-react';
 import { ProfitChart } from './ProfitChart';
 import { ProfileEditDialog } from './ProfileEditDialog';
-import { PlayerStatsPanel, type PlayerStatsDisplay } from './PlayerStatsPanel';
+import { PlayerStatsPanel } from './PlayerStatsPanel';
 import { buildStatsShareText, openXShare } from '../utils/share';
 import { LABEL_COLORS, type PlayerLabel } from '../hooks/usePlayerLabels';
-
-const API_BASE = import.meta.env.VITE_SERVER_URL || '';
-
-interface DisplayBadge {
-  category: string;
-  type: string;
-  label: string;
-  description: string;
-  flavor: string;
-  imageUrl: string;
-  count: number;
-  awardedAt: string;
-}
+import { usePlayerStats } from '../hooks/usePlayerStats';
 
 interface ProfilePopupProps {
   name: string;
@@ -38,7 +26,7 @@ interface ProfilePopupProps {
 }
 
 // avatarIdから画像パスを生成
-const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
+export const getAvatarImage = (avatarId: number): string => `/images/icons/avatar${avatarId}.png`;
 
 
 export function ProfilePopup({
@@ -57,14 +45,10 @@ export function ProfilePopup({
   onLabelRemove,
   defaultMode = 'cash',
 }: ProfilePopupProps) {
-  const [stats, setStats] = useState<PlayerStatsDisplay | null>(null);
-  const [tournamentStats, setTournamentStats] = useState<PlayerStatsDisplay | null>(null);
+  const { loading, stats, tournamentStats, badges, profitHistory } = usePlayerStats(userId, { withProfitHistory: isSelf });
   const [mode, setMode] = useState<'cash' | 'tournament'>(defaultMode);
-  const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const badgeTooltipRef = useRef<HTMLDivElement>(null);
-  const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
-  const [loading, setLoading] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(initialShowEdit);
   const [copied, setCopied] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -95,31 +79,6 @@ export function ProfilePopup({
     setShowShareMenu(false);
   };
   const avatarImage = avatarUrl || (avatarId !== undefined ? getAvatarImage(avatarId) : null);
-
-  // スタッツ＆収支推移をAPIから並列取得
-  useEffect(() => {
-    if (!userId || userId.startsWith('bot_')) return;
-
-    setLoading(true);
-    const fetches: Promise<any>[] = [
-      fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
-        .catch(() => null),
-    ];
-    if (isSelf) {
-      fetches.push(
-        fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
-          .then(res => res.ok ? res.json() : null)
-          .catch(() => null),
-      );
-    }
-    Promise.all(fetches).then(([statsData, historyData]) => {
-      if (statsData?.stats) setStats(statsData.stats);
-      if (statsData?.tournamentStats) setTournamentStats(statsData.tournamentStats);
-      if (statsData?.badges) setBadges(statsData.badges);
-      if (historyData?.points) setProfitHistory(historyData.points);
-    }).finally(() => setLoading(false));
-  }, [userId, isSelf]);
 
   // ESCキーで閉じる
   useEffect(() => {

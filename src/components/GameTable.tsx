@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
-import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History } from 'lucide-react';
@@ -8,7 +7,7 @@ import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
 import { HandAnalysisOverlay } from './HandAnalysisOverlay';
-import { ProfilePopup } from './ProfilePopup';
+import { CompactProfileModal } from './CompactProfileModal';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from './HandHistoryPanel';
 import { BustedScreen } from './BustedScreen';
@@ -94,7 +93,6 @@ export function GameTable({
   bubbleFactors,
 }: GameTableProps) {
   const { settings, setBigBlind } = useGameSettings();
-  const { user } = useAuth();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
   const analysisEnabled = settings.analysisEnabled;
@@ -105,6 +103,14 @@ export function GameTable({
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [centerNotice, setCenterNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handlePlayerClick = useCallback((player: PlayerType) => {
+    setSelectedPlayer(player);
+  }, []);
+
+  const closeProfile = useCallback(() => {
+    setSelectedPlayer(null);
+  }, []);
 
   const showCenterNotice = useCallback((text: string) => {
     if (noticeTimerRef.current) clearTimeout(noticeTimerRef.current);
@@ -293,7 +299,7 @@ export function GameTable({
             humanIndex={myPlayerIdx}
             actionTimeoutAt={actionTimeoutAt}
             actionTimeoutMs={actionTimeoutMs}
-            onPlayerClick={setSelectedPlayer}
+            onPlayerClick={handlePlayerClick}
             showdownHandNames={showdownHandNames}
             getLabel={getLabel}
             bubbleFactors={bubbleFactors}
@@ -364,21 +370,19 @@ export function GameTable({
             </div>
           )}
 
-          {/* Profile Popup */}
+          {/* プロフィール: テーブル背後が見えるコンパクトモーダル */}
           {selectedPlayer && (
-            <ProfilePopup
+            <CompactProfileModal
               name={selectedPlayer.name}
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
+              mode={isTournament ? 'tournament' : 'cash'}
               isSelf={mySeat !== null && selectedPlayer.id === mySeat}
-              onClose={() => setSelectedPlayer(null)}
-              twitterAvatarUrl={mySeat !== null && selectedPlayer.id === mySeat ? user?.twitterAvatarUrl : undefined}
-              useTwitterAvatar={mySeat !== null && selectedPlayer.id === mySeat ? user?.useTwitterAvatar : undefined}
               label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
+              onClose={closeProfile}
               onLabelChange={setLabel}
               onLabelRemove={removeLabel}
-              defaultMode={isTournament ? 'tournament' : 'cash'}
             />
           )}
 
