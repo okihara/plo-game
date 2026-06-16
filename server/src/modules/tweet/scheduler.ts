@@ -1,10 +1,11 @@
 /**
  * TweetDraft の polling ループ。
  *
- * 60 秒ごとに 3 つのことをする:
- *  1. tickFinishedTournaments: COMPLETED で RESULT ドラフト未作成のトナメを enqueue
- *  2. tickUpcomingTournaments: 24h 以内に始まる WAITING で ANNOUNCE 未作成のトナメを enqueue
- *  3. runDuePendingGenerations: PENDING → GENERATING → DRAFT/FAILED を進める
+ * 60 秒ごとに 4 つのことをする:
+ *  1. reclaimStuckDrafts: クラッシュ等で GENERATING/POSTING のまま固まった行を回収
+ *  2. tickFinishedTournaments: COMPLETED で RESULT ドラフト未作成のトナメを enqueue
+ *  3. tickUpcomingTournaments: 24h 以内に始まる WAITING で ANNOUNCE 未作成のトナメを enqueue
+ *  4. runDuePendingGenerations: PENDING → GENERATING → DRAFT/FAILED を進める
  *
  * TournamentManager 側にフックを差し込まず、DB を polling することで
  * ドメインへの侵襲を避けている。START / PROGRESS は P5 で追加予定。
@@ -24,6 +25,40 @@ const CHECK_INTERVAL_MS = 60_000;
 const MAX_BATCH = 5;
 /** 過去 N 時間以内に完了したトナメだけを検知対象にする（ずっと古いものは拾わない） */
 const FINISHED_LOOKBACK_HOURS = 24;
+/**
+ * GENERATING/POSTING のまま updatedAt がこの時間より古い行は「クラッシュで取り残された」とみなす。
+ * 生成（数秒）・投稿（数秒）の実時間より十分大きく取り、処理中の行を誤って奪わないようにする。
+ */
+const STUCK_THRESHOLD_MS = 5 * 60_000;
+
+/**
+ * プロセスのクラッシュ等で中間状態のまま取り残された行を回収する。
+ * - GENERATING: LLM 呼び出しのみで外部副作用が無いため、PENDING に戻して自動再試行させる。
+ * - POSTING: X へ送信済みかどうか判定できないため、自動再投稿はせず FAILED にして人手確認に回す
+ *   （重複投稿を避ける。管理画面で X を確認のうえ再投稿できる）。
+ */
+export async function reclaimStuckDrafts(): Promise<void> {
+  const threshold = new Date(Date.now() - STUCK_THRESHOLD_MS);
+
+  const regen = await prisma.tweetDraft.updateMany({
+    where: { status: TweetStatus.GENERATING, updatedAt: { lt: threshold } },
+    data: { status: TweetStatus.PENDING },
+  });
+  if (regen.count > 0) {
+    console.warn(`[TweetScheduler] reclaimed ${regen.count} stuck GENERATING draft(s) -> PENDING`);
+  }
+
+  const stuckPost = await prisma.tweetDraft.updateMany({
+    where: { status: TweetStatus.POSTING, updatedAt: { lt: threshold } },
+    data: {
+      status: TweetStatus.FAILED,
+      errorMessage: 'posting がタイムアウトしました。X に投稿済みでないか確認してから再投稿してください。',
+    },
+  });
+  if (stuckPost.count > 0) {
+    console.warn(`[TweetScheduler] reclaimed ${stuckPost.count} stuck POSTING draft(s) -> FAILED`);
+  }
+}
 
 /**
  * COMPLETED で RESULT ドラフトがまだ無いトナメを見つけて enqueue する。
@@ -75,8 +110,10 @@ export async function runDuePendingGenerations(): Promise<void> {
     try {
       const fresh = await prisma.tweetDraft.findUniqueOrThrow({ where: { id: d.id } });
       const result = await generate(fresh);
-      await prisma.tweetDraft.update({
-        where: { id: d.id },
+      // 生成中に reclaimStuckDrafts で奪われている可能性があるため、
+      // まだ自分が掴んでいる GENERATING のときだけ書き戻す（再生成結果の上書き防止）。
+      const written = await prisma.tweetDraft.updateMany({
+        where: { id: d.id, status: TweetStatus.GENERATING },
         data: {
           status: TweetStatus.DRAFT,
           generatedText: result.text,
@@ -86,6 +123,10 @@ export async function runDuePendingGenerations(): Promise<void> {
           errorMessage: null,
         },
       });
+      if (written.count === 0) {
+        console.warn(`[TweetScheduler] draft=${d.id} was reclaimed mid-generation; discarding result`);
+        continue;
+      }
       console.log(`[TweetScheduler] Generated ${d.kind} draft=${d.id}`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -116,6 +157,7 @@ export function startTweetScheduler(): void {
   }
   const tick = async () => {
     try {
+      await reclaimStuckDrafts();
       await tickFinishedTournaments();
       await tickUpcomingTournaments();
       await runDuePendingGenerations();
