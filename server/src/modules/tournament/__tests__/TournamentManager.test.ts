@@ -103,6 +103,43 @@ describe('TournamentManager', () => {
     expect(manager.getPlayerTournament('p1')).toBeUndefined();
   });
 
+  describe('isPlayerSeatedInTournament', () => {
+    function createMockSocket(): any {
+      return { id: 's1', connected: true, emit: vi.fn(), join: vi.fn(), leave: vi.fn(), on: vi.fn() };
+    }
+
+    it('トラッキングされていなければ false', () => {
+      expect(manager.isPlayerSeatedInTournament('unknown')).toBe(false);
+    });
+
+    it('トラッキングされていてもトーナメントが存在しなければ false', () => {
+      manager.setPlayerTournament('p1', 'gone');
+      expect(manager.isPlayerSeatedInTournament('p1')).toBe(false);
+    });
+
+    it('プレイ中のプレイヤーは true', () => {
+      const tournament = manager.createTournament(createTestConfig('t1'));
+      tournament.start();
+      tournament.enterPlayer('p1', 'Player 1', createMockSocket());
+      manager.setPlayerTournament('p1', 't1');
+
+      expect(manager.isPlayerSeatedInTournament('p1')).toBe(true);
+    });
+
+    it('バスト（eliminated）したプレイヤーは false（リング戦に参加できる）', () => {
+      const tournament = manager.createTournament(createTestConfig('t1'));
+      tournament.start();
+      tournament.enterPlayer('p1', 'Player 1', createMockSocket());
+      manager.setPlayerTournament('p1', 't1');
+
+      // バストをシミュレート（トラッキングは完了時までクリアされない）
+      tournament.getPlayer('p1')!.status = 'eliminated';
+
+      expect(manager.isPlayerSeatedInTournament('p1')).toBe(false);
+      expect(manager.getPlayerTournament('p1')).toBe('t1'); // トラッキング自体は残る
+    });
+  });
+
   describe('getActiveTournaments', () => {
     it('完了・キャンセル以外のトーナメントを返す', () => {
       manager.createTournament(createTestConfig('t1'));

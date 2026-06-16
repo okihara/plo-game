@@ -137,6 +137,25 @@ export class TournamentManager {
   }
 
   /**
+   * プレイヤーがトーナメント卓に「着席中」か（リング戦参加可否の判定用）。
+   *
+   * playerTournaments のトラッキングはトーナメント完了時にしかクリアされないため、
+   * 単に getPlayerTournament の有無で判定すると、バスト（eliminated）後もトーナメント
+   * 終了までリング戦に参加できなくなる。eliminated はテーブルから外れているので false を
+   * 返し、リング戦への参加を許可する。
+   *
+   * リエントリーでトーナメント卓に戻る際は tournament:request_state 側でリング戦から
+   * 強制離席されるため、リング戦に着席したままトーナメント卓へ二重着席することはない。
+   */
+  isPlayerSeatedInTournament(odId: string): boolean {
+    const tournamentId = this.playerTournaments.get(odId);
+    if (!tournamentId) return false;
+    const player = this.tournaments.get(tournamentId)?.getPlayer(odId);
+    if (!player) return false;
+    return player.status !== 'eliminated';
+  }
+
+  /**
    * プレイヤーをトーナメントに関連付け
    */
   setPlayerTournament(odId: string, tournamentId: string): void {
