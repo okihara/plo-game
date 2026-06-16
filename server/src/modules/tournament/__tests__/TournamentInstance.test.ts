@@ -1221,6 +1221,87 @@ describe('TournamentInstance', () => {
       expect(player?.tableId).toBe(tableBId);
     });
 
+    /**
+     * ヘルパー: テーブルAを「全員ハンド参加中」の状態に揃え、テーブルBを
+     * ハンド外で2人減らして人数差2を作る（move-balance が発火する状況）。
+     */
+    function setupImbalanceWithHandInProgress(playerCount = 10) {
+      const ctx = setup2Tables(io, playerCount);
+      const { tournament, tableAId, tableBId, tables, tablePlayerMap } = ctx;
+
+      const tableA = tables.get(tableAId)!;
+      const tableB = tables.get(tableBId)!;
+      expect(tableA.isHandInProgress).toBe(true);
+
+      // テーブルAの次ハンド待ち席を「ハンド参加中（未フォールド）」に変換する
+      // （5人参加のハンドを模擬。waiting席は本来 canMoveNow=true で先に選ばれるため除外）
+      const seatsA = tableA.playerManager.getSeats();
+      for (let i = 0; i < seatsA.length; i++) {
+        const seat = seatsA[i];
+        if (seat?.waitingForNextHand) {
+          seat.waitingForNextHand = false;
+          tableA.gameState.players[i].isSittingOut = false;
+          tableA.gameState.players[i].folded = false;
+          tableA.gameState.players[i].chips = seat.chips;
+        }
+      }
+
+      // テーブルBはハンド外にして2人バスト → A=5人(ハンド中) / B=3人
+      tableB._isHandInProgress = false;
+      tableB.gameState = null;
+      const tableBPlayersNow = Array.from(tablePlayerMap.get(tableBId)!);
+      for (const odId of tableBPlayersNow.slice(0, 2)) {
+        simulateBustWithUnseat(tournament, odId, 300);
+      }
+      expect(tableA.getPlayerCount() - tableB.getPlayerCount()).toBeGreaterThanOrEqual(2);
+
+      return { ...ctx, tableA, tableB };
+    }
+
+    it('ハンド中でもフォールド済みプレイヤーはバランス調整で即移動される', () => {
+      const { tournament, tableAId, tableBId, tableA, tableB, tablePlayerMap } =
+        setupImbalanceWithHandInProgress();
+
+      // テーブルAのプレイヤーを1人フォールド済みにする
+      const target = Array.from(tablePlayerMap.get(tableAId)!)[1];
+      const targetSeat = tournament.getPlayer(target)!.seatIndex!;
+      tableA.gameState.players[targetSeat].folded = true;
+      expect(tableA.canRemoveSafelyDuringHand(target)).toBe(true);
+
+      // ハンド中のままバランス実行
+      (tournament as any).checkAndExecuteBalance();
+
+      // フォールド済みプレイヤーが即時移動している（pendingにならない）
+      expect(tournament.getPlayer(target)?.tableId).toBe(tableBId);
+      expect(tablePlayerMap.get(tableBId)?.has(target)).toBe(true);
+      expect(tablePlayerMap.get(tableAId)?.has(target)).toBe(false);
+      expect((tournament as any).pendingMoves).toHaveLength(0);
+
+      // 移動先でチップが引き継がれている
+      expect(tableB.getPlayerChips(target)).toBe(tournament.getPlayer(target)?.chips);
+
+      // 移動元では席が leftForFastFold マークされ、人数カウントから除外されている
+      expect(tableA.getPlayerCount()).toBe(4);
+      expect(tableA.isHandInProgress).toBe(true);
+    });
+
+    it('ハンド中で誰もフォールドしていなければ移動は発生しない', () => {
+      const { tournament, tableAId, tablePlayerMap } = setupImbalanceWithHandInProgress();
+
+      const before = Array.from(tablePlayerMap.get(tableAId)!);
+
+      // 誰もフォールドしていない状態でバランス実行
+      (tournament as any).checkAndExecuteBalance();
+
+      // ハンド参加中のプレイヤーは誰も移動せず、pendingにも積まれない
+      // （ハンド完了後の onHandPresentationComplete → 再チェックで調整される）
+      expect(Array.from(tablePlayerMap.get(tableAId)!)).toEqual(before);
+      expect((tournament as any).pendingMoves).toHaveLength(0);
+      for (const odId of before) {
+        expect(tournament.getPlayer(odId)?.tableId).toBe(tableAId);
+      }
+    });
+
     it('再接続したプレイヤーのpending moveが正しく実行される', () => {
       const { tournament, sockets, tableAPlayers, tableAId, tableBId } = setup2Tables(io);
 
@@ -1300,9 +1381,9 @@ describe('TournamentInstance', () => {
     it('checkAndExecuteBalanceで空テーブルが正しく削除される', () => {
       const { tournament, tableAPlayers, tableBPlayers, tableAId } = setup2Tables(io);
 
-      // テーブルAの全員をバスト → テーブルAが空になる
+      // テーブルAの全員をバスト（本番同様に席も解放）→ テーブルAが空になる
       for (const odId of tableAPlayers) {
-        simulateBust(tournament, odId, 300);
+        simulateBustWithUnseat(tournament, odId, 300);
       }
 
       const seatChips = tableBPlayers.map((id, i) => ({

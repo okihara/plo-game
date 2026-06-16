@@ -52,13 +52,20 @@ export class TableBalancer {
    * @param playersPerTable テーブルあたりの定員
    * @param options.maxTotalForBreak テーブル破壊を許可する残り合計人数の上限。
    *   レイト登録中など、空き席を維持したい場面で指定する。省略時は無制限。
-   * @returns 実行すべき移動アクション（ハンド中のテーブルは移動元から除外）
+   * @param options.canMoveNow ハンド中のテーブルからでも「今すぐ安全に移動できるか」
+   *   （例: フォールド済み）を判定する述語。指定するとハンド中の移動元テーブルからも
+   *   この述語を満たすプレイヤー1人を均等化移動の対象にできる。省略時はハンド中の
+   *   テーブルからは移動しない（従来動作）。
+   * @returns 実行すべき移動アクション（ハンド中のテーブルは移動元から原則除外）
    */
   static checkBalance(
     tables: TablePlayerInfo[],
     getPlayerIds: (tableId: string) => string[],
     playersPerTable: number = PLAYERS_PER_TABLE,
-    options?: { maxTotalForBreak?: number }
+    options?: {
+      maxTotalForBreak?: number;
+      canMoveNow?: (tableId: string, odId: string) => boolean;
+    }
   ): BalanceAction[] {
     if (tables.length <= 1) return [];
 
@@ -115,10 +122,29 @@ export class TableBalancer {
     const minTable = sorted[sorted.length - 1];
 
     if (maxTable.playerCount - minTable.playerCount >= 2) {
-      // ハンド中のテーブルからは移動しない
-      if (maxTable.isHandInProgress) return [];
-
       const players = getPlayerIds(maxTable.tableId);
+
+      if (maxTable.isHandInProgress) {
+        // ハンド中のテーブル: 今すぐ安全に動かせるプレイヤー（フォールド済み等）が
+        // いれば、その1人だけ移動する。判定不能（述語未指定）なら従来通り移動しない。
+        const canMoveNow = options?.canMoveNow;
+        if (!canMoveNow) return [];
+
+        // 後ろから探す（新しく着席した人を優先的に移動）
+        for (let i = players.length - 1; i >= 0; i--) {
+          if (canMoveNow(maxTable.tableId, players[i])) {
+            actions.push({
+              type: 'move',
+              odId: players[i],
+              fromTableId: maxTable.tableId,
+              toTableId: minTable.tableId,
+            });
+            break;
+          }
+        }
+        return actions;
+      }
+
       if (players.length > 0) {
         // 最後のプレイヤーを移動（新しく着席した人を優先的に移動）
         actions.push({

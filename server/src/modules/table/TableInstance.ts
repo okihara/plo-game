@@ -177,8 +177,10 @@ export class TableInstance {
     const seat = this.playerManager.getSeat(seatIndex);
 
     // チップ数を取得（ハンド中はgameStateの値が最新）
+    // 次ハンド待ちの席はgameStateに参加していない（chips=0のダミー）ためseatの値が正
     let chips = seat?.chips ?? 0;
-    if (this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
+    if (!seat?.waitingForNextHand
+      && this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
       chips = this.gameState.players[seatIndex].chips;
     }
 
@@ -198,6 +200,13 @@ export class TableInstance {
 
     // If in a hand, fold the player and keep seat info for history/display
     if (this.gameState && !this.gameState.isHandComplete) {
+      if (seat?.waitingForNextHand) {
+        // 次ハンド待ちの席はハンドに参加していない（gameState上はisSittingOut）ため、
+        // 表示用に席を残す必要がなく、即座に解放できる
+        this.playerManager.unseatPlayer(seatIndex);
+        return { odId, chips };
+      }
+
       this.playerManager.markLeftForFastFold(seatIndex);
 
       if (wasCurrentPlayer) {
@@ -208,7 +217,11 @@ export class TableInstance {
         this.handleAction(odId, defaultAction.action, defaultAction.amount, defaultAction.discardIndices, 'auto');
       } else {
         // 自分のターンではない → 手番が来るまで保留（情報漏洩を防ぐ）
-        this.pendingEarlyFolds.set(seatIndex, odId);
+        // 既にフォールド済み・ハンド不参加のプレイヤーは以後の手番が無いため保留不要
+        const gsPlayer = this.gameState.players[seatIndex];
+        if (gsPlayer && !gsPlayer.folded && !gsPlayer.isSittingOut) {
+          this.pendingEarlyFolds.set(seatIndex, odId);
+        }
       }
     } else {
       this.playerManager.unseatPlayer(seatIndex);
@@ -496,14 +509,48 @@ export class TableInstance {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
+    const seat = this.playerManager.getSeat(seatIndex);
+
+    // 次ハンド待ちの席はgameStateに参加していない（chips=0のダミー）ためseatの値が正
+    if (seat?.waitingForNextHand) {
+      return seat.chips;
+    }
+
     // ハンド中（未完了）はgameStateの値が最新
     if (this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
       return this.gameState.players[seatIndex].chips;
     }
 
     // ハンド完了後・ハンド外はseatの値を返す
-    const seat = this.playerManager.getSeat(seatIndex);
     return seat?.chips ?? null;
+  }
+
+  /**
+   * テーブルバランス用: ハンド進行中でもこのプレイヤーを安全に離席（移動）させられるか。
+   *
+   * - ハンド外なら true（通常の離席で問題ない）
+   * - 次ハンド待ち（waitingForNextHand）はハンドに参加していないので true
+   * - フォールド済みかつ非オールインなら true（ポットへの権利が無く、以後手番も来ない）
+   * - ランアウト演出中・結果表示中（isHandComplete）はチップ同期前の値を読む恐れが
+   *   あるため false（結果表示完了後の pending move で移動させる）
+   */
+  public canRemoveSafelyDuringHand(odId: string): boolean {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return false;
+
+    const seat = this.playerManager.getSeat(seatIndex);
+    if (!seat || seat.leftForFastFold) return false;
+
+    if (!this.isHandInProgress) return true;
+    if (seat.waitingForNextHand) return true;
+
+    if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
+      return false;
+    }
+
+    const player = this.gameState.players[seatIndex];
+    if (!player) return false;
+    return player.folded && !player.isAllIn;
   }
 
   /**
@@ -1221,7 +1268,9 @@ export class TableInstance {
     for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
       const seat = seats[i];
       // waitingForNextHandのプレイヤーはハンドに参加していないのでチップを上書きしない
-      if (seat && this.gameState.players[i] && !seat.waitingForNextHand) {
+      // leftForFastFoldのプレイヤーはハンド中に他テーブルへ移動済み。チップの正は
+      // 移動先テーブルにあるため、ここで同期するとstale値で上書きしてしまう
+      if (seat && this.gameState.players[i] && !seat.waitingForNextHand && !seat.leftForFastFold) {
         this.playerManager.updateChips(i, this.gameState.players[i].chips);
         settledChips.push({ odId: seat.odId, seatIndex: i, chips: this.gameState.players[i].chips });
       }

@@ -855,9 +855,15 @@ export class TournamentInstance {
     const hasStuckTable = tableInfos.some(
       t => t.playerCount > 0 && t.playerCount < minPlayers
     );
-    const options = (this.isRegistrationOpen() && !hasStuckTable)
-      ? { maxTotalForBreak: 5 }
-      : undefined;
+
+    // ハンド中でも安全に移動できるか（フォールド済み等）の判定は TableInstance に委譲
+    const canMoveNow = (tableId: string, odId: string): boolean =>
+      this.tables.get(tableId)?.canRemoveSafelyDuringHand(odId) ?? false;
+
+    const options = {
+      canMoveNow,
+      ...((this.isRegistrationOpen() && !hasStuckTable) ? { maxTotalForBreak: 5 } : {}),
+    };
 
     const actions = TableBalancer.checkBalance(
       tableInfos,
@@ -868,14 +874,15 @@ export class TournamentInstance {
 
     for (const action of actions) {
       const table = this.tables.get(action.fromTableId);
-      if (table?.isHandInProgress) {
-        // ハンド中はペンディングに追加
+      if (table?.isHandInProgress && !table.canRemoveSafelyDuringHand(action.odId)) {
+        // ハンド中で今は安全に外せない → 結果表示完了後に実行
         this.pendingMoves.push({
           odId: action.odId,
           fromTableId: action.fromTableId,
           toTableId: action.toTableId,
         });
       } else {
+        // ハンド外、またはハンド中でもフォールド済み等で安全に外せる → 即移動
         this.movePlayer(action.odId, action.fromTableId, action.toTableId);
       }
     }

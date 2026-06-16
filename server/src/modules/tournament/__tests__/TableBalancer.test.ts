@@ -378,4 +378,74 @@ describe('TableBalancer', () => {
       expect(actions.every(a => a.type === 'break')).toBe(true);
     });
   });
+
+  describe('checkBalance with canMoveNow (ハンド中のフォールド済み移動)', () => {
+    // 5人(ハンド中) + 3人(idle): diff=2 で均等化移動の対象
+    function makeTables() {
+      return [
+        { tableId: 't1', playerCount: 5, isHandInProgress: true },
+        { tableId: 't2', playerCount: 3, isHandInProgress: false },
+      ];
+    }
+    const getIds = (id: string) =>
+      id === 't1' ? ['p1', 'p2', 'p3', 'p4', 'p5'] : ['p6', 'p7', 'p8'];
+
+    it('ハンド中の最大卓でも canMoveNow を満たすプレイヤーがいれば移動する', () => {
+      const actions = TableBalancer.checkBalance(makeTables(), getIds, 6, {
+        canMoveNow: (_tableId, odId) => odId === 'p2',
+      });
+
+      expect(actions).toEqual([
+        { type: 'move', odId: 'p2', fromTableId: 't1', toTableId: 't2' },
+      ]);
+    });
+
+    it('複数該当する場合は後ろ（新しく着席した）側を優先する', () => {
+      const actions = TableBalancer.checkBalance(makeTables(), getIds, 6, {
+        canMoveNow: (_tableId, odId) => odId === 'p2' || odId === 'p4',
+      });
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0].odId).toBe('p4');
+    });
+
+    it('誰も安全に移動できなければ何もしない', () => {
+      const actions = TableBalancer.checkBalance(makeTables(), getIds, 6, {
+        canMoveNow: () => false,
+      });
+      expect(actions).toEqual([]);
+    });
+
+    it('canMoveNow 未指定ならハンド中の卓からは移動しない（従来動作）', () => {
+      const actions = TableBalancer.checkBalance(makeTables(), getIds, 6);
+      expect(actions).toEqual([]);
+    });
+
+    it('最大卓がハンド外なら canMoveNow に関係なく末尾のプレイヤーを移動する', () => {
+      const idleTables = [
+        { tableId: 't1', playerCount: 5, isHandInProgress: false },
+        { tableId: 't2', playerCount: 3, isHandInProgress: false },
+      ];
+      const actions = TableBalancer.checkBalance(idleTables, getIds, 6, {
+        canMoveNow: () => false,
+      });
+
+      expect(actions).toHaveLength(1);
+      expect(actions[0].odId).toBe('p5');
+    });
+
+    it('破壊判定（break）には canMoveNow は影響しない', () => {
+      // 5+1=6人 → 1テーブルに収まるが、破壊対象卓(t2)がハンド中なら保留のまま
+      const actions = TableBalancer.checkBalance(
+        [
+          { tableId: 't1', playerCount: 5, isHandInProgress: true },
+          { tableId: 't2', playerCount: 1, isHandInProgress: true },
+        ],
+        (id) => (id === 't1' ? ['p1', 'p2', 'p3', 'p4', 'p5'] : ['p6']),
+        6,
+        { canMoveNow: () => true }
+      );
+      expect(actions).toEqual([]);
+    });
+  });
 });

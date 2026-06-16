@@ -1796,3 +1796,120 @@ describe('TableInstance - 連続タイムアウトによる持ち時間ペナル
     expect(t).toBeLessThan(15000);
   });
 });
+
+// ============================================
+// テーブルバランス: ハンド中の安全な離席判定
+// ============================================
+
+describe('TableInstance - canRemoveSafelyDuringHand', () => {
+  beforeEach(() => {
+    resetSocketCounter();
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('ハンド外のプレイヤーは true', () => {
+    const io = createMockIO();
+    const table = new TableInstance(io, '1/2', false);
+    table.seatPlayer('user1', 'Alice', createMockSocket(), 600);
+
+    // 1人ではハンドが始まらない
+    expect(table.isHandInProgress).toBe(false);
+    expect(table.canRemoveSafelyDuringHand('user1')).toBe(true);
+  });
+
+  it('存在しないプレイヤーは false', () => {
+    const { table } = setupRunningHand({ playerCount: 3 });
+    expect(table.canRemoveSafelyDuringHand('unknown_user')).toBe(false);
+  });
+
+  it('ハンド中の未フォールドプレイヤーは false', () => {
+    const { table, odIds } = setupRunningHand({ playerCount: 3 });
+    expect(table.isHandInProgress).toBe(true);
+
+    for (const odId of odIds) {
+      expect(table.canRemoveSafelyDuringHand(odId)).toBe(false);
+    }
+  });
+
+  it('フォールド済みプレイヤーは true、未フォールドは false のまま', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 4 });
+
+    const folder = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(folder).not.toBeNull();
+    expect(table.handleAction(folder!.odId, 'fold', 0)).toBe(true);
+
+    expect(table.canRemoveSafelyDuringHand(folder!.odId)).toBe(true);
+    for (const odId of odIds.filter(id => id !== folder!.odId)) {
+      expect(table.canRemoveSafelyDuringHand(odId)).toBe(false);
+    }
+  });
+
+  it('オールインプレイヤーは false', () => {
+    // buyIn を小さくして allin が有効アクションになるようにする
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, buyIn: 6 });
+
+    const current = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(current).not.toBeNull();
+    const allin = table.getValidActionsForSeat(current!.seatIndex).find(a => a.action === 'allin');
+    expect(allin).toBeDefined();
+    table.handleAction(current!.odId, 'allin', allin!.minAmount);
+
+    expect(table.canRemoveSafelyDuringHand(current!.odId)).toBe(false);
+  });
+
+  it('ランアウト演出中はフォールド済みでも false', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 3, buyIn: 6 });
+
+    // 1人フォールド → 残り2人がオールイン → ランアウト演出開始
+    const folder = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(folder).not.toBeNull();
+    table.handleAction(folder!.odId, 'fold', 0);
+    expect(table.canRemoveSafelyDuringHand(folder!.odId)).toBe(true);
+
+    allPlayersAllIn(table, odIds, sockets, seatMap);
+
+    // ランアウト演出中（タイマー未消化）はチップ同期前のため移動不可
+    expect(table.canRemoveSafelyDuringHand(folder!.odId)).toBe(false);
+  });
+
+  it('ハンド中に着席した次ハンド待ちプレイヤーは true、チップはseatの値が返る', () => {
+    const { table } = setupRunningHand({ playerCount: 3 });
+
+    const seat = table.seatPlayer('late_user', 'Late', createMockSocket(), 500);
+    expect(seat).not.toBeNull();
+
+    expect(table.canRemoveSafelyDuringHand('late_user')).toBe(true);
+    // gameState上は chips=0 のダミー（isSittingOut）だが、seatのbuy-in値が返ること
+    expect(table.getPlayerChips('late_user')).toBe(500);
+  });
+
+  it('次ハンド待ちプレイヤーの離席はハンド中でも席を即解放する', () => {
+    const { table } = setupRunningHand({ playerCount: 3 });
+
+    table.seatPlayer('late_user', 'Late', createMockSocket(), 500);
+    expect(table.getPlayerCount()).toBe(4);
+
+    const result = table.unseatPlayer('late_user');
+    expect(result).toEqual({ odId: 'late_user', chips: 500 });
+    expect(table.getPlayerCount()).toBe(3);
+    expect(table.hasAvailableSeat()).toBe(true);
+  });
+
+  it('フォールド済みプレイヤーを離席させると以後は false（移動済み扱い）', () => {
+    const { table, odIds, sockets, seatMap } = setupRunningHand({ playerCount: 4 });
+
+    const folder = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(folder).not.toBeNull();
+    table.handleAction(folder!.odId, 'fold', 0);
+
+    const result = table.unseatPlayer(folder!.odId);
+    expect(result).not.toBeNull();
+
+    // leftForFastFold マーク済み → もう安全離席の対象ではない
+    expect(table.canRemoveSafelyDuringHand(folder!.odId)).toBe(false);
+  });
+});
