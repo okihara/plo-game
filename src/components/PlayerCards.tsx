@@ -34,6 +34,8 @@ interface PlayerCardsProps {
   dealOrder: number;
   lastAction: LastAction | null;
   variant: GameVariant;
+  /** ショウダウンでベストハンドに使ったホールカードのインデックス（少し上げて強調） */
+  raisedIndices?: number[];
 }
 
 export function PlayerCards({
@@ -44,6 +46,7 @@ export function PlayerCards({
   dealOrder,
   lastAction,
   variant,
+  raisedIndices,
 }: PlayerCardsProps) {
   // ショウダウン時のカード公開アニメーション
   const [isRevealing, setIsRevealing] = useState(false);
@@ -82,7 +85,10 @@ export function PlayerCards({
     <div className={`absolute flex ${showCards && !player.folded ? 'z-[15]' : 'z-[15]'} ${cardPositionStyle}`}>
         {showCards && !player.folded
             ? player.holeCards.map((card, i) => (
-                <div key={i} className={i > 0 ? cardOverlapMargin : ''}>
+                <div
+                  key={i}
+                  className={`${i > 0 ? cardOverlapMargin : ''} transition-transform duration-200 ${raisedIndices?.includes(i) ? '-translate-y-[2.5cqw]' : ''}`}
+                >
                   {isRevealing ? (
                     <div className="w-[11cqw] h-[15.4cqw] relative" style={{ perspective: '100cqw' }}>
                       <div

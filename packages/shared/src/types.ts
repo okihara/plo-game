@@ -71,11 +71,11 @@ export const VARIANT_DISPLAY_NAMES: Record<GameVariant, string> = {
  *  バッジに表示する文字列は `VARIANT_DISPLAY_NAMES` を参照する。
  *  値は Tailwind のクラス名。 */
 export const VARIANT_BADGE_BG: Partial<Record<GameVariant, string>> = {
-  plo5:                  'bg-violet-600',
-  plo6:                  'bg-indigo-600',
-  plo_hilo:              'bg-amber-600',
-  plo_double_board_bomb: 'bg-rose-600',
-  big_o:                 'bg-emerald-600',
+  plo5:                  'bg-violet-700',
+  plo6:                  'bg-indigo-700',
+  plo_hilo:              'bg-amber-700',
+  plo_double_board_bomb: 'bg-rose-700',
+  big_o:                 'bg-emerald-700',
 };
 
 /** PokerStars Hand History のヘッダーで使う variant 名。
