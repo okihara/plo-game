@@ -299,6 +299,7 @@ model Tournament {
   registrations TournamentRegistration[]
   results       TournamentResult[]
   userEvaluations TournamentUserEvaluation[]
+  tweetDrafts   TweetDraft[]
 
   @@index([status])
   @@index([scheduledStartTime])
@@ -335,4 +336,51 @@ model TournamentResult {
   @@unique([tournamentId, userId])
   @@index([userId])
   @@index([tournamentId])
+}
+
+enum TweetKind {
+  ANNOUNCE
+  START
+  PROGRESS
+  RESULT
+  RANKING
+}
+
+enum TweetStatus {
+  PENDING
+  GENERATING
+  DRAFT
+  POSTING
+  POSTED
+  FAILED
+  DISCARDED
+}
+
+model TweetDraft {
+  id                String       @id @default(cuid())
+  kind              TweetKind
+  status            TweetStatus  @default(PENDING)
+
+  tournamentId      String?
+  tournament        Tournament?  @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+
+  scheduledFor      DateTime
+  generatedText     String?      @db.Text
+  editedText        String?      @db.Text
+  promptVersion     String?
+  promptInputJson   Json?
+
+  attachedImagePath String?
+  inReplyToTweetId  String?
+  postedTweetId     String?
+  postedAt          DateTime?
+
+  errorMessage      String?      @db.Text
+  retryCount        Int          @default(0)
+
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+
+  @@unique([kind, tournamentId])
+  @@index([status, scheduledFor])
 }

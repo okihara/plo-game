@@ -28,6 +28,8 @@ import { startRankingBadgeScheduler } from './modules/badges/rankingBadgeSchedul
 import { ogpRoutes } from './modules/ogp/routes.js';
 import { tournamentRoutes } from './modules/tournament/routes.js';
 import { tournamentEvaluationRoutes } from './modules/tournamentEvaluation/routes.js';
+import { tweetRoutes } from './modules/tweet/routes.js';
+import { startTweetScheduler } from './modules/tweet/scheduler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -295,9 +297,11 @@ const start = async () => {
     await fastify.register(tournamentRoutes({ tournamentManager }));
     await fastify.register(maintenanceRoutes());
     await fastify.register(announcementRoutes());
+    await fastify.register(tweetRoutes);
 
-    // Badge scheduler
+    // Schedulers
     startRankingBadgeScheduler();
+    startTweetScheduler();
 
     await fastify.listen({ port: env.PORT, host: '0.0.0.0' });
 

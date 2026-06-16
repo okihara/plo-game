@@ -192,16 +192,20 @@ export async function postTweet(
   return { tweetId: data.data.id };
 }
 
-/** 環境変数からクレデンシャルを取得 */
+/**
+ * 環境変数からクレデンシャルを取得。
+ * 投稿用は OAuth ログイン用とは別 App（Read+Write 権限）。
+ * ユーザー OAuth に Write 権限を求めないため、env も分けている。
+ */
 export function getCredentialsFromEnv(): TwitterCredentials {
-  const apiKey = process.env.TWITTER_API_KEY;
-  const apiKeySecret = process.env.TWITTER_API_KEY_SECRET;
-  const accessToken = process.env.TWITTER_ACCESS_TOKEN;
-  const accessTokenSecret = process.env.TWITTER_ACCESS_TOKEN_SECRET;
+  const apiKey = process.env.TWITTER_POST_API_KEY;
+  const apiKeySecret = process.env.TWITTER_POST_API_KEY_SECRET;
+  const accessToken = process.env.TWITTER_POST_ACCESS_TOKEN;
+  const accessTokenSecret = process.env.TWITTER_POST_ACCESS_TOKEN_SECRET;
 
   if (!apiKey || !apiKeySecret || !accessToken || !accessTokenSecret) {
     throw new Error(
-      'Missing Twitter credentials. Set TWITTER_API_KEY, TWITTER_API_KEY_SECRET, TWITTER_ACCESS_TOKEN, TWITTER_ACCESS_TOKEN_SECRET',
+      'Missing Twitter post credentials. Set TWITTER_POST_API_KEY, TWITTER_POST_API_KEY_SECRET, TWITTER_POST_ACCESS_TOKEN, TWITTER_POST_ACCESS_TOKEN_SECRET',
     );
   }
 
