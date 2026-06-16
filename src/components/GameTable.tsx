@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useGameSettings } from '../contexts/GameSettingsContext';
-import { useAuth } from '../contexts/AuthContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName } from '../logic/handEvaluator';
 import { DoorOpen, Settings, History } from 'lucide-react';
@@ -8,7 +7,6 @@ import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
 import { HandAnalysisOverlay } from './HandAnalysisOverlay';
-import { ProfilePopup } from './ProfilePopup';
 import { CompactProfileModal } from './CompactProfileModal';
 import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from './HandHistoryPanel';
@@ -95,14 +93,12 @@ export function GameTable({
   bubbleFactors,
 }: GameTableProps) {
   const { settings, setBigBlind } = useGameSettings();
-  const { user } = useAuth();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
   const analysisEnabled = settings.analysisEnabled;
   const showHandName = settings.showHandName;
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
-  const [showFullProfile, setShowFullProfile] = useState(false);
   const [showHandHistory, setShowHandHistory] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [centerNotice, setCenterNotice] = useState<string | null>(null);
@@ -110,12 +106,10 @@ export function GameTable({
 
   const handlePlayerClick = useCallback((player: PlayerType) => {
     setSelectedPlayer(player);
-    setShowFullProfile(false);
   }, []);
 
   const closeProfile = useCallback(() => {
     setSelectedPlayer(null);
-    setShowFullProfile(false);
   }, []);
 
   const showCenterNotice = useCallback((text: string) => {
@@ -376,37 +370,19 @@ export function GameTable({
             </div>
           )}
 
-          {/* プロフィール: まずコンパクトモーダル、「詳細を見る」でフルプロフィール */}
-          {selectedPlayer && !showFullProfile && (
+          {/* プロフィール: テーブル背後が見えるコンパクトモーダル */}
+          {selectedPlayer && (
             <CompactProfileModal
               name={selectedPlayer.name}
               avatarUrl={selectedPlayer.avatarUrl}
               avatarId={selectedPlayer.avatarId}
               userId={selectedPlayer.odId}
               mode={isTournament ? 'tournament' : 'cash'}
-              label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
-              onClose={closeProfile}
-              onShowDetail={
-                selectedPlayer.odId && !selectedPlayer.odId.startsWith('bot_')
-                  ? () => setShowFullProfile(true)
-                  : undefined
-              }
-            />
-          )}
-          {selectedPlayer && showFullProfile && (
-            <ProfilePopup
-              name={selectedPlayer.name}
-              avatarUrl={selectedPlayer.avatarUrl}
-              avatarId={selectedPlayer.avatarId}
-              userId={selectedPlayer.odId}
               isSelf={mySeat !== null && selectedPlayer.id === mySeat}
-              onClose={closeProfile}
-              twitterAvatarUrl={mySeat !== null && selectedPlayer.id === mySeat ? user?.twitterAvatarUrl : undefined}
-              useTwitterAvatar={mySeat !== null && selectedPlayer.id === mySeat ? user?.useTwitterAvatar : undefined}
               label={selectedPlayer.odId ? getLabel(selectedPlayer.odId) : undefined}
+              onClose={closeProfile}
               onLabelChange={setLabel}
               onLabelRemove={removeLabel}
-              defaultMode={isTournament ? 'tournament' : 'cash'}
             />
           )}
 
