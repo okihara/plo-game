@@ -176,6 +176,7 @@
           <select id="gameVariant">
             <option value="plo">PLO (4-card Omaha)</option>
             <option value="plo5">PLO5 (5-card Omaha)</option>
+            <option value="plo6">PLO6 (6-card Omaha)</option>
             <option value="plo_hilo">PLO8 (Pot Limit Omaha Hi-Lo)</option>
             <option value="plo_double_board_bomb">DBBP (Double Board Bomb Pot)</option>
             <option value="big_o">Big-O (5-card Pot Limit Omaha Hi-Lo)</option>
@@ -253,7 +254,7 @@
       return hours > 0 ? hours + '時間' + minutes + '分' : minutes + '分';
     }
     function formatVariant(v) {
-      return ({ plo: 'PLO', plo5: 'PLO5', plo_hilo: 'PLO8', plo_double_board_bomb: 'DBBP', big_o: 'Big-O', 'no_limit_2-7_single_draw': 'NL 2-7 SD' })[v] || v || 'PLO';
+      return ({ plo: 'PLO', plo5: 'PLO5', plo6: 'PLO6', plo_hilo: 'PLO8', plo_double_board_bomb: 'DBBP', big_o: 'Big-O', 'no_limit_2-7_single_draw': 'NL 2-7 SD' })[v] || v || 'PLO';
     }
     function formatBlind(level) {
       if (!level) return '-';
@@ -297,7 +298,7 @@
 
     // ゲーム種別変更時にタイトルを "BabyPLO [{種別}] {M/D}" に書き換える。
     // ユーザーが既に手動編集していたら触らない。
-    var VARIANT_LABELS = { plo: 'Daily', plo5: '5-Card', plo_hilo: 'PLO8', plo_double_board_bomb: 'DBBP', big_o: 'Big-O', 'no_limit_2-7_single_draw': '2-7 SD' };
+    var VARIANT_LABELS = { plo: 'Daily', plo5: '5-Card', plo6: '6-Card', plo_hilo: 'PLO8', plo_double_board_bomb: 'DBBP', big_o: 'Big-O', 'no_limit_2-7_single_draw': '2-7 SD' };
     var nameInput = document.getElementById('name');
     var INITIAL_NAME = nameInput.value;
     function buildTournamentName(variant) {

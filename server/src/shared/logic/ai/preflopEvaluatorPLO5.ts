@@ -1,11 +1,11 @@
-// PLO5 (5枚ホールカード版オマハ) のプリフロップハンド評価。
+// 多枚数オマハ (PLO5: 5枚 / PLO6: 6枚) のプリフロップハンド評価。
 // PLO の preflopEquity.json は 4 枚専用で再計算コストが高いため、
-// 5 枚から特徴量を抽出する単純な線形スコアで近似する。
+// 5〜6 枚から特徴量を抽出する単純な線形スコアで近似する。
 // 戻り値は PLO の getPreFlopEvaluation と同形 (PreFlopEvaluation) を返し、
 // 既存の preflopStrategy.ts のロジック (AAxx 判定・hasDangler 判定等) を流用できるようにする。
 //
 // 精度は equity 表ベースの PLO 評価に劣るが、Bot が最弱判定で全フォールドする
-// silent fallback を防ぐのが第一目的。Phase 7 の実機ログで継続調整する。
+// silent fallback を防ぐのが第一目的。実機ログで継続調整する。
 
 import { Card, Rank } from '../types.js';
 import { getRankValue } from '../deck.js';
@@ -19,7 +19,9 @@ const EMPTY_RESULT: PreFlopEvaluation = {
 
 export function evaluatePreflopPLO5(holeCards: Card[]): PreFlopEvaluation {
   const valid = holeCards.filter(c => c && c.rank && c.suit);
-  if (valid.length !== 5) return { ...EMPTY_RESULT };
+  // PLO5 (5枚) / PLO6 (6枚) を受け付ける。枚数が増えるほど組合せが多く強くなるため、
+  // 下のロジックは top4Span / fullSpan を基準に枚数非依存で特徴量を抽出する。
+  if (valid.length !== 5 && valid.length !== 6) return { ...EMPTY_RESULT };
 
   const values = valid.map(c => getRankValue(c.rank)).sort((a, b) => b - a);
 

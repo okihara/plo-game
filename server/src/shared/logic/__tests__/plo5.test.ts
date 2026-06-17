@@ -27,6 +27,18 @@ describe('PLO5: gameEngine.startNewHand', () => {
     expect(newState.deck).toHaveLength(22);
   });
 
+  it('variant=plo6 で各プレイヤーに 6 枚配られ、6 人 × 6 枚 = 36 枚がデッキから配られる', () => {
+    const state = createInitialGameState();
+    state.variant = 'plo6';
+    const newState = startNewHand(state);
+    for (const p of newState.players) {
+      if (p.isSittingOut) continue;
+      expect(p.holeCards).toHaveLength(6);
+    }
+    // 52 - 36 = 16 枚残り
+    expect(newState.deck).toHaveLength(16);
+  });
+
   it('variant=plo (デフォルト) は引き続き 4 枚配り (回帰チェック)', () => {
     const state = createInitialGameState();
     const newState = startNewHand(state);
@@ -72,8 +84,16 @@ describe('PLO5: evaluatePLOHand (5 枚ホール)', () => {
     expect(() => evaluatePLOHand(hole, board)).toThrow();
   });
 
-  it('6 枚ホールはエラー', () => {
+  it('6 枚ホール (PLO6) は C(6,2)*C(5,3)=150 通りで評価できる', () => {
+    // ホール AA + KKQJ。ボード AcKsKd で AAA+KK のフルハウスが組める。
     const hole = [card('A','h'), card('A','d'), card('K','h'), card('K','c'), card('Q','s'), card('J','d')];
+    const board = [card('A','c'), card('K','s'), card('K','d'), card('Q','h'), card('5','c')];
+    const result = evaluatePLOHand(hole, board);
+    expect(result.rank).toBeGreaterThanOrEqual(7); // フルハウス以上
+  });
+
+  it('7 枚ホールはエラー', () => {
+    const hole = [card('A','h'), card('A','d'), card('K','h'), card('K','c'), card('Q','s'), card('J','d'), card('T','s')];
     const board = [card('5','c'), card('5','d'), card('5','h'), card('7','d'), card('2','c')];
     expect(() => evaluatePLOHand(hole, board)).toThrow();
   });
@@ -91,9 +111,17 @@ describe('PLO5: evaluateCurrentHand (フロップ・ターン)', () => {
 });
 
 describe('PLO5: evaluatePreflopPLO5', () => {
-  it('5 枚以外は score=0 を返す', () => {
+  it('5〜6 枚以外 (4 枚) は score=0 を返す', () => {
     const result = evaluatePreflopPLO5([card('A','h'), card('A','d'), card('K','h'), card('K','c')]);
     expect(result.score).toBe(0);
+  });
+
+  it('6 枚 (PLO6) でもスコアが算出される (score > 0)', () => {
+    const hole = [card('A','h'), card('A','d'), card('K','h'), card('K','d'), card('Q','c'), card('J','s')];
+    const result = evaluatePreflopPLO5(hole);
+    expect(result.hasPair).toBe(true);
+    expect(result.pairRank).toBe('A');
+    expect(result.score).toBeGreaterThan(0);
   });
 
   it('AAKKQ ds 級の強ハンドは高スコア (>= 0.6)', () => {

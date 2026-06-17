@@ -18,6 +18,15 @@ const sampleCardsOmaha5: CardType[] = [
   { suit: 'h', rank: 'T' },
 ];
 
+const sampleCardsOmaha6: CardType[] = [
+  { suit: 'h', rank: 'A' },
+  { suit: 's', rank: 'K' },
+  { suit: 'd', rank: 'Q' },
+  { suit: 'c', rank: 'J' },
+  { suit: 'h', rank: 'T' },
+  { suit: 's', rank: '9' },
+];
+
 const sampleCardsHoldem: CardType[] = [
   { suit: 'h', rank: 'A' },
   { suit: 's', rank: 'K' },
@@ -44,6 +53,7 @@ const sampleCardsDraw: CardType[] = [
 const variantOptions: { value: GameVariant; label: string }[] = [
   { value: 'plo', label: 'PLO (Omaha)' },
   { value: 'plo5', label: 'PLO5 (5 Card Omaha)' },
+  { value: 'plo6', label: 'PLO6 (6 Card Omaha)' },
   { value: 'plo_hilo', label: 'PLO Hi/Lo' },
   { value: 'plo_double_board_bomb', label: 'DBBP (Double Board Bomb Pot)' },
   { value: 'limit_holdem', label: "Limit Hold'em" },
@@ -71,6 +81,7 @@ const HI_LO_WON_SIDES: Record<HiLoWinState, ('high' | 'low')[]> = {
 
 function getSampleCards(variant: GameVariant): CardType[] {
   if (variant === 'plo5') return sampleCardsOmaha5;
+  if (variant === 'plo6') return sampleCardsOmaha6;
   const family = getVariantConfig(variant).family;
   switch (family) {
     case 'stud': return sampleCardsStud;

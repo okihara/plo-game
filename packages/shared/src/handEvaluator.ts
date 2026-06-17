@@ -1,13 +1,14 @@
-import { Card, HandRank } from './types';
+import { Card, HandRank, GameVariant, getVariantConfig } from './types';
 import { getRankValue } from './deck';
 import { formatPLOFlushName } from './handName';
 
-// PLO/PLO5: 必ず2枚のホールカードと3枚のコミュニティカードを使う
+// PLO/PLO5/PLO6: 必ず2枚のホールカードと3枚のコミュニティカードを使う
 // PLO  → ホール 4 枚 (C(4,2)=6 通り)
 // PLO5 → ホール 5 枚 (C(5,2)=10 通り)
+// PLO6 → ホール 6 枚 (C(6,2)=15 通り)
 export function evaluatePLOHand(holeCards: Card[], communityCards: Card[]): HandRank {
-  if ((holeCards.length !== 4 && holeCards.length !== 5) || (communityCards.length < 4 || communityCards.length > 5)) {
-    throw new Error('PLO requires 4 or 5 hole cards and 4-5 community cards');
+  if ((holeCards.length < 4 || holeCards.length > 6) || (communityCards.length < 4 || communityCards.length > 5)) {
+    throw new Error('PLO requires 4-6 hole cards and 4-5 community cards');
   }
 
   let bestHand: HandRank = { rank: 0, name: '', highCards: [] };
@@ -35,6 +36,62 @@ export function evaluatePLOHand(holeCards: Card[], communityCards: Card[]): Hand
   }
 
   return bestHand;
+}
+
+// hi-lo を持つオマハ系 variant（ロー側で使った 2 枚もハイライト対象にする）
+const HILO_OMAHA_VARIANTS = new Set<GameVariant>(['omaha_hilo', 'plo_hilo', 'big_o']);
+
+/**
+ * ショウダウン演出用: ベストハンドで実際に使った「ホールカードのインデックス」を返す。
+ * オマハ系（必ずホール2枚使用）のみ対象。ハイで使った2枚を必ず含み、hi-lo variant で
+ * ローがクオリファイする場合はローで使った2枚も含める（重複は集約）。
+ * 非オマハ系・ダブルボードボム・ボード未完成（コミュ5枚未満）では空配列を返す。
+ */
+export function findUsedHoleCardIndices(
+  holeCards: Card[],
+  communityCards: Card[],
+  variant: GameVariant,
+): number[] {
+  const config = getVariantConfig(variant);
+  // ホール2枚固定のオマハ系のみ。ダブルボードボムはボードが2枚あり別処理のため対象外。
+  if (config.family !== 'omaha' || variant === 'plo_double_board_bomb') return [];
+  if (holeCards.length < 4 || communityCards.length !== 5) return [];
+
+  const used = new Set<number>();
+  const holeIdxCombos = getCombinations([...holeCards.keys()], 2);
+  const communityCombos = getCombinations(communityCards, 3);
+
+  // ハイ: 最良の (ホール2枚 × コミュ3枚) を探し、その2枚のインデックスを採用
+  let bestHigh: HandRank | null = null;
+  let bestHighIdx: number[] = [];
+  for (const [a, b] of holeIdxCombos) {
+    for (const cc of communityCombos) {
+      const hr = evaluateFiveCardHand([holeCards[a], holeCards[b], ...cc]);
+      if (!bestHigh || compareHands(hr, bestHigh) > 0) {
+        bestHigh = hr;
+        bestHighIdx = [a, b];
+      }
+    }
+  }
+  bestHighIdx.forEach(i => used.add(i));
+
+  // ロー: hi-lo variant のみ。8-or-better でクオリファイする最良ローの2枚も採用
+  if (HILO_OMAHA_VARIANTS.has(variant)) {
+    let bestLow: HandRank | null = null;
+    let bestLowIdx: number[] = [];
+    for (const [a, b] of holeIdxCombos) {
+      for (const cc of communityCombos) {
+        const low = evaluate8OrBetterFiveCardLow([holeCards[a], holeCards[b], ...cc]);
+        if (low && (!bestLow || compareLowHands(low, bestLow) < 0)) {
+          bestLow = low;
+          bestLowIdx = [a, b];
+        }
+      }
+    }
+    bestLowIdx.forEach(i => used.add(i));
+  }
+
+  return [...used];
 }
 
 function getCombinations<T>(arr: T[], size: number): T[][] {
@@ -201,9 +258,9 @@ export function evaluateCurrentHoldemHand(holeCards: Card[], communityCards: Car
 }
 
 // コミュニティカード3枚以上で現在のベストハンドを評価（フロップ・ターン対応）
-// PLO は 4 枚、PLO5 は 5 枚のホールカードを受け取る
+// PLO は 4 枚、PLO5 は 5 枚、PLO6 は 6 枚のホールカードを受け取る
 export function evaluateCurrentHand(holeCards: Card[], communityCards: Card[]): HandRank | null {
-  if ((holeCards.length !== 4 && holeCards.length !== 5) || communityCards.length < 3) {
+  if ((holeCards.length < 4 || holeCards.length > 6) || communityCards.length < 3) {
     return null;
   }
 

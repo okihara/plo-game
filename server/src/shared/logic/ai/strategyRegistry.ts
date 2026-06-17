@@ -13,6 +13,7 @@ import { LimitHoldemStrategy } from './limitHoldemStrategy.js';
 const strategies: Record<GameVariant, AIVariantStrategy> = {
   plo: new PLOStrategy(),
   plo5: new PLOStrategy(),  // PLO5: 暫定で PLO ストラテジーを流用 (Phase 3 でプリフロップ評価器を差し替え予定)
+  plo6: new PLOStrategy(),  // PLO6: PLO ストラテジーを流用 (プリフロップ評価は多枚数オマハ評価器を使用)
   stud: new StudStrategy(),
   razz: new RazzStrategy(),
   'limit_2-7_triple_draw': new DrawStrategy(),
