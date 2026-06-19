@@ -112,13 +112,18 @@ export async function fetchResultData(
   const winner = results[0];
   const winnerUserId = winner?.userId ?? null;
 
-  const topResults = results.slice(0, 8).map((r) => ({
-    position: r.position,
-    userId: r.userId,
-    displayName: resolveDisplay(r.user),
-    prize: r.prize,
-    reentries: r.reentries,
-  }));
+  // インマネ（賞金が出た）人数は毎回変わるので prize > 0 で絞る。
+  // 念のため上位最大 16 名までに制限（賞金が無ければ最低でも優勝者は載せる）。
+  const inMoney = results.filter((r) => r.prize > 0);
+  const topResults = (inMoney.length > 0 ? inMoney : results.slice(0, 1))
+    .slice(0, 16)
+    .map((r) => ({
+      position: r.position,
+      userId: r.userId,
+      displayName: resolveDisplay(r.user),
+      prize: r.prize,
+      reentries: r.reentries,
+    }));
 
   const handsAsc = [...lastHands].reverse();
   const handsOut = handsAsc.map((h) => ({
