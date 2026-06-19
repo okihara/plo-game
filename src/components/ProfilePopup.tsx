@@ -195,23 +195,28 @@ export function ProfilePopup({
           </div>
 
           {/* Label Note */}
-          {!isSelf && userId && label && onLabelChange && (
-            <div className="mb-[3cqw] flex gap-[1.5cqw]">
-              <input
-                type="text"
+          {!isSelf && userId && !userId.startsWith('bot_') && onLabelChange && (
+            <div className="mb-[3cqw] flex gap-[1.5cqw] items-start">
+              <textarea
                 value={labelNote}
                 onChange={e => setLabelNote(e.target.value)}
-                onBlur={() => onLabelChange(userId, label.color, labelNote)}
-                onKeyDown={e => { if (e.key === 'Enter') { (e.target as HTMLInputElement).blur(); } }}
+                onBlur={() => {
+                  // 既存ラベルがあれば常に更新。無ければメモが空でない時だけ既定色で作成。
+                  if (label) onLabelChange(userId, label.color, labelNote);
+                  else if (labelNote.trim()) onLabelChange(userId, 'gray', labelNote);
+                }}
+                rows={3}
                 placeholder="メモを入力..."
-                className="flex-1 text-[3cqw] px-[2cqw] py-[1.5cqw] border border-cream-300 rounded-[2cqw] bg-cream-50 text-cream-900 placeholder:text-cream-400 outline-none focus:border-cream-500"
+                className="flex-1 resize-none text-[3.4cqw] leading-[1.5] px-[2.5cqw] py-[2cqw] border border-cream-300 rounded-[2cqw] bg-cream-50 text-cream-900 placeholder:text-cream-400 outline-none focus:border-cream-500"
               />
-              <button
-                onClick={() => { onLabelRemove?.(userId); setLabelNote(''); }}
-                className="text-cream-500 active:text-cream-700 px-[1cqw]"
-              >
-                <X className="w-[4cqw] h-[4cqw]" />
-              </button>
+              {label && (
+                <button
+                  onClick={() => { onLabelRemove?.(userId); setLabelNote(''); }}
+                  className="text-cream-500 active:text-cream-700 px-[1cqw] py-[2cqw]"
+                >
+                  <X className="w-[4cqw] h-[4cqw]" />
+                </button>
+              )}
             </div>
           )}
 
