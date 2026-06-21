@@ -119,6 +119,15 @@ export function computeBubbleFactors(stacks: number[], payouts: number[]): numbe
   // payout at that position, or 0 if the position is past the money.
   const bustPrize = aliveCount - 1 < payouts.length ? payouts[aliveCount - 1] : 0;
 
+  // Floating-point guard: with degenerate payout structures (e.g. flat
+  // satellite payouts where every remaining player is locked into the same
+  // prize) the true gainEv is exactly 0, but the recursive ICM sums leave
+  // ~1e-14 noise. Dividing by that noise produces bogus finite BFs (even
+  // negative ones), so treat anything below a tiny fraction of the total
+  // prize pool as "no gain" → NaN, matching the documented contract.
+  const totalPrize = payouts.reduce((a, b) => a + b, 0);
+  const minGain = totalPrize * 1e-9;
+
   for (let i = 0; i < n; i++) {
     const myChips = stacks[i];
     if (myChips <= 0) continue;
@@ -159,7 +168,7 @@ export function computeBubbleFactors(stacks: number[], payouts: number[]): numbe
       lossEv = icmNow[i] - icmLose[i];
     }
 
-    if (gainEv > 0) out[i] = lossEv / gainEv;
+    if (gainEv > minGain) out[i] = lossEv / gainEv;
   }
 
   return out;
