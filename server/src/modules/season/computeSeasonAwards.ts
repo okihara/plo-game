@@ -50,12 +50,13 @@ interface UserDisplay {
   avatarUrl: string | null;
 }
 
-interface ParticipationAcc {
+export interface ParticipationAcc {
   entries: number; // リエントリー込みの総エントリー数（バイイン回数）
   tournaments: number; // 出場トナメ数
   reentries: number;
   wins: number;
   itm: number;
+  best: number; // 最高順位（未参加は Infinity）
 }
 
 interface StatAcc {
@@ -103,12 +104,13 @@ function aggregateParticipation(
 
     for (const r of t.results) {
       if (r.user.provider === 'bot') continue;
-      const cur = map.get(r.userId) ?? { entries: 0, tournaments: 0, reentries: 0, wins: 0, itm: 0 };
+      const cur = map.get(r.userId) ?? { entries: 0, tournaments: 0, reentries: 0, wins: 0, itm: 0, best: Infinity };
       cur.entries += 1 + (r.reentries ?? 0);
       cur.tournaments += 1;
       cur.reentries += r.reentries ?? 0;
       if (r.position === 1) cur.wins += 1;
       if (r.position <= itmCount) cur.itm += 1;
+      if (r.position < cur.best) cur.best = r.position;
       map.set(r.userId, cur);
     }
   }
@@ -211,32 +213,52 @@ interface Candidate {
   valueLabel: string;
 }
 
-function buildAward(
-  meta: { key: string; category: string; title: string; emoji: string; description: string },
-  candidates: Candidate[],
-  order: 'desc' | 'asc',
-  displays: Map<string, UserDisplay>,
-): Award {
-  const sorted = [...candidates].sort((a, b) => (order === 'desc' ? b.value - a.value : a.value - b.value));
-  const toWinner = (c: Candidate): AwardWinner | null => {
-    const d = displays.get(c.userId);
-    if (!d) return null;
-    return { userId: c.userId, name: d.name, avatarUrl: d.avatarUrl, value: c.value, valueLabel: c.valueLabel };
-  };
-  const ranked = sorted.map(toWinner).filter((w): w is AwardWinner => w !== null);
-  return {
-    ...meta,
-    winner: ranked[0] ?? null,
-    runnersUp: ranked.slice(1, 3),
-  };
+/** 各賞のフル順位（個人ページで「あなたは○位」を出すために全候補を保持） */
+export interface AwardRanking {
+  key: string;
+  category: string;
+  title: string;
+  emoji: string;
+  ranked: { userId: string; valueLabel: string }[];
+}
+
+/** プレイヤー別のハンド由来スタッツ（個人データセクション用） */
+export interface PlayerHandStat {
+  userId: string;
+  hands: number; // handsPlayed（トナメ×シーズン期間）
+  vpip: number | null;
+  pfr: number | null;
+  afq: number | null;
+  threeBet: number | null;
+  wsd: number | null;
+  detailedHands: number;
+  postflopActions: number;
+  threeBetOpportunity: number;
+  wtsd: number;
+  evDivergence: number;
+  allinHands: number;
+  maxPotWon: number;
 }
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
 const fmtSigned = (n: number) => (n >= 0 ? `+${fmtInt(n)}` : `-${fmtInt(-n)}`);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 
+interface AwardSpec {
+  key: string;
+  category: string;
+  title: string;
+  emoji: string;
+  description: string;
+  order: 'desc' | 'asc';
+  candidates: Candidate[];
+}
+
 export interface SeasonAwardsResult {
   awards: Award[];
+  rankings: AwardRanking[];
+  participation: Map<string, ParticipationAcc>;
+  statsByUser: Map<string, PlayerHandStat>;
   handsScanned: number;
 }
 
@@ -274,13 +296,15 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
 
   const handsScanned = [...stats.values()].reduce((s, a) => s + a.inc.handsPlayed, 0);
 
-  // 派生指標を取り出すヘルパー
-  const partList = [...participation.entries()].map(([userId, p]) => ({ userId, ...p }));
-  const statList = [...stats.entries()].map(([userId, a]) => {
+  // 派生指標（個人データセクションでも再利用するため Map で保持）
+  const statsByUser = new Map<string, PlayerHandStat>();
+  for (const [userId, a] of stats.entries()) {
     const i = a.inc;
-    return {
+    statsByUser.set(userId, {
       userId,
+      hands: i.handsPlayed,
       vpip: i.detailedHands > 0 ? (i.vpipCount / i.detailedHands) * 100 : null,
+      pfr: i.detailedHands > 0 ? (i.pfrCount / i.detailedHands) * 100 : null,
       afq: i.totalPostflopActions > 0 ? (i.aggressiveActions / i.totalPostflopActions) * 100 : null,
       threeBet: i.threeBetOpportunity > 0 ? (i.threeBetCount / i.threeBetOpportunity) * 100 : null,
       wsd: i.wtsdCount > 0 ? (i.wsdCount / i.wtsdCount) * 100 : null,
@@ -291,107 +315,92 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       evDivergence: a.evDivergence,
       allinHands: a.allinHands,
       maxPotWon: a.maxPotWon,
-    };
-  });
+    });
+  }
+
+  const partList = [...participation.entries()].map(([userId, p]) => ({ userId, ...p }));
+  const statList = [...statsByUser.values()];
+
+  // 賞の定義（スペック駆動）。candidates は受賞条件で絞り込んだ候補。
+  const specs: AwardSpec[] = [
+    // ===== 参加・継続系 =====
+    {
+      key: 'iron_man', category: '参加・継続', title: '鉄人賞', emoji: '🔥', description: '最も多くエントリーした皆勤の猛者', order: 'desc',
+      candidates: partList.filter((p) => p.entries > 0).map((p) => ({ userId: p.userId, value: p.entries, valueLabel: `${p.entries}エントリー` })),
+    },
+    {
+      key: 'reentry_king', category: '参加・継続', title: 'リエントリー王', emoji: '♻️', description: '何度でも立ち向かった不屈の人', order: 'desc',
+      candidates: partList.filter((p) => p.reentries > 0).map((p) => ({ userId: p.userId, value: p.reentries, valueLabel: `${p.reentries}回` })),
+    },
+    // ===== オールイン・アグレ系 =====
+    {
+      key: 'allin_master', category: 'オールイン・アグレ', title: 'オールイン無双賞', emoji: '💪', description: 'オールインで期待値以上に勝ち切った勝負師', order: 'desc',
+      candidates: statList.filter((s) => s.allinHands >= 5).map((s) => ({ userId: s.userId, value: s.evDivergence, valueLabel: `EV ${fmtSigned(s.evDivergence)}` })),
+    },
+    {
+      key: 'aggressive', category: 'オールイン・アグレ', title: 'アグレッシブ賞', emoji: '🚀', description: 'フロップ以降の攻撃性No.1', order: 'desc',
+      candidates: statList.filter((s) => s.postflopActions >= 50 && s.afq != null).map((s) => ({ userId: s.userId, value: s.afq!, valueLabel: `AFq ${fmtPct(s.afq!)}` })),
+    },
+    {
+      key: 'three_bet', category: 'オールイン・アグレ', title: '3ベット魔賞', emoji: '⚔️', description: 'プリフロップで殴り続けた3Bet師', order: 'desc',
+      candidates: statList.filter((s) => s.threeBetOpportunity >= 20 && s.threeBet != null).map((s) => ({ userId: s.userId, value: s.threeBet!, valueLabel: `3Bet ${fmtPct(s.threeBet!)}` })),
+    },
+    // ===== 成績・運系 =====
+    {
+      key: 'most_wins', category: '成績・運', title: '最多優勝賞', emoji: '🏆', description: 'トナメを制した回数No.1', order: 'desc',
+      candidates: partList.filter((p) => p.wins > 0).map((p) => ({ userId: p.userId, value: p.wins, valueLabel: `${p.wins}回優勝` })),
+    },
+    {
+      key: 'itm_master', category: '成績・運', title: 'インマネ職人賞', emoji: '🎯', description: '入賞率が最も高い堅実派（5戦以上）', order: 'desc',
+      candidates: partList.filter((p) => p.tournaments >= 5).map((p) => ({ userId: p.userId, value: (p.itm / p.tournaments) * 100, valueLabel: `ITM率 ${Math.round((p.itm / p.tournaments) * 100)}% (${p.itm}/${p.tournaments})` })),
+    },
+    {
+      key: 'biggest_pot', category: '成績・運', title: '一撃賞', emoji: '💥', description: 'シーズン最大のポットを攫った一発', order: 'desc',
+      candidates: statList.filter((s) => s.maxPotWon > 0).map((s) => ({ userId: s.userId, value: s.maxPotWon, valueLabel: `${fmtInt(s.maxPotWon)} chips` })),
+    },
+    // ===== スタイル系 =====
+    {
+      key: 'rock', category: 'スタイル', title: '鉄壁タイト賞', emoji: '🛡️', description: '滅多に参加しない鉄壁スタイル（50ハンド以上）', order: 'asc',
+      // VPIP 0% は実質 AFK の全フォールド口座なので除外し、実際にプレイした最タイトを選ぶ
+      candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null && s.vpip > 0).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
+    },
+    {
+      key: 'maniac', category: 'スタイル', title: 'ぶっぱルーズ賞', emoji: '🎪', description: 'とにかく参加するルーズスタイル（50ハンド以上）', order: 'desc',
+      candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
+    },
+    {
+      key: 'showdown_king', category: 'スタイル', title: 'ショーダウンの鬼賞', emoji: '👑', description: 'ショーダウンで勝ち切る勝負強さ（10回以上）', order: 'desc',
+      candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `W$SD ${fmtPct(s.wsd!)}` })),
+    },
+  ];
 
   const awards: Award[] = [];
+  const rankings: AwardRanking[] = [];
+  for (const spec of specs) {
+    const sorted = [...spec.candidates].sort((a, b) => (spec.order === 'desc' ? b.value - a.value : a.value - b.value));
+    rankings.push({
+      key: spec.key,
+      category: spec.category,
+      title: spec.title,
+      emoji: spec.emoji,
+      ranked: sorted.map((c) => ({ userId: c.userId, valueLabel: c.valueLabel })),
+    });
+    const withDisplay = sorted
+      .map((c): AwardWinner | null => {
+        const d = displays.get(c.userId);
+        return d ? { userId: c.userId, name: d.name, avatarUrl: d.avatarUrl, value: c.value, valueLabel: c.valueLabel } : null;
+      })
+      .filter((w): w is AwardWinner => w !== null);
+    awards.push({
+      key: spec.key,
+      category: spec.category,
+      title: spec.title,
+      emoji: spec.emoji,
+      description: spec.description,
+      winner: withDisplay[0] ?? null,
+      runnersUp: withDisplay.slice(1, 3),
+    });
+  }
 
-  // ===== 参加・継続系 =====
-  awards.push(
-    buildAward(
-      { key: 'iron_man', category: '参加・継続', title: '鉄人賞', emoji: '🔥', description: '最も多くエントリーした皆勤の猛者' },
-      partList.filter((p) => p.entries > 0).map((p) => ({ userId: p.userId, value: p.entries, valueLabel: `${p.entries}エントリー` })),
-      'desc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'reentry_king', category: '参加・継続', title: 'リエントリー王', emoji: '♻️', description: '何度でも立ち向かった不屈の人' },
-      partList.filter((p) => p.reentries > 0).map((p) => ({ userId: p.userId, value: p.reentries, valueLabel: `${p.reentries}回` })),
-      'desc',
-      displays,
-    ),
-  );
-
-  // ===== オールイン・アグレ系 =====
-  awards.push(
-    buildAward(
-      { key: 'allin_master', category: 'オールイン・アグレ', title: 'オールイン無双賞', emoji: '💪', description: 'オールインで期待値以上に勝ち切った勝負師' },
-      statList.filter((s) => s.allinHands >= 5).map((s) => ({ userId: s.userId, value: s.evDivergence, valueLabel: `EV ${fmtSigned(s.evDivergence)}` })),
-      'desc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'aggressive', category: 'オールイン・アグレ', title: 'アグレッシブ賞', emoji: '🚀', description: 'フロップ以降の攻撃性No.1' },
-      statList.filter((s) => s.postflopActions >= 50 && s.afq != null).map((s) => ({ userId: s.userId, value: s.afq!, valueLabel: `AFq ${fmtPct(s.afq!)}` })),
-      'desc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'three_bet', category: 'オールイン・アグレ', title: '3ベット魔賞', emoji: '⚔️', description: 'プリフロップで殴り続けた3Bet師' },
-      statList.filter((s) => s.threeBetOpportunity >= 20 && s.threeBet != null).map((s) => ({ userId: s.userId, value: s.threeBet!, valueLabel: `3Bet ${fmtPct(s.threeBet!)}` })),
-      'desc',
-      displays,
-    ),
-  );
-
-  // ===== 成績・運系 =====
-  awards.push(
-    buildAward(
-      { key: 'most_wins', category: '成績・運', title: '最多優勝賞', emoji: '🏆', description: 'トナメを制した回数No.1' },
-      partList.filter((p) => p.wins > 0).map((p) => ({ userId: p.userId, value: p.wins, valueLabel: `${p.wins}回優勝` })),
-      'desc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'itm_master', category: '成績・運', title: 'インマネ職人賞', emoji: '🎯', description: '入賞率が最も高い堅実派（5戦以上）' },
-      partList.filter((p) => p.tournaments >= 5).map((p) => ({ userId: p.userId, value: (p.itm / p.tournaments) * 100, valueLabel: `ITM率 ${Math.round((p.itm / p.tournaments) * 100)}% (${p.itm}/${p.tournaments})` })),
-      'desc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'biggest_pot', category: '成績・運', title: '一撃賞', emoji: '💥', description: 'シーズン最大のポットを攫った一発' },
-      statList.filter((s) => s.maxPotWon > 0).map((s) => ({ userId: s.userId, value: s.maxPotWon, valueLabel: `${fmtInt(s.maxPotWon)} chips` })),
-      'desc',
-      displays,
-    ),
-  );
-
-  // ===== スタイル系 =====
-  awards.push(
-    buildAward(
-      { key: 'rock', category: 'スタイル', title: '鉄壁タイト賞', emoji: '🛡️', description: '滅多に参加しない鉄壁スタイル（50ハンド以上）' },
-      // VPIP 0% は実質 AFK の全フォールド口座なので除外し、実際にプレイした最タイトを選ぶ
-      statList.filter((s) => s.detailedHands >= 50 && s.vpip != null && s.vpip > 0).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
-      'asc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'maniac', category: 'スタイル', title: 'ぶっぱルーズ賞', emoji: '🎪', description: 'とにかく参加するルーズスタイル（50ハンド以上）' },
-      statList.filter((s) => s.detailedHands >= 50 && s.vpip != null).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
-      'desc',
-      displays,
-    ),
-  );
-  awards.push(
-    buildAward(
-      { key: 'showdown_king', category: 'スタイル', title: 'ショーダウンの鬼賞', emoji: '👑', description: 'ショーダウンで勝ち切る勝負強さ（10回以上）' },
-      statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `W$SD ${fmtPct(s.wsd!)}` })),
-      'desc',
-      displays,
-    ),
-  );
-
-  return { awards, handsScanned };
+  return { awards, rankings, participation, statsByUser, handsScanned };
 }

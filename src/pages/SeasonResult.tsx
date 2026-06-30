@@ -1,7 +1,39 @@
 import { useEffect, useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SeasonResultProps {
   onBack: () => void;
+}
+
+interface SeasonAwardRank {
+  key: string;
+  title: string;
+  emoji: string;
+  rank: number;
+  total: number;
+  valueLabel: string;
+}
+
+interface PlayerStats {
+  userId: string;
+  rpRank: number | null;
+  totalRp: number;
+  tournaments: number;
+  entries: number;
+  reentries: number;
+  wins: number;
+  itm: number;
+  best: number | null;
+  hands: number;
+  vpip: number | null;
+  pfr: number | null;
+  afq: number | null;
+  threeBet: number | null;
+  wsd: number | null;
+  allinHands: number;
+  evDivergence: number;
+  maxPotWon: number;
+  awardRanks: SeasonAwardRank[];
 }
 
 interface RankEntry {
@@ -55,6 +87,108 @@ function Avatar({ url, name, size }: { url: string | null; name: string; size: s
   return (
     <div className={`${size} rounded-full bg-forest/15 text-forest font-bold flex items-center justify-center shrink-0 border border-cream-300`}>
       {name.slice(0, 1)}
+    </div>
+  );
+}
+
+const pct = (n: number | null) => (n == null ? '—' : `${n.toFixed(1)}%`);
+const num = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleString());
+const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString()}`;
+
+function StatTile({ label, value, accent }: { label: string; value: string; accent?: 'forest' | 'red' }) {
+  const color = accent === 'forest' ? 'text-forest' : accent === 'red' ? 'text-[#C0392B]' : 'text-cream-900';
+  return (
+    <div className="bg-white border border-cream-300 rounded-[2cqw] px-[1.5cqw] py-[2cqw] flex flex-col items-center justify-center text-center">
+      <span className={`text-[3.8cqw] font-extrabold leading-none ${color}`}>{value}</span>
+      <span className="text-[2.3cqw] text-cream-700 mt-[0.8cqw] leading-tight">{label}</span>
+    </div>
+  );
+}
+
+function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
+  player: PlayerStats;
+  rankedPlayers: number;
+  viewerName: string;
+  viewerAvatar: string | null;
+}) {
+  // 相対順位（賞レースで上位なものから並べる＝得意分野が先頭に来る）
+  const awardRanks = [...player.awardRanks].sort((a, b) => a.rank / a.total - b.rank / b.total);
+
+  return (
+    <div className="mt-[4cqw]">
+      <h2 className="text-[4cqw] font-bold text-cream-900 mb-[2cqw]">👤 あなたのシーズン成績</h2>
+
+      {/* RP順位ヒーロー */}
+      <div className="bg-gradient-to-br from-forest to-forest-dark rounded-[3cqw] p-[3cqw] flex items-center gap-[3cqw] text-white">
+        <Avatar url={viewerAvatar} name={viewerName} size="w-[13cqw] h-[13cqw] ring-[0.5cqw] ring-white/40" />
+        <div className="min-w-0 flex-1">
+          <p className="text-[3.4cqw] font-bold truncate">{viewerName}</p>
+          {player.rpRank ? (
+            <p className="text-[2.6cqw] text-white/70 leading-tight">
+              RPランキング <span className="text-[6cqw] font-extrabold text-white align-middle">{player.rpRank}</span>
+              <span className="text-[3cqw]"> 位</span>
+              <span className="text-white/60"> / {rankedPlayers}人</span>
+            </p>
+          ) : (
+            <p className="text-[2.8cqw] text-white/70 mt-[0.5cqw]">RP獲得なし（入賞でRPが付きます）</p>
+          )}
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-[6cqw] font-extrabold leading-none">{player.totalRp}</p>
+          <p className="text-[2.4cqw] text-white/60">RP</p>
+        </div>
+      </div>
+
+      {/* トーナメント成績 */}
+      <h3 className="text-[3cqw] font-bold text-forest mt-[3cqw] mb-[1.5cqw]">トーナメント成績</h3>
+      <div className="grid grid-cols-4 gap-[1.5cqw]">
+        <StatTile label="出場" value={num(player.tournaments)} />
+        <StatTile label="優勝" value={num(player.wins)} accent={player.wins > 0 ? 'forest' : undefined} />
+        <StatTile label="入賞(ITM)" value={num(player.itm)} />
+        <StatTile label="最高順位" value={player.best != null ? `${player.best}位` : '—'} />
+        <StatTile label="総エントリー" value={num(player.entries)} />
+        <StatTile label="リエントリー" value={num(player.reentries)} />
+        <StatTile label="ITM率" value={player.tournaments > 0 ? `${Math.round((player.itm / player.tournaments) * 100)}%` : '—'} />
+        <StatTile label="最大ポット" value={num(player.maxPotWon)} />
+      </div>
+
+      {/* ハンドスタッツ */}
+      <h3 className="text-[3cqw] font-bold text-forest mt-[3cqw] mb-[1.5cqw]">ハンドスタッツ（トナメ）</h3>
+      <div className="grid grid-cols-4 gap-[1.5cqw]">
+        <StatTile label="ハンド数" value={num(player.hands)} />
+        <StatTile label="VPIP" value={pct(player.vpip)} />
+        <StatTile label="PFR" value={pct(player.pfr)} />
+        <StatTile label="AFq" value={pct(player.afq)} />
+        <StatTile label="3Bet" value={pct(player.threeBet)} />
+        <StatTile label="W$SD" value={pct(player.wsd)} />
+        <StatTile label="オールイン" value={`${num(player.allinHands)}回`} />
+        <StatTile label="オールインEV乖離" value={signed(Math.round(player.evDivergence))} accent={player.evDivergence >= 0 ? 'forest' : 'red'} />
+      </div>
+
+      {/* 賞レース順位 */}
+      {awardRanks.length > 0 && (
+        <>
+          <h3 className="text-[3cqw] font-bold text-forest mt-[3cqw] mb-[1.5cqw]">賞レース順位</h3>
+          <div className="flex flex-col gap-[1.2cqw]">
+            {awardRanks.map((a) => (
+              <div
+                key={a.key}
+                className={`flex items-center gap-[2cqw] px-[3cqw] py-[2cqw] rounded-[2cqw] border ${
+                  a.rank === 1 ? 'bg-amber-50 border-amber-300' : 'bg-white border-cream-300'
+                }`}
+              >
+                <span className="text-[4.5cqw] leading-none">{a.emoji}</span>
+                <span className="flex-1 min-w-0 text-[3cqw] font-bold text-cream-900 truncate">{a.title}</span>
+                <span className="text-[2.6cqw] text-cream-700 shrink-0">{a.valueLabel}</span>
+                <span className={`text-[3.4cqw] font-extrabold shrink-0 ${a.rank === 1 ? 'text-amber-600' : 'text-forest'}`}>
+                  {a.rank === 1 ? '🥇' : ''}{a.rank}
+                  <span className="text-[2.4cqw] text-cream-700 font-normal">/{a.total}位</span>
+                </span>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -163,7 +297,9 @@ function AwardCard({ award }: { award: Award }) {
 }
 
 export function SeasonResult({ onBack }: SeasonResultProps) {
+  const { user } = useAuth();
   const [data, setData] = useState<SeasonData | null>(null);
+  const [player, setPlayer] = useState<PlayerStats | null>(null);
   const [error, setError] = useState(false);
 
   useEffect(() => {
@@ -192,6 +328,35 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
       clearTimeout(timer);
     };
   }, []);
+
+  // 閲覧者本人の個人データ（ログイン時のみ）
+  useEffect(() => {
+    if (!user?.id) {
+      setPlayer(null);
+      return;
+    }
+    let alive = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const load = async () => {
+      try {
+        const res = await fetch(`${API_BASE}/api/season/player/${user.id}`, { credentials: 'include' });
+        const d = await res.json();
+        if (!alive) return;
+        if (d && d.ready) {
+          setPlayer(d.player ?? null);
+        } else {
+          timer = setTimeout(load, 3000);
+        }
+      } catch {
+        /* 個人データは取得失敗しても致命的ではないので無視 */
+      }
+    };
+    load();
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [user?.id]);
 
   if (error) {
     return (
@@ -246,6 +411,16 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
       </div>
 
       <div className="px-[4cqw] pb-[10cqw]">
+        {/* あなたのシーズン成績（ログイン時のみ） */}
+        {user && player && (
+          <PersonalSection
+            player={player}
+            rankedPlayers={data.stats.rankedPlayers}
+            viewerName={user.displayName || user.username}
+            viewerAvatar={(user.useTwitterAvatar && user.twitterAvatarUrl ? user.twitterAvatarUrl : user.avatarUrl) ?? null}
+          />
+        )}
+
         {/* TOP10 表彰 */}
         <h2 className="text-[4cqw] font-bold text-cream-900 mt-[4cqw] mb-[1cqw]">🏅 RPランキング TOP10</h2>
         {data.ranking.length >= 3 && <Podium top3={data.ranking.slice(0, 3)} />}
