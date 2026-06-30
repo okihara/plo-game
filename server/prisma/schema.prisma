@@ -238,6 +238,17 @@ model WeeklyRankingSnapshot {
   @@index([weekStart])
 }
 
+// --- Season Result Snapshot ---
+// シーズン終了後に一度だけ集計して固定保存する特設ページ用スナップショット。
+// 集計が重い（全ハンド走査）ため、確定後はこれを即返す。
+
+model SeasonSnapshot {
+  id          String   @id @default(cuid())
+  seasonName  String   @unique  // CURRENT_SEASON.name（例: "シーズン１"）
+  data        Json     // SeasonPayload（season/stats/ranking/awards）
+  generatedAt DateTime @default(now())
+}
+
 // --- Tournament ---
 
 enum TournamentStatus {

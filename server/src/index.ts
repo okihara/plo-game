@@ -19,6 +19,7 @@ import { adminRoutes } from './modules/admin/routes.js';
 import { lobbyRoutes } from './modules/lobby/routes.js';
 import { handHistoryRoutes, publicHandHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
+import { seasonRoutes } from './modules/season/routes.js';
 import { labelRoutes } from './modules/labels/routes.js';
 import { maintenanceService } from './modules/maintenance/MaintenanceService.js';
 import { maintenanceRoutes } from './modules/maintenance/routes.js';
@@ -123,6 +124,7 @@ await fastify.register(handHistoryRoutes, { prefix: '/api/history' });
 await fastify.register(tournamentEvaluationRoutes, { prefix: '/api/tournament-evaluations' });
 await fastify.register(publicHandHistoryRoutes, { prefix: '/api/hand' });
 await fastify.register(statsRoutes, { prefix: '/api/stats' });
+await fastify.register(seasonRoutes, { prefix: '/api/season' });
 await fastify.register(labelRoutes, { prefix: '/api/labels' });
 await fastify.register(ogpRoutes, { prefix: '/api/ogp' });
 
