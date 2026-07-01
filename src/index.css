@@ -340,3 +340,27 @@ body {
     0 1px 4px rgba(0,0,0,0.5),
     inset 0 1px 0 rgba(255,255,255,0.3);
 }
+
+/* ウィークリーチャンピオンの金属グラデ枠（黒ボックスにオーバーレイ、中身には干渉しない） */
+.champion-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 0.6cqw; /* 枠の太さ */
+  background: conic-gradient(
+    from 220deg,
+    #b45309,
+    #fde68a,
+    #fbbf24,
+    #fffbeb,
+    #f59e0b,
+    #b45309
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
