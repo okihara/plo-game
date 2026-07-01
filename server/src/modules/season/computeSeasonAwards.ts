@@ -514,7 +514,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: partList.filter((p) => p.entries > 0).map((p) => ({ userId: p.userId, value: p.entries, valueLabel: `${p.entries}エントリー` })),
     },
     {
-      key: 'reentry_king', category: '参加・継続', title: 'リエントリー王', emoji: '♻️', description: '何度でも立ち向かった不屈の人', order: 'desc',
+      key: 'reentry_king', category: '参加・継続', title: '不屈の戦士', emoji: '♻️', description: '何度でも立ち向かった不屈の人', order: 'desc',
       candidates: partList.filter((p) => p.reentries > 0).map((p) => ({ userId: p.userId, value: p.reentries, valueLabel: `${p.reentries}回` })),
     },
     // ===== オールイン・アグレ系 =====
