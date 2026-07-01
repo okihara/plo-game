@@ -35,6 +35,7 @@ interface PlayerStats {
   allinHands: number;
   evDivergence: number;
   maxPotWon: number;
+  knockouts: number;
   awardRanks: SeasonAwardRank[];
 }
 
@@ -115,23 +116,31 @@ function StatRow({ label, value, accent }: { label: string; value: string; accen
 }
 
 function RankRow({ e }: { e: RankEntry }) {
-  const badge = RANK_BADGE[e.position];
+  const top10 = e.position <= 10;
+  const medal = RANK_BADGE[e.position]; // 1〜3位
+  const badgeClass = medal ?? (top10 ? 'bg-forest text-white' : 'text-cream-700');
   return (
     <button
       onClick={() => navigateToPlayer(e.userId)}
-      className="w-full flex items-center gap-[2cqw] px-[3cqw] py-[2cqw] rounded-[2cqw] bg-white border border-cream-300 active:scale-[0.99] transition-all"
+      className={`w-full flex items-center gap-[2cqw] px-[3cqw] py-[2cqw] rounded-[2cqw] active:scale-[0.99] transition-all ${
+        top10
+          ? 'bg-white border border-cream-300 shadow-[0_2px_8px_rgba(139,126,106,0.12)]'
+          : 'bg-cream-100 border border-transparent'
+      }`}
     >
       <span
-        className={`w-[7cqw] h-[7cqw] rounded-full flex items-center justify-center text-[3.2cqw] font-extrabold shrink-0 ${
-          badge ?? 'text-cream-700'
-        }`}
+        className={`rounded-full flex items-center justify-center font-extrabold shrink-0 ${
+          top10 ? 'w-[7.5cqw] h-[7.5cqw] text-[3.4cqw]' : 'w-[6.5cqw] h-[6.5cqw] text-[3cqw]'
+        } ${badgeClass}`}
       >
         {e.position}
       </span>
-      <Avatar url={e.avatarUrl} name={e.name} size="w-[8cqw] h-[8cqw]" />
-      <span className="flex-1 min-w-0 text-left text-[3.2cqw] font-bold text-cream-900 truncate">{e.name}</span>
+      <Avatar url={e.avatarUrl} name={e.name} size={top10 ? 'w-[8.5cqw] h-[8.5cqw]' : 'w-[7cqw] h-[7cqw]'} />
+      <span className={`flex-1 min-w-0 text-left font-bold truncate ${top10 ? 'text-[3.3cqw] text-cream-900' : 'text-[3cqw] text-cream-800'}`}>
+        {e.name}
+      </span>
       <div className="text-right shrink-0">
-        <span className="text-[3.8cqw] font-extrabold text-forest">{e.totalRp}</span>
+        <span className={`font-extrabold text-forest ${top10 ? 'text-[4.2cqw]' : 'text-[3.4cqw]'}`}>{e.totalRp}</span>
         <span className="text-[2.4cqw] text-cream-700 ml-[0.5cqw]">RP</span>
         <div className="text-[2.3cqw] text-cream-700 leading-none mt-[0.3cqw]">
           {e.entries}戦 {e.wins > 0 && <span className="text-amber-600 font-bold">優勝{e.wins}</span>}
@@ -227,6 +236,7 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
         <StatRow label="総エントリー" value={num(player.entries)} />
         <StatRow label="リエントリー" value={num(player.reentries)} />
         <StatRow label="ITM率" value={player.tournaments > 0 ? `${Math.round((player.itm / player.tournaments) * 100)}%` : '—'} />
+        <StatRow label="撃墜数" value={`${num(player.knockouts)}KO`} />
         <StatRow label="最大ポット" value={num(player.maxPotWon)} />
       </div>
 

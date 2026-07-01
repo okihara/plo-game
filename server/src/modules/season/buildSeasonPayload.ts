@@ -57,6 +57,7 @@ export interface SeasonPlayerStats {
   allinHands: number;
   evDivergence: number;
   maxPotWon: number;
+  knockouts: number;
   // 各賞での順位（全国○位の演出）
   awardRanks: SeasonAwardRank[];
 }
@@ -141,6 +142,7 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       allinHands: s?.allinHands ?? 0,
       evDivergence: s?.evDivergence ?? 0,
       maxPotWon: s?.maxPotWon ?? 0,
+      knockouts: s?.knockouts ?? 0,
       awardRanks,
     };
   }

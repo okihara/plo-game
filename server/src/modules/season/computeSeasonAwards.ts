@@ -64,6 +64,7 @@ interface StatAcc {
   evDivergence: number; // sum(profit - allInEVProfit)。+ なら期待値以上に勝った
   allinHands: number;
   maxPotWon: number;
+  knockouts: number; // 相手をバストさせた回数（撃墜数）
 }
 
 function addIncrement(acc: StatsIncrement, inc: StatsIncrement): void {
@@ -147,6 +148,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
             finalHand: true,
             profit: true,
             allInEVProfit: true,
+            startChips: true,
           },
         },
       },
@@ -187,6 +189,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           evDivergence: 0,
           allinHands: 0,
           maxPotWon: 0,
+          knockouts: 0,
         };
         addIncrement(cur.inc, inc);
         if (p.allInEVProfit != null) {
@@ -197,6 +200,17 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           cur.maxPotWon = h.potSize;
         }
         map.set(p.userId, cur);
+      }
+
+      // 撃墜（KO）: このハンドでバストした相手数を、単独勝者に加算する。
+      // バスト = ハンド開始時にチップがあり、終了時に 0 以下になった（トナメ敗退）。
+      const victims = h.players.filter((pl) => pl.startChips > 0 && pl.startChips + pl.profit <= 0).length;
+      if (victims > 0 && h.winners.length === 1) {
+        const koId = h.winners[0];
+        if (!botIds.has(koId)) {
+          const cur = map.get(koId);
+          if (cur) cur.knockouts += victims;
+        }
       }
     }
 
@@ -238,6 +252,7 @@ export interface PlayerHandStat {
   evDivergence: number;
   allinHands: number;
   maxPotWon: number;
+  knockouts: number;
 }
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -315,6 +330,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       evDivergence: a.evDivergence,
       allinHands: a.allinHands,
       maxPotWon: a.maxPotWon,
+      knockouts: a.knockouts,
     });
   }
 
@@ -357,6 +373,10 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
     {
       key: 'biggest_pot', category: '成績・運', title: '一撃賞', emoji: '💥', description: 'シーズン最大のポットを攫った一発', order: 'desc',
       candidates: statList.filter((s) => s.maxPotWon > 0).map((s) => ({ userId: s.userId, value: s.maxPotWon, valueLabel: `${fmtInt(s.maxPotWon)} chips` })),
+    },
+    {
+      key: 'knockout_king', category: '成績・運', title: '撃墜王', emoji: '🥊', description: '相手をバストさせた回数No.1', order: 'desc',
+      candidates: statList.filter((s) => s.knockouts >= 3).map((s) => ({ userId: s.userId, value: s.knockouts, valueLabel: `${s.knockouts}KO` })),
     },
     // ===== スタイル系 =====
     {
