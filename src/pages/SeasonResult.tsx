@@ -585,10 +585,6 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
                 </div>
               </div>
             ))}
-
-            <p className="text-[2.6cqw] text-cream-700 text-center mt-[6cqw]">
-              みんなシーズン1お疲れさま！シーズン2もよろしく
-            </p>
           </>
         )}
       </div>

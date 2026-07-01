@@ -389,6 +389,7 @@ export interface PlayerHandStat {
   postflopActions: number;
   threeBetOpportunity: number;
   wtsd: number;
+  handWins: number; // ハンド勝利数
   nonShowdownWins: number; // ショーダウンせずに勝った回数
   allinHands: number;
   allinWins: number;
@@ -490,6 +491,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       postflopActions: i.totalPostflopActions,
       threeBetOpportunity: i.threeBetOpportunity,
       wtsd: i.wtsdCount,
+      handWins: i.winCount,
       nonShowdownWins: Math.max(0, i.winCount - i.wsdCount),
       allinHands: a.allinHands,
       allinWins: a.allinWins,
@@ -575,7 +577,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null && s.vpip > 0).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
     },
     {
-      key: 'maniac', category: 'スタイル', title: 'ハイVPIP', emoji: '🎪', description: 'とにかく参加するルーズスタイル（50ハンド以上）', order: 'desc',
+      key: 'maniac', category: 'スタイル', title: 'ハイVPIP', emoji: '🎪', description: 'ルースアグレッシブスタイル（50ハンド以上）', order: 'desc',
       candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
     },
     {
@@ -583,8 +585,11 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `ショーダウン勝利 ${fmtPct(s.wsd!)}` })),
     },
     {
-      key: 'no_showdown_king', category: 'スタイル', title: 'ノーショーダウンの鬼', emoji: '🃏', description: 'ショーダウンせずに勝ち切った回数No.1（50ハンド以上）', order: 'desc',
-      candidates: statList.filter((s) => s.hands >= 50).map((s) => ({ userId: s.userId, value: s.nonShowdownWins, valueLabel: `${s.nonShowdownWins}回` })),
+      key: 'no_showdown_king', category: 'スタイル', title: 'ノーショーダウンの鬼', emoji: '🃏', description: '勝利のうちショーダウンせずに勝った割合No.1（50勝以上）', order: 'desc',
+      candidates: statList.filter((s) => s.handWins >= 50).map((s) => {
+        const rate = (s.nonShowdownWins / s.handWins) * 100;
+        return { userId: s.userId, value: rate, valueLabel: `${fmtPct(rate)} (${s.nonShowdownWins}/${s.handWins})` };
+      }),
     },
   ];
 
