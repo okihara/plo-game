@@ -389,6 +389,7 @@ export interface PlayerHandStat {
   postflopActions: number;
   threeBetOpportunity: number;
   wtsd: number;
+  nonShowdownWins: number; // ショーダウンせずに勝った回数
   allinHands: number;
   allinWins: number;
   maxPotWon: number;
@@ -489,6 +490,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       postflopActions: i.totalPostflopActions,
       threeBetOpportunity: i.threeBetOpportunity,
       wtsd: i.wtsdCount,
+      nonShowdownWins: Math.max(0, i.winCount - i.wsdCount),
       allinHands: a.allinHands,
       allinWins: a.allinWins,
       maxPotWon: a.maxPotWon,
@@ -537,11 +539,11 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: partList.filter((p) => p.wins > 0).map((p) => ({ userId: p.userId, value: p.wins, valueLabel: `${p.wins}回優勝` })),
     },
     {
-      key: 'itm_master', category: '成績・運', title: 'インマネ職人賞', emoji: '🎯', description: '入賞率が最も高い堅実派（5戦以上）', order: 'desc',
+      key: 'itm_master', category: '成績・運', title: 'インマネ職人', emoji: '🎯', description: '入賞率が最も高い堅実派（5戦以上）', order: 'desc',
       candidates: partList.filter((p) => p.tournaments >= 5).map((p) => ({ userId: p.userId, value: (p.itm / p.tournaments) * 100, valueLabel: `ITM率 ${Math.round((p.itm / p.tournaments) * 100)}% (${p.itm}/${p.tournaments})` })),
     },
     {
-      key: 'biggest_pot', category: '成績・運', title: '一撃賞', emoji: '💥', description: 'シーズン最大のポットを攫った一発', order: 'desc',
+      key: 'biggest_pot', category: '成績・運', title: '一撃王', emoji: '💥', description: 'シーズン最大のポットを攫った一発', order: 'desc',
       candidates: statList.filter((s) => s.maxPotWon > 0).map((s) => ({ userId: s.userId, value: s.maxPotWon, valueLabel: `${fmtInt(s.maxPotWon)} chips` })),
     },
     {
@@ -579,6 +581,10 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
     {
       key: 'showdown_king', category: 'スタイル', title: 'ショーダウンの鬼', emoji: '👑', description: 'ショーダウンで勝ち切る勝負強さ（10回以上）', order: 'desc',
       candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `ショーダウン勝利 ${fmtPct(s.wsd!)}` })),
+    },
+    {
+      key: 'no_showdown_king', category: 'スタイル', title: 'ノーショーダウンの鬼', emoji: '🃏', description: 'ショーダウンせずに勝ち切った回数No.1（50ハンド以上）', order: 'desc',
+      candidates: statList.filter((s) => s.hands >= 50).map((s) => ({ userId: s.userId, value: s.nonShowdownWins, valueLabel: `${s.nonShowdownWins}回` })),
     },
   ];
 
