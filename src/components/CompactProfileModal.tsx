@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { X } from 'lucide-react';
 import { usePlayerStats } from '../hooks/usePlayerStats';
 import { getAvatarImage } from './ProfilePopup';
+import { BadgeOverlay } from './BadgeOverlay';
 import { LABEL_COLORS, type PlayerLabel } from '../hooks/usePlayerLabels';
 
 interface CompactProfileModalProps {
@@ -149,11 +150,7 @@ export function CompactProfileModal({
                     <div className="w-full h-full rounded-full bg-white border border-cream-300 overflow-hidden">
                       <img src={badge.imageUrl} alt={badge.label} className="w-full h-full object-cover" />
                     </div>
-                    {badge.count > 1 && (
-                      <span className="absolute -top-[0.5cqw] -right-[1cqw] bg-cream-900 text-white text-[1.8cqw] font-bold rounded-full min-w-[3.5cqw] h-[3.5cqw] flex items-center justify-center px-[0.3cqw]">
-                        ×{badge.count}
-                      </span>
-                    )}
+                    <BadgeOverlay badge={badge} />
                   </div>
                 </div>
               ))}

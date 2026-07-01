@@ -41,6 +41,7 @@ export function convertOnlinePlayerToPlayer(
     avatarUrl: online.avatarUrl,
     odId: online.odId,
     hasWeeklyChampion: online.hasWeeklyChampion,
+    hasSeasonTop3: online.hasSeasonTop3,
   };
 }
 

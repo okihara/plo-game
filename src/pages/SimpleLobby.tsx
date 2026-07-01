@@ -224,6 +224,22 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
 
       {/* Main Content */}
       <div className="w-[88%]">
+        {/* Season 1 結果発表バナー */}
+        <button
+          onClick={() => {
+            window.history.pushState({}, '', '/season');
+            window.dispatchEvent(new PopStateEvent('popstate'));
+          }}
+          className="mb-[2cqw] w-full flex items-center gap-[3cqw] px-[3.5cqw] py-[3cqw] rounded-[3cqw] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 border-[0.4cqw] border-amber-300 text-white shadow-[0_4px_16px_rgba(180,120,30,0.4),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.98] transition-all"
+        >
+          <Trophy className="w-[7cqw] h-[7cqw] shrink-0 drop-shadow" />
+          <div className="flex-1 min-w-0 text-left">
+            <p className="text-[3.8cqw] font-extrabold leading-tight">シーズン1 結果発表</p>
+            <p className="text-[2.7cqw] text-white/85 leading-tight">TOP10表彰＆特別アワードを公開中！</p>
+          </div>
+          <svg className="w-[3.5cqw] h-[3.5cqw] text-white/80 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
+
         {/* Weekly Champions */}
         <WeeklyChampions />
 

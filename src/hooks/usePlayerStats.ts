@@ -11,6 +11,8 @@ export interface DisplayBadge {
   flavor: string;
   imageUrl: string;
   count: number;
+  /** 順位付きバッジ（シーズンTOP10など）の順位。順位を持たないバッジは省略。 */
+  rank?: number;
   awardedAt: string;
 }
 
