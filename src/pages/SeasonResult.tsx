@@ -105,11 +105,11 @@ const num = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleStr
 const signedPct = (n: number | null) => (n == null ? '—' : `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}%`);
 const roiAccent = (n: number | null): 'forest' | 'red' | undefined => (n == null ? undefined : n >= 0 ? 'forest' : 'red');
 
-// 1〜3位のランクバッジ配色（絵文字は使わず色で表現）
-const RANK_BADGE: Record<number, string> = {
-  1: 'bg-amber-400 text-white',
-  2: 'bg-slate-300 text-slate-800',
-  3: 'bg-orange-400 text-white',
+// 1 → 1st, 2 → 2nd, 3 → 3rd, 4 → 4th ...
+const ordinal = (n: number): string => {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
 };
 
 function Avatar({ url, name, size }: { url: string | null; name: string; size: string }) {
@@ -156,10 +156,78 @@ function MateRow({ label, mate, unit }: { label: string; mate: MateRef | null; u
   );
 }
 
+// 1〜3位の段階的な華やかさ（1位が最も派手）。白文字前提のグラデーション。
+interface RankTier {
+  row: string;
+  rank: string;
+  avatar: string;
+  seasonBadge: string;
+  name: string;
+  rp: string;
+  sub: string;
+}
+const RANK_TIER: Record<number, RankTier> = {
+  1: {
+    row: 'py-[8cqw] rounded-[3cqw] bg-gradient-to-r from-amber-400 via-amber-500 to-orange-500 border-[0.6cqw] border-amber-200 ring-[0.4cqw] ring-amber-300/60 shadow-[0_8px_30px_rgba(217,160,30,0.55)]',
+    rank: 'w-[14cqw] text-[7cqw] text-white',
+    avatar: 'w-[14cqw] h-[14cqw] ring-[0.7cqw] ring-white/70',
+    seasonBadge: 'w-[9cqw] h-[9cqw]',
+    name: 'text-[4.4cqw] text-white',
+    rp: 'text-[6.5cqw] text-white',
+    sub: 'text-white/85',
+  },
+  2: {
+    row: 'py-[5.5cqw] rounded-[2.5cqw] bg-gradient-to-r from-slate-400 to-slate-500 border-[0.4cqw] border-slate-200 shadow-[0_5px_18px_rgba(100,116,139,0.45)]',
+    rank: 'w-[12cqw] text-[5.5cqw] text-white',
+    avatar: 'w-[11cqw] h-[11cqw] ring-[0.5cqw] ring-white/60',
+    seasonBadge: 'w-[7.5cqw] h-[7.5cqw]',
+    name: 'text-[3.8cqw] text-white',
+    rp: 'text-[5cqw] text-white',
+    sub: 'text-white/80',
+  },
+  3: {
+    row: 'py-[4.5cqw] rounded-[2.5cqw] bg-gradient-to-r from-orange-400 to-amber-700 border-[0.4cqw] border-orange-200 shadow-[0_5px_18px_rgba(180,100,40,0.45)]',
+    rank: 'w-[11cqw] text-[5cqw] text-white',
+    avatar: 'w-[10cqw] h-[10cqw] ring-[0.5cqw] ring-white/60',
+    seasonBadge: 'w-[7cqw] h-[7cqw]',
+    name: 'text-[3.6cqw] text-white',
+    rp: 'text-[4.6cqw] text-white',
+    sub: 'text-white/80',
+  },
+};
+
 function RankRow({ e }: { e: RankEntry }) {
+  const tier = RANK_TIER[e.position];
+
+  if (tier) {
+    return (
+      <button
+        onClick={() => navigateToPlayer(e.userId)}
+        className={`w-full flex items-center gap-[2cqw] px-[3cqw] active:scale-[0.99] transition-all ${tier.row}`}
+      >
+        <span className={`shrink-0 text-center font-extrabold italic ${tier.rank}`}>{ordinal(e.position)}</span>
+        <Avatar url={e.avatarUrl} name={e.name} size={tier.avatar} />
+        <span className={`flex-1 min-w-0 text-left font-bold truncate ${tier.name}`}>{e.name}</span>
+        {e.badgeImageUrl && (
+          <img
+            src={e.badgeImageUrl}
+            alt={e.badgeLabel ?? 'season badge'}
+            title={e.badgeLabel ?? undefined}
+            className={`shrink-0 rounded-full ${tier.seasonBadge}`}
+          />
+        )}
+        <div className="text-right shrink-0">
+          <span className={`font-extrabold ${tier.rp}`}>{e.totalRp}</span>
+          <span className="text-[2.6cqw] text-white/80 ml-[0.5cqw]">RP</span>
+          <div className={`text-[2.5cqw] leading-none mt-[0.3cqw] ${tier.sub}`}>
+            {e.entries}戦 {e.wins > 0 && <span className="font-bold">優勝{e.wins}</span>}
+          </div>
+        </div>
+      </button>
+    );
+  }
+
   const top10 = e.position <= 10;
-  const medal = RANK_BADGE[e.position]; // 1〜3位
-  const badgeClass = medal ?? (top10 ? 'bg-forest text-white' : 'text-cream-700');
   return (
     <button
       onClick={() => navigateToPlayer(e.userId)}
@@ -170,11 +238,11 @@ function RankRow({ e }: { e: RankEntry }) {
       }`}
     >
       <span
-        className={`rounded-full flex items-center justify-center font-extrabold shrink-0 ${
-          top10 ? 'w-[7.5cqw] h-[7.5cqw] text-[3.4cqw]' : 'w-[6.5cqw] h-[6.5cqw] text-[3cqw]'
-        } ${badgeClass}`}
+        className={`shrink-0 w-[10cqw] text-center font-extrabold italic ${
+          top10 ? 'text-[4.2cqw] text-forest' : 'text-[3.6cqw] text-cream-700'
+        }`}
       >
-        {e.position}
+        {ordinal(e.position)}
       </span>
       <Avatar url={e.avatarUrl} name={e.name} size={top10 ? 'w-[8.5cqw] h-[8.5cqw]' : 'w-[7cqw] h-[7cqw]'} />
       <span className={`flex-1 min-w-0 text-left font-bold truncate ${top10 ? 'text-[3.3cqw] text-cream-900' : 'text-[3cqw] text-cream-800'}`}>
@@ -445,8 +513,8 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
           </button>
         </div>
         <div className="text-center mt-[2cqw]">
-          <p className="text-[3cqw] text-white/70 tracking-widest">SEASON 1 FINAL RESULT</p>
-          <h1 className="text-[7cqw] font-extrabold text-white leading-tight mt-[0.5cqw]">{data.season.name} 結果発表</h1>
+          <p className="text-[3.4cqw] font-bold text-white/85">BabyPLO トーナメントランキング</p>
+          <h1 className="text-[6.5cqw] font-extrabold text-white leading-tight mt-[0.5cqw]">{data.season.name} 最終結果</h1>
           <p className="text-[3cqw] text-white/70 mt-[0.5cqw]">{data.season.label}</p>
         </div>
         {/* シーズン集計サマリー（横並び） */}
