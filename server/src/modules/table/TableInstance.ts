@@ -46,7 +46,7 @@ export class TableInstance {
   private horseHandsPerRound: number = 0;
 
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
-  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; hasWeeklyChampion?: boolean }[]) => void;
+  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; hasWeeklyChampion?: boolean; hasSeasonTop3?: boolean }[]) => void;
 
   // ファストフォールド: タイムアウトフォールド時にテーブル移動するコールバック
   public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
@@ -129,7 +129,8 @@ export class TableInstance {
     options?: { skipJoinedEmit?: boolean },
     nameMasked?: boolean,
     displayName?: string | null,
-    hasWeeklyChampion?: boolean
+    hasWeeklyChampion?: boolean,
+    hasSeasonTop3?: boolean
   ): number | null {
     const seatIndex = this.playerManager.seatPlayer({
       odId,
@@ -142,6 +143,7 @@ export class TableInstance {
       nameMasked,
       displayName,
       hasWeeklyChampion,
+      hasSeasonTop3,
     });
 
     if (seatIndex === null) {
@@ -232,7 +234,7 @@ export class TableInstance {
 
   // ファストフォールド用: フォールド済みプレイヤーを静かに離席させる
   // table:left は送信しない（table:change を代わりに送るため）
-  public unseatForFastFold(odId: string): { odId: string; chips: number; socket: Socket | null; hasWeeklyChampion?: boolean } | null {
+  public unseatForFastFold(odId: string): { odId: string; chips: number; socket: Socket | null; hasWeeklyChampion?: boolean; hasSeasonTop3?: boolean } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
@@ -247,6 +249,7 @@ export class TableInstance {
 
     const socket = seat.socket ?? null;
     const hasWeeklyChampion = seat.hasWeeklyChampion;
+    const hasSeasonTop3 = seat.hasSeasonTop3;
 
     // ソケットをルームから離脱
     if (socket) {
@@ -256,7 +259,7 @@ export class TableInstance {
     // 席情報は残してFastFold移動済みマーク（ハンド終了まで表示用に保持）
     this.playerManager.markLeftForFastFold(seatIndex);
 
-    return { odId, chips, socket, hasWeeklyChampion };
+    return { odId, chips, socket, hasWeeklyChampion, hasSeasonTop3 };
   }
 
   /**
@@ -1341,7 +1344,7 @@ export class TableInstance {
 
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
-      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; hasWeeklyChampion?: boolean }[] = [];
+      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; hasWeeklyChampion?: boolean; hasSeasonTop3?: boolean }[] = [];
       const currentSeats = this.playerManager.getSeats();
       for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
         const seat = currentSeats[i];
@@ -1363,6 +1366,7 @@ export class TableInstance {
             avatarUrl: seat.avatarUrl,
             nameMasked: seat.nameMasked,
             hasWeeklyChampion: seat.hasWeeklyChampion,
+            hasSeasonTop3: seat.hasSeasonTop3,
           });
           // 静かに離席（ルーム離脱 + 席クリア）
           seat.socket.leave(this.roomName);

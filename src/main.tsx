@@ -16,6 +16,7 @@ import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
 import { WatchGame } from './pages/WatchGame';
+import { SeasonResult } from './pages/SeasonResult';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
 import './index.css';
@@ -98,6 +99,8 @@ function App() {
   } else if (currentPath.startsWith('/player/')) {
     const playerId = currentPath.replace('/player/', '');
     page = <PlayerProfile userId={playerId} onBack={goBackToLobby} />;
+  } else if (currentPath === '/season') {
+    page = <SeasonResult onBack={goBackToLobby} />;
   } else if (currentPath === '/history') {
     page = (
       <HandHistory onBack={goBackToLobby} />

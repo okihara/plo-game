@@ -57,6 +57,7 @@ export interface TournamentPlayer {
   eliminatedAt: Date | null;
   nameMasked: boolean;
   hasWeeklyChampion?: boolean;
+  hasSeasonTop3?: boolean;
   /** GUEST はリエントリー上限の対象外 */
   role: Role;
 }

@@ -140,6 +140,7 @@ export interface Player {
   odId?: string;  // Online user ID (for stats lookup)
   isShowdown?: boolean;  // ショウダウン時にカードを表示
   hasWeeklyChampion?: boolean;  // ウィークリーチャンピオン（weekly_rank_1）バッジ保有者
+  hasSeasonTop3?: boolean;  // シーズン1 No.1〜No.3 バッジ保有者（プラチナ枠）
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'

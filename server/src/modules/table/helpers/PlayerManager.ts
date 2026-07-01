@@ -15,6 +15,7 @@ export interface SeatPlayerParams {
   isHandInProgress: boolean;
   nameMasked?: boolean;
   hasWeeklyChampion?: boolean;
+  hasSeasonTop3?: boolean;
 }
 
 export class PlayerManager {
@@ -36,7 +37,7 @@ export class PlayerManager {
    * プレイヤーを着席させる
    */
   seatPlayer(params: SeatPlayerParams): number | null {
-    const { odId, odName, displayName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress, nameMasked, hasWeeklyChampion } = params;
+    const { odId, odName, displayName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress, nameMasked, hasWeeklyChampion, hasSeasonTop3 } = params;
 
     // 空き席を探す
     let seatIndex = preferredSeat ?? -1;
@@ -63,6 +64,7 @@ export class PlayerManager {
       waitingForNextHand: isHandInProgress, // ハンド中に着席した場合は次のハンドから参加
       nameMasked: nameMasked ?? true,
       hasWeeklyChampion: hasWeeklyChampion ?? false,
+      hasSeasonTop3: hasSeasonTop3 ?? false,
       consecutiveTimeouts: 0,
     };
 

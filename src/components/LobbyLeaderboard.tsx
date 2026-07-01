@@ -33,11 +33,12 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
       .finally(() => setLoaded(true));
   }, [refreshKey]);
 
+  const N = 5;
   const sorted = [...rankings]
     .sort((a, b) => b.totalAllInEVProfit - a.totalAllInEVProfit)
-    .slice(0, 7);
-
-  if (sorted.length === 0 && loaded) return null;
+    .slice(0, N);
+  // データが N 件未満でも常に N 枠を表示（不足分は空スロット）
+  const slots: (RankingEntry | null)[] = Array.from({ length: N }, (_, i) => sorted[i] ?? null);
 
   return (
     <div
@@ -57,7 +58,25 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
         </div>
       ) : (
       <div className="space-y-[1.5cqw]">
-        {sorted.map((entry, i) => {
+        {slots.map((entry, i) => {
+          const rankLabel =
+            i < 3 ? (
+              <span className="text-[3.5cqw]">{MEDALS[i]}</span>
+            ) : (
+              <span className="text-[2.8cqw] font-bold text-cream-700">{i + 1}</span>
+            );
+
+          if (!entry) {
+            // 空スロット（データ不足分）
+            return (
+              <div key={`empty-${i}`} className="flex items-center gap-[2cqw] opacity-40">
+                <span className="w-[5cqw] text-center shrink-0">{rankLabel}</span>
+                <div className="w-[5.5cqw] h-[5.5cqw] rounded-full bg-cream-200 border border-cream-300 shrink-0" />
+                <span className="text-[3cqw] flex-1 text-cream-700">—</span>
+              </div>
+            );
+          }
+
           const isMe = entry.userId === userId;
           const displayName = entry.username;
           const profit = entry.totalAllInEVProfit;
@@ -67,9 +86,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
               key={entry.userId}
               className={`flex items-center gap-[2cqw] ${isMe ? 'font-bold' : ''}`}
             >
-              <span className="text-[3.5cqw] w-[5cqw] text-center shrink-0">
-                {i < 3 ? MEDALS[i] : <span className="text-[2.8cqw] font-bold text-cream-700">{i + 1}</span>}
-              </span>
+              <span className="w-[5cqw] text-center shrink-0">{rankLabel}</span>
               <div className="w-[5.5cqw] h-[5.5cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                 <img
                   src={entry.avatarUrl || '/images/icons/anonymous.svg'}

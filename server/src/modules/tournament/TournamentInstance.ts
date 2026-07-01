@@ -149,6 +149,7 @@ export class TournamentInstance {
       avatarUrl?: string | null;
       nameMasked?: boolean;
       hasWeeklyChampion?: boolean;
+      hasSeasonTop3?: boolean;
       role?: Role;
     }
   ): { success: boolean; error?: string } {
@@ -195,6 +196,7 @@ export class TournamentInstance {
       eliminatedAt: null,
       nameMasked: options?.nameMasked ?? true,
       hasWeeklyChampion: options?.hasWeeklyChampion ?? false,
+      hasSeasonTop3: options?.hasSeasonTop3 ?? false,
       role: options?.role ?? Role.PLAYER,
     };
 
@@ -569,7 +571,8 @@ export class TournamentInstance {
       options,
       player.nameMasked,
       player.displayName,
-      player.hasWeeklyChampion
+      player.hasWeeklyChampion,
+      player.hasSeasonTop3
     );
 
     if (seatIndex === null) {

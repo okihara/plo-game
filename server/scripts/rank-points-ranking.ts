@@ -23,8 +23,14 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
 import { spawn } from 'child_process';
-import { maskName } from '../src/shared/utils.js';
 import { PrizeCalculator } from '../src/modules/tournament/PrizeCalculator.js';
+import { CURRENT_SEASON } from '../src/modules/season/seasonConfig.js';
+import {
+  aggregateRanking,
+  fetchSeasonTournaments,
+  rpFromAmount,
+  type SeasonTournamentRow,
+} from '../src/modules/season/computeSeasonRanking.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -50,112 +56,10 @@ const prisma = new PrismaClient({
   datasources: isProd ? { db: { url: process.env.DATABASE_PROD_PUBLIC_URL } } : undefined,
 });
 
-const SEASON_NAME = 'シーズン１';
-const SEASON_LABEL = '2026 1/1 - 6/30';
-const SEASON_START = new Date('2026-01-01T00:00:00+09:00');
-const SEASON_END = new Date('2026-06-30T23:59:59.999+09:00');
+const SEASON_NAME = CURRENT_SEASON.name;
+const SEASON_LABEL = CURRENT_SEASON.label;
 
-function rpFromAmount(amount: number): number {
-  if (amount <= 0) return 0;
-  return Math.ceil(amount / 1000);
-}
-
-type UserAgg = {
-  userId: string;
-  name: string;
-  provider: string;
-  totalRp: number;
-  entries: number;
-  wins: number;
-  itm: number;
-  best: number;
-  totalPrize: number;
-};
-
-type TournamentRow = Awaited<ReturnType<typeof fetchTournaments>>[number];
-
-async function fetchTournaments() {
-  return prisma.tournament.findMany({
-    where: {
-      status: 'COMPLETED',
-      completedAt: { gte: SEASON_START, lte: SEASON_END },
-    },
-    select: {
-      id: true,
-      name: true,
-      completedAt: true,
-      prizePool: true,
-      results: {
-        select: {
-          userId: true,
-          position: true,
-          prize: true,
-          reentries: true,
-          user: { select: { username: true, displayName: true, provider: true, nameMasked: true } },
-        },
-      },
-    },
-  });
-}
-
-function aggregate(tournaments: TournamentRow[]): {
-  ranking: UserAgg[];
-  tournamentsCounted: number;
-  tournamentsSkipped: number;
-} {
-  const agg = new Map<string, UserAgg>();
-  let tournamentsCounted = 0;
-  let tournamentsSkipped = 0;
-
-  for (const t of tournaments) {
-    const totalEntries =
-      t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
-    if (totalEntries < 2) {
-      tournamentsSkipped++;
-      continue;
-    }
-    tournamentsCounted++;
-
-    const prizes = PrizeCalculator.calculate(totalEntries, t.prizePool);
-    const amountByPosition = new Map<number, number>(prizes.map((p) => [p.position, p.amount]));
-    const itmCount = prizes.length;
-
-    for (const r of t.results) {
-      if (r.user.provider === 'bot') continue;
-      const amount = amountByPosition.get(r.position) ?? 0;
-      const rp = rpFromAmount(amount);
-      const name = r.user.displayName
-        ? r.user.displayName
-        : (r.user.nameMasked ? maskName(r.user.username) : r.user.username);
-      const cur = agg.get(r.userId) ?? {
-        userId: r.userId,
-        name,
-        provider: r.user.provider,
-        totalRp: 0,
-        entries: 0,
-        wins: 0,
-        itm: 0,
-        best: Infinity,
-        totalPrize: 0,
-      };
-      cur.totalRp += rp;
-      cur.entries += 1;
-      if (r.position === 1) cur.wins += 1;
-      if (r.position <= itmCount) cur.itm += 1;
-      if (r.position < cur.best) cur.best = r.position;
-      cur.totalPrize += amount;
-      agg.set(r.userId, cur);
-    }
-  }
-
-  const ranking = Array.from(agg.values())
-    .filter((u) => u.totalRp > 0)
-    .sort((a, b) => b.totalRp - a.totalRp || a.entries - b.entries);
-
-  return { ranking, tournamentsCounted, tournamentsSkipped };
-}
-
-async function runDiff(tournaments: TournamentRow[]) {
+async function runDiff(tournaments: SeasonTournamentRow[]) {
   const ranked = tournaments
     .filter((t) => t.completedAt)
     .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime());
@@ -166,8 +70,8 @@ async function runDiff(tournaments: TournamentRow[]) {
   const latest = ranked[0];
   const prevTournaments = tournaments.filter((t) => t.id !== latest.id);
 
-  const current = aggregate(tournaments).ranking;
-  const previous = aggregate(prevTournaments).ranking;
+  const current = aggregateRanking(tournaments).ranking;
+  const previous = aggregateRanking(prevTournaments).ranking;
 
   const currentPos = new Map<string, number>();
   current.forEach((u, i) => currentPos.set(u.userId, i + 1));
@@ -237,14 +141,14 @@ async function runDiff(tournaments: TournamentRow[]) {
 }
 
 async function main() {
-  const tournaments = await fetchTournaments();
+  const tournaments = await fetchSeasonTournaments(prisma);
 
   if (DIFF) {
     await runDiff(tournaments);
     return;
   }
 
-  const { ranking, tournamentsCounted, tournamentsSkipped } = aggregate(tournaments);
+  const { ranking, tournamentsCounted, tournamentsSkipped } = aggregateRanking(tournaments);
 
   if (TSV || imageArg) {
     const limit = Math.min(TOP, ranking.length);
