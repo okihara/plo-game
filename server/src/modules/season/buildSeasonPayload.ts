@@ -57,7 +57,8 @@ export interface SeasonPlayerStats {
   threeBet: number | null;
   wsd: number | null;
   allinHands: number;
-  evDivergence: number;
+  allinWins: number;
+  allinWinRate: number | null;
   maxPotWon: number;
   knockouts: number;
   // 各賞での順位（全国○位の演出）
@@ -144,7 +145,8 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       threeBet: s?.threeBet ?? null,
       wsd: s?.wsd ?? null,
       allinHands: s?.allinHands ?? 0,
-      evDivergence: s?.evDivergence ?? 0,
+      allinWins: s?.allinWins ?? 0,
+      allinWinRate: s && s.allinHands > 0 ? (s.allinWins / s.allinHands) * 100 : null,
       maxPotWon: s?.maxPotWon ?? 0,
       knockouts: s?.knockouts ?? 0,
       awardRanks,

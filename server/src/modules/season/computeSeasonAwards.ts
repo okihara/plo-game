@@ -65,8 +65,8 @@ export interface ParticipationAcc {
 
 interface StatAcc {
   inc: StatsIncrement;
-  evDivergence: number; // sum(profit - allInEVProfit)。+ なら期待値以上に勝った
-  allinHands: number;
+  allinHands: number; // オールインでランナウトまで行ったハンド数
+  allinWins: number; // うち勝ったハンド数
   maxPotWon: number;
   knockouts: number; // 相手をバストさせた回数（撃墜数）
 }
@@ -201,15 +201,15 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
 
         const cur = map.get(p.userId) ?? {
           inc: emptyIncrement(),
-          evDivergence: 0,
           allinHands: 0,
+          allinWins: 0,
           maxPotWon: 0,
           knockouts: 0,
         };
         addIncrement(cur.inc, inc);
         if (p.allInEVProfit != null) {
-          cur.evDivergence += p.profit - p.allInEVProfit;
           cur.allinHands += 1;
+          if (h.winners.includes(p.userId)) cur.allinWins += 1;
         }
         if (h.winners.includes(p.userId) && h.potSize > cur.maxPotWon) {
           cur.maxPotWon = h.potSize;
@@ -264,14 +264,13 @@ export interface PlayerHandStat {
   postflopActions: number;
   threeBetOpportunity: number;
   wtsd: number;
-  evDivergence: number;
   allinHands: number;
+  allinWins: number;
   maxPotWon: number;
   knockouts: number;
 }
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
-const fmtSigned = (n: number) => (n >= 0 ? `+${fmtInt(n)}` : `-${fmtInt(-n)}`);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 const fmtSignedPct = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}%`;
 
@@ -343,8 +342,8 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       postflopActions: i.totalPostflopActions,
       threeBetOpportunity: i.threeBetOpportunity,
       wtsd: i.wtsdCount,
-      evDivergence: a.evDivergence,
       allinHands: a.allinHands,
+      allinWins: a.allinWins,
       maxPotWon: a.maxPotWon,
       knockouts: a.knockouts,
     });
@@ -366,8 +365,11 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
     },
     // ===== オールイン・アグレ系 =====
     {
-      key: 'allin_master', category: 'オールイン・アグレ', title: 'オールイン無双賞', emoji: '💪', description: 'オールインで期待値以上に勝ち切った勝負師', order: 'desc',
-      candidates: statList.filter((s) => s.allinHands >= 5).map((s) => ({ userId: s.userId, value: s.evDivergence, valueLabel: `EV ${fmtSigned(s.evDivergence)}` })),
+      key: 'allin_master', category: 'オールイン・アグレ', title: 'オールイン無双賞', emoji: '💪', description: 'オールインの勝率No.1（10ハンド以上）', order: 'desc',
+      candidates: statList.filter((s) => s.allinHands >= 10).map((s) => {
+        const rate = (s.allinWins / s.allinHands) * 100;
+        return { userId: s.userId, value: rate, valueLabel: `勝率 ${fmtPct(rate)} (${s.allinWins}/${s.allinHands})` };
+      }),
     },
     {
       key: 'aggressive', category: 'オールイン・アグレ', title: 'アグレッシブ賞', emoji: '🚀', description: 'フロップ以降の攻撃性No.1', order: 'desc',

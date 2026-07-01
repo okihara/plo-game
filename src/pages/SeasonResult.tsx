@@ -35,7 +35,8 @@ interface PlayerStats {
   threeBet: number | null;
   wsd: number | null;
   allinHands: number;
-  evDivergence: number;
+  allinWins: number;
+  allinWinRate: number | null;
   maxPotWon: number;
   knockouts: number;
   awardRanks: SeasonAwardRank[];
@@ -87,7 +88,6 @@ function navigateToPlayer(userId: string) {
 
 const pct = (n: number | null) => (n == null ? '—' : `${n.toFixed(1)}%`);
 const num = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleString());
-const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString()}`;
 const signedPct = (n: number | null) => (n == null ? '—' : `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}%`);
 const roiAccent = (n: number | null): 'forest' | 'red' | undefined => (n == null ? undefined : n >= 0 ? 'forest' : 'red');
 
@@ -256,7 +256,8 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
         <StatRow label="3Bet" value={pct(player.threeBet)} />
         <StatRow label="W$SD" value={pct(player.wsd)} />
         <StatRow label="オールイン回数" value={`${num(player.allinHands)}回`} />
-        <StatRow label="オールインEV乖離" value={signed(Math.round(player.evDivergence))} accent={player.evDivergence >= 0 ? 'forest' : 'red'} />
+        <StatRow label="オールイン勝利" value={`${num(player.allinWins)}回`} />
+        <StatRow label="オールイン勝率" value={pct(player.allinWinRate)} />
       </div>
 
       {/* 賞レース順位（縦） */}
