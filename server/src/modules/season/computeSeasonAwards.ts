@@ -16,7 +16,6 @@ import {
   emptyIncrement,
   type StatsIncrement,
 } from '../stats/statsComputation.js';
-import { CURRENT_SEASON } from './seasonConfig.js';
 import { fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
 
 /** "Kc" のようなカード文字列を Card オブジェクトに変換 */
@@ -163,8 +162,8 @@ interface HandStatsResult {
   oppHu: Map<string, Map<string, number>>; // userId -> (相手userId -> ヘッズアップ数)
 }
 
-/** シーズン期間内のトーナメントハンドを走査し、プレイヤー別のスタッツ＋対戦相手の共起を集計する。 */
-async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Promise<HandStatsResult> {
+/** 指定トーナメント（ランキング対象と同一集合）のハンドを走査し、プレイヤー別のスタッツ＋対戦相手の共起を集計する。 */
+async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>, tournamentIds: string[]): Promise<HandStatsResult> {
   const map = new Map<string, StatAcc>();
   // 対戦相手の共起（Bot除外＝人間同士）。同卓＝同一ハンドに居合わせた回数、
   // HU＝卓4人以上でショーダウンに残ったのが2人だけの局面（短い卓での水増しを除外）。
@@ -186,8 +185,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
   for (;;) {
     const hands = await prisma.handHistory.findMany({
       where: {
-        tournamentId: { not: null },
-        createdAt: { gte: CURRENT_SEASON.start, lte: CURRENT_SEASON.end },
+        tournamentId: { in: tournamentIds },
       },
       select: {
         id: true,
@@ -432,7 +430,11 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const botIds = new Set(bots.map((b) => b.id));
 
   const participation = aggregateParticipation(tournaments);
-  const { map: stats, oppTable, oppHu } = await aggregateHandStats(prisma, botIds);
+  // 参加人数・ランキングと同一のトーナメント集合（完了・シーズン内・2人以上）に限定してハンドを走査する
+  const seasonTournamentIds = tournaments
+    .filter((t) => t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0) >= 2)
+    .map((t) => t.id);
+  const { map: stats, oppTable, oppHu } = await aggregateHandStats(prisma, botIds, seasonTournamentIds);
 
   // 表示用ユーザー情報をまとめて取得
   const userIds = new Set<string>([...participation.keys(), ...stats.keys()]);
