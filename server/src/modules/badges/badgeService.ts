@@ -9,6 +9,7 @@ export const BADGE_CATEGORIES = {
   DAILY_RANK: 'daily_rank',
   WEEKLY_RANK: 'weekly_rank',
   TOURNAMENT: 'tournament',
+  SEASON_RANK: 'season_rank',
   SPECIAL: 'special',
 } as const;
 
@@ -35,6 +36,7 @@ const BADGE_META: Record<string, BadgeMeta> = {
   daily_rank_1:  { category: 'daily_rank',  label: 'Daily Crown',  description: 'デイリーランキング1位',  flavor: 'あの日のチップは全てあなたの手に',                           imageUrl: '/images/badges/daily_rank.png' },
   weekly_rank_1: { category: 'weekly_rank', label: 'Weekly Crown', description: 'ウィークリーランキング1位', flavor: '不眠不休の王',                          imageUrl: '/images/badges/weekly_rank.png' },
   tournament_no1: { category: 'tournament', label: 'Tournament Winner', description: 'トーナメント優勝',     flavor: '賞金を全て持っていった',                  imageUrl: '/images/badges/tournament_no1.png' },
+  season1_top10: { category: 'season_rank', label: 'シーズン1 TOP10', description: 'シーズン1 RPランキング TOP10入り', flavor: 'シーズンを駆け抜けた強者の証', imageUrl: '/images/badges/season_top10.png' },
   first_penguin: { category: 'special', label: '1st Penguin', description: '2026/3/1以前に1ハンド以上をプレイ', flavor: '誰も知らないアプリに最初に飛び込んだ勇者の証 ありがとうございます', imageUrl: '/images/badges/penguin.png' },
   special_guest_ryutaro: { category: 'special', label: 'Special Guest りゅうたろう', description: 'スペシャルゲスト りゅうたろう 参加記念', flavor: 'ダブルブレスレットホルダーと卓を囲んで戦った証', imageUrl: '/images/badges/special_guest_ryutaro.png' },
 };
@@ -143,13 +145,26 @@ export async function awardTournamentBadge(userId: string, type: 'tournament_no1
   });
 }
 
+/**
+ * シーズンランキングTOP10バッジの付与（1シーズンにつき1人1枚、順位付き）。
+ * 既存があれば順位のみ更新し、なければ新規作成する（冪等）。
+ */
+export async function awardSeasonRankingBadge(userId: string, type: string, rank: number): Promise<void> {
+  const existing = await prisma.badge.findFirst({ where: { userId, type }, select: { id: true, rank: true } });
+  if (!existing) {
+    await prisma.badge.create({ data: { userId, type, rank } });
+  } else if (existing.rank !== rank) {
+    await prisma.badge.update({ where: { id: existing.id }, data: { rank } });
+  }
+}
+
 // --- バッジ取得 ---
 
 /** ユーザーのバッジ一覧を取得 */
-export async function getUserBadges(userId: string): Promise<{ type: string; awardedAt: Date }[]> {
+export async function getUserBadges(userId: string): Promise<{ type: string; rank: number | null; awardedAt: Date }[]> {
   return prisma.badge.findMany({
     where: { userId },
-    select: { type: true, awardedAt: true },
+    select: { type: true, rank: true, awardedAt: true },
     orderBy: { awardedAt: 'asc' },
   });
 }
@@ -173,11 +188,13 @@ export interface DisplayBadge {
   flavor: string;
   imageUrl: string;
   count: number;
+  /** 順位付きバッジ（シーズンTOP10など）の順位。順位を持たないバッジは省略。 */
+  rank?: number;
   awardedAt: string;
 }
 
 /** DBのバッジレコードをカテゴリごとにグルーピングして表示用に変換 */
-export function groupBadgesForDisplay(badges: { type: string; awardedAt: Date }[]): DisplayBadge[] {
+export function groupBadgesForDisplay(badges: { type: string; rank: number | null; awardedAt: Date }[]): DisplayBadge[] {
   const result: DisplayBadge[] = [];
 
   // ハンド数カテゴリ: 最高レベルのみ表示
@@ -275,6 +292,29 @@ export function groupBadgesForDisplay(badges: { type: string; awardedAt: Date }[
         awardedAt: latest.awardedAt.toISOString(),
       });
     }
+  }
+
+  // シーズンランキングカテゴリ: 1シーズン1枚、順位を表示（複数あれば最上位を採用）
+  const seasonTypes = Array.from(
+    new Set(badges.filter(b => BADGE_META[b.type]?.category === 'season_rank').map(b => b.type))
+  );
+  for (const seasonType of seasonTypes) {
+    const meta = BADGE_META[seasonType];
+    const seasonBadges = badges.filter(b => b.type === seasonType);
+    const bestBadge = seasonBadges.reduce((best, b) =>
+      (b.rank ?? Infinity) < (best.rank ?? Infinity) ? b : best
+    );
+    result.push({
+      category: meta.category,
+      type: seasonType,
+      label: meta.label,
+      description: meta.description,
+      flavor: meta.flavor,
+      imageUrl: meta.imageUrl,
+      count: 1,
+      rank: bestBadge.rank ?? undefined,
+      awardedAt: bestBadge.awardedAt.toISOString(),
+    });
   }
 
   // スペシャルカテゴリ: 1回限り（存在すれば表示）

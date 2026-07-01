@@ -194,7 +194,8 @@ model DailyBonus {
 model Badge {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // "hands_100", "hands_500", "hands_1000", "hands_5000", "daily_rank_1", "weekly_rank_1"
+  type      String   // "hands_100", "hands_500", "hands_1000", "hands_5000", "daily_rank_1", "weekly_rank_1", "season1_top10"
+  rank      Int?     // 順位付きバッジ（シーズンランキングTOP10など）の順位。順位を持たないバッジは null
   awardedAt DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)

@@ -10,6 +10,8 @@ export interface SeasonConfig {
   label: string;
   start: Date;
   end: Date;
+  /** このシーズンの RP ランキング TOP10 バッジの type（BADGE_META と対応）。 */
+  rankBadgeType: string;
 }
 
 export const CURRENT_SEASON: SeasonConfig = {
@@ -17,4 +19,5 @@ export const CURRENT_SEASON: SeasonConfig = {
   label: '2026 1/1 - 6/30',
   start: new Date('2026-01-01T00:00:00+09:00'),
   end: new Date('2026-06-30T23:59:59.999+09:00'),
+  rankBadgeType: 'season1_top10',
 };
