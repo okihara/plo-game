@@ -57,6 +57,10 @@ export interface ParticipationAcc {
   wins: number;
   itm: number;
   best: number; // 最高順位（未参加は Infinity）
+  invested: number; // 総バイイン額（buyIn × エントリー数）
+  returned: number; // 獲得賞金（RP/順位と一致する再算定額）
+  roiSum: number; // 各トナメのROI（比）の合計（平均ROI算出用）
+  roiCount: number; // ROIを計上したトナメ数（buyIn>0）
 }
 
 interface StatAcc {
@@ -101,17 +105,28 @@ function aggregateParticipation(
   for (const t of tournaments) {
     const totalEntries = t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
     if (totalEntries < 2) continue;
-    const itmCount = PrizeCalculator.calculate(totalEntries, t.prizePool).length;
+    const prizes = PrizeCalculator.calculate(totalEntries, t.prizePool);
+    const amountByPosition = new Map<number, number>(prizes.map((p) => [p.position, p.amount]));
+    const itmCount = prizes.length;
 
     for (const r of t.results) {
       if (r.user.provider === 'bot') continue;
-      const cur = map.get(r.userId) ?? { entries: 0, tournaments: 0, reentries: 0, wins: 0, itm: 0, best: Infinity };
-      cur.entries += 1 + (r.reentries ?? 0);
+      const entriesHere = 1 + (r.reentries ?? 0);
+      const cur = map.get(r.userId) ?? { entries: 0, tournaments: 0, reentries: 0, wins: 0, itm: 0, best: Infinity, invested: 0, returned: 0, roiSum: 0, roiCount: 0 };
+      cur.entries += entriesHere;
       cur.tournaments += 1;
       cur.reentries += r.reentries ?? 0;
       if (r.position === 1) cur.wins += 1;
       if (r.position <= itmCount) cur.itm += 1;
       if (r.position < cur.best) cur.best = r.position;
+      const costHere = t.buyIn * entriesHere;
+      const prizeHere = amountByPosition.get(r.position) ?? 0;
+      cur.invested += costHere;
+      cur.returned += prizeHere;
+      if (costHere > 0) {
+        cur.roiSum += (prizeHere - costHere) / costHere; // このトナメのROI（比）
+        cur.roiCount += 1;
+      }
       map.set(r.userId, cur);
     }
   }

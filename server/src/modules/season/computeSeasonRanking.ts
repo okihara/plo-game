@@ -35,6 +35,7 @@ export interface SeasonTournamentRow {
   name: string;
   completedAt: Date | null;
   prizePool: number;
+  buyIn: number;
   results: {
     userId: string;
     position: number;
@@ -66,6 +67,7 @@ export function fetchSeasonTournaments(prisma: PrismaClient): Promise<SeasonTour
       name: true,
       completedAt: true,
       prizePool: true,
+      buyIn: true,
       results: {
         select: {
           userId: true,

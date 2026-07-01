@@ -26,6 +26,8 @@ interface PlayerStats {
   wins: number;
   itm: number;
   best: number | null;
+  totalRoi: number | null;
+  avgRoi: number | null;
   hands: number;
   vpip: number | null;
   pfr: number | null;
@@ -86,6 +88,8 @@ function navigateToPlayer(userId: string) {
 const pct = (n: number | null) => (n == null ? '—' : `${n.toFixed(1)}%`);
 const num = (n: number | null | undefined) => (n == null ? '—' : n.toLocaleString());
 const signed = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toLocaleString()}`;
+const signedPct = (n: number | null) => (n == null ? '—' : `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}%`);
+const roiAccent = (n: number | null): 'forest' | 'red' | undefined => (n == null ? undefined : n >= 0 ? 'forest' : 'red');
 
 // 1〜3位のランクバッジ配色（絵文字は使わず色で表現）
 const RANK_BADGE: Record<number, string> = {
@@ -236,6 +240,8 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
         <StatRow label="総エントリー" value={num(player.entries)} />
         <StatRow label="リエントリー" value={num(player.reentries)} />
         <StatRow label="ITM率" value={player.tournaments > 0 ? `${Math.round((player.itm / player.tournaments) * 100)}%` : '—'} />
+        <StatRow label="総ROI" value={signedPct(player.totalRoi)} accent={roiAccent(player.totalRoi)} />
+        <StatRow label="平均ROI" value={signedPct(player.avgRoi)} accent={roiAccent(player.avgRoi)} />
         <StatRow label="撃墜数" value={`${num(player.knockouts)}KO`} />
         <StatRow label="最大ポット" value={num(player.maxPotWon)} />
       </div>

@@ -47,6 +47,8 @@ export interface SeasonPlayerStats {
   wins: number;
   itm: number;
   best: number | null;
+  totalRoi: number | null; // 総ROI（%）= (Σ獲得賞金 − Σバイイン) / Σバイイン × 100
+  avgRoi: number | null; // 平均ROI（%）= 各トナメのROIを回数で平均
   // ハンドスタッツ（トナメ×シーズン期間）
   hands: number;
   vpip: number | null;
@@ -133,6 +135,8 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       wins: p?.wins ?? 0,
       itm: p?.itm ?? 0,
       best: p && p.best !== Infinity ? p.best : null,
+      totalRoi: p && p.invested > 0 ? ((p.returned - p.invested) / p.invested) * 100 : null,
+      avgRoi: p && p.roiCount > 0 ? (p.roiSum / p.roiCount) * 100 : null,
       hands: s?.hands ?? 0,
       vpip: s?.vpip ?? null,
       pfr: s?.pfr ?? null,
