@@ -67,7 +67,7 @@ export interface SeasonPlayerStats {
 
 export interface SeasonPayload {
   season: { name: string; label: string; start: string; end: string };
-  stats: { tournaments: number; rankedPlayers: number; totalEntries: number; handsScanned: number };
+  stats: { tournaments: number; participants: number; rankedPlayers: number; totalEntries: number; handsScanned: number };
   ranking: SeasonRankEntry[];
   awards: Award[];
 }
@@ -162,6 +162,7 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
     },
     stats: {
       tournaments: tournamentsCounted,
+      participants: participation.size,
       rankedPlayers: ranking.length,
       totalEntries,
       handsScanned,

@@ -74,7 +74,7 @@ interface Award {
 
 interface SeasonData {
   season: { name: string; label: string; start: string; end: string };
-  stats: { tournaments: number; rankedPlayers: number; totalEntries: number; handsScanned: number };
+  stats: { tournaments: number; participants: number; rankedPlayers: number; totalEntries: number; handsScanned: number };
   ranking: RankEntry[];
   awards: Award[];
 }
@@ -395,15 +395,16 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
           <p className="text-[3cqw] text-white/70 mt-[0.5cqw]">{data.season.label}</p>
         </div>
         {/* シーズン集計サマリー（横並び） */}
-        <div className="flex justify-center gap-[6cqw] mt-[3cqw] text-center text-white">
+        <div className="flex justify-center gap-[4.5cqw] mt-[3cqw] text-center text-white">
           {[
             ['開催トナメ', data.stats.tournaments],
+            ['参加人数', data.stats.participants],
             ['RP獲得者', data.stats.rankedPlayers],
             ['延べ参加', data.stats.totalEntries],
           ].map(([label, value]) => (
             <div key={label}>
-              <p className="text-[5cqw] font-extrabold leading-none">{Number(value).toLocaleString()}</p>
-              <p className="text-[2.4cqw] text-white/60 mt-[0.5cqw]">{label}</p>
+              <p className="text-[4.6cqw] font-extrabold leading-none">{Number(value).toLocaleString()}</p>
+              <p className="text-[2.3cqw] text-white/60 mt-[0.5cqw]">{label}</p>
             </div>
           ))}
         </div>
