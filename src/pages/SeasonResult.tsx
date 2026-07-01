@@ -366,7 +366,7 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
   return (
     <div ref={scrollRef} className="h-full overflow-y-auto light-bg">
       {/* Hero */}
-      <div className="bg-gradient-to-b from-forest to-forest-dark px-[4cqw] pt-[3cqw] pb-[5cqw] rounded-b-[4cqw] shadow-[0_8px_30px_rgba(29,58,39,0.4)]">
+      <div className="bg-[linear-gradient(110deg,#2D5A3D_0%,#3D7A53_50%,#E0872A_105%)] px-[4cqw] pt-[3cqw] pb-[5cqw] shadow-[0_8px_30px_rgba(29,58,39,0.4)]">
         <div className="flex items-center">
           <button onClick={onBack} className="text-white/80 hover:text-white text-[3.2cqw] font-bold">
             ← 戻る
@@ -381,7 +381,7 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
         <div className="flex justify-center gap-[6cqw] mt-[3cqw] text-center text-white">
           {[
             ['開催トナメ', data.stats.tournaments],
-            ['ランクイン', data.stats.rankedPlayers],
+            ['RP獲得者', data.stats.rankedPlayers],
             ['延べ参加', data.stats.totalEntries],
           ].map(([label, value]) => (
             <div key={label}>
