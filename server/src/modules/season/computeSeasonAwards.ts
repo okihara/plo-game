@@ -9,6 +9,7 @@
  * 少数サンプルの偶然受賞を避けるため、各賞に最低試合数/ハンド数のしきい値を設ける。
  */
 import type { PrismaClient } from '@prisma/client';
+import { evaluatePLOHand, compareHands, type Card } from '@plo/shared';
 import { PrizeCalculator } from '../tournament/PrizeCalculator.js';
 import {
   computeIncrementForPlayer,
@@ -17,6 +18,9 @@ import {
 } from '../stats/statsComputation.js';
 import { CURRENT_SEASON } from './seasonConfig.js';
 import { fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
+
+/** "Kc" のようなカード文字列を Card オブジェクトに変換 */
+const toCard = (s: string): Card => ({ rank: s[0] as Card['rank'], suit: s[1] as Card['suit'] });
 
 interface StoredAction {
   seatIndex: number;
@@ -69,7 +73,26 @@ interface StatAcc {
   allinWins: number; // うち勝ったハンド数
   maxPotWon: number;
   knockouts: number; // 相手をバストさせた回数（撃墜数）
+  riverSuckouts: number; // リバーでまくった回数（ターンで負けていてリバーで勝った）
+  riverBadBeats: number; // リバーで捲られた回数（ターンで勝っていてリバーで負けた）
+  bestHandRank: number; // シーズン最強の役の強さ（0=なし）
+  bestHandName: string; // その役名
 }
+
+// 役カテゴリの強さ（finalHand は役名のみ保存されている）
+const HAND_CATEGORY_RANK: Record<string, number> = {
+  ハイカード: 1,
+  ワンペア: 2,
+  ツーペア: 3,
+  スリーカード: 4,
+  ストレート: 5,
+  フラッシュ: 6,
+  フルハウス: 7,
+  フォーカード: 8,
+  ストレートフラッシュ: 9,
+  ロイヤルフラッシュ: 10,
+};
+const handCategory = (finalHand: string): string => finalHand.split(/[ ,（(]/)[0];
 
 function addIncrement(acc: StatsIncrement, inc: StatsIncrement): void {
   acc.handsPlayed += inc.handsPlayed;
@@ -170,6 +193,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
         id: true,
         winners: true,
         communityCards: true,
+        communityCards2: true,
         dealerPosition: true,
         potSize: true,
         actions: true,
@@ -182,6 +206,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
             profit: true,
             allInEVProfit: true,
             startChips: true,
+            holeCards: true,
           },
         },
       },
@@ -223,6 +248,10 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           allinWins: 0,
           maxPotWon: 0,
           knockouts: 0,
+          riverSuckouts: 0,
+          riverBadBeats: 0,
+          bestHandRank: 0,
+          bestHandName: '',
         };
         addIncrement(cur.inc, inc);
         if (p.allInEVProfit != null) {
@@ -231,6 +260,14 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
         }
         if (h.winners.includes(p.userId) && h.potSize > cur.maxPotWon) {
           cur.maxPotWon = h.potSize;
+        }
+        if (p.finalHand) {
+          const cat = handCategory(p.finalHand);
+          const rank = HAND_CATEGORY_RANK[cat] ?? 0;
+          if (rank > cur.bestHandRank) {
+            cur.bestHandRank = rank;
+            cur.bestHandName = cat;
+          }
         }
         map.set(p.userId, cur);
       }
@@ -267,6 +304,43 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           if (humans.length === 2) {
             bump(oppHu, humans[0].userId as string, humans[1].userId as string);
             bump(oppHu, humans[1].userId as string, humans[0].userId as string);
+          }
+        }
+      }
+
+      // リバーで捲った/捲られた（近似: ターン=ボード4枚での最強完成手がリバー後に負けたか）。
+      // PLO系(ホール4-6枚)・単一ボード・単独勝者のショーダウンのみ対象。ボムポット/非PLO/スプリットは除外。
+      if (h.communityCards.length === 5 && h.communityCards2.length === 0 && h.winners.length === 1) {
+        const showdown = h.players.filter(
+          (pl) => pl.finalHand != null && pl.holeCards.length >= 4 && pl.holeCards.length <= 6,
+        );
+        if (showdown.length >= 2) {
+          const turnBoard = h.communityCards.slice(0, 4).map(toCard);
+          let leader: (typeof showdown)[number] | null = null;
+          let leaderRank: ReturnType<typeof evaluatePLOHand> | null = null;
+          let tiedTop = false;
+          for (const pl of showdown) {
+            const rank = evaluatePLOHand(pl.holeCards.map(toCard), turnBoard);
+            const cmp = leaderRank ? compareHands(rank, leaderRank) : 1;
+            if (cmp > 0) {
+              leaderRank = rank;
+              leader = pl;
+              tiedTop = false;
+            } else if (cmp === 0) {
+              tiedTop = true;
+            }
+          }
+          const winnerId = h.winners[0];
+          if (leader && !tiedTop && !(leader.userId != null && leader.userId === winnerId)) {
+            // ターン最強がリバーで負けた
+            if (leader.userId && !botIds.has(leader.userId)) {
+              const cur = map.get(leader.userId);
+              if (cur) cur.riverBadBeats += 1;
+            }
+            if (!botIds.has(winnerId)) {
+              const cur = map.get(winnerId);
+              if (cur) cur.riverSuckouts += 1;
+            }
           }
         }
       }
@@ -319,6 +393,9 @@ export interface PlayerHandStat {
   allinWins: number;
   maxPotWon: number;
   knockouts: number;
+  riverSuckouts: number;
+  riverBadBeats: number;
+  bestHand: string | null; // シーズン最強の役名
   topTableMate: MateRef | null;
   topHuMate: MateRef | null;
 }
@@ -416,6 +493,9 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       allinWins: a.allinWins,
       maxPotWon: a.maxPotWon,
       knockouts: a.knockouts,
+      riverSuckouts: a.riverSuckouts,
+      riverBadBeats: a.riverBadBeats,
+      bestHand: a.bestHandRank > 0 ? a.bestHandName : null,
       topTableMate: topMate(oppTable.get(userId)),
       topHuMate: topMate(oppHu.get(userId)),
     });
@@ -448,7 +528,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: statList.filter((s) => s.postflopActions >= 50 && s.afq != null).map((s) => ({ userId: s.userId, value: s.afq!, valueLabel: `AFq ${fmtPct(s.afq!)}` })),
     },
     {
-      key: 'three_bet', category: 'オールイン・アグレ', title: '3ベット魔賞', emoji: '⚔️', description: 'プリフロップで殴り続けた3Bet師', order: 'desc',
+      key: 'three_bet', category: 'オールイン・アグレ', title: '3ベット王', emoji: '⚔️', description: 'プリフロップで殴り続けた3Bet師', order: 'desc',
       candidates: statList.filter((s) => s.threeBetOpportunity >= 20 && s.threeBet != null).map((s) => ({ userId: s.userId, value: s.threeBet!, valueLabel: `3Bet ${fmtPct(s.threeBet!)}` })),
     },
     // ===== 成績・運系 =====
@@ -493,12 +573,12 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null && s.vpip > 0).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
     },
     {
-      key: 'maniac', category: 'スタイル', title: 'ぶっぱルーズ賞', emoji: '🎪', description: 'とにかく参加するルーズスタイル（50ハンド以上）', order: 'desc',
+      key: 'maniac', category: 'スタイル', title: 'ハイVPIP', emoji: '🎪', description: 'とにかく参加するルーズスタイル（50ハンド以上）', order: 'desc',
       candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
     },
     {
-      key: 'showdown_king', category: 'スタイル', title: 'ショーダウンの鬼賞', emoji: '👑', description: 'ショーダウンで勝ち切る勝負強さ（10回以上）', order: 'desc',
-      candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `W$SD ${fmtPct(s.wsd!)}` })),
+      key: 'showdown_king', category: 'スタイル', title: 'ショーダウンの鬼', emoji: '👑', description: 'ショーダウンで勝ち切る勝負強さ（10回以上）', order: 'desc',
+      candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `ショーダウン勝利 ${fmtPct(s.wsd!)}` })),
     },
   ];
 

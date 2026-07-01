@@ -61,6 +61,9 @@ export interface SeasonPlayerStats {
   allinWinRate: number | null;
   maxPotWon: number;
   knockouts: number;
+  riverSuckouts: number; // リバーでまくった回数
+  riverBadBeats: number; // リバーで捲られた回数
+  bestHand: string | null; // シーズン最強の役
   // よく対戦したプレイヤー
   topTableMate: MateRef | null;
   topHuMate: MateRef | null;
@@ -152,6 +155,9 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       allinWinRate: s && s.allinHands > 0 ? (s.allinWins / s.allinHands) * 100 : null,
       maxPotWon: s?.maxPotWon ?? 0,
       knockouts: s?.knockouts ?? 0,
+      riverSuckouts: s?.riverSuckouts ?? 0,
+      riverBadBeats: s?.riverBadBeats ?? 0,
+      bestHand: s?.bestHand ?? null,
       topTableMate: s?.topTableMate ?? null,
       topHuMate: s?.topHuMate ?? null,
       awardRanks,

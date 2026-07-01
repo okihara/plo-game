@@ -46,6 +46,9 @@ interface PlayerStats {
   allinWinRate: number | null;
   maxPotWon: number;
   knockouts: number;
+  riverSuckouts: number;
+  riverBadBeats: number;
+  bestHand: string | null;
   topTableMate: MateRef | null;
   topHuMate: MateRef | null;
   awardRanks: SeasonAwardRank[];
@@ -281,22 +284,25 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
       {/* ハンドスタッツ（縦） */}
       <h3 className="text-[3cqw] font-bold text-forest mt-[3cqw] mb-[1.5cqw]">ハンドスタッツ（トナメ）</h3>
       <div className="flex flex-col gap-[1.2cqw]">
+        <StatRow label="ベストハンド" value={player.bestHand ?? '—'} accent="forest" />
         <StatRow label="ハンド数" value={num(player.hands)} />
         <StatRow label="VPIP" value={pct(player.vpip)} />
         <StatRow label="PFR" value={pct(player.pfr)} />
         <StatRow label="AFq" value={pct(player.afq)} />
         <StatRow label="3Bet" value={pct(player.threeBet)} />
-        <StatRow label="W$SD" value={pct(player.wsd)} />
+        <StatRow label="ショーダウン勝利" value={pct(player.wsd)} />
         <StatRow label="オールイン回数" value={`${num(player.allinHands)}回`} />
         <StatRow label="オールイン勝利" value={`${num(player.allinWins)}回`} />
         <StatRow label="オールイン勝率" value={pct(player.allinWinRate)} />
+        <StatRow label="リバーでまくり" value={`${num(player.riverSuckouts)}回`} accent="forest" />
+        <StatRow label="リバーで捲られ" value={`${num(player.riverBadBeats)}回`} accent="red" />
       </div>
 
       {/* よく対戦したプレイヤー（縦） */}
       <h3 className="text-[3cqw] font-bold text-forest mt-[3cqw] mb-[1.5cqw]">よく対戦したプレイヤー</h3>
       <div className="flex flex-col gap-[1.2cqw]">
-        <MateRow label="一番同卓" mate={player.topTableMate} unit="ハンド" />
-        <MateRow label="一番ヘッズアップ" mate={player.topHuMate} unit="回" />
+        <MateRow label="同卓回数トップ" mate={player.topTableMate} unit="ハンド" />
+        <MateRow label="ヘッズアップ回数トップ" mate={player.topHuMate} unit="回" />
       </div>
 
       {/* 賞レース順位（縦） */}
