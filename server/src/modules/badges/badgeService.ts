@@ -21,6 +21,8 @@ interface BadgeMeta {
   description: string;
   flavor: string;
   imageUrl: string;
+  /** 右上に実順位（rank）を表示するか。絵柄に順位が無い順位帯バッジ（TOP10/TOP30）で true。 */
+  showRank?: boolean;
 }
 
 const BADGE_META: Record<string, BadgeMeta> = {
@@ -36,7 +38,12 @@ const BADGE_META: Record<string, BadgeMeta> = {
   daily_rank_1:  { category: 'daily_rank',  label: 'Daily Crown',  description: 'デイリーランキング1位',  flavor: 'あの日のチップは全てあなたの手に',                           imageUrl: '/images/badges/daily_rank.png' },
   weekly_rank_1: { category: 'weekly_rank', label: 'Weekly Crown', description: 'ウィークリーランキング1位', flavor: '不眠不休の王',                          imageUrl: '/images/badges/weekly_rank.png' },
   tournament_no1: { category: 'tournament', label: 'Tournament Winner', description: 'トーナメント優勝',     flavor: '賞金を全て持っていった',                  imageUrl: '/images/badges/tournament_no1.png' },
-  season1_top10: { category: 'season_rank', label: 'シーズン1 TOP10', description: 'シーズン1 RPランキング TOP10入り', flavor: 'シーズンを駆け抜けた強者の証', imageUrl: '/images/badges/season_top10.png' },
+  season1_no1:    { category: 'season_rank', label: 'シーズン1 1位',   description: 'シーズン1 RPランキング 1位',    flavor: 'シーズンの頂点に立った者',       imageUrl: '/images/badges/season1_no1.png' },
+  season1_no2:    { category: 'season_rank', label: 'シーズン1 2位',   description: 'シーズン1 RPランキング 2位',    flavor: '頂まであと一歩',                 imageUrl: '/images/badges/season1_no2.png' },
+  season1_no3:    { category: 'season_rank', label: 'シーズン1 3位',   description: 'シーズン1 RPランキング 3位',    flavor: '表彰台の一角を勝ち取った',        imageUrl: '/images/badges/season1_no3.png' },
+  season1_top10:  { category: 'season_rank', label: 'シーズン1 TOP10', description: 'シーズン1 RPランキング TOP10入り', flavor: 'シーズンを駆け抜けた強者の証',  imageUrl: '/images/badges/season1_top10.png', showRank: true },
+  season1_top30:  { category: 'season_rank', label: 'シーズン1 TOP30', description: 'シーズン1 RPランキング TOP30入り', flavor: '上位30人に名を刻んだ',        imageUrl: '/images/badges/season1_top30.png', showRank: true },
+  season1_member: { category: 'season_rank', label: 'シーズン1 参加',  description: 'シーズン1 トーナメント参加記念', flavor: 'このシーズンを共に戦った証',      imageUrl: '/images/badges/season1_member.png' },
   first_penguin: { category: 'special', label: '1st Penguin', description: '2026/3/1以前に1ハンド以上をプレイ', flavor: '誰も知らないアプリに最初に飛び込んだ勇者の証 ありがとうございます', imageUrl: '/images/badges/penguin.png' },
   special_guest_ryutaro: { category: 'special', label: 'Special Guest りゅうたろう', description: 'スペシャルゲスト りゅうたろう 参加記念', flavor: 'ダブルブレスレットホルダーと卓を囲んで戦った証', imageUrl: '/images/badges/special_guest_ryutaro.png' },
 };
@@ -145,17 +152,22 @@ export async function awardTournamentBadge(userId: string, type: 'tournament_no1
   });
 }
 
+/** シーズンバッジ type 一覧（付与・集計時の対象抽出に使う）。順位帯の高い順。 */
+export function seasonBadgeTypes(prefix: string): string[] {
+  return [`${prefix}_no1`, `${prefix}_no2`, `${prefix}_no3`, `${prefix}_top10`, `${prefix}_top30`, `${prefix}_member`];
+}
+
 /**
- * シーズンランキングTOP10バッジの付与（1シーズンにつき1人1枚、順位付き）。
- * 既存があれば順位のみ更新し、なければ新規作成する（冪等）。
+ * シーズンRPランキングの順位（1始まり）→ 付与するバッジ type を返す。
+ * rank が null（RP圏外の参加者）は参加記念バッジ。
  */
-export async function awardSeasonRankingBadge(userId: string, type: string, rank: number): Promise<void> {
-  const existing = await prisma.badge.findFirst({ where: { userId, type }, select: { id: true, rank: true } });
-  if (!existing) {
-    await prisma.badge.create({ data: { userId, type, rank } });
-  } else if (existing.rank !== rank) {
-    await prisma.badge.update({ where: { id: existing.id }, data: { rank } });
-  }
+export function seasonBadgeTypeForRank(prefix: string, rank: number | null): string {
+  if (rank === 1) return `${prefix}_no1`;
+  if (rank === 2) return `${prefix}_no2`;
+  if (rank === 3) return `${prefix}_no3`;
+  if (rank != null && rank <= 10) return `${prefix}_top10`;
+  if (rank != null && rank <= 30) return `${prefix}_top30`;
+  return `${prefix}_member`;
 }
 
 // --- バッジ取得 ---
@@ -312,7 +324,8 @@ export function groupBadgesForDisplay(badges: { type: string; rank: number | nul
       flavor: meta.flavor,
       imageUrl: meta.imageUrl,
       count: 1,
-      rank: bestBadge.rank ?? undefined,
+      // 絵柄に順位が無い順位帯バッジ（TOP10/TOP30）だけ実順位をオーバーレイ表示
+      rank: meta.showRank ? (bestBadge.rank ?? undefined) : undefined,
       awardedAt: bestBadge.awardedAt.toISOString(),
     });
   }
