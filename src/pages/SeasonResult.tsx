@@ -495,10 +495,7 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
         ) : (
           <>
             {/* RPランキング（縦、1〜30位を一列） */}
-            <h2 className="text-[4cqw] font-bold text-cream-900 mt-[4cqw] mb-[1cqw]">RPランキング TOP30</h2>
-            <p className="text-[2.6cqw] text-cream-700 mb-[2cqw]">
-              最終順位に応じてシーズンバッジを付与しました（各プロフィールに表示されます）
-            </p>
+            <h2 className="text-[4cqw] font-bold text-cream-900 mt-[4cqw] mb-[1.5cqw]">RPランキング TOP30</h2>
             <div className="flex flex-col gap-[1.2cqw]">
               {data.ranking.map((e) => (
                 <RankRow key={e.userId} e={e} />
