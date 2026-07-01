@@ -10,7 +10,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { CURRENT_SEASON } from './seasonConfig.js';
 import { computeSeasonRanking } from './computeSeasonRanking.js';
-import { computeSeasonAwards, type Award } from './computeSeasonAwards.js';
+import { computeSeasonAwards, type Award, type MateRef } from './computeSeasonAwards.js';
 
 const TOP_N = 30;
 
@@ -61,6 +61,9 @@ export interface SeasonPlayerStats {
   allinWinRate: number | null;
   maxPotWon: number;
   knockouts: number;
+  // よく対戦したプレイヤー
+  topTableMate: MateRef | null;
+  topHuMate: MateRef | null;
   // 各賞での順位（全国○位の演出）
   awardRanks: SeasonAwardRank[];
 }
@@ -149,6 +152,8 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       allinWinRate: s && s.allinHands > 0 ? (s.allinWins / s.allinHands) * 100 : null,
       maxPotWon: s?.maxPotWon ?? 0,
       knockouts: s?.knockouts ?? 0,
+      topTableMate: s?.topTableMate ?? null,
+      topHuMate: s?.topHuMate ?? null,
       awardRanks,
     };
   }

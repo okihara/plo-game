@@ -134,9 +134,27 @@ function aggregateParticipation(
   return map;
 }
 
-/** シーズン期間内のトーナメントハンドを走査し、プレイヤー別のスタッツを集計する。 */
-async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Promise<Map<string, StatAcc>> {
+interface HandStatsResult {
+  map: Map<string, StatAcc>;
+  oppTable: Map<string, Map<string, number>>; // userId -> (相手userId -> 同卓ハンド数)
+  oppHu: Map<string, Map<string, number>>; // userId -> (相手userId -> ヘッズアップ数)
+}
+
+/** シーズン期間内のトーナメントハンドを走査し、プレイヤー別のスタッツ＋対戦相手の共起を集計する。 */
+async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Promise<HandStatsResult> {
   const map = new Map<string, StatAcc>();
+  // 対戦相手の共起（Bot除外＝人間同士）。同卓＝同一ハンドに居合わせた回数、
+  // HU＝卓4人以上でショーダウンに残ったのが2人だけの局面（短い卓での水増しを除外）。
+  const oppTable = new Map<string, Map<string, number>>();
+  const oppHu = new Map<string, Map<string, number>>();
+  const bump = (m: Map<string, Map<string, number>>, a: string, b: string) => {
+    let inner = m.get(a);
+    if (!inner) {
+      inner = new Map();
+      m.set(a, inner);
+    }
+    inner.set(b, (inner.get(b) ?? 0) + 1);
+  };
   // 全体の集計時間はデータ転送量に律速されバッチ径ではほぼ変わらないため、
   // 1バッチあたりの同期処理を小さめに保ち（イベントループ＝Socket.ioのping阻害を避ける）2000件ずつ走査する。
   const BATCH = 2000;
@@ -227,13 +245,38 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           if (cur) cur.knockouts += victims;
         }
       }
+
+      // 同卓（人間同士）: 同一ハンドに居合わせた回数。卓サイズは問わない。
+      const humanIds = h.players
+        .map((pl) => pl.userId)
+        .filter((id): id is string => !!id && !botIds.has(id));
+      if (humanIds.length >= 2) {
+        for (const a of humanIds) {
+          for (const b of humanIds) {
+            if (a !== b) bump(oppTable, a, b);
+          }
+        }
+      }
+
+      // ヘッズアップ（人間同士）: 卓に4人以上いるハンドで、ショーダウンに残ったのが
+      // ちょうど2人の局面のみ数える（残り2〜3人の短い卓での水増しを避ける）。finalHand で判定。
+      if (h.players.length >= 4) {
+        const showdown = h.players.filter((pl) => pl.finalHand != null);
+        if (showdown.length === 2) {
+          const humans = showdown.filter((pl) => pl.userId && !botIds.has(pl.userId));
+          if (humans.length === 2) {
+            bump(oppHu, humans[0].userId as string, humans[1].userId as string);
+            bump(oppHu, humans[1].userId as string, humans[0].userId as string);
+          }
+        }
+      }
     }
 
     if (hands.length < BATCH) break;
     cursor = hands[hands.length - 1].id;
   }
 
-  return map;
+  return { map, oppTable, oppHu };
 }
 
 interface Candidate {
@@ -249,6 +292,14 @@ export interface AwardRanking {
   title: string;
   emoji: string;
   ranked: { userId: string; valueLabel: string }[];
+}
+
+/** 対戦相手の参照（一番同卓／一番ヘッズアップ） */
+export interface MateRef {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  count: number;
 }
 
 /** プレイヤー別のハンド由来スタッツ（個人データセクション用） */
@@ -268,6 +319,8 @@ export interface PlayerHandStat {
   allinWins: number;
   maxPotWon: number;
   knockouts: number;
+  topTableMate: MateRef | null;
+  topHuMate: MateRef | null;
 }
 
 const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
@@ -300,7 +353,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const botIds = new Set(bots.map((b) => b.id));
 
   const participation = aggregateParticipation(tournaments);
-  const stats = await aggregateHandStats(prisma, botIds);
+  const { map: stats, oppTable, oppHu } = await aggregateHandStats(prisma, botIds);
 
   // 表示用ユーザー情報をまとめて取得
   const userIds = new Set<string>([...participation.keys(), ...stats.keys()]);
@@ -326,6 +379,23 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
 
   const handsScanned = [...stats.values()].reduce((s, a) => s + a.inc.handsPlayed, 0);
 
+  // 相手別カウントの最多を、表示情報を解決して MateRef にする
+  const topMate = (counts: Map<string, number> | undefined): MateRef | null => {
+    if (!counts) return null;
+    let bestId: string | null = null;
+    let best = 0;
+    for (const [oid, c] of counts) {
+      if (c > best) {
+        best = c;
+        bestId = oid;
+      }
+    }
+    if (!bestId) return null;
+    const d = displays.get(bestId);
+    if (!d) return null;
+    return { userId: bestId, name: d.name, avatarUrl: d.avatarUrl, count: best };
+  };
+
   // 派生指標（個人データセクションでも再利用するため Map で保持）
   const statsByUser = new Map<string, PlayerHandStat>();
   for (const [userId, a] of stats.entries()) {
@@ -346,6 +416,8 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       allinWins: a.allinWins,
       maxPotWon: a.maxPotWon,
       knockouts: a.knockouts,
+      topTableMate: topMate(oppTable.get(userId)),
+      topHuMate: topMate(oppHu.get(userId)),
     });
   }
 

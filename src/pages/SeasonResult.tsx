@@ -16,6 +16,13 @@ interface SeasonAwardRank {
   valueLabel: string;
 }
 
+interface MateRef {
+  userId: string;
+  name: string;
+  avatarUrl: string | null;
+  count: number;
+}
+
 interface PlayerStats {
   userId: string;
   rpRank: number | null;
@@ -39,6 +46,8 @@ interface PlayerStats {
   allinWinRate: number | null;
   maxPotWon: number;
   knockouts: number;
+  topTableMate: MateRef | null;
+  topHuMate: MateRef | null;
   awardRanks: SeasonAwardRank[];
 }
 
@@ -115,6 +124,29 @@ function StatRow({ label, value, accent }: { label: string; value: string; accen
     <div className="flex items-center justify-between bg-white border border-cream-300 rounded-[2cqw] px-[3cqw] py-[2.2cqw]">
       <span className="text-[3cqw] text-cream-700">{label}</span>
       <span className={`text-[3.6cqw] font-extrabold ${color}`}>{value}</span>
+    </div>
+  );
+}
+
+function MateRow({ label, mate, unit }: { label: string; mate: MateRef | null; unit: string }) {
+  return (
+    <div className="flex items-center gap-[2cqw] bg-white border border-cream-300 rounded-[2cqw] px-[3cqw] py-[2cqw]">
+      <span className="text-[3cqw] text-cream-700 shrink-0">{label}</span>
+      {mate ? (
+        <button
+          onClick={() => navigateToPlayer(mate.userId)}
+          className="flex items-center gap-[1.5cqw] flex-1 min-w-0 justify-end active:opacity-70"
+        >
+          <Avatar url={mate.avatarUrl} name={mate.name} size="w-[6cqw] h-[6cqw]" />
+          <span className="text-[3cqw] font-bold text-cream-900 truncate">{mate.name}</span>
+          <span className="text-[2.6cqw] text-cream-700 shrink-0">
+            {mate.count}
+            {unit}
+          </span>
+        </button>
+      ) : (
+        <span className="flex-1 text-right text-[2.8cqw] text-cream-700">—</span>
+      )}
     </div>
   );
 }
@@ -258,6 +290,13 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
         <StatRow label="オールイン回数" value={`${num(player.allinHands)}回`} />
         <StatRow label="オールイン勝利" value={`${num(player.allinWins)}回`} />
         <StatRow label="オールイン勝率" value={pct(player.allinWinRate)} />
+      </div>
+
+      {/* よく対戦したプレイヤー（縦） */}
+      <h3 className="text-[3cqw] font-bold text-forest mt-[3cqw] mb-[1.5cqw]">よく対戦したプレイヤー</h3>
+      <div className="flex flex-col gap-[1.2cqw]">
+        <MateRow label="一番同卓" mate={player.topTableMate} unit="ハンド" />
+        <MateRow label="一番ヘッズアップ" mate={player.topHuMate} unit="回" />
       </div>
 
       {/* 賞レース順位（縦） */}
