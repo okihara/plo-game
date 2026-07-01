@@ -109,6 +109,7 @@ export interface OnlinePlayer {
   isConnected: boolean;
   cards: Card[];  // Stud: 全カード配布順（裏カードはダミー値+isUp:false）, PLO: []
   hasWeeklyChampion?: boolean;  // ウィークリーチャンピオン（weekly_rank_1）バッジ保有者
+  hasSeasonTop3?: boolean;  // シーズン1 No.1〜No.3 バッジ保有者（プラチナ枠）
 }
 
 // Client-safe game state (hides other players' hole cards)

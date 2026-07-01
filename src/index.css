@@ -364,3 +364,44 @@ body {
   mask-composite: exclude;
   pointer-events: none;
 }
+
+/* シーズン1 No.1〜No.3 のプラチナ枠（金枠より派手：虹色の光沢を回転アニメ） */
+@property --platinum-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.platinum-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 0.8cqw; /* 金枠(0.6cqw)より少し太く */
+  background: conic-gradient(
+    from var(--platinum-angle),
+    #e2e8f0,      /* シルバー */
+    #ffffff,      /* 白ハイライト */
+    #67e8f9,      /* シアン */
+    #ffffff,      /* 白ハイライト */
+    #a5b4fc,      /* ブルー */
+    #d8b4fe,      /* パープル */
+    #ffffff,      /* 白ハイライト */
+    #f9a8d4,      /* ピンク */
+    #ffffff,      /* 白ハイライト */
+    #e2e8f0       /* シルバー（ループ） */
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: platinum-rotate 14s linear infinite;
+}
+
+@keyframes platinum-rotate {
+  to {
+    --platinum-angle: 360deg;
+  }
+}

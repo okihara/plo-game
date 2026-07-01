@@ -196,6 +196,16 @@ export async function hasWeeklyChampionBadge(userId: string): Promise<boolean> {
   return !!existing;
 }
 
+/** シーズン1 RPランキング No.1〜No.3 のバッジを保有しているか（プラチナ枠付与用） */
+const SEASON_TOP3_BADGE_TYPES = ['season1_no1', 'season1_no2', 'season1_no3'];
+export async function hasSeasonTop3Badge(userId: string): Promise<boolean> {
+  const existing = await prisma.badge.findFirst({
+    where: { userId, type: { in: SEASON_TOP3_BADGE_TYPES } },
+    select: { id: true },
+  });
+  return !!existing;
+}
+
 // --- 表示用グルーピング ---
 
 export interface DisplayBadge {
