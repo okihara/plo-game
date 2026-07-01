@@ -11,6 +11,7 @@ import type { PrismaClient } from '@prisma/client';
 import { CURRENT_SEASON } from './seasonConfig.js';
 import { computeSeasonRanking } from './computeSeasonRanking.js';
 import { computeSeasonAwards, type Award, type MateRef } from './computeSeasonAwards.js';
+import { seasonBadgeTypeForRank, badgeDisplayMeta } from '../badges/badgeService.js';
 
 const TOP_N = 30;
 
@@ -24,6 +25,9 @@ export interface SeasonRankEntry {
   wins: number;
   itm: number;
   best: number | null;
+  // 付与される順位帯バッジ（1位/2位/3位/TOP10/TOP30）の画像とラベル
+  badgeImageUrl: string | null;
+  badgeLabel: string | null;
 }
 
 export interface SeasonAwardRank {
@@ -178,17 +182,22 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       totalEntries,
       handsScanned,
     },
-    ranking: topRanking.map((u, i) => ({
-      position: i + 1,
-      userId: u.userId,
-      name: u.name,
-      avatarUrl: avatarById.get(u.userId) ?? null,
-      totalRp: u.totalRp,
-      entries: u.entries,
-      wins: u.wins,
-      itm: u.itm,
-      best: u.best === Infinity ? null : u.best,
-    })),
+    ranking: topRanking.map((u, i) => {
+      const badge = badgeDisplayMeta(seasonBadgeTypeForRank(CURRENT_SEASON.badgePrefix, i + 1));
+      return {
+        position: i + 1,
+        userId: u.userId,
+        name: u.name,
+        avatarUrl: avatarById.get(u.userId) ?? null,
+        totalRp: u.totalRp,
+        entries: u.entries,
+        wins: u.wins,
+        itm: u.itm,
+        best: u.best === Infinity ? null : u.best,
+        badgeImageUrl: badge?.imageUrl ?? null,
+        badgeLabel: badge?.label ?? null,
+      };
+    }),
     awards,
     players,
   };

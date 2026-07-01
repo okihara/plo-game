@@ -152,6 +152,12 @@ export async function awardTournamentBadge(userId: string, type: 'tournament_no1
   });
 }
 
+/** バッジ type の表示メタ（画像URL・ラベル）を返す。未定義 type は null。 */
+export function badgeDisplayMeta(type: string): { imageUrl: string; label: string } | null {
+  const meta = BADGE_META[type];
+  return meta ? { imageUrl: meta.imageUrl, label: meta.label } : null;
+}
+
 /** シーズンバッジ type 一覧（付与・集計時の対象抽出に使う）。順位帯の高い順。 */
 export function seasonBadgeTypes(prefix: string): string[] {
   return [`${prefix}_no1`, `${prefix}_no2`, `${prefix}_no3`, `${prefix}_top10`, `${prefix}_top30`, `${prefix}_member`];

@@ -64,6 +64,8 @@ interface RankEntry {
   wins: number;
   itm: number;
   best: number | null;
+  badgeImageUrl: string | null;
+  badgeLabel: string | null;
 }
 
 interface AwardWinner {
@@ -178,6 +180,14 @@ function RankRow({ e }: { e: RankEntry }) {
       <span className={`flex-1 min-w-0 text-left font-bold truncate ${top10 ? 'text-[3.3cqw] text-cream-900' : 'text-[3cqw] text-cream-800'}`}>
         {e.name}
       </span>
+      {e.badgeImageUrl && (
+        <img
+          src={e.badgeImageUrl}
+          alt={e.badgeLabel ?? 'season badge'}
+          title={e.badgeLabel ?? undefined}
+          className={`shrink-0 rounded-full ${top10 ? 'w-[8cqw] h-[8cqw]' : 'w-[6.5cqw] h-[6.5cqw]'}`}
+        />
+      )}
       <div className="text-right shrink-0">
         <span className={`font-extrabold text-forest ${top10 ? 'text-[4.2cqw]' : 'text-[3.4cqw]'}`}>{e.totalRp}</span>
         <span className="text-[2.4cqw] text-cream-700 ml-[0.5cqw]">RP</span>
@@ -485,7 +495,10 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
         ) : (
           <>
             {/* RPランキング（縦、1〜30位を一列） */}
-            <h2 className="text-[4cqw] font-bold text-cream-900 mt-[4cqw] mb-[1.5cqw]">RPランキング TOP10</h2>
+            <h2 className="text-[4cqw] font-bold text-cream-900 mt-[4cqw] mb-[1cqw]">RPランキング TOP30</h2>
+            <p className="text-[2.6cqw] text-cream-700 mb-[2cqw]">
+              最終順位に応じてシーズンバッジを付与しました（各プロフィールに表示されます）
+            </p>
             <div className="flex flex-col gap-[1.2cqw]">
               {data.ranking.map((e) => (
                 <RankRow key={e.userId} e={e} />
