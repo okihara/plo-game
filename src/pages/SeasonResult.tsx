@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+
+type SeasonTab = 'overall' | 'me';
 
 interface SeasonResultProps {
   onBack: () => void;
@@ -193,9 +195,7 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
   const awardRanks = [...player.awardRanks].sort((a, b) => a.rank / a.total - b.rank / b.total);
 
   return (
-    <div className="mt-[4cqw]">
-      <h2 className="text-[4cqw] font-bold text-cream-900 mb-[2cqw]">あなたのシーズン成績</h2>
-
+    <div className="mt-[3cqw]">
       {/* RP順位ヒーロー（横並び） */}
       <div className="bg-gradient-to-br from-forest to-forest-dark rounded-[3cqw] p-[3cqw] flex items-center gap-[3cqw] text-white">
         <Avatar url={viewerAvatar} name={viewerName} size="w-[13cqw] h-[13cqw] ring-[0.5cqw] ring-white/40" />
@@ -275,6 +275,13 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
   const [data, setData] = useState<SeasonData | null>(null);
   const [player, setPlayer] = useState<PlayerStats | null>(null);
   const [error, setError] = useState(false);
+  const [tab, setTab] = useState<SeasonTab>('overall');
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  // タブ切替時はスクロール位置を先頭に戻す
+  useEffect(() => {
+    scrollRef.current?.scrollTo(0, 0);
+  }, [tab]);
 
   useEffect(() => {
     let alive = true;
@@ -353,9 +360,11 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
   }
 
   const categories = [...new Set(data.awards.map((a) => a.category))];
+  const showTabs = !!(user && player);
+  const showMe = showTabs && tab === 'me';
 
   return (
-    <div className="h-full overflow-y-auto light-bg">
+    <div ref={scrollRef} className="h-full overflow-y-auto light-bg">
       {/* Hero */}
       <div className="bg-gradient-to-b from-forest to-forest-dark px-[4cqw] pt-[3cqw] pb-[5cqw] rounded-b-[4cqw] shadow-[0_8px_30px_rgba(29,58,39,0.4)]">
         <div className="flex items-center">
@@ -383,44 +392,64 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
         </div>
       </div>
 
-      <div className="px-[4cqw] pb-[10cqw]">
-        {/* あなたのシーズン成績（ログイン時のみ） */}
-        {user && player && (
-          <PersonalSection
-            player={player}
-            rankedPlayers={data.stats.rankedPlayers}
-            viewerName={user.displayName || user.username}
-            viewerAvatar={(user.useTwitterAvatar && user.twitterAvatarUrl ? user.twitterAvatarUrl : user.avatarUrl) ?? null}
-          />
-        )}
-
-        {/* RPランキング（縦、1〜30位を一列） */}
-        <h2 className="text-[4cqw] font-bold text-cream-900 mt-[5cqw] mb-[1.5cqw]">RPランキング TOP10</h2>
-        <div className="flex flex-col gap-[1.2cqw]">
-          {data.ranking.map((e) => (
-            <RankRow key={e.userId} e={e} />
-          ))}
-        </div>
-
-        {/* シーズンアワード（縦） */}
-        <h2 className="text-[4cqw] font-bold text-cream-900 mt-[6cqw] mb-[1cqw]">シーズンアワード</h2>
-        <p className="text-[2.6cqw] text-cream-700 mb-[2cqw]">トーナメントの全ハンドから集計した特別賞</p>
-        {categories.map((cat) => (
-          <div key={cat} className="mt-[3cqw]">
-            <h3 className="text-[3.2cqw] font-bold text-forest mb-[1.5cqw]">{cat}</h3>
-            <div className="flex flex-col gap-[2cqw]">
-              {data.awards
-                .filter((a) => a.category === cat)
-                .map((a) => (
-                  <AwardCard key={a.key} award={a} />
-                ))}
-            </div>
+      {/* 全体結果 / あなたの成績 タブ（ログイン時のみ） */}
+      {showTabs && (
+        <div className="px-[4cqw] mt-[3cqw]">
+          <div className="flex gap-[1cqw] bg-cream-100 rounded-[2.5cqw] p-[0.8cqw] border border-cream-300">
+            {(['overall', 'me'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex-1 py-[2cqw] rounded-[2cqw] text-[3.2cqw] font-bold transition-colors ${
+                  tab === t ? 'bg-forest text-white' : 'text-cream-700'
+                }`}
+              >
+                {t === 'overall' ? '全体結果' : 'あなたの成績'}
+              </button>
+            ))}
           </div>
-        ))}
+        </div>
+      )}
 
-        <p className="text-[2.6cqw] text-cream-700 text-center mt-[6cqw]">
-          みんなシーズン1お疲れさま！シーズン2もよろしく
-        </p>
+      <div className="px-[4cqw] pb-[10cqw]">
+        {showMe ? (
+          <PersonalSection
+            player={player!}
+            rankedPlayers={data.stats.rankedPlayers}
+            viewerName={user!.displayName || user!.username}
+            viewerAvatar={(user!.useTwitterAvatar && user!.twitterAvatarUrl ? user!.twitterAvatarUrl : user!.avatarUrl) ?? null}
+          />
+        ) : (
+          <>
+            {/* RPランキング（縦、1〜30位を一列） */}
+            <h2 className="text-[4cqw] font-bold text-cream-900 mt-[4cqw] mb-[1.5cqw]">RPランキング TOP10</h2>
+            <div className="flex flex-col gap-[1.2cqw]">
+              {data.ranking.map((e) => (
+                <RankRow key={e.userId} e={e} />
+              ))}
+            </div>
+
+            {/* シーズンアワード（縦） */}
+            <h2 className="text-[4cqw] font-bold text-cream-900 mt-[6cqw] mb-[1cqw]">シーズンアワード</h2>
+            <p className="text-[2.6cqw] text-cream-700 mb-[2cqw]">トーナメントの全ハンドから集計した特別賞</p>
+            {categories.map((cat) => (
+              <div key={cat} className="mt-[3cqw]">
+                <h3 className="text-[3.2cqw] font-bold text-forest mb-[1.5cqw]">{cat}</h3>
+                <div className="flex flex-col gap-[2cqw]">
+                  {data.awards
+                    .filter((a) => a.category === cat)
+                    .map((a) => (
+                      <AwardCard key={a.key} award={a} />
+                    ))}
+                </div>
+              </div>
+            ))}
+
+            <p className="text-[2.6cqw] text-cream-700 text-center mt-[6cqw]">
+              みんなシーズン1お疲れさま！シーズン2もよろしく
+            </p>
+          </>
+        )}
       </div>
     </div>
   );
