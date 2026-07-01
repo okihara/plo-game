@@ -273,6 +273,7 @@ export interface PlayerHandStat {
 const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
 const fmtSigned = (n: number) => (n >= 0 ? `+${fmtInt(n)}` : `-${fmtInt(-n)}`);
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+const fmtSignedPct = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}%`;
 
 interface AwardSpec {
   key: string;
@@ -392,6 +393,24 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
     {
       key: 'knockout_king', category: '成績・運', title: '撃墜王', emoji: '🥊', description: '相手をバストさせた回数No.1', order: 'desc',
       candidates: statList.filter((s) => s.knockouts >= 3).map((s) => ({ userId: s.userId, value: s.knockouts, valueLabel: `${s.knockouts}KO` })),
+    },
+    {
+      key: 'total_roi', category: '成績・運', title: '総ROI王', emoji: '📈', description: 'シーズン全体の投資収益率No.1（10戦以上）', order: 'desc',
+      candidates: partList
+        .filter((p) => p.tournaments >= 10 && p.invested > 0)
+        .map((p) => {
+          const roi = ((p.returned - p.invested) / p.invested) * 100;
+          return { userId: p.userId, value: roi, valueLabel: `総ROI ${fmtSignedPct(roi)}` };
+        }),
+    },
+    {
+      key: 'avg_roi', category: '成績・運', title: '平均ROI王', emoji: '📊', description: '1トナメ平均の投資収益率No.1（10戦以上）', order: 'desc',
+      candidates: partList
+        .filter((p) => p.tournaments >= 10 && p.roiCount > 0)
+        .map((p) => {
+          const roi = (p.roiSum / p.roiCount) * 100;
+          return { userId: p.userId, value: roi, valueLabel: `平均ROI ${fmtSignedPct(roi)}` };
+        }),
     },
     // ===== スタイル系 =====
     {
