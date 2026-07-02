@@ -10,6 +10,9 @@ const envSchema = z.object({
   /** OAuth ログイン用の App。Read-only 権限で十分（ユーザーに書き込み権限を求めない） */
   TWITTER_API_KEY: z.string().optional(),
   TWITTER_API_KEY_SECRET: z.string().optional(),
+  /** Google OAuth 2.0 ログイン用。未設定時は Google ログイン無効。 */
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
   /**
    * ツイート投稿用の別 App。Read and Write 権限が必要。
    * 公式アカウントから発行する Access Token と組み合わせて使う。
