@@ -42,7 +42,7 @@ export function TournamentResultOverlay({ results, totalPlayers, prizePool, tour
                   {getMedal(r.position)}
                 </span>
                 <span className={`font-medium text-[3cqw] truncate ${r.position === 1 ? 'text-forest font-bold' : 'text-cream-900'}`}>
-                  {r.odName}
+                  {r.name}
                 </span>
               </div>
               {r.prize > 0 && (

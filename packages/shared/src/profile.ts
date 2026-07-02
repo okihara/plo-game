@@ -1,5 +1,8 @@
 // プレイヤーの公開プロフィール（他プレイヤーにも見える表示用情報）
 
+/** アバター画像が無いユーザーのデフォルト画像 */
+export const DEFAULT_AVATAR_URL = '/images/icons/anonymous.svg';
+
 /**
  * ネームプレート装飾の種類。
  * 追加時はここのリテラルと、サーバーの resolveNameplate（どのバッジで付くか）、

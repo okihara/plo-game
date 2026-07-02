@@ -8,7 +8,7 @@
 //   - ベッティングは 1 系統（フロップ → ターン → リバー、Pot Limit）
 //   - 各 contested side pot を半分ずつ 2 ボードに分け、ボード毎に独立評価
 
-import { GameState, Player, Position, Action, Card } from './types.js';
+import { GameState, Player, Position, POSITIONS, Action, Card } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { evaluatePLOHand, compareHands, formatHandName } from './handEvaluator.js';
 import {
@@ -22,7 +22,6 @@ import {
   splitChipsEvenly,
 } from './gameEngine.js';
 
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const HOLE_CARD_COUNT = 4; // PLO 固定（plo5 は対象外）
 const BOARD_COUNT = 2;     // double board 固定
 

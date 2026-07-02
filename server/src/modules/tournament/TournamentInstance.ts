@@ -121,7 +121,7 @@ export class TournamentInstance {
       .sort((a, b) => a.finishPosition! - b.finishPosition!)
       .map(p => ({
         odId: p.odId,
-        odName: p.profile.name,
+        name: p.profile.name,
         position: p.finishPosition!,
         prize: this.getPrizeForPosition(p.finishPosition!),
         reentries: p.reentryCount,
@@ -733,13 +733,10 @@ export class TournamentInstance {
         prizeAmount: prize,
       });
 
-      // 全体通知
-      const eliminatedDisplayName = player.profile.name;
-
+      // 全体通知（生の username は流さない）
       this.io.to(this.roomName).emit('tournament:player_eliminated', {
         odId: bust.odId,
-        odName: player.odName,
-        displayName: eliminatedDisplayName,
+        name: player.profile.name,
         position: this.isRegistrationOpen() ? null : player.finishPosition,
         playersRemaining: remaining,
       });

@@ -1,6 +1,7 @@
 // WebSocket event types shared between client and server
 
-import type { Action, Card, Position } from './types';
+import type { Action, Card, Position, Player } from './types';
+import { POSITIONS } from './types';
 import type { PlayerProfile } from './profile';
 import type {
   BlindLevel,
@@ -148,6 +149,52 @@ export interface TableInfo {
   players: number;
   maxPlayers: number;
   isFastFold: boolean;
+}
+
+/**
+ * OnlinePlayer（プロトコル表現）をゲームエンジンの Player に変換する。
+ * クライアントの描画用変換と Bot AI の状況構築で共通利用。
+ * 空席は folded/isSittingOut のプレースホルダーになる。
+ */
+export function convertOnlinePlayerToPlayer(
+  online: OnlinePlayer | null,
+  index: number,
+  dealerSeat: number
+): Player {
+  const fallbackPosition = POSITIONS[(index - dealerSeat + 6) % 6];
+  if (!online) {
+    return {
+      id: index,
+      name: `Seat ${index + 1}`,
+      chips: 0,
+      holeCards: [],
+      currentBet: 0,
+      totalBetThisRound: 0,
+      folded: true,
+      isAllIn: false,
+      hasActed: true,
+      isSittingOut: true,
+      position: fallbackPosition,
+    };
+  }
+
+  return {
+    id: index,
+    name: online.profile.name,
+    chips: online.chips,
+    holeCards: online.cards ?? [],
+    currentBet: online.currentBet,
+    totalBetThisRound: online.currentBet,
+    folded: online.folded,
+    isAllIn: online.isAllIn,
+    hasActed: online.hasActed,
+    isSittingOut: false,
+    position: online.position ?? fallbackPosition,
+    avatarId: online.profile.avatarId,
+    avatarUrl: online.profile.avatarUrl,
+    odId: online.odId,
+    nameplate: online.profile.nameplate,
+  };
 }
 
 // Socket authentication data

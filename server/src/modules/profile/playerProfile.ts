@@ -1,6 +1,6 @@
 // 公開プロフィール（PlayerProfile）の組み立て
 
-import type { PlayerProfile } from '@plo/shared';
+import { DEFAULT_AVATAR_URL, type PlayerProfile } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
 import { resolveNameplate } from '../badges/badgeService.js';
 import { TABLE_CONSTANTS } from '../table/constants.js';
@@ -23,7 +23,7 @@ export async function buildPlayerProfile(
     name: user.displayName
       || ((user.nameMasked ?? true) ? maskName(user.username) : user.username),
     avatarId: Math.floor(Math.random() * TABLE_CONSTANTS.DEFAULT_AVATAR_COUNT),
-    avatarUrl: user.avatarUrl ?? null,
+    avatarUrl: user.avatarUrl || DEFAULT_AVATAR_URL,
     nameplate: await resolveNameplate(odId),
   };
 }

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Loader2, Trophy } from 'lucide-react';
 import { formatChips } from '../utils/formatChips';
 import { ordinalSuffix } from '../components/RankingUtils';
-import type { TournamentResult } from '@plo/shared';
+import { DEFAULT_AVATAR_URL, type TournamentResult } from '@plo/shared';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -44,7 +44,7 @@ function PodiumCard({ result, size }: { result: TournamentResult; size: 'lg' | '
       <div className={`${avatarSize} rounded-full ${style.bg} p-[0.8cqw] ${style.glow} mb-[1.5cqw]`}>
         <div className="w-full h-full rounded-full bg-cream-200 border-2 border-white overflow-hidden">
           <img
-            src={result.avatarUrl || '/images/icons/anonymous.svg'}
+            src={result.avatarUrl || DEFAULT_AVATAR_URL}
             alt=""
             className="w-full h-full object-cover"
           />
@@ -53,7 +53,7 @@ function PodiumCard({ result, size }: { result: TournamentResult; size: 'lg' | '
 
       {/* Name */}
       <span className={`${nameSize} font-bold text-cream-900 text-center truncate w-full`}>
-        {result.odName}
+        {result.name}
       </span>
 
       {/* Prize */}
@@ -166,14 +166,14 @@ export function TournamentResults({ tournamentId, onBack }: TournamentResultsPro
                     <div className="flex items-center gap-[2.5cqw] flex-1 min-w-0">
                       <div className="w-[10cqw] h-[10cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                         <img
-                          src={r.avatarUrl || '/images/icons/anonymous.svg'}
+                          src={r.avatarUrl || DEFAULT_AVATAR_URL}
                           alt=""
                           className="w-full h-full object-cover"
                         />
                       </div>
                       <div className="min-w-0">
                         <span className="text-[4.2cqw] text-cream-800 truncate block">
-                          {r.odName}
+                          {r.name}
                         </span>
                         {r.reentries > 0 && (
                           <span className="text-cream-700 text-[3cqw]">Reentry:{r.reentries}</span>

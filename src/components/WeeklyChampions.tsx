@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DEFAULT_AVATAR_URL } from '@plo/shared';
 
 interface Champion {
   userId: string;
@@ -52,7 +53,7 @@ export function WeeklyChampions() {
               <div className="flex items-center gap-[1.5cqw]">
                 <div className="w-[5cqw] h-[5cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                   <img
-                    src={c.avatarUrl || '/images/icons/anonymous.svg'}
+                    src={c.avatarUrl || DEFAULT_AVATAR_URL}
                     alt=""
                     className="w-full h-full object-cover"
                   />
@@ -128,7 +129,7 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
                   <span className="text-[4cqw] shrink-0">🥇</span>
                   <div className="w-[7cqw] h-[7cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                     <img
-                      src={c.avatarUrl || '/images/icons/anonymous.svg'}
+                      src={c.avatarUrl || DEFAULT_AVATAR_URL}
                       alt=""
                       className="w-full h-full object-cover"
                     />

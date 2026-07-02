@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Player as PlayerType, Action, GameVariant, NameplateDecoration } from '../logic';
+import { Player as PlayerType, Action, GameVariant, NameplateDecoration, DEFAULT_AVATAR_URL } from '../logic';
 
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
@@ -133,7 +133,7 @@ export function Player({
   }, [player.currentBet]);
 
   // avatarUrlがあればそれを優先（Twitterプロフィール画像）、なければavatarIdまたはオフラインモードのフォールバック
-  const avatarImage = player ? player.avatarUrl : "./images/icons/anonymous.svg"
+  const avatarImage = player ? player.avatarUrl : DEFAULT_AVATAR_URL;
   const showActionMarker = !!lastAction;
 
   // タイマー表示用の残り時間

@@ -1,48 +1,8 @@
-import type { ClientGameState, OnlinePlayer } from '@plo/shared';
-import type { Card, GameState, Player, Position, Street, GameVariant } from '../logic/types';
+import type { ClientGameState } from '@plo/shared';
+import { convertOnlinePlayerToPlayer } from '@plo/shared';
+import type { Card, GameState, Street, GameVariant } from '../logic/types';
 
-export const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
-
-export function convertOnlinePlayerToPlayer(
-  online: OnlinePlayer | null,
-  index: number,
-  dealerSeat: number
-): Player {
-  const fallbackPosition = POSITIONS[(index - dealerSeat + 6) % 6];
-  if (!online) {
-    return {
-      id: index,
-      name: `Seat ${index + 1}`,
-      chips: 0,
-      holeCards: [],
-      currentBet: 0,
-      totalBetThisRound: 0,
-      folded: true,
-      isAllIn: false,
-      hasActed: true,
-      isSittingOut: true,
-      position: fallbackPosition,
-    };
-  }
-
-  return {
-    id: index,
-    name: online.profile.name,
-    chips: online.chips,
-    holeCards: online.cards ?? [],
-    currentBet: online.currentBet,
-    totalBetThisRound: online.currentBet,
-    folded: online.folded,
-    isAllIn: online.isAllIn,
-    hasActed: online.hasActed,
-    isSittingOut: false,
-    position: online.position ?? fallbackPosition,
-    avatarId: online.profile.avatarId,
-    avatarUrl: online.profile.avatarUrl,
-    odId: online.odId,
-    nameplate: online.profile.nameplate,
-  };
-}
+export { convertOnlinePlayerToPlayer };
 
 export function convertClientStateToGameState(
   clientState: ClientGameState,

@@ -263,7 +263,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         prizePool: dbTournament.prizePool,
         results: dbTournament.results.map(r => ({
           odId: r.userId,
-          odName: r.user.displayName || (r.user.nameMasked ? maskName(r.user.username) : r.user.username),
+          name: r.user.displayName || (r.user.nameMasked ? maskName(r.user.username) : r.user.username),
           position: r.position,
           prize: r.prize,
           reentries: r.reentries,

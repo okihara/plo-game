@@ -125,6 +125,9 @@ export function isDrawBettingStreet(street: Street): boolean {
 
 export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
 
+/** 席順のポジション配列。POSITIONS[(seatIndex - dealerPosition + 6) % 6] でポジションが求まる */
+export const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
+
 export interface Player {
   id: number;
   name: string;

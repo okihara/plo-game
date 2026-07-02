@@ -309,12 +309,7 @@ export async function handleMatchmakingJoin(
     }
 
     // Seat player
-    const profile = await buildPlayerProfile(socket.odId!, {
-      username: user.username,
-      displayName: user.displayName,
-      avatarUrl: user.avatarUrl || '/images/icons/anonymous.svg',
-      nameMasked: user.nameMasked,
-    });
+    const profile = await buildPlayerProfile(socket.odId!, user);
     const seatNumber = table.seatPlayer({
       odId: socket.odId!,
       odName: user.username,

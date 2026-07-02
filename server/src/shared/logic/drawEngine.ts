@@ -1,4 +1,4 @@
-import { GameState, Player, Position, Action, Card, Street, GameVariant } from './types.js';
+import { GameState, Player, Position, POSITIONS, Action, Card, Street, GameVariant } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import {
   getActivePlayers,
@@ -9,7 +9,6 @@ import {
 } from './gameEngine.js';
 import { evaluate27LowHand, compare27LowHands, formatHandName } from './handEvaluator.js';
 
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
 
 // =========================================================================
