@@ -304,7 +304,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
             position: memTournament.isRegistrationOpen() ? null : player.finishPosition,
             totalPlayers: memTournament.getTotalEntries(),
             prizeAmount: prize,
-            playerName: player.displayName ?? player.odName,
+            playerName: player.profile.name,
           };
         }
       }

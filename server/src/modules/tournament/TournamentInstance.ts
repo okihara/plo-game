@@ -14,7 +14,7 @@ import {
   PendingMove,
   TournamentResult,
 } from './types.js';
-import { computeBubbleFactors } from '@plo/shared';
+import { computeBubbleFactors, type PlayerProfile } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
 import { BUBBLE_FACTOR_PLAYER_THRESHOLD, PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
 import { TABLE_CONSTANTS } from '../table/constants.js';
@@ -121,11 +121,11 @@ export class TournamentInstance {
       .sort((a, b) => a.finishPosition! - b.finishPosition!)
       .map(p => ({
         odId: p.odId,
-        odName: p.displayName ?? (p.nameMasked ? maskName(p.odName) : p.odName),
+        odName: p.profile.name,
         position: p.finishPosition!,
         prize: this.getPrizeForPosition(p.finishPosition!),
         reentries: p.reentryCount,
-        avatarUrl: p.avatarUrl,
+        avatarUrl: p.profile.avatarUrl,
       }));
   }
 
@@ -144,12 +144,8 @@ export class TournamentInstance {
     odName: string,
     socket: Socket,
     options?: {
-      displayName?: string | null;
-      avatarId?: number;
-      avatarUrl?: string | null;
-      nameMasked?: boolean;
-      hasWeeklyChampion?: boolean;
-      hasSeasonTop3?: boolean;
+      /** 新規参加時の公開プロフィール。リエントリーでは既存プレイヤーのものを使うため不要 */
+      profile?: PlayerProfile;
       role?: Role;
     }
   ): { success: boolean; error?: string } {
@@ -182,9 +178,12 @@ export class TournamentInstance {
     const player: TournamentPlayer = {
       odId,
       odName,
-      displayName: options?.displayName ?? null,
-      avatarId: options?.avatarId ?? Math.floor(Math.random() * 10),
-      avatarUrl: options?.avatarUrl ?? null,
+      // profile 未指定の防御的フォールバック（通常は socket.ts が必ず渡す）
+      profile: options?.profile ?? {
+        name: maskName(odName),
+        avatarId: 0,
+        avatarUrl: null,
+      },
       socket,
       chips: this.config.startingChips,
       tableId: null,
@@ -194,9 +193,6 @@ export class TournamentInstance {
       reentryCount: 0,
       registeredAt: new Date(),
       eliminatedAt: null,
-      nameMasked: options?.nameMasked ?? true,
-      hasWeeklyChampion: options?.hasWeeklyChampion ?? false,
-      hasSeasonTop3: options?.hasSeasonTop3 ?? false,
       role: options?.role ?? Role.PLAYER,
     };
 
@@ -561,19 +557,14 @@ export class TournamentInstance {
     chips: number,
     options?: { skipJoinedEmit?: boolean }
   ): number | null {
-    const seatIndex = table.seatPlayer(
-      player.odId,
-      player.odName,
-      player.socket,
-      chips,
-      player.avatarUrl,
-      undefined,
-      options,
-      player.nameMasked,
-      player.displayName,
-      player.hasWeeklyChampion,
-      player.hasSeasonTop3
-    );
+    const seatIndex = table.seatPlayer({
+      odId: player.odId,
+      odName: player.odName,
+      profile: player.profile,
+      socket: player.socket,
+      buyIn: chips,
+      skipJoinedEmit: options?.skipJoinedEmit,
+    });
 
     if (seatIndex === null) {
       console.warn(`[Tournament ${this.id}] Failed to seat player ${player.odId} at table ${table.id}`);
@@ -743,8 +734,7 @@ export class TournamentInstance {
       });
 
       // 全体通知
-      const eliminatedDisplayName = player.displayName
-        ?? (player.nameMasked ? maskName(player.odName) : player.odName);
+      const eliminatedDisplayName = player.profile.name;
 
       this.io.to(this.roomName).emit('tournament:player_eliminated', {
         odId: bust.odId,

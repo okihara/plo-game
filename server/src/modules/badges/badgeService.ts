@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import type { NameplateDecoration } from '@plo/shared';
 
 // --- バッジ定義 ---
 
@@ -187,23 +188,26 @@ export async function getUserBadges(userId: string): Promise<{ type: string; ran
   });
 }
 
-/** ウィークリーチャンピオン（weekly_rank_1）バッジを保有しているか（過去1回でもあればtrue） */
-export async function hasWeeklyChampionBadge(userId: string): Promise<boolean> {
-  const existing = await prisma.badge.findFirst({
-    where: { userId, type: 'weekly_rank_1' },
-    select: { id: true },
-  });
-  return !!existing;
-}
+// --- ネームプレート装飾 ---
 
-/** シーズン1 RPランキング No.1〜No.3 のバッジを保有しているか（プラチナ枠付与用） */
-const SEASON_TOP3_BADGE_TYPES = ['season1_no1', 'season1_no2', 'season1_no3'];
-export async function hasSeasonTop3Badge(userId: string): Promise<boolean> {
-  const existing = await prisma.badge.findFirst({
-    where: { userId, type: { in: SEASON_TOP3_BADGE_TYPES } },
-    select: { id: true },
+/**
+ * 装飾ごとの対象バッジ type。配列の先頭の装飾ほど優先される
+ * （複数該当時は最初にマッチしたものだけが付く）。
+ * 新しい装飾は NameplateDecoration にリテラルを足した上でここに1エントリ追加する。
+ */
+const NAMEPLATE_RULES: { decoration: NameplateDecoration; badgeTypes: string[] }[] = [
+  { decoration: 'season_top3', badgeTypes: ['season1_no1', 'season1_no2', 'season1_no3'] },
+  { decoration: 'weekly_champion', badgeTypes: ['weekly_rank_1'] },
+];
+
+/** 保有バッジからネームプレート装飾を解決する（該当なしは undefined） */
+export async function resolveNameplate(userId: string): Promise<NameplateDecoration | undefined> {
+  const owned = await prisma.badge.findMany({
+    where: { userId, type: { in: NAMEPLATE_RULES.flatMap(r => r.badgeTypes) } },
+    select: { type: true },
   });
-  return !!existing;
+  const ownedTypes = new Set(owned.map(b => b.type));
+  return NAMEPLATE_RULES.find(r => r.badgeTypes.some(t => ownedTypes.has(t)))?.decoration;
 }
 
 // --- 表示用グルーピング ---

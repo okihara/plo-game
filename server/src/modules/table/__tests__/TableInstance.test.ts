@@ -12,6 +12,7 @@ import {
   findBBPlayer,
   allPlayersAllIn,
   resetSocketCounter,
+  testSeatParams,
 } from './testHelpers.js';
 
 // ============================================
@@ -56,7 +57,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('プレイヤーを着席させると席番号が返る', () => {
     const socket = createMockSocket();
-    const seat = table.seatPlayer('user1', 'Alice', socket, 600);
+    const seat = table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600));
 
     expect(seat).toBeTypeOf('number');
     expect(seat).toBeGreaterThanOrEqual(0);
@@ -65,7 +66,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('着席後にsocket.joinとtable:joinedが呼ばれる', () => {
     const socket = createMockSocket();
-    const seat = table.seatPlayer('user1', 'Alice', socket, 600);
+    const seat = table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600));
 
     expect(socket.join).toHaveBeenCalledWith(`table:${table.id}`);
     const joinedEmits = getSocketEmits(socket, 'table:joined');
@@ -75,7 +76,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('着席後にgame:stateがブロードキャストされる', () => {
     const socket = createMockSocket();
-    table.seatPlayer('user1', 'Alice', socket, 600);
+    table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600));
 
     const stateEmits = getRoomEmits(io, 'game:state');
     expect(stateEmits.length).toBeGreaterThan(0);
@@ -83,7 +84,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('skipJoinedEmit=trueでtable:joinedが送信されない', () => {
     const socket = createMockSocket();
-    table.seatPlayer('user1', 'Alice', socket, 600, null, undefined, { skipJoinedEmit: true });
+    table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600, { skipJoinedEmit: true }));
 
     const joinedEmits = getSocketEmits(socket, 'table:joined');
     expect(joinedEmits).toHaveLength(0);
@@ -91,7 +92,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('preferredSeatで希望席に着席できる', () => {
     const socket = createMockSocket();
-    const seat = table.seatPlayer('user1', 'Alice', socket, 600, null, 3);
+    const seat = table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600, { preferredSeat: 3 }));
 
     expect(seat).toBe(3);
   });
@@ -99,7 +100,7 @@ describe('TableInstance - 着席/離席', () => {
   it('6人着席後は満席でnullが返る', () => {
     seatNPlayers(table, 6);
     const socket = createMockSocket();
-    const seat = table.seatPlayer('extra', 'Extra', socket, 600);
+    const seat = table.seatPlayer(testSeatParams('extra', 'Extra', socket, 600));
 
     expect(seat).toBeNull();
   });
@@ -118,7 +119,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('離席するとodIdとchipsが返る', () => {
     const socket = createMockSocket();
-    table.seatPlayer('user1', 'Alice', socket, 600);
+    table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600));
 
     const result = table.unseatPlayer('user1');
     expect(result).toMatchObject({ odId: 'user1', chips: 600 });
@@ -126,7 +127,7 @@ describe('TableInstance - 着席/離席', () => {
 
   it('離席後にtable:leftとsocket.leaveが呼ばれる', () => {
     const socket = createMockSocket();
-    table.seatPlayer('user1', 'Alice', socket, 600);
+    table.seatPlayer(testSeatParams('user1', 'Alice', socket, 600));
     table.unseatPlayer('user1');
 
     expect(socket.leave).toHaveBeenCalledWith(`table:${table.id}`);
@@ -504,8 +505,8 @@ describe('TableInstance - ブラインド投入でオールインになった場
     const socket2 = createMockSocket();
     // BigStack を先に着席 → seat 0 (BB になる)
     // ShortStack を後に着席 → seat 1 (BTN/SB になる) → SB投入でオールイン
-    table.seatPlayer('player_big', 'BigStack', socket1, 10000);
-    table.seatPlayer('player_short', 'ShortStack', socket2, 500);
+    table.seatPlayer(testSeatParams('player_big', 'BigStack', socket1, 10000));
+    table.seatPlayer(testSeatParams('player_short', 'ShortStack', socket2, 500));
     table.triggerMaybeStartHand();
 
     const state = table.getClientGameState();
@@ -911,7 +912,7 @@ describe('TableInstance - socket.connected=false の即座フォールド', () =
     for (let i = 0; i < 3; i++) {
       const socket = createMockSocket();
       const odId = `player_${i}`;
-      const seat = table.seatPlayer(odId, `Player ${i}`, socket, 10000);
+      const seat = table.seatPlayer(testSeatParams(odId, `Player ${i}`, socket, 10000));
       if (seat === null) throw new Error(`Failed to seat player ${i}`);
       sockets.push(socket);
       odIds.push(odId);
@@ -979,7 +980,7 @@ describe('TableInstance - socket.connected=false の即座フォールド', () =
     for (let i = 0; i < 3; i++) {
       const socket = createMockSocket();
       const odId = `player_${i}`;
-      const seat = table.seatPlayer(odId, `Player ${i}`, socket, 10000);
+      const seat = table.seatPlayer(testSeatParams(odId, `Player ${i}`, socket, 10000));
       if (seat === null) throw new Error(`Failed to seat player ${i}`);
       sockets.push(socket);
       odIds.push(odId);
@@ -1596,7 +1597,7 @@ describe('TableInstance - オールイン・ランアウト', () => {
     for (let i = 0; i < 3; i++) {
       const odId = `player_${i}`;
       const socket = createMockSocket();
-      const seat = table.seatPlayer(odId, `Player ${i}`, socket, buyIns[i]);
+      const seat = table.seatPlayer(testSeatParams(odId, `Player ${i}`, socket, buyIns[i]));
       if (seat === null) throw new Error(`Failed to seat player ${i}`);
       odIds.push(odId);
       sockets.push(socket);
@@ -1814,7 +1815,7 @@ describe('TableInstance - canRemoveSafelyDuringHand', () => {
   it('ハンド外のプレイヤーは true', () => {
     const io = createMockIO();
     const table = new TableInstance(io, '1/2', false);
-    table.seatPlayer('user1', 'Alice', createMockSocket(), 600);
+    table.seatPlayer(testSeatParams('user1', 'Alice', createMockSocket(), 600));
 
     // 1人ではハンドが始まらない
     expect(table.isHandInProgress).toBe(false);
@@ -1879,7 +1880,7 @@ describe('TableInstance - canRemoveSafelyDuringHand', () => {
   it('ハンド中に着席した次ハンド待ちプレイヤーは true、チップはseatの値が返る', () => {
     const { table } = setupRunningHand({ playerCount: 3 });
 
-    const seat = table.seatPlayer('late_user', 'Late', createMockSocket(), 500);
+    const seat = table.seatPlayer(testSeatParams('late_user', 'Late', createMockSocket(), 500));
     expect(seat).not.toBeNull();
 
     expect(table.canRemoveSafelyDuringHand('late_user')).toBe(true);
@@ -1890,7 +1891,7 @@ describe('TableInstance - canRemoveSafelyDuringHand', () => {
   it('次ハンド待ちプレイヤーの離席はハンド中でも席を即解放する', () => {
     const { table } = setupRunningHand({ playerCount: 3 });
 
-    table.seatPlayer('late_user', 'Late', createMockSocket(), 500);
+    table.seatPlayer(testSeatParams('late_user', 'Late', createMockSocket(), 500));
     expect(table.getPlayerCount()).toBe(4);
 
     const result = table.unseatPlayer('late_user');

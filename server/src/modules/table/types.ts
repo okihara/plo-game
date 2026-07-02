@@ -1,6 +1,7 @@
 // TableInstance用型定義
 
 import { Socket } from 'socket.io';
+import type { PlayerProfile } from '@plo/shared';
 
 // ゲームモード（キャッシュゲーム / トーナメント）
 export type GameMode = 'cash' | 'tournament';
@@ -46,18 +47,13 @@ export interface TableLifecycleCallbacks {
 
 export interface SeatInfo {
   odId: string;
-  odName: string; // username（マスク対象）
-  displayName?: string | null; // 表示名（設定済みならマスクしない）
-  avatarId: number;
-  avatarUrl: string | null; // Twitter/OAuth profile image URL
+  odName: string; // username（内部用: ログ・履歴・管理画面。他プレイヤーへの表示は profile.name）
+  profile: PlayerProfile; // 着席時に確定した公開プロフィール（中身はテーブル層では解釈しない）
   socket: Socket | null;
   chips: number;
   buyIn: number;
   waitingForNextHand: boolean; // ハンド中に着席した場合、次のハンドから参加
-  nameMasked: boolean; // 他プレイヤーにusernameをマスク表示するか
   leftForFastFold?: boolean; // FastFold移動済み（表示用に席情報を残す）
-  hasWeeklyChampion?: boolean; // ウィークリーチャンピオンバッジ保有（着席時にスナップショット）
-  hasSeasonTop3?: boolean; // シーズン1 No.1〜No.3 バッジ保有（着席時にスナップショット、プラチナ枠）
   /**
    * 直前の手動アクションから連続でタイムアウトした回数。
    * 手番が回ってきたときの持ち時間短縮（牛歩対策）に使う。

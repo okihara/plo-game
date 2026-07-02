@@ -3,6 +3,7 @@ import { GameState, Action, GameVariant, getVariantConfig } from '../../shared/l
 import { isDrawStreet } from '../../shared/logic/drawEngine.js';
 import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
+import type { PlayerProfile } from '@plo/shared';
 import { nanoid } from 'nanoid';
 
 // ヘルパーモジュール
@@ -46,7 +47,7 @@ export class TableInstance {
   private horseHandsPerRound: number = 0;
 
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
-  public onFastFoldReassign?: (players: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; hasWeeklyChampion?: boolean; hasSeasonTop3?: boolean }[]) => void;
+  public onFastFoldReassign?: (players: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket }[]) => void;
 
   // ファストフォールド: タイムアウトフォールド時にテーブル移動するコールバック
   public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
@@ -119,31 +120,24 @@ export class TableInstance {
   // ============================================
 
   // Add a player to the table
-  public seatPlayer(
-    odId: string,
-    odName: string,
-    socket: Socket | null,
-    buyIn: number,
-    avatarUrl?: string | null,
-    preferredSeat?: number,
-    options?: { skipJoinedEmit?: boolean },
-    nameMasked?: boolean,
-    displayName?: string | null,
-    hasWeeklyChampion?: boolean,
-    hasSeasonTop3?: boolean
-  ): number | null {
+  public seatPlayer(params: {
+    odId: string;
+    odName: string;
+    profile: PlayerProfile;
+    socket: Socket | null;
+    buyIn: number;
+    preferredSeat?: number;
+    skipJoinedEmit?: boolean;
+  }): number | null {
+    const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit } = params;
     const seatIndex = this.playerManager.seatPlayer({
       odId,
       odName,
+      profile,
       socket,
       buyIn,
-      avatarUrl,
       preferredSeat,
       isHandInProgress: this.isHandInProgress,
-      nameMasked,
-      displayName,
-      hasWeeklyChampion,
-      hasSeasonTop3,
     });
 
     if (seatIndex === null) {
@@ -155,7 +149,7 @@ export class TableInstance {
       socket.join(this.roomName);
 
       // Notify the seated player
-      if (!options?.skipJoinedEmit) {
+      if (!skipJoinedEmit) {
         socket.emit('table:joined', { tableId: this.id, seat: seatIndex });
       }
     }
@@ -234,7 +228,7 @@ export class TableInstance {
 
   // ファストフォールド用: フォールド済みプレイヤーを静かに離席させる
   // table:left は送信しない（table:change を代わりに送るため）
-  public unseatForFastFold(odId: string): { odId: string; chips: number; socket: Socket | null; hasWeeklyChampion?: boolean; hasSeasonTop3?: boolean } | null {
+  public unseatForFastFold(odId: string): { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket | null } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
@@ -248,8 +242,6 @@ export class TableInstance {
     }
 
     const socket = seat.socket ?? null;
-    const hasWeeklyChampion = seat.hasWeeklyChampion;
-    const hasSeasonTop3 = seat.hasSeasonTop3;
 
     // ソケットをルームから離脱
     if (socket) {
@@ -259,7 +251,7 @@ export class TableInstance {
     // 席情報は残してFastFold移動済みマーク（ハンド終了まで表示用に保持）
     this.playerManager.markLeftForFastFold(seatIndex);
 
-    return { odId, chips, socket, hasWeeklyChampion, hasSeasonTop3 };
+    return { odId, odName: seat.odName, profile: seat.profile, chips, socket };
   }
 
   /**
@@ -1344,7 +1336,7 @@ export class TableInstance {
 
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
-      const playersToMove: { odId: string; chips: number; socket: Socket; odName: string; displayName?: string | null; avatarUrl: string | null; nameMasked: boolean; hasWeeklyChampion?: boolean; hasSeasonTop3?: boolean }[] = [];
+      const playersToMove: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket }[] = [];
       const currentSeats = this.playerManager.getSeats();
       for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
         const seat = currentSeats[i];
@@ -1359,14 +1351,10 @@ export class TableInstance {
         if (seat.socket) {
           playersToMove.push({
             odId: seat.odId,
+            odName: seat.odName,
+            profile: seat.profile,
             chips: seat.chips,
             socket: seat.socket,
-            odName: seat.odName,
-            displayName: seat.displayName,
-            avatarUrl: seat.avatarUrl,
-            nameMasked: seat.nameMasked,
-            hasWeeklyChampion: seat.hasWeeklyChampion,
-            hasSeasonTop3: seat.hasSeasonTop3,
           });
           // 静かに離席（ルーム離脱 + 席クリア）
           seat.socket.leave(this.roomName);

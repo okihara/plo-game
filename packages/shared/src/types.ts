@@ -1,3 +1,5 @@
+import type { NameplateDecoration } from './profile';
+
 export type Suit = 'h' | 'd' | 'c' | 's'; // hearts, diamonds, clubs, spades
 export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | 'T' | 'J' | 'Q' | 'K' | 'A';
 
@@ -139,8 +141,7 @@ export interface Player {
   avatarUrl?: string | null;  // Twitter/OAuth profile image URL
   odId?: string;  // Online user ID (for stats lookup)
   isShowdown?: boolean;  // ショウダウン時にカードを表示
-  hasWeeklyChampion?: boolean;  // ウィークリーチャンピオン（weekly_rank_1）バッジ保有者
-  hasSeasonTop3?: boolean;  // シーズン1 No.1〜No.3 バッジ保有者（プラチナ枠）
+  nameplate?: NameplateDecoration;  // ネームプレート装飾（オンラインのみ、profile から転写）
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'

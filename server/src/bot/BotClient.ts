@@ -504,7 +504,7 @@ export class BotClient {
       if (onlinePlayer) {
         players.push({
           id: i,
-          name: onlinePlayer.odName,
+          name: onlinePlayer.profile.name,
           position: POSITIONS[(i - dealerPosition + 6) % 6],
           chips: onlinePlayer.chips,
           holeCards: i === this.seatNumber ? this.holeCards : (onlinePlayer.cards ?? []),

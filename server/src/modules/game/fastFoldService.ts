@@ -1,25 +1,22 @@
 import { Socket } from 'socket.io';
+import type { PlayerProfile } from '@plo/shared';
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
-import { prisma } from '../../config/database.js';
 import { cashOutPlayer } from '../auth/bankroll.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
 
 // プレイヤーを新しいFFテーブルへ移動する共通処理
+// profile は元テーブルの席情報（着席時のスナップショット）をそのまま引き継ぐ
 function movePlayerToNewTable(params: {
   odId: string;
   odName: string;
-  displayName?: string | null;
+  profile: PlayerProfile;
   socket: Socket;
   chips: number;
-  avatarUrl: string | null;
-  nameMasked: boolean;
   sourceTable: TableInstance;
   tableManager: TableManager;
-  hasWeeklyChampion?: boolean;
-  hasSeasonTop3?: boolean;
 }): void {
-  const { odId, odName, displayName, socket, chips, avatarUrl, nameMasked, sourceTable, tableManager, hasWeeklyChampion, hasSeasonTop3 } = params;
+  const { odId, odName, profile, socket, chips, sourceTable, tableManager } = params;
 
   tableManager.removePlayerFromTracking(odId);
   // 切断猶予中に FastFold で席を失うケースでも、grace timer を持ち越して新テーブルで
@@ -46,14 +43,14 @@ function movePlayerToNewTable(params: {
   }
   setupFastFoldCallback(newTable, tableManager);
 
-  const seatNumber = newTable.seatPlayer(
-    odId, odName, socket, chips, avatarUrl, undefined,
-    { skipJoinedEmit: true },
-    nameMasked,
-    displayName,
-    hasWeeklyChampion,
-    hasSeasonTop3
-  );
+  const seatNumber = newTable.seatPlayer({
+    odId,
+    odName,
+    profile,
+    socket,
+    buyIn: chips,
+    skipJoinedEmit: true,
+  });
 
   if (seatNumber !== null) {
     tableManager.setPlayerTable(odId, newTable.id);
@@ -80,15 +77,11 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
       movePlayerToNewTable({
         odId: p.odId,
         odName: p.odName,
-        displayName: p.displayName,
+        profile: p.profile,
         socket: p.socket,
         chips: p.chips,
-        avatarUrl: p.avatarUrl,
-        nameMasked: p.nameMasked,
         sourceTable: table,
         tableManager,
-        hasWeeklyChampion: p.hasWeeklyChampion,
-        hasSeasonTop3: p.hasSeasonTop3,
       });
     }
   };
@@ -116,31 +109,14 @@ export async function handleFastFoldMove(
     return;
   }
 
-  // 2. ユーザー情報を取得
-  const user = await prisma.user.findUnique({
-    where: { id: odId },
-  });
-
-  if (!user) {
-    console.error(`[FastFold] User not found: ${odId}`);
-    tableManager.removePlayerFromTracking(odId);
-    await cashOutPlayer(odId, unseatResult.chips, currentTable.id);
-    socket.emit('table:left');
-    return;
-  }
-
-  // 3. 新テーブルへ移動（hasWeeklyChampion / hasSeasonTop3 は前テーブルの席情報から引き継ぐ）
+  // 2. 新テーブルへ移動（profile は前テーブルの席情報＝着席時のスナップショットを引き継ぐ）
   movePlayerToNewTable({
     odId,
-    odName: user.username,
-    displayName: user.displayName,
+    odName: unseatResult.odName,
+    profile: unseatResult.profile,
     socket: socket as Socket,
     chips: unseatResult.chips,
-    avatarUrl: user.avatarUrl,
-    nameMasked: user.nameMasked,
     sourceTable: currentTable,
     tableManager,
-    hasWeeklyChampion: unseatResult.hasWeeklyChampion,
-    hasSeasonTop3: unseatResult.hasSeasonTop3,
   });
 }

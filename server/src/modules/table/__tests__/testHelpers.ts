@@ -37,6 +37,24 @@ export function createMockSocket(id?: string): Socket {
 // ヘルパー関数
 // ============================================
 
+/** seatPlayer 用パラメータを組み立てる（profile は odName から自動生成） */
+export function testSeatParams(
+  odId: string,
+  odName: string,
+  socket: Socket | null,
+  buyIn: number,
+  extra?: { preferredSeat?: number; skipJoinedEmit?: boolean }
+) {
+  return {
+    odId,
+    odName,
+    profile: { name: odName, avatarId: 0, avatarUrl: null },
+    socket,
+    buyIn,
+    ...extra,
+  };
+}
+
 /** N人をテーブルに着席させる。seatMap[i] = 実際の席番号 */
 export function seatNPlayers(
   table: TableInstance,
@@ -50,7 +68,7 @@ export function seatNPlayers(
   for (let i = 0; i < n; i++) {
     const odId = `player_${i}`;
     const socket = createMockSocket();
-    const seat = table.seatPlayer(odId, `Player ${i}`, socket, buyIn);
+    const seat = table.seatPlayer(testSeatParams(odId, `Player ${i}`, socket, buyIn));
     if (seat === null) throw new Error(`Failed to seat player ${i}`);
     odIds.push(odId);
     sockets.push(socket);

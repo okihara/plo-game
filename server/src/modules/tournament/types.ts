@@ -14,7 +14,7 @@ export type {
   TournamentCompletedData,
 } from '@plo/shared';
 
-import type { BlindLevel, GameVariant } from '@plo/shared';
+import type { BlindLevel, GameVariant, PlayerProfile } from '@plo/shared';
 
 // --- Tournament Config (server only) ---
 
@@ -42,10 +42,9 @@ export interface TournamentConfig {
 
 export interface TournamentPlayer {
   odId: string;
-  odName: string;
-  displayName: string | null;
-  avatarId: number;
-  avatarUrl: string | null;
+  odName: string; // username（内部用: ログ・DB照合。他プレイヤーへの表示は profile.name）
+  /** 参加時に確定した公開プロフィール（表示名・アバター・ネームプレート装飾） */
+  profile: PlayerProfile;
   socket: Socket | null;
   chips: number;
   tableId: string | null;
@@ -55,9 +54,6 @@ export interface TournamentPlayer {
   reentryCount: number;
   registeredAt: Date;
   eliminatedAt: Date | null;
-  nameMasked: boolean;
-  hasWeeklyChampion?: boolean;
-  hasSeasonTop3?: boolean;
   /** GUEST はリエントリー上限の対象外 */
   role: Role;
 }

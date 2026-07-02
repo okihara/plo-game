@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Player as PlayerType, Action, GameVariant } from '../logic';
+import { Player as PlayerType, Action, GameVariant, NameplateDecoration } from '../logic';
 
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
@@ -51,6 +51,12 @@ function formatAction(
     default: return '';
   }
 }
+
+/** ネームプレート装飾ごとの枠スタイル。装飾を追加したらここに1行足す。 */
+const NAMEPLATE_STYLES: Record<NameplateDecoration, string> = {
+  season_top3: 'platinum-frame shadow-[0_0_2.5cqw_rgba(186,230,253,0.75)]',
+  weekly_champion: 'champion-frame shadow-[0_0_2cqw_rgba(250,204,21,0.6)]',
+};
 
 const positionStyles: Record<number, string> = {
   0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
@@ -247,7 +253,7 @@ export function Player({
         </div>
 
         {/* Player Info */}
-        <div className={`relative bg-black/80 border border-white/60 -ml-[4cqw] px-[1cqw] pl-[5cqw] rounded-lg text-center h-[13cqw] w-[32cqw] flex flex-col justify-center z-[20] ${player.hasSeasonTop3 ? 'platinum-frame shadow-[0_0_2.5cqw_rgba(186,230,253,0.75)]' : player.hasWeeklyChampion ? 'champion-frame shadow-[0_0_2cqw_rgba(250,204,21,0.6)]' : ''} ${player.folded ? 'brightness-[0.3]' : ''} ${isWinner ? 'animate-[win-box-glow_2s_ease-in-out_infinite]' : ''}`}>
+        <div className={`relative bg-black/80 border border-white/60 -ml-[4cqw] px-[1cqw] pl-[5cqw] rounded-lg text-center h-[13cqw] w-[32cqw] flex flex-col justify-center z-[20] ${player.nameplate ? NAMEPLATE_STYLES[player.nameplate] : ''} ${player.folded ? 'brightness-[0.3]' : ''} ${isWinner ? 'animate-[win-box-glow_2s_ease-in-out_infinite]' : ''}`}>
           {labelColor && (
             <div
               className="absolute top-[-1cqw] left-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"

@@ -27,7 +27,7 @@ export function convertOnlinePlayerToPlayer(
 
   return {
     id: index,
-    name: online.odName,
+    name: online.profile.name,
     chips: online.chips,
     holeCards: online.cards ?? [],
     currentBet: online.currentBet,
@@ -37,11 +37,10 @@ export function convertOnlinePlayerToPlayer(
     hasActed: online.hasActed,
     isSittingOut: false,
     position: online.position ?? fallbackPosition,
-    avatarId: online.avatarId,
-    avatarUrl: online.avatarUrl,
+    avatarId: online.profile.avatarId,
+    avatarUrl: online.profile.avatarUrl,
     odId: online.odId,
-    hasWeeklyChampion: online.hasWeeklyChampion,
-    hasSeasonTop3: online.hasSeasonTop3,
+    nameplate: online.profile.nameplate,
   };
 }
 
