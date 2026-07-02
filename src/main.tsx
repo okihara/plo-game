@@ -17,8 +17,9 @@ import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
 import { WatchGame } from './pages/WatchGame';
 import { SeasonResult } from './pages/SeasonResult';
+import { Login } from './pages/Login';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import './index.css';
 
 
@@ -39,12 +40,25 @@ function App() {
   const [tournamentId, setTournamentId] = useState<string | null>(null);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
   const [lobbyInitialTab, setLobbyInitialTab] = useState<'home' | 'tournament'>('home');
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     const handlePopState = () => setCurrentPath(window.location.pathname);
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // 未ログインでロビーに来たら /login へ、ログイン済みで /login に来たらロビーへ
+  useEffect(() => {
+    if (authLoading) return;
+    if (!user && currentPath === '/' && !blinds && !tournamentId) {
+      window.history.replaceState({}, '', '/login');
+      setCurrentPath('/login');
+    } else if (user && currentPath === '/login') {
+      window.history.replaceState({}, '', '/');
+      setCurrentPath('/');
+    }
+  }, [authLoading, user, currentPath, blinds, tournamentId]);
 
   // PlayerDebug は独自の wide レイアウトのためコンテナ外
   if (currentPath === '/debug/player') {
@@ -87,7 +101,9 @@ function App() {
   };
 
   let page;
-  if (currentPath === '/debug/elimination') {
+  if (currentPath === '/login') {
+    page = <Login />;
+  } else if (currentPath === '/debug/elimination') {
     page = <EliminationDebug />;
   } else if (currentPath === '/debug/tournament-card') {
     page = <TournamentCardDebug />;
@@ -152,6 +168,9 @@ function App() {
     );
   } else if (blinds) {
     page = <NormalGame blinds={blinds} isFastFold={isFastFold} variant={variant} onBack={goBackToLobby} />;
+  } else if (!authLoading && !user) {
+    // 未ログイン時はリダイレクト完了を待たずログインページを表示（ロビーのチラつき防止）
+    page = <Login />;
   } else {
     page = (
       <SimpleLobby
