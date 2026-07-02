@@ -9,7 +9,7 @@
  */
 import type { AnnounceContext } from '../data/announceData.js';
 
-export const ANNOUNCE_PROMPT_VERSION = 'announce-v2';
+export const ANNOUNCE_PROMPT_VERSION = 'announce-v3';
 
 const SYSTEM_PROMPT = `あなたはオンラインPLOコミュニティ「BabyPLO」の運営アシスタントです。今夜開催されるトーナメントの告知ツイートを日本語で1本だけ作成してください。
 
@@ -24,8 +24,11 @@ const SYSTEM_PROMPT = `あなたはオンラインPLOコミュニティ「BabyPL
 - **今夜のトナメの種目に必ず触れる**。\`today.gameVariant\` の値で書き分ける:
   - \`plo\` → 「PLO（Pot Limit Omaha）」または単に「PLO」
   - \`plo5\` → 「PLO5（5枚PLO）」または「PLO5」
+  - \`plo_hilo\` → 「PLO8（Hi-Lo）」または「PLO8」
+  - \`plo_double_board_bomb\` → 「Double Board Bomb Pot」
   - その他の値 → 値をそのままアルファベット表記で使う
   本文中で1回触れれば十分（くどく繰り返さない）。
+- \`specialNote\` が JSON にある場合は、その特典文言を**必ず1回**本文に織り込む（例: 「優勝者にAmazonギフト券1,000円分🎁」）。specialNote が無い日は特典に一切触れない。
 
 ## 冒頭2行は固定（順序・文言とも改変禁止）
 \`\`\`
@@ -65,6 +68,7 @@ export function buildAnnouncePrompt(context: AnnounceContext): BuildPromptResult
   const inputJson = {
     today: context.today,
     previousResult: context.previousResult,
+    ...(context.specialNote ? { specialNote: context.specialNote } : {}),
   };
   const user = [
     '今夜開催されるトーナメントと、昨夜のトーナメント結果（JSON）:',

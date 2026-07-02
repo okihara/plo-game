@@ -11,6 +11,8 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { maskName } from '../../../shared/utils.js';
+import { jstParts } from '../../../shared/timeJst.js';
+import { planForWeekday } from '../../tournament/weeklySchedule.js';
 
 const STALE_HOURS = 48;
 
@@ -113,6 +115,8 @@ export interface AnnounceContextTournament {
 export interface AnnounceContext {
   today: AnnounceContextTournament;
   previousResult: PreviousResultSummary | null;
+  /** 開催曜日の特典文言（金曜の Amazon ギフト券など）。ある場合は告知に必ず織り込む */
+  specialNote?: string;
 }
 
 /** 単一トナメの ANNOUNCE 生成に必要なデータをひとまとめにする */
@@ -133,6 +137,7 @@ export async function fetchAnnounceContext(
   });
   if (!tournament || !tournament.scheduledStartTime) return null;
   const previousResult = await fetchPreviousResult(prisma);
+  const plan = planForWeekday(jstParts(tournament.scheduledStartTime).weekday);
   return {
     today: {
       id: tournament.id,
@@ -143,5 +148,6 @@ export async function fetchAnnounceContext(
       gameVariant: tournament.gameVariant,
     },
     previousResult,
+    ...(plan.specialNote ? { specialNote: plan.specialNote } : {}),
   };
 }
