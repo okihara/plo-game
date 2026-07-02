@@ -2,11 +2,14 @@
 /**
  * daily-ops-tick の各ステップ（冪等な状態機械）。
  *
+ * ツイートの生成（LLM）・投稿はすべてこのローカルスクリプトで完結する
+ * （サーバー側の tweet scheduler / admin ツイート画面は廃止済み）。
+ *
  * 冪等化・二重投稿防止の要は TweetDraft の @@unique([kind, tournamentId])。
- * ローカル発の投稿（START / PROGRESS / RANKING / ANNOUNCE フォールバック）は
- * 「create(status=POSTING) が claim を兼ねる」パターンで排他する。
- * サーバー scheduler の reclaimStuckDrafts が POSTING を5分で FAILED に倒すため、
- * claim 後は同一 tick 内で投稿まで完了させ、FAILED は自動再投稿しない（通知のみ）。
+ * 投稿は「create(status=POSTING) が claim を兼ねる」パターンで排他する。
+ * クラッシュ等で POSTING のまま残った行は次 tick の reclaimStuckDrafts が
+ * 5分で FAILED に倒すため、claim 後は同一 tick 内で投稿まで完了させ、
+ * FAILED は自動再投稿しない（X に届いている可能性があるため通知のみ）。
  */
 import { execFile } from 'child_process';
 import { existsSync, readFileSync } from 'fs';
@@ -22,6 +25,7 @@ import {
 } from '../../../src/modules/tournament/weeklySchedule.js';
 import { fetchAnnounceContext } from '../../../src/modules/tweet/data/announceData.js';
 import { fetchProgressData } from '../../../src/modules/tweet/data/progressData.js';
+import { generateAnnounceText, generateResultText } from '../../../src/modules/tweet/generator.js';
 import { resolveAnnounceImagePath } from '../../../src/modules/tweet/announceImage.js';
 import { buildAnnounceFallbackText } from '../../../src/modules/tweet/templates/announceFallback.js';
 import { buildStartText } from '../../../src/modules/tweet/templates/start.js';
@@ -45,7 +49,9 @@ const ANNOUNCE_FALLBACK_FROM_H = 19;
 const START_WINDOW_MS = 45 * 60_000;
 const PROGRESS_AFTER_START_MS = 15 * 60_000;
 const PROGRESS_BEFORE_DEADLINE_MS = 2 * 60_000;
-const RESULT_ENQUEUE_GRACE_MS = 10 * 60_000;
+const RESULT_GENERATE_MAX_ATTEMPTS = 3;
+/** POSTING のままこれより古い行はクラッシュ痕とみなして FAILED に倒す */
+const STUCK_THRESHOLD_MS = 5 * 60_000;
 const RANKING_TOP_N = 30;
 const RANKING_IMAGE_PATH = '/tmp/rp-ranking.png';
 
@@ -87,6 +93,31 @@ async function claimNewDraft(
     if (isUniqueViolation(e)) return 'exists';
     throw e;
   }
+}
+
+/**
+ * 既存行（PENDING / 旧サーバー残骸の DRAFT）があればそれを、無ければ新規 create で claim する。
+ * true を返したら POSTING を掴んでいるので、同一 tick 内で必ず投稿まで進めること。
+ */
+async function claimExistingOrNewDraft(
+  ctx: OpsContext,
+  kind: TweetKind,
+  tournamentId: string,
+  scheduledFor: Date,
+  hasExisting: boolean,
+): Promise<boolean> {
+  if (hasExisting) {
+    const claim = await ctx.prisma.tweetDraft.updateMany({
+      where: {
+        kind,
+        tournamentId,
+        status: { in: [TweetStatus.PENDING, TweetStatus.DRAFT] },
+      },
+      data: { status: TweetStatus.POSTING },
+    });
+    return claim.count > 0;
+  }
+  return (await claimNewDraft(ctx, kind, tournamentId, scheduledFor)) === 'claimed';
 }
 
 /** 投稿しないことを確定させる行を作る（翌日の誤爆防止・スキップ記録） */
@@ -232,7 +263,7 @@ async function stepWatchdog(ctx: OpsContext, state: TickState): Promise<void> {
 }
 
 // ============================================
-// Step 3: ANNOUNCE（サーバー生成 DRAFT の投稿 + フォールバック）
+// Step 3: ANNOUNCE（ローカルで LLM 生成して直接投稿 + 定型文フォールバック）
 // ============================================
 async function stepAnnounce(ctx: OpsContext, state: TickState): Promise<void> {
   const t = state.tournament;
@@ -242,73 +273,47 @@ async function stepAnnounce(ctx: OpsContext, state: TickState): Promise<void> {
   if (ctx.now < from || ctx.now > until || ctx.now >= t.scheduledStartTime) return;
 
   const draft = await getDraft(ctx, TweetKind.ANNOUNCE, t.id);
-
-  if (draft?.status === TweetStatus.POSTED || draft?.status === TweetStatus.DISCARDED) return;
-
-  if (draft?.status === TweetStatus.DRAFT) {
-    if (ctx.dryRun) {
-      ctx.log('announce', '[dry-run] would post server-generated draft', { draftId: draft.id });
-      return;
-    }
-    const res = await ctx.api.post(`/api/admin/tweets/${draft.id}/post`);
-    if (res.ok) {
-      ctx.log('announce', `posted server draft tweetId=${res.tweetId}`);
-    } else {
-      ctx.log('announce', `post failed: ${res.errorMessage}（19時以降にフォールバック）`);
+  // PENDING（生成待ち）と DRAFT（旧サーバー scheduler の残骸）だけ処理を続ける。
+  // POSTED / DISCARDED / POSTING(処理中 or reclaim 待ち) は何もしない。
+  // FAILED は投稿失敗（X に届いている可能性がある）ため自動再投稿せず通知のみ。
+  if (draft && draft.status !== TweetStatus.PENDING && draft.status !== TweetStatus.DRAFT) {
+    if (draft.status === TweetStatus.FAILED) {
+      await notifyOnce(ctx, state.bdKey, 'announce-post-failed', '告知ツイートの投稿に失敗しています。X を確認して手動対応してください');
     }
     return;
   }
-
-  if (!draft) {
-    // scheduler が未検知（通常は作成から数分で enqueue されるので異常系）→ 手動 enqueue
-    if (ctx.dryRun) {
-      ctx.log('announce', '[dry-run] would enqueue ANNOUNCE via /api/admin/tweets/manual');
-      return;
-    }
-    await ctx.api.post('/api/admin/tweets/manual', { kind: 'ANNOUNCE', tournamentId: t.id });
-    ctx.log('announce', 'enqueued ANNOUNCE draft（次tickで生成待ち）');
-    return;
-  }
-
-  // PENDING / GENERATING / FAILED
-  if (ctx.now < state.at(ANNOUNCE_FALLBACK_FROM_H)) {
-    ctx.log('announce', `waiting for server generation (status=${draft.status})`);
-    return;
-  }
-  if (draft.status === TweetStatus.GENERATING) {
-    // 生成中は奪わない（固まっていれば server の reclaim が PENDING に戻す）
-    ctx.log('announce', 'still GENERATING; waiting for server reclaim');
-    return;
-  }
-
-  // 期限超過 → 定型文フォールバックで直接投稿
-  const context = await fetchAnnounceContext(ctx.prisma, t.id);
-  if (!context) throw new Error(`fetchAnnounceContext failed for ${t.id}`);
-  const text = buildAnnounceFallbackText(context, context.specialNote);
-  const imagePath = resolveAnnounceImagePath(t.scheduledStartTime, t.gameVariant);
 
   if (ctx.dryRun) {
-    ctx.log('announce', `[dry-run] would post fallback announce:\n${text}`, { imagePath });
+    ctx.log('announce', '[dry-run] would generate announce via LLM and post（LLM失敗時は19時以降に定型文フォールバック）');
     return;
   }
 
-  const claim = await ctx.prisma.tweetDraft.updateMany({
-    where: {
-      kind: TweetKind.ANNOUNCE,
-      tournamentId: t.id,
-      status: { in: [TweetStatus.PENDING, TweetStatus.FAILED] },
-    },
-    data: { status: TweetStatus.POSTING },
-  });
-  if (claim.count === 0) {
-    ctx.log('announce', 'fallback claim lost（他プロセスが処理中）');
+  // 本文をローカルで生成。LLM 失敗は次 tick で再試行し、19時以降は定型文に切り替える
+  let text: string;
+  let promptVersion: string;
+  try {
+    const gen = await generateAnnounceText(ctx.prisma, t.id);
+    text = gen.text;
+    promptVersion = gen.promptVersion;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (ctx.now < state.at(ANNOUNCE_FALLBACK_FROM_H)) {
+      ctx.log('announce', `LLM生成に失敗（次tickで再試行、19時以降は定型文）: ${msg}`);
+      return;
+    }
+    const context = await fetchAnnounceContext(ctx.prisma, t.id);
+    if (!context) throw new Error(`fetchAnnounceContext failed for ${t.id}`);
+    text = buildAnnounceFallbackText(context, context.specialNote);
+    promptVersion = 'announce-fallback-v1';
+    await notifyOnce(ctx, state.bdKey, 'announce-fallback', 'LLM告知が生成できないため定型文で投稿します');
+  }
+  const imagePath = resolveAnnounceImagePath(t.scheduledStartTime, t.gameVariant);
+
+  if (!(await claimExistingOrNewDraft(ctx, TweetKind.ANNOUNCE, t.id, t.scheduledStartTime, !!draft))) {
+    ctx.log('announce', 'claim lost（他プロセスが処理中）');
     return;
   }
-  await postClaimedDraft(ctx, TweetKind.ANNOUNCE, t.id, text, {
-    imagePath,
-    promptVersion: 'announce-fallback-v1',
-  });
-  await notifyOnce(ctx, state.bdKey, 'announce-fallback', 'LLM告知が間に合わず定型文で投稿しました');
+  await postClaimedDraft(ctx, TweetKind.ANNOUNCE, t.id, text, { imagePath, promptVersion });
 }
 
 // ============================================
@@ -395,57 +400,60 @@ async function stepProgress(ctx: OpsContext, state: TickState): Promise<void> {
 }
 
 // ============================================
-// Step 6: RESULT（サーバー生成 DRAFT の投稿）
+// Step 6: RESULT（ローカルで LLM 生成して直接投稿）
 // ============================================
 async function stepResult(ctx: OpsContext, state: TickState): Promise<void> {
   const t = state.tournament;
   if (!t || t.status !== 'COMPLETED') return;
 
   const draft = await getDraft(ctx, TweetKind.RESULT, t.id);
-
-  if (draft?.status === TweetStatus.POSTED || draft?.status === TweetStatus.DISCARDED) return;
-
-  if (draft?.status === TweetStatus.DRAFT) {
-    if (ctx.dryRun) {
-      ctx.log('result', '[dry-run] would post server-generated draft', { draftId: draft.id });
-      return;
+  // PENDING（生成リトライ待ち）と DRAFT（旧サーバー scheduler の残骸）だけ処理を続ける
+  if (draft && draft.status !== TweetStatus.PENDING && draft.status !== TweetStatus.DRAFT) {
+    if (draft.status === TweetStatus.FAILED) {
+      await notifyOnce(ctx, state.bdKey, 'result-post-failed', '結果ツイートの投稿に失敗しています。X を確認して手動対応してください');
     }
-    const res = await ctx.api.post(`/api/admin/tweets/${draft.id}/post`);
-    if (res.ok) {
-      ctx.log('result', `posted server draft tweetId=${res.tweetId}`);
-    } else {
-      await notifyOnce(ctx, state.bdKey, 'result-post-failed', `結果ツイートの投稿に失敗: ${res.errorMessage}`);
-    }
+    return; // POSTED / DISCARDED / POSTING
+  }
+  if (draft && draft.retryCount >= RESULT_GENERATE_MAX_ATTEMPTS) {
+    await notifyOnce(ctx, state.bdKey, 'result-generate-failed', '結果ツイートの生成が繰り返し失敗しています。ログを確認してください');
     return;
   }
 
-  if (draft?.status === TweetStatus.FAILED) {
-    if (draft.retryCount < 2) {
-      if (ctx.dryRun) {
-        ctx.log('result', '[dry-run] would regenerate failed draft');
-        return;
-      }
-      await ctx.api.post(`/api/admin/tweets/${draft.id}/regenerate`);
-      ctx.log('result', `regenerate requested (retryCount=${draft.retryCount})`);
-    } else {
-      await notifyOnce(ctx, state.bdKey, 'result-failed', '結果ツイートの生成が繰り返し失敗。Admin から確認してください');
-    }
+  if (ctx.dryRun) {
+    ctx.log('result', '[dry-run] would generate result via LLM and post');
     return;
   }
 
-  if (!draft) {
-    const completedAt = t.completedAt?.getTime() ?? 0;
-    if (ctx.now.getTime() - completedAt < RESULT_ENQUEUE_GRACE_MS) return; // scheduler の検知を待つ
-    if (ctx.dryRun) {
-      ctx.log('result', '[dry-run] would enqueue RESULT via /api/admin/tweets/manual');
-      return;
-    }
-    await ctx.api.post('/api/admin/tweets/manual', { kind: 'RESULT', tournamentId: t.id });
-    ctx.log('result', 'enqueued RESULT draft（次tickで生成待ち）');
+  // 本文をローカルで生成。失敗は PENDING 行に記録して次 tick で再試行する
+  let text: string;
+  let promptVersion: string;
+  try {
+    const gen = await generateResultText(ctx.prisma, t.id);
+    text = gen.text;
+    promptVersion = gen.promptVersion;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    ctx.log('result', `LLM生成に失敗（次tickで再試行）: ${msg}`);
+    await ctx.prisma.tweetDraft.upsert({
+      where: { kind_tournamentId: { kind: TweetKind.RESULT, tournamentId: t.id } },
+      create: {
+        kind: TweetKind.RESULT,
+        tournamentId: t.id,
+        scheduledFor: ctx.now,
+        status: TweetStatus.PENDING,
+        errorMessage: msg,
+        retryCount: 1,
+      },
+      update: { errorMessage: msg, retryCount: { increment: 1 } },
+    });
     return;
   }
 
-  ctx.log('result', `waiting for server generation (status=${draft.status})`);
+  if (!(await claimExistingOrNewDraft(ctx, TweetKind.RESULT, t.id, ctx.now, !!draft))) {
+    ctx.log('result', 'claim lost（他プロセスが処理中）');
+    return;
+  }
+  await postClaimedDraft(ctx, TweetKind.RESULT, t.id, text, { promptVersion });
 }
 
 // ============================================
@@ -532,6 +540,35 @@ async function stepRanking(ctx: OpsContext, state: TickState): Promise<void> {
 // ============================================
 // tick 実行
 // ============================================
+
+/**
+ * クラッシュ等で中間状態のまま取り残された行を回収する（旧サーバー scheduler から移設）。
+ * - POSTING: X へ送信済みか判定できないため FAILED に倒して人手確認に回す（自動再投稿しない）
+ * - GENERATING: 旧サーバー scheduler の残骸。外部副作用が無いので PENDING に戻して再生成させる
+ */
+async function reclaimStuckDrafts(ctx: OpsContext): Promise<void> {
+  const threshold = new Date(ctx.now.getTime() - STUCK_THRESHOLD_MS);
+
+  const stuckPost = await ctx.prisma.tweetDraft.updateMany({
+    where: { status: TweetStatus.POSTING, updatedAt: { lt: threshold } },
+    data: {
+      status: TweetStatus.FAILED,
+      errorMessage: 'posting がタイムアウトしました。X に投稿済みでないか確認してから手動対応してください。',
+    },
+  });
+  if (stuckPost.count > 0) {
+    ctx.log('reclaim', `reclaimed ${stuckPost.count} stuck POSTING draft(s) -> FAILED`);
+  }
+
+  const regen = await ctx.prisma.tweetDraft.updateMany({
+    where: { status: TweetStatus.GENERATING, updatedAt: { lt: threshold } },
+    data: { status: TweetStatus.PENDING },
+  });
+  if (regen.count > 0) {
+    ctx.log('reclaim', `reclaimed ${regen.count} stuck GENERATING draft(s) -> PENDING`);
+  }
+}
+
 const STEP_FNS: [StepName, (ctx: OpsContext, state: TickState) => Promise<void>][] = [
   ['create', stepCreate],
   ['watchdog', stepWatchdog],
@@ -557,6 +594,15 @@ export async function runTick(ctx: OpsContext): Promise<boolean> {
   });
 
   let ok = true;
+  if (!ctx.dryRun) {
+    try {
+      await reclaimStuckDrafts(ctx);
+    } catch (err) {
+      ok = false;
+      const msg = err instanceof Error ? err.message : String(err);
+      ctx.log('reclaim', `ERROR: ${msg}`);
+    }
+  }
   for (const [name, fn] of STEP_FNS) {
     if (!ctx.isStepEnabled(name)) continue;
     try {

@@ -1,10 +1,13 @@
 /**
  * Anthropic Messages API ラッパ。
  * 既存 callEvalLlm.ts (OpenAI) と同じく fetch を直叩きする最小限の実装。
+ *
+ * ツイート生成はローカルスクリプト（scripts/ops/）からのみ使うため、
+ * サーバーの env スキーマには依存せず process.env を直接読む
+ * （twitterClient.getCredentialsFromEnv と同じ流儀）。
  */
-import { env } from '../../config/env.js';
-
 const ANTHROPIC_VERSION = '2023-06-01';
+const DEFAULT_MODEL = 'claude-opus-4-8';
 
 export interface CallAnthropicInput {
   system: string;
@@ -19,12 +22,12 @@ export interface CallAnthropicResult {
 }
 
 export async function callAnthropic(input: CallAnthropicInput): Promise<CallAnthropicResult> {
-  const apiKey = env.ANTHROPIC_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey?.trim()) {
     throw new Error('ANTHROPIC_API_KEY is not configured');
   }
 
-  const model = input.model ?? env.ANTHROPIC_MODEL;
+  const model = input.model ?? process.env.ANTHROPIC_MODEL ?? DEFAULT_MODEL;
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
     headers: {

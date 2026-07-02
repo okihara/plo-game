@@ -6,7 +6,9 @@
  * - `--local`: ローカルDB（DATABASE_URL）+ http://localhost:3001（secret は ADMIN_SECRET があれば付与）
  * どちらかを必ず明示する（既存 scripts の --prod 明示の流儀に合わせ、誤爆を防ぐ）。
  *
- * 接続文字列・secret はログに出さない。admin API のログは path のみ記録する。
+ * API はトナメの作成・一覧（/api/tournaments）にのみ使う。
+ * ツイートの生成・投稿はサーバーを経由せず、このスクリプト群がローカルで行う。
+ * 接続文字列・secret はログに出さない。API のログは path のみ記録する。
  */
 import { config } from 'dotenv';
 import { dirname, join } from 'path';

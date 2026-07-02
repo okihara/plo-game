@@ -77,31 +77,6 @@ export async function fetchPreviousResult(
   };
 }
 
-/**
- * scheduledStartTime が今後 24 時間以内に始まる WAITING のトナメを返す。
- * tickUpcomingTournaments の検知対象。
- */
-export async function fetchUpcomingTournaments(prisma: PrismaClient, limit = 5) {
-  const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  return prisma.tournament.findMany({
-    where: {
-      status: 'WAITING',
-      scheduledStartTime: { gte: now, lt: tomorrow },
-      tweetDrafts: { none: { kind: 'ANNOUNCE' } },
-    },
-    orderBy: { scheduledStartTime: 'asc' },
-    take: limit,
-    select: {
-      id: true,
-      name: true,
-      scheduledStartTime: true,
-      buyIn: true,
-      maxPlayers: true,
-    },
-  });
-}
-
 export interface AnnounceContextTournament {
   id: string;
   name: string;
