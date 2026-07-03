@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
-import { CURRENT_SEASON } from './seasonConfig.js';
+import { CURRENT_SEASON, RESULT_SEASON } from './seasonConfig.js';
 import { buildSeasonPayload, type SeasonFullData } from './buildSeasonPayload.js';
 
 // シーズン確定後はスナップショット（SeasonSnapshot）を即返す。
@@ -20,7 +20,7 @@ async function readSnapshot(): Promise<SeasonFullData | null> {
   if (snapshotCache && Date.now() < snapshotCache.expiresAt) {
     return snapshotCache.data;
   }
-  const row = await prisma.seasonSnapshot.findUnique({ where: { seasonName: CURRENT_SEASON.name } });
+  const row = await prisma.seasonSnapshot.findUnique({ where: { seasonName: RESULT_SEASON.name } });
   if (!row) return null;
   const data = row.data as unknown as SeasonFullData;
   snapshotCache = { data, expiresAt: Date.now() + SNAPSHOT_CACHE_TTL_MS };
@@ -47,6 +47,10 @@ function refreshLive(): Promise<void> {
 async function getSeasonData(): Promise<SeasonFullData | null> {
   const snapshot = await readSnapshot();
   if (snapshot) return snapshot;
+
+  // ライブ集計は CURRENT_SEASON を対象にするため、表示対象（RESULT_SEASON）が
+  // 別シーズンのときにフォールバックすると違うシーズンの結果を出してしまう。
+  if (RESULT_SEASON.name !== CURRENT_SEASON.name) return null;
 
   const isFresh = liveCache && Date.now() - liveCachedAt < LIVE_CACHE_TTL_MS;
   if (!isFresh) void refreshLive();

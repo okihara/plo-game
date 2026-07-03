@@ -15,7 +15,7 @@ import { config } from 'dotenv';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { PrismaClient } from '@prisma/client';
-import { CURRENT_SEASON } from '../src/modules/season/seasonConfig.js';
+import { RESULT_SEASON } from '../src/modules/season/seasonConfig.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, '..', '.env') });
@@ -49,7 +49,7 @@ async function main() {
   }
   console.log(`本番 ${prodU.id} (${prodU.displayName || prodU.username}) → ローカル ${localU.id}`);
 
-  const row = await localPrisma.seasonSnapshot.findUnique({ where: { seasonName: CURRENT_SEASON.name } });
+  const row = await localPrisma.seasonSnapshot.findUnique({ where: { seasonName: RESULT_SEASON.name } });
   if (!row) {
     console.error('ローカルにSeasonSnapshotがありません。先に generate-season-snapshot.ts --from-prod を実行してください');
     process.exit(1);
@@ -65,7 +65,7 @@ async function main() {
   data.players[localU.id] = { ...rec, userId: localU.id };
 
   await localPrisma.seasonSnapshot.update({
-    where: { seasonName: CURRENT_SEASON.name },
+    where: { seasonName: RESULT_SEASON.name },
     data: { data: data as unknown as object },
   });
 
