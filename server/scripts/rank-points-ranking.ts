@@ -27,9 +27,9 @@ import { PrizeCalculator } from '../src/modules/tournament/PrizeCalculator.js';
 import { CURRENT_SEASON } from '../src/modules/season/seasonConfig.js';
 import {
   aggregateRanking,
+  computeRankingDiff,
   fetchSeasonTournaments,
   rpFromAmount,
-  type SeasonTournamentRow,
 } from '../src/modules/season/computeSeasonRanking.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -59,92 +59,17 @@ const prisma = new PrismaClient({
 const SEASON_NAME = CURRENT_SEASON.name;
 const SEASON_LABEL = CURRENT_SEASON.label;
 
-async function runDiff(tournaments: SeasonTournamentRow[]) {
-  const ranked = tournaments
-    .filter((t) => t.completedAt)
-    .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime());
-  if (ranked.length < 2) {
-    console.error('完了トナメが2本未満のため差分を出せません');
-    process.exit(1);
-  }
-  const latest = ranked[0];
-  const prevTournaments = tournaments.filter((t) => t.id !== latest.id);
-
-  const current = aggregateRanking(tournaments).ranking;
-  const previous = aggregateRanking(prevTournaments).ranking;
-
-  const currentPos = new Map<string, number>();
-  current.forEach((u, i) => currentPos.set(u.userId, i + 1));
-  const previousPos = new Map<string, number>();
-  previous.forEach((u, i) => previousPos.set(u.userId, i + 1));
-  const previousRp = new Map<string, number>(previous.map((u) => [u.userId, u.totalRp]));
-
-  const limit = Math.min(TOP, current.length);
-  const topEntries = current.slice(0, limit).map((u, i) => {
-    const pos = i + 1;
-    const prevPos = previousPos.get(u.userId) ?? null;
-    const prevRp = previousRp.get(u.userId) ?? 0;
-    return {
-      position: pos,
-      userId: u.userId,
-      name: u.name,
-      totalRp: u.totalRp,
-      rpGained: u.totalRp - prevRp,
-      entries: u.entries,
-      wins: u.wins,
-      itm: u.itm,
-      best: u.best === Infinity ? null : u.best,
-      previousPosition: prevPos,
-      positionDelta: prevPos === null ? null : prevPos - pos, // +でランクアップ
-      isNewToTop: prevPos === null || prevPos > limit,
-    };
-  });
-
-  // 参加者のRP獲得を抽出（順位圏外の人も含めて、最新トナメでRPを獲得した人）
-  const latestParticipants = new Set(
-    latest.results.filter((r) => r.user.provider !== 'bot').map((r) => r.userId)
-  );
-  const participantsChange = current
-    .filter((u) => latestParticipants.has(u.userId))
-    .map((u) => {
-      const pos = currentPos.get(u.userId)!;
-      const prevPos = previousPos.get(u.userId) ?? null;
-      const prevRp = previousRp.get(u.userId) ?? 0;
-      return {
-        userId: u.userId,
-        name: u.name,
-        currentPosition: pos,
-        previousPosition: prevPos,
-        positionDelta: prevPos === null ? null : prevPos - pos,
-        totalRp: u.totalRp,
-        rpGained: u.totalRp - prevRp,
-      };
-    })
-    .sort((a, b) => b.rpGained - a.rpGained);
-
-  const output = {
-    latestTournament: {
-      id: latest.id,
-      name: latest.name,
-      completedAt: latest.completedAt ? latest.completedAt.toISOString() : null,
-      entries: latest.results.length,
-    },
-    totals: {
-      currentRankedUsers: current.length,
-      previousRankedUsers: previous.length,
-    },
-    top: topEntries,
-    participants: participantsChange,
-  };
-
-  process.stdout.write(JSON.stringify(output, null, 2) + '\n');
-}
-
 async function main() {
   const tournaments = await fetchSeasonTournaments(prisma);
 
   if (DIFF) {
-    await runDiff(tournaments);
+    // 集計ロジックは src/modules/season/computeSeasonRanking.ts が単一の源泉
+    const diff = computeRankingDiff(tournaments, TOP);
+    if (!diff) {
+      console.error('完了トナメが2本未満のため差分を出せません');
+      process.exit(1);
+    }
+    process.stdout.write(JSON.stringify(diff, null, 2) + '\n');
     return;
   }
 

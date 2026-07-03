@@ -2,7 +2,7 @@
 // Fixed Limit: preflop/flop = small bet, turn/river = big bet
 // ホールカード2枚、コミュニティカード5枚、ベストハンドは7枚から最強5枚
 
-import { GameState, Player, Position, Action, Street } from './types.js';
+import { GameState, Player, Position, POSITIONS, Action, Street } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import {
   getActivePlayers,
@@ -13,7 +13,6 @@ import {
 } from './gameEngine.js';
 import { evaluateHoldemHand, compareHands, formatHandName } from './handEvaluator.js';
 
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
 const MAX_BETS_PER_ROUND = 4; // bet + 3 raises
 

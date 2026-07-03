@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { DEFAULT_AVATAR_URL } from '@plo/shared';
 import { formatProfit, type RankingEntry } from './RankingUtils';
 import { fetchRankings } from '../utils/rankingsCache';
 const MEDALS = ['🥇', '🥈', '🥉'];
@@ -89,7 +90,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
               <span className="w-[5cqw] text-center shrink-0">{rankLabel}</span>
               <div className="w-[5.5cqw] h-[5.5cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                 <img
-                  src={entry.avatarUrl || '/images/icons/anonymous.svg'}
+                  src={entry.avatarUrl || DEFAULT_AVATAR_URL}
                   alt=""
                   className="w-full h-full object-cover"
                 />

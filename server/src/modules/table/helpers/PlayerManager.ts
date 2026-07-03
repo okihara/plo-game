@@ -1,21 +1,18 @@
 // プレイヤー着席/離席管理
 
 import { Socket } from 'socket.io';
+import type { PlayerProfile } from '@plo/shared';
 import { SeatInfo } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
 
 export interface SeatPlayerParams {
   odId: string;
   odName: string;
-  displayName?: string | null;
+  profile: PlayerProfile;
   socket: Socket | null;
   buyIn: number;
-  avatarUrl?: string | null;
   preferredSeat?: number;
   isHandInProgress: boolean;
-  nameMasked?: boolean;
-  hasWeeklyChampion?: boolean;
-  hasSeasonTop3?: boolean;
 }
 
 export class PlayerManager {
@@ -37,7 +34,7 @@ export class PlayerManager {
    * プレイヤーを着席させる
    */
   seatPlayer(params: SeatPlayerParams): number | null {
-    const { odId, odName, displayName, socket, buyIn, avatarUrl, preferredSeat, isHandInProgress, nameMasked, hasWeeklyChampion, hasSeasonTop3 } = params;
+    const { odId, odName, profile, socket, buyIn, preferredSeat, isHandInProgress } = params;
 
     // 空き席を探す
     let seatIndex = preferredSeat ?? -1;
@@ -49,22 +46,14 @@ export class PlayerManager {
 
     if (seatIndex === -1) return null;
 
-    // ランダムなアバターIDを割り当て
-    const avatarId = Math.floor(Math.random() * TABLE_CONSTANTS.DEFAULT_AVATAR_COUNT);
-
     this.seats[seatIndex] = {
       odId,
       odName,
-      displayName: displayName ?? null,
-      avatarId,
-      avatarUrl: avatarUrl ?? null,
+      profile,
       socket,
       chips: buyIn,
       buyIn,
       waitingForNextHand: isHandInProgress, // ハンド中に着席した場合は次のハンドから参加
-      nameMasked: nameMasked ?? true,
-      hasWeeklyChampion: hasWeeklyChampion ?? false,
-      hasSeasonTop3: hasSeasonTop3 ?? false,
       consecutiveTimeouts: 0,
     };
 

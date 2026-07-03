@@ -1,10 +1,9 @@
-import { GameState, Player, Position, Action, getVariantConfig } from './types.js';
+import { GameState, Player, Position, POSITIONS, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands, formatHandName } from './handEvaluator.js';
 import { resolveHiLoShowdown } from './hiLoSplitPot.js';
 
 // ポーカーテーブルの6つのポジション（ディーラーボタンから時計回り）
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
 /**
  * ゲームの初期状態を作成する

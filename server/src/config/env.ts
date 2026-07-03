@@ -10,14 +10,6 @@ const envSchema = z.object({
   /** OAuth ログイン用の App。Read-only 権限で十分（ユーザーに書き込み権限を求めない） */
   TWITTER_API_KEY: z.string().optional(),
   TWITTER_API_KEY_SECRET: z.string().optional(),
-  /**
-   * ツイート投稿用の別 App。Read and Write 権限が必要。
-   * 公式アカウントから発行する Access Token と組み合わせて使う。
-   */
-  TWITTER_POST_API_KEY: z.string().optional(),
-  TWITTER_POST_API_KEY_SECRET: z.string().optional(),
-  TWITTER_POST_ACCESS_TOKEN: z.string().optional(),
-  TWITTER_POST_ACCESS_TOKEN_SECRET: z.string().optional(),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'production', 'test']).default('development'),
   CLIENT_URL: z.string().default('http://localhost:5173'),
@@ -33,13 +25,6 @@ const envSchema = z.object({
   SENTRY_ENVIRONMENT: z.string().optional(),
   /** Sentry に送る release タグ（コミットハッシュ等）。未設定時は Railway の値を使う。 */
   SENTRY_RELEASE: z.string().optional(),
-  /** ツイートドラフトの LLM 生成用。未設定時は生成不可（DRAFT が常に FAILED になる）。 */
-  ANTHROPIC_API_KEY: z.string().optional(),
-  ANTHROPIC_MODEL: z.string().default('claude-opus-4-8'),
-  /** false の間は tweetScheduler が起動しない（手動 enqueue/手動投稿のみ） */
-  TWEET_SCHEDULER_ENABLED: z.coerce.boolean().default(false),
-  /** true にすると承認なしで自動投稿。初期は必ず false。 */
-  TWEET_AUTO_POST: z.coerce.boolean().default(false),
 });
 
 export type Env = z.infer<typeof envSchema>;

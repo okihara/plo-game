@@ -1,6 +1,6 @@
 ---
 name: ranking-tweet
-description: Use this skill when the user wants to generate a RP ranking update tweet for the plo-game project (BabyPLO). Triggered by `/ranking-tweet`. Runs the rank-points-ranking script with `--diff` to compare the latest completed tournament against the previous standings, then drafts a Japanese tweet highlighting position movements in the BabyPLO style for the user to tweak by hand.
+description: Use this skill when the user wants to generate (and optionally post) a RP ranking update tweet for the plo-game project (BabyPLO). Triggered by `/ranking-tweet`. Runs the rank-points-ranking script with `--diff` to compare the latest completed tournament against the previous standings, drafts a Japanese tweet highlighting position movements in the BabyPLO style, renders the TOP 30 ranking image, and—after explicit user confirmation—can post the tweet with the image to the official account via post-ranking-tweet.ts.
 ---
 
 # Ranking Tweet
@@ -103,9 +103,31 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 
 **出力形式:** 下書きをコードブロックでそのまま提示する。その後に、採用した観察（どの動きを目玉にしたか）を 1〜2 行で補足し、**別案の目玉コメント**を 2 案ほど添える。
 
-### Step 5: 完了
+### Step 5: 投稿（画像付き）
 
-- ファイル保存はしない
+下書きを提示したら、**公式アカウントへの公開投稿は取り消せない**ため、必ず一度ユーザーに最終文面の確認を取る。承認を得てから以下を実行する。
+
+1. 確定した本文を **`/tmp/ranking-tweet.txt`** に書き出す（Write ツール）。本文をコマンドラインに載せないため、必ずファイル経由で渡す。画像は Step 3 で生成済みの `/tmp/rp-ranking.png` を使う。
+2. まずドライランで内容と文字数を確認する:
+
+   ```bash
+   cd server && npx tsx scripts/post-ranking-tweet.ts
+   ```
+
+3. 問題なければ `--confirm` を付けて実投稿する:
+
+   ```bash
+   cd server && npx tsx scripts/post-ranking-tweet.ts --confirm
+   ```
+
+- スクリプトは本文を `/tmp/ranking-tweet.txt`、画像を `/tmp/rp-ranking.png` から読み、`server/.env` の `TWITTER_POST_*` で投稿する（接続URL・トークンはコマンドラインに出さない）。
+- `--confirm` が無いと投稿せずプレビューのみ（安全側の既定）。
+- 投稿後、出力された tweetId と `https://x.com/i/status/<id>` をユーザーに伝える。
+- ユーザーが「下書きだけでいい／自分で投稿する」と言った場合は Step 5 をスキップし、クリップボードコピー（Step 3）だけで完了とする。
+
+### Step 6: 完了
+
+- 下書き・本文ファイル（`/tmp/ranking-tweet.txt`）は一時ファイルなので保存管理は不要
 - メモリ保存も不要（毎回異なる内容）
 - RP 計算ルールはまだ **設計中** である点に触れない方が無難。ルールが確定するまでは「暫定ランキング」「試算」のニュアンスを含めておくと安全
 

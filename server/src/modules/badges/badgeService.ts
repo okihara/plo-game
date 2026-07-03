@@ -1,4 +1,5 @@
 import { prisma } from '../../config/database.js';
+import type { NameplateDecoration } from '@plo/shared';
 
 // --- バッジ定義 ---
 
@@ -187,23 +188,26 @@ export async function getUserBadges(userId: string): Promise<{ type: string; ran
   });
 }
 
-/** ウィークリーチャンピオン（weekly_rank_1）バッジを保有しているか（過去1回でもあればtrue） */
-export async function hasWeeklyChampionBadge(userId: string): Promise<boolean> {
-  const existing = await prisma.badge.findFirst({
-    where: { userId, type: 'weekly_rank_1' },
-    select: { id: true },
-  });
-  return !!existing;
-}
+// --- ネームプレート装飾 ---
 
-/** シーズン1 RPランキング No.1〜No.3 のバッジを保有しているか（プラチナ枠付与用） */
-const SEASON_TOP3_BADGE_TYPES = ['season1_no1', 'season1_no2', 'season1_no3'];
-export async function hasSeasonTop3Badge(userId: string): Promise<boolean> {
-  const existing = await prisma.badge.findFirst({
-    where: { userId, type: { in: SEASON_TOP3_BADGE_TYPES } },
-    select: { id: true },
+/**
+ * 装飾ごとの対象バッジ type。配列の先頭の装飾ほど優先される
+ * （複数該当時は最初にマッチしたものだけが付く）。
+ * 新しい装飾は NameplateDecoration にリテラルを足した上でここに1エントリ追加する。
+ */
+const NAMEPLATE_RULES: { decoration: NameplateDecoration; badgeTypes: string[] }[] = [
+  { decoration: 'season_top3', badgeTypes: ['season1_no1', 'season1_no2', 'season1_no3'] },
+  { decoration: 'weekly_champion', badgeTypes: ['weekly_rank_1'] },
+];
+
+/** 保有バッジからネームプレート装飾を解決する（該当なしは undefined） */
+export async function resolveNameplate(userId: string): Promise<NameplateDecoration | undefined> {
+  const owned = await prisma.badge.findMany({
+    where: { userId, type: { in: NAMEPLATE_RULES.flatMap(r => r.badgeTypes) } },
+    select: { type: true },
   });
-  return !!existing;
+  const ownedTypes = new Set(owned.map(b => b.type));
+  return NAMEPLATE_RULES.find(r => r.badgeTypes.some(t => ownedTypes.has(t)))?.decoration;
 }
 
 // --- 表示用グルーピング ---
@@ -221,145 +225,93 @@ export interface DisplayBadge {
   awardedAt: string;
 }
 
+type BadgeRecord = { type: string; rank: number | null; awardedAt: Date };
+
+/**
+ * カテゴリごとの表示方法。配列順 = 表示順。新カテゴリはここに1エントリ足す。
+ * - highest:        優先順リストの最上位1枚だけ表示（ハンド数・勝利数）
+ * - count_per_type: type ごとに1枚、保有数を count に表示（バッドビート・ランキング等）
+ * - best_per_type:  type ごとに1枚、最良 rank を表示（シーズンランキング）
+ * - per_record:     レコードごとにそのまま表示（スペシャル）
+ */
+const DISPLAY_RULES: (
+  | { category: BadgeCategory; mode: 'highest'; priority: string[] }
+  | { category: BadgeCategory; mode: 'count_per_type' | 'best_per_type' | 'per_record' }
+)[] = [
+  { category: 'hands', mode: 'highest', priority: HANDS_PRIORITY },
+  { category: 'wins', mode: 'highest', priority: WINS_PRIORITY },
+  { category: 'bad_beat', mode: 'count_per_type' },
+  { category: 'daily_rank', mode: 'count_per_type' },
+  { category: 'weekly_rank', mode: 'count_per_type' },
+  { category: 'tournament', mode: 'count_per_type' },
+  { category: 'season_rank', mode: 'best_per_type' },
+  { category: 'special', mode: 'per_record' },
+];
+
+/** BADGE_META の定義順を保った、カテゴリ内の type 一覧 */
+function typesInCategory(category: BadgeCategory): string[] {
+  return Object.keys(BADGE_META).filter(t => BADGE_META[t].category === category);
+}
+
+function toDisplayBadge(type: string, count: number, awardedAt: Date, rank?: number): DisplayBadge {
+  const meta = BADGE_META[type];
+  return {
+    category: meta.category,
+    type,
+    label: meta.label,
+    description: meta.description,
+    flavor: meta.flavor,
+    imageUrl: meta.imageUrl,
+    count,
+    rank,
+    awardedAt: awardedAt.toISOString(),
+  };
+}
+
 /** DBのバッジレコードをカテゴリごとにグルーピングして表示用に変換 */
-export function groupBadgesForDisplay(badges: { type: string; rank: number | null; awardedAt: Date }[]): DisplayBadge[] {
+export function groupBadgesForDisplay(badges: BadgeRecord[]): DisplayBadge[] {
   const result: DisplayBadge[] = [];
 
-  // ハンド数カテゴリ: 最高レベルのみ表示
-  const handBadges = badges.filter(b => BADGE_META[b.type]?.category === 'hands');
-  if (handBadges.length > 0) {
-    const highestType = HANDS_PRIORITY.find(t => handBadges.some(b => b.type === t));
-    if (highestType) {
-      const meta = BADGE_META[highestType];
-      const badge = handBadges.find(b => b.type === highestType)!;
-      result.push({
-        category: meta.category,
-        type: highestType,
-        label: meta.label,
-        description: meta.description,
-        flavor: meta.flavor,
-        imageUrl: meta.imageUrl,
-        count: 1,
-        awardedAt: badge.awardedAt.toISOString(),
-      });
-    }
-  }
+  for (const rule of DISPLAY_RULES) {
+    const inCategory = badges.filter(b => BADGE_META[b.type]?.category === rule.category);
+    if (inCategory.length === 0) continue;
 
-  // 勝利数カテゴリ: 最高レベルのみ表示
-  const winBadges = badges.filter(b => BADGE_META[b.type]?.category === 'wins');
-  if (winBadges.length > 0) {
-    const highestType = WINS_PRIORITY.find(t => winBadges.some(b => b.type === t));
-    if (highestType) {
-      const meta = BADGE_META[highestType];
-      const badge = winBadges.find(b => b.type === highestType)!;
-      result.push({
-        category: meta.category,
-        type: highestType,
-        label: meta.label,
-        description: meta.description,
-        flavor: meta.flavor,
-        imageUrl: meta.imageUrl,
-        count: 1,
-        awardedAt: badge.awardedAt.toISOString(),
-      });
-    }
-  }
-
-  // バッドビートカテゴリ: 種類ごとに回数をカウント
-  for (const bbType of ['bad_beat_fullhouse', 'bad_beat_quads', 'bad_beat_straight_flush'] as const) {
-    const bbBadges = badges.filter(b => b.type === bbType);
-    if (bbBadges.length > 0) {
-      const meta = BADGE_META[bbType];
-      const latest = bbBadges[bbBadges.length - 1];
-      result.push({
-        category: meta.category,
-        type: bbType,
-        label: meta.label,
-        description: meta.description,
-        flavor: meta.flavor,
-        imageUrl: meta.imageUrl,
-        count: bbBadges.length,
-        awardedAt: latest.awardedAt.toISOString(),
-      });
-    }
-  }
-
-  // ランキングカテゴリ: 回数をカウント
-  for (const rankType of ['daily_rank_1', 'weekly_rank_1'] as const) {
-    const rankBadges = badges.filter(b => b.type === rankType);
-    if (rankBadges.length > 0) {
-      const meta = BADGE_META[rankType];
-      const latest = rankBadges[rankBadges.length - 1];
-      result.push({
-        category: meta.category,
-        type: rankType,
-        label: meta.label,
-        description: meta.description,
-        flavor: meta.flavor,
-        imageUrl: meta.imageUrl,
-        count: rankBadges.length,
-        awardedAt: latest.awardedAt.toISOString(),
-      });
-    }
-  }
-
-  // トーナメントカテゴリ: 回数をカウント
-  for (const tournamentType of ['tournament_no1'] as const) {
-    const tournamentBadges = badges.filter(b => b.type === tournamentType);
-    if (tournamentBadges.length > 0) {
-      const meta = BADGE_META[tournamentType];
-      const latest = tournamentBadges[tournamentBadges.length - 1];
-      result.push({
-        category: meta.category,
-        type: tournamentType,
-        label: meta.label,
-        description: meta.description,
-        flavor: meta.flavor,
-        imageUrl: meta.imageUrl,
-        count: tournamentBadges.length,
-        awardedAt: latest.awardedAt.toISOString(),
-      });
-    }
-  }
-
-  // シーズンランキングカテゴリ: 1シーズン1枚、順位を表示（複数あれば最上位を採用）
-  const seasonTypes = Array.from(
-    new Set(badges.filter(b => BADGE_META[b.type]?.category === 'season_rank').map(b => b.type))
-  );
-  for (const seasonType of seasonTypes) {
-    const meta = BADGE_META[seasonType];
-    const seasonBadges = badges.filter(b => b.type === seasonType);
-    const bestBadge = seasonBadges.reduce((best, b) =>
-      (b.rank ?? Infinity) < (best.rank ?? Infinity) ? b : best
-    );
-    result.push({
-      category: meta.category,
-      type: seasonType,
-      label: meta.label,
-      description: meta.description,
-      flavor: meta.flavor,
-      imageUrl: meta.imageUrl,
-      count: 1,
-      // 絵柄に順位が無い順位帯バッジ（TOP10/TOP30）だけ実順位をオーバーレイ表示
-      rank: meta.showRank ? (bestBadge.rank ?? undefined) : undefined,
-      awardedAt: bestBadge.awardedAt.toISOString(),
-    });
-  }
-
-  // スペシャルカテゴリ: 1回限り（存在すれば表示）
-  for (const badge of badges) {
-    const meta = BADGE_META[badge.type];
-    if (meta?.category === 'special') {
-      result.push({
-        category: meta.category,
-        type: badge.type,
-        label: meta.label,
-        description: meta.description,
-        flavor: meta.flavor,
-        imageUrl: meta.imageUrl,
-        count: 1,
-        awardedAt: badge.awardedAt.toISOString(),
-      });
+    switch (rule.mode) {
+      case 'highest': {
+        const highestType = rule.priority.find(t => inCategory.some(b => b.type === t));
+        if (highestType) {
+          const badge = inCategory.find(b => b.type === highestType)!;
+          result.push(toDisplayBadge(highestType, 1, badge.awardedAt));
+        }
+        break;
+      }
+      case 'count_per_type': {
+        for (const type of typesInCategory(rule.category)) {
+          const ofType = inCategory.filter(b => b.type === type);
+          if (ofType.length === 0) continue;
+          result.push(toDisplayBadge(type, ofType.length, ofType[ofType.length - 1].awardedAt));
+        }
+        break;
+      }
+      case 'best_per_type': {
+        // 保有バッジの出現順で type ごとに1枚、最良 rank を採用
+        const distinctTypes = Array.from(new Set(inCategory.map(b => b.type)));
+        for (const type of distinctTypes) {
+          const bestBadge = inCategory
+            .filter(b => b.type === type)
+            .reduce((best, b) => ((b.rank ?? Infinity) < (best.rank ?? Infinity) ? b : best));
+          // 絵柄に順位が無い順位帯バッジ（TOP10/TOP30）だけ実順位をオーバーレイ表示
+          const rank = BADGE_META[type].showRank ? (bestBadge.rank ?? undefined) : undefined;
+          result.push(toDisplayBadge(type, 1, bestBadge.awardedAt, rank));
+        }
+        break;
+      }
+      case 'per_record': {
+        for (const badge of inCategory) {
+          result.push(toDisplayBadge(badge.type, 1, badge.awardedAt));
+        }
+        break;
+      }
     }
   }
 

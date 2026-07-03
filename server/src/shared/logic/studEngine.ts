@@ -1,10 +1,9 @@
-import { GameState, Player, Position, Action, Card, Street, GameVariant, getUpCards } from './types.js';
+import { GameState, Player, Position, POSITIONS, Action, Card, Street, GameVariant, getUpCards } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { getActivePlayers, getPlayersWhoCanAct, calculateSidePots, calculateRake } from './gameEngine.js';
 import { StudVariantRules } from './studVariantRules.js';
 import { StudHighRules } from './rules/studHighRules.js';
 
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
 
 /** デフォルトルール（後方互換） */

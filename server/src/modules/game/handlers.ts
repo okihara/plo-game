@@ -7,7 +7,7 @@ import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { cashOutPlayer, deductBuyIn } from '../auth/bankroll.js';
 import { AuthenticatedSocket } from './authMiddleware.js';
 import { handleFastFoldMove, setupFastFoldCallback } from './fastFoldService.js';
-import { hasWeeklyChampionBadge, hasSeasonTop3Badge } from '../badges/badgeService.js';
+import { buildPlayerProfile } from '../profile/playerProfile.js';
 
 const SPECTATE_JOIN_WINDOW_MS = 60_000;
 const SPECTATE_JOIN_MAX_PER_WINDOW = 30;
@@ -309,23 +309,14 @@ export async function handleMatchmakingJoin(
     }
 
     // Seat player
-    const [weeklyChamp, seasonTop3] = await Promise.all([
-      hasWeeklyChampionBadge(socket.odId!),
-      hasSeasonTop3Badge(socket.odId!),
-    ]);
-    const seatNumber = table.seatPlayer(
-      socket.odId!,
-      user.username,
+    const profile = await buildPlayerProfile(socket.odId!, user);
+    const seatNumber = table.seatPlayer({
+      odId: socket.odId!,
+      odName: user.username,
+      profile,
       socket,
       buyIn,
-      user.avatarUrl || "/images/icons/anonymous.svg",
-      undefined,
-      undefined,
-      user.nameMasked,
-      user.displayName,
-      weeklyChamp,
-      seasonTop3
-    );
+    });
 
     if (seatNumber !== null) {
       tableManager.setPlayerTable(socket.odId!, table.id);

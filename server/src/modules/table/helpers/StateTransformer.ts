@@ -3,7 +3,6 @@
 import { GameState, Player, Rank, Suit } from '../../../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
 import { SeatInfo, PendingAction } from '../types.js';
-import { maskName } from '../../../shared/utils.js';
 
 /** 裏カードの値を隠してダミー値に置換（セキュリティ: 他プレイヤーに見せない） */
 export function toProtocolHoleCards(player: Player | null): OnlinePlayer['cards'] {
@@ -27,58 +26,9 @@ export class StateTransformer {
   ): OnlinePlayer | null {
     if (!seat) return null;
 
-    // displayNameがあればそのまま表示、なければusername(odName)にマスクをかける
-    const displayName = seat.displayName
-      ? seat.displayName
-      : (seat.nameMasked ? maskName(seat.odName) : seat.odName);
-
-    // FastFold移動済みプレイヤー: folded状態で表示を維持
-    if (seat.leftForFastFold) {
-      return {
-        odId: seat.odId,
-        odName: displayName,
-        avatarId: seat.avatarId,
-        avatarUrl: seat.avatarUrl,
-        seatNumber: seatIndex,
-        position: player?.position,
-        chips: player?.chips ?? seat.chips,
-        currentBet: player?.currentBet ?? 0,
-        folded: player?.folded ?? false,
-        isAllIn: false,
-        hasActed: true,
-        isConnected: false,
-        cards: toProtocolHoleCards(player),
-        hasWeeklyChampion: seat.hasWeeklyChampion,
-        hasSeasonTop3: seat.hasSeasonTop3,
-      };
-    }
-
-    // waitingForNextHandプレイヤーの特殊処理
-    if (seat.waitingForNextHand) {
-      return {
-        odId: seat.odId,
-        odName: displayName,
-        avatarId: seat.avatarId,
-        avatarUrl: seat.avatarUrl,
-        seatNumber: seatIndex,
-        position: player?.position,
-        chips: seat.chips, // buyIn時のチップを表示
-        currentBet: 0,
-        folded: true, // 参加していないのでfolded扱い
-        isAllIn: false,
-        hasActed: true,
-        isConnected: seat.socket?.connected ?? false,
-        cards: [],
-        hasWeeklyChampion: seat.hasWeeklyChampion,
-        hasSeasonTop3: seat.hasSeasonTop3,
-      };
-    }
-
-    return {
+    const base: OnlinePlayer = {
       odId: seat.odId,
-      odName: displayName,
-      avatarId: seat.avatarId,
-      avatarUrl: seat.avatarUrl,
+      profile: seat.profile,
       seatNumber: seatIndex,
       position: player?.position,
       chips: player?.chips ?? seat.chips,
@@ -88,9 +38,19 @@ export class StateTransformer {
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
       cards: toProtocolHoleCards(player),
-      hasWeeklyChampion: seat.hasWeeklyChampion,
-      hasSeasonTop3: seat.hasSeasonTop3,
     };
+
+    // FastFold移動済みプレイヤー: folded状態で表示を維持
+    if (seat.leftForFastFold) {
+      return { ...base, isAllIn: false, hasActed: true, isConnected: false };
+    }
+
+    // 次ハンド待ちプレイヤー: ハンド不参加なのでfolded扱い（chipsはbuyIn時の値）
+    if (seat.waitingForNextHand) {
+      return { ...base, chips: seat.chips, currentBet: 0, folded: true, isAllIn: false, hasActed: true, cards: [] };
+    }
+
+    return base;
   }
 
   /**

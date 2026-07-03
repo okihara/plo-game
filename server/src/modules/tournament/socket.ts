@@ -9,7 +9,7 @@ import { wrapSocketHandler } from '../game/socketErrorReporter.js';
 import { unseatAndCashOut } from '../game/handlers.js';
 import { prisma } from '../../config/database.js';
 import { reportError } from '../../config/sentry.js';
-import { hasWeeklyChampionBadge, hasSeasonTop3Badge } from '../badges/badgeService.js';
+import { buildPlayerProfile } from '../profile/playerProfile.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -99,16 +99,9 @@ export function registerTournamentHandlers(
       if (!user) return;
 
       const statusBefore = tournament.getStatus();
-      const [weeklyChamp, seasonTop3] = await Promise.all([
-        hasWeeklyChampionBadge(odId),
-        hasSeasonTop3Badge(odId),
-      ]);
+      const profile = await buildPlayerProfile(odId, user);
       const result = tournament.enterPlayer(odId, user.username, socket, {
-        displayName: user.displayName,
-        avatarUrl: user.avatarUrl,
-        nameMasked: user.nameMasked,
-        hasWeeklyChampion: weeklyChamp,
-        hasSeasonTop3: seasonTop3,
+        profile,
         role: socket.odRole,
       });
       if (!result.success) {

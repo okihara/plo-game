@@ -26,6 +26,7 @@ function variantBasename(variant: string): string | null {
     case 'plo6':
       return 'plo6_6card';
     case 'omaha_hilo':
+    case 'plo_hilo':
       return 'plo8_hi_lo';
     case 'plo_double_board_bomb':
       return 'double_boards_bombpot';

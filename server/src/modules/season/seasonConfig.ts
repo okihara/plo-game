@@ -15,9 +15,10 @@ export interface SeasonConfig {
 }
 
 export const CURRENT_SEASON: SeasonConfig = {
-  name: 'シーズン１',
-  label: '2026 1/1 - 6/30',
-  start: new Date('2026-01-01T00:00:00+09:00'),
-  end: new Date('2026-06-30T23:59:59.999+09:00'),
-  badgePrefix: 'season1',
+  name: 'シーズン２',
+  label: '2026 7/1 -',
+  start: new Date('2026-07-01T00:00:00+09:00'),
+  // end は未定。確定するまでの暫定値（この日付までの完了トナメを集計対象に含める）。
+  end: new Date('2026-12-31T23:59:59.999+09:00'),
+  badgePrefix: 'season2',
 };

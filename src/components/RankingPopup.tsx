@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { DEFAULT_AVATAR_URL } from '@plo/shared';
 import { fetchRankings } from '../utils/rankingsCache';
 import { formatProfit, ordinalSuffix, type RankingEntry } from './RankingUtils';
 
@@ -217,7 +218,7 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                     <div className="flex items-center gap-[2cqw] flex-1 min-w-0">
                       <div className="w-[7cqw] h-[7cqw] rounded-full bg-cream-200 border border-cream-300 overflow-hidden shrink-0">
                         <img
-                          src={entry.avatarUrl || '/images/icons/anonymous.svg'}
+                          src={entry.avatarUrl || DEFAULT_AVATAR_URL}
                           alt=""
                           className="w-full h-full object-cover"
                         />

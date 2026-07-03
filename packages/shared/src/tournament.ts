@@ -101,7 +101,8 @@ export interface FinishedTournamentsWindow {
 
 export interface TournamentResult {
   odId: string;
-  odName: string;
+  /** 表示名（displayName またはマスク済み username） */
+  name: string;
   position: number;
   prize: number;
   reentries: number;
@@ -120,8 +121,8 @@ export interface TournamentEliminationInfo {
 
 export interface TournamentPlayerEliminatedData {
   odId: string;
-  odName: string;
-  displayName: string | null;
+  /** 表示名（displayName またはマスク済み username）。生の username は送らない */
+  name: string;
   position: number | null;   // レイト登録中はnull
   playersRemaining: number;
 }

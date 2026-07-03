@@ -1,6 +1,8 @@
 // WebSocket event types shared between client and server
 
-import type { Action, Card, Position } from './types';
+import type { Action, Card, Position, Player } from './types';
+import { POSITIONS } from './types';
+import type { PlayerProfile } from './profile';
 import type {
   BlindLevel,
   ClientTournamentState,
@@ -95,9 +97,8 @@ export interface ServerToClientEvents {
 
 export interface OnlinePlayer {
   odId: string;
-  odName: string;
-  avatarId: number;
-  avatarUrl?: string | null;  // Twitter/OAuth profile image URL
+  /** 着席時に確定した公開プロフィール（表示名・アバター・ネームプレート装飾） */
+  profile: PlayerProfile;
   seatNumber: number;
   /** サーバーがハンド開始時に設定（空席・ハンド外フォールバック時は省略可） */
   position?: Position;
@@ -108,8 +109,6 @@ export interface OnlinePlayer {
   hasActed: boolean;
   isConnected: boolean;
   cards: Card[];  // Stud: 全カード配布順（裏カードはダミー値+isUp:false）, PLO: []
-  hasWeeklyChampion?: boolean;  // ウィークリーチャンピオン（weekly_rank_1）バッジ保有者
-  hasSeasonTop3?: boolean;  // シーズン1 No.1〜No.3 バッジ保有者（プラチナ枠）
 }
 
 // Client-safe game state (hides other players' hole cards)
@@ -150,6 +149,52 @@ export interface TableInfo {
   players: number;
   maxPlayers: number;
   isFastFold: boolean;
+}
+
+/**
+ * OnlinePlayer（プロトコル表現）をゲームエンジンの Player に変換する。
+ * クライアントの描画用変換と Bot AI の状況構築で共通利用。
+ * 空席は folded/isSittingOut のプレースホルダーになる。
+ */
+export function convertOnlinePlayerToPlayer(
+  online: OnlinePlayer | null,
+  index: number,
+  dealerSeat: number
+): Player {
+  const fallbackPosition = POSITIONS[(index - dealerSeat + 6) % 6];
+  if (!online) {
+    return {
+      id: index,
+      name: `Seat ${index + 1}`,
+      chips: 0,
+      holeCards: [],
+      currentBet: 0,
+      totalBetThisRound: 0,
+      folded: true,
+      isAllIn: false,
+      hasActed: true,
+      isSittingOut: true,
+      position: fallbackPosition,
+    };
+  }
+
+  return {
+    id: index,
+    name: online.profile.name,
+    chips: online.chips,
+    holeCards: online.cards ?? [],
+    currentBet: online.currentBet,
+    totalBetThisRound: online.currentBet,
+    folded: online.folded,
+    isAllIn: online.isAllIn,
+    hasActed: online.hasActed,
+    isSittingOut: false,
+    position: online.position ?? fallbackPosition,
+    avatarId: online.profile.avatarId,
+    avatarUrl: online.profile.avatarUrl,
+    odId: online.odId,
+    nameplate: online.profile.nameplate,
+  };
 }
 
 // Socket authentication data

@@ -1,12 +1,12 @@
 import { io, Socket } from 'socket.io-client';
 import { getCPUAction } from '../shared/logic/cpuAI.js';
-import { GameState, Card, Action, Player, Position, GameAction, GameVariant } from '../shared/logic/types.js';
-import { ClientGameState, OnlinePlayer } from '../shared/types/websocket.js';
+import { GameState, Card, Action, Player, Position, POSITIONS, GameAction, GameVariant } from '../shared/logic/types.js';
+import { ClientGameState } from '../shared/types/websocket.js';
+import { convertOnlinePlayerToPlayer } from '@plo/shared';
 import { AIContext } from '../shared/logic/ai/types.js';
 import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
 import { logSocketError } from './socketErrorLogger.js';
 
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 
 export type BotState = 'disconnected' | 'matchmaking' | 'playing' | 'tournament_registered' | 'tournament_playing' | 'tournament_eliminated';
 
@@ -497,40 +497,15 @@ export class BotClient {
     if (!this.gameState || this.seatNumber === -1) return null;
 
     const players: Player[] = [];
-    let dealerPosition = this.gameState.dealerSeat;
+    const dealerPosition = this.gameState.dealerSeat;
 
     for (let i = 0; i < 6; i++) {
-      const onlinePlayer = this.gameState.players[i];
-      if (onlinePlayer) {
-        players.push({
-          id: i,
-          name: onlinePlayer.odName,
-          position: POSITIONS[(i - dealerPosition + 6) % 6],
-          chips: onlinePlayer.chips,
-          holeCards: i === this.seatNumber ? this.holeCards : (onlinePlayer.cards ?? []),
-          currentBet: onlinePlayer.currentBet,
-          totalBetThisRound: onlinePlayer.currentBet,
-          folded: onlinePlayer.folded,
-          isAllIn: onlinePlayer.isAllIn,
-          hasActed: onlinePlayer.hasActed,
-          isSittingOut: false,
-        });
-      } else {
-        // Empty seat - create placeholder
-        players.push({
-          id: i,
-          name: 'Empty',
-          position: POSITIONS[(i - dealerPosition + 6) % 6],
-          chips: 0,
-          holeCards: [],
-          currentBet: 0,
-          totalBetThisRound: 0,
-          folded: true,
-          isAllIn: false,
-          hasActed: true,
-          isSittingOut: true,
-        });
+      const player = convertOnlinePlayerToPlayer(this.gameState.players[i], i, dealerPosition);
+      // 自席のホールカードはサーバーから個別受信したものを使う
+      if (i === this.seatNumber) {
+        player.holeCards = this.holeCards;
       }
+      players.push(player);
     }
 
     return {

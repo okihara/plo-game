@@ -1,4 +1,5 @@
 export * from './types';
+export * from './profile';
 export * from './deck';
 export * from './handEvaluator';
 export * from './handName';

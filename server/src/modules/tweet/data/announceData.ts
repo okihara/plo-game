@@ -11,6 +11,8 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { maskName } from '../../../shared/utils.js';
+import { jstParts } from '../../../shared/timeJst.js';
+import { planForWeekday } from '../../tournament/weeklySchedule.js';
 
 const STALE_HOURS = 48;
 
@@ -75,31 +77,6 @@ export async function fetchPreviousResult(
   };
 }
 
-/**
- * scheduledStartTime が今後 24 時間以内に始まる WAITING のトナメを返す。
- * tickUpcomingTournaments の検知対象。
- */
-export async function fetchUpcomingTournaments(prisma: PrismaClient, limit = 5) {
-  const now = new Date();
-  const tomorrow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
-  return prisma.tournament.findMany({
-    where: {
-      status: 'WAITING',
-      scheduledStartTime: { gte: now, lt: tomorrow },
-      tweetDrafts: { none: { kind: 'ANNOUNCE' } },
-    },
-    orderBy: { scheduledStartTime: 'asc' },
-    take: limit,
-    select: {
-      id: true,
-      name: true,
-      scheduledStartTime: true,
-      buyIn: true,
-      maxPlayers: true,
-    },
-  });
-}
-
 export interface AnnounceContextTournament {
   id: string;
   name: string;
@@ -113,6 +90,8 @@ export interface AnnounceContextTournament {
 export interface AnnounceContext {
   today: AnnounceContextTournament;
   previousResult: PreviousResultSummary | null;
+  /** 開催曜日の特典文言（金曜の Amazon ギフト券など）。ある場合は告知に必ず織り込む */
+  specialNote?: string;
 }
 
 /** 単一トナメの ANNOUNCE 生成に必要なデータをひとまとめにする */
@@ -133,6 +112,7 @@ export async function fetchAnnounceContext(
   });
   if (!tournament || !tournament.scheduledStartTime) return null;
   const previousResult = await fetchPreviousResult(prisma);
+  const plan = planForWeekday(jstParts(tournament.scheduledStartTime).weekday);
   return {
     today: {
       id: tournament.id,
@@ -143,5 +123,6 @@ export async function fetchAnnounceContext(
       gameVariant: tournament.gameVariant,
     },
     previousResult,
+    ...(plan.specialNote ? { specialNote: plan.specialNote } : {}),
   };
 }

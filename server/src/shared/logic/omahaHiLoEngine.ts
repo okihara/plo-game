@@ -3,7 +3,7 @@
 // ホールカード4枚、コミュニティカード5枚
 // ショーダウン: ハイ/ローでポットをスプリット（8-or-betterクオリファイ）
 
-import { GameState, Player, Position, Action, Street } from './types.js';
+import { GameState, Player, Position, POSITIONS, Action, Street } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import {
   getActivePlayers,
@@ -15,7 +15,6 @@ import {
 import { evaluateOmahaHiLoHand } from './handEvaluator.js';
 import { resolveHiLoShowdown, HiLoPotWinner } from './hiLoSplitPot.js';
 
-const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
 const MAX_PLAYERS = 6;
 const MAX_BETS_PER_ROUND = 4;
 
