@@ -1,17 +1,17 @@
 /// <reference types="node" />
 /**
- * RPランキング更新ツイートを画像付きで公式アカウントに投稿する。
- * /ranking-tweet スキルから呼ばれる想定。
+ * ツイートを（任意で画像付きで）公式アカウントに投稿する汎用スクリプト。
+ * /ranking-tweet, /tournament-tweet 等のスキルから呼ばれる想定。
  *
  *   # ドライラン（既定。投稿せず内容だけ表示）
- *   cd server && npx tsx scripts/post-ranking-tweet.ts
+ *   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/xxx.txt --image=/tmp/xxx.png
  *
  *   # 実投稿（--confirm が無いと投稿しない）
- *   cd server && npx tsx scripts/post-ranking-tweet.ts --confirm
+ *   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/xxx.txt --image=/tmp/xxx.png --confirm
  *
- * 文面は /tmp/ranking-tweet.txt（または --text-file=<path>）から読む。
- * コマンドラインに本文・接続URL・トークンを載せないため、ファイル経由で渡す。
- * 画像は /tmp/rp-ranking.png（または --image=<path>）。
+ * 文面は --text-file=<path> のファイルから読む。
+ * コマンドラインに本文・接続URL・トークンを載せないため、必ずファイル経由で渡す。
+ * 画像は --image=<path>（省略時はテキストのみ投稿）。
  * 認証情報は server/.env の TWITTER_POST_* を使う。
  */
 import { config } from 'dotenv';
@@ -29,16 +29,22 @@ function argValue(name: string): string | undefined {
   return hit ? hit.slice(prefix.length) : undefined;
 }
 
-const TEXT_FILE = argValue('text-file') ?? '/tmp/ranking-tweet.txt';
-const IMAGE_PATH = argValue('image') ?? '/tmp/rp-ranking.png';
+const TEXT_FILE = argValue('text-file');
+const IMAGE_PATH = argValue('image');
 const CONFIRM = process.argv.includes('--confirm');
 
 async function main() {
+  if (!TEXT_FILE) {
+    throw new Error('--text-file=<path> で本文ファイルを指定してください');
+  }
   if (!existsSync(TEXT_FILE)) {
     throw new Error(`本文ファイルが見つかりません: ${TEXT_FILE}（先に下書きを書き出してください）`);
   }
+  if (IMAGE_PATH && !existsSync(IMAGE_PATH)) {
+    throw new Error(`画像ファイルが見つかりません: ${IMAGE_PATH}`);
+  }
   const text = readFileSync(TEXT_FILE, 'utf8').trimEnd();
-  const hasImage = existsSync(IMAGE_PATH);
+  const hasImage = !!IMAGE_PATH;
 
   console.log('--- 投稿プレビュー ---');
   console.log(text);

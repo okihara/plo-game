@@ -1,6 +1,6 @@
 ---
 name: tournament-tweet
-description: Use this skill when the user wants to generate a tournament result tweet for the plo-game project. Triggered by `/tournament-tweet` (optionally with a tournamentId). Fetches tournament info, top finishers, and the winner's hands from the production DB, drafts a Japanese result tweet in the BabyPLO style, and renders a podium image (top-3 avatars on 1st/2nd/3rd blocks) for the user to attach by hand.
+description: Use this skill when the user wants to generate (and optionally post) a tournament result tweet for the plo-game project. Triggered by `/tournament-tweet` (optionally with a tournamentId). Fetches tournament info, top finishers, and the winner's hands from the production DB, drafts a Japanese result tweet in the BabyPLO style, renders a podium image (top-3 avatars on 1st/2nd/3rd blocks), and—after explicit user confirmation—can post the tweet with the image to the official account via post-tweet.ts.
 ---
 
 # Tournament Tweet
@@ -125,11 +125,33 @@ cd server && npx tsx scripts/tournament-tweet-data.ts --prod --tournament <tourn
 
 - レンダラーは `server/scripts/render-podium.py`（PIL / cream・forest パレット / 1200×675）。`topResults` の `avatarUrl` を使い、リモートURLはダウンロード、`/images/...` はリポジトリの `public/` から読む。SVG や取得失敗時は人型シルエットにフォールバックする
 - 生成後は **Read ツールで PNG を必ず目視確認**する（名前のはみ出し・アイコン欠けがないか）。問題なければ `open /tmp/tournament-podium.png` でユーザーにも見せる
-- ユーザーはこの画像を手動でツイートに添付する想定。自動投稿はしない
+- 画像は Step 5 の投稿に使う（ユーザーが手動添付する場合もこのパスを案内する）
 
-### Step 5: 完了
+### Step 5: 投稿（画像付き）
 
-- ファイル保存はしない（ユーザーが手直しして使う想定。画像は `/tmp/tournament-podium.png` に残る）
+下書きを提示したら、**公式アカウントへの公開投稿は取り消せない**ため、必ず一度ユーザーに最終文面の確認を取る。承認を得てから以下を実行する。
+
+1. 確定した本文を **`/tmp/tournament-tweet.txt`** に書き出す（Write ツール）。本文をコマンドラインに載せないため、必ずファイル経由で渡す。画像は Step 4 で生成済みの `/tmp/tournament-podium.png` を使う。
+2. まずドライランで内容と文字数を確認する:
+
+   ```bash
+   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/tournament-tweet.txt --image=/tmp/tournament-podium.png
+   ```
+
+3. 問題なければ `--confirm` を付けて実投稿する:
+
+   ```bash
+   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/tournament-tweet.txt --image=/tmp/tournament-podium.png --confirm
+   ```
+
+- 投稿は汎用スクリプト `scripts/post-tweet.ts` を使う。本文は `--text-file`、画像は `--image` のファイルから読み、`server/.env` の `TWITTER_POST_*` で投稿する（本文・接続URL・トークンはコマンドラインに出さない）。
+- `--confirm` が無いと投稿せずプレビューのみ（安全側の既定）。
+- 投稿後、出力された tweetId と `https://x.com/i/status/<id>` をユーザーに伝える。
+- ユーザーが「下書きだけでいい／自分で投稿する」と言った場合は Step 5 をスキップし、画像パス（`/tmp/tournament-podium.png`）の案内だけで完了とする。
+
+### Step 6: 完了
+
+- 下書き・本文ファイル（`/tmp/tournament-tweet.txt`）は一時ファイルなので保存管理は不要
 - メモリ保存も不要（毎回異なる内容なので）
 
 ## 参考: 過去ツイートサンプル
