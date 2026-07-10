@@ -16,8 +16,6 @@ tournament-tweet-data.ts の JSON を stdin から受け取り、
 """
 import io
 import json
-import math
-import random
 import sys
 import urllib.request
 from pathlib import Path
@@ -108,18 +106,6 @@ d = ImageDraw.Draw(img)
 def S(v):
     return round(v * SS)
 
-
-# ---- 紙吹雪（固定シード） ----
-rng = random.Random(42)
-confetti_colors = [GOLD, FOREST, BRONZE, (200, 80, 80), (90, 130, 200), SILVER]
-for _ in range(90):
-    x = rng.randint(0, W)
-    y = rng.randint(0, H - 180)
-    c = rng.choice(confetti_colors)
-    size = rng.randint(4, 9)
-    angle = rng.uniform(0, math.pi)
-    dx, dy = math.cos(angle) * size, math.sin(angle) * size
-    d.line([S(x - dx), S(y - dy), S(x + dx), S(y + dy)], fill=c, width=S(3))
 
 # ---- タイトル ----
 fnt_t = f(S(52), True)
