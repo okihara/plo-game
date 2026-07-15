@@ -107,18 +107,28 @@ def S(v):
     return round(v * SS)
 
 
+# ---- 背景の飾り（四隅にごく薄いスート柄） ----
+SUIT_DECOR = (236, 229, 220)
+fnt_suit = f(S(96))
+for suit, (sx, sy) in [
+    ("♠", (36, 24)), ("♥", (W - 120, 24)),
+    ("♣", (36, H - 130)), ("♦", (W - 120, H - 130)),
+]:
+    d.text((S(sx), S(sy)), suit, font=fnt_suit, fill=SUIT_DECOR)
+
+
 # ---- タイトル ----
 fnt_t = f(S(52), True)
 bbox = d.textbbox((0, 0), title, font=fnt_t)
-d.text((S(W // 2) - (bbox[2] - bbox[0]) // 2, S(42)), title, font=fnt_t, fill=FOREST)
+d.text((S(W // 2) - (bbox[2] - bbox[0]) // 2, S(36)), title, font=fnt_t, fill=FOREST)
 
 # ---- 表彰台 ----
 # 表示順: 左=2位 / 中央=1位 / 右=3位
 SLOTS = {2: 0, 1: 1, 3: 2}
 BLOCK_SPECS = {
-    1: {"height": 210, "color": FOREST_DK, "avatar": 170},
-    2: {"height": 150, "color": FOREST, "avatar": 140},
-    3: {"height": 110, "color": FOREST, "avatar": 140},
+    1: {"height": 190, "color": FOREST_DK, "avatar": 155},
+    2: {"height": 140, "color": FOREST, "avatar": 130},
+    3: {"height": 95, "color": FOREST, "avatar": 130},
 }
 
 BLOCK_W = 280
@@ -127,9 +137,11 @@ BASE_Y = H - 60
 total_w = BLOCK_W * 3 + GAP * 2
 start_x = (W - total_w) // 2
 
-# 地面ライン
-d.line([S(start_x - 60), S(BASE_Y), S(start_x + total_w + 60), S(BASE_Y)],
-       fill=BORDER, width=S(3))
+# 台の影（地面ラインの代わりに、各ブロックの足元へ薄い楕円）
+for rank, slot in SLOTS.items():
+    sx = start_x + slot * (BLOCK_W + GAP)
+    d.ellipse([S(sx - 14), S(BASE_Y - 8), S(sx + BLOCK_W + 14), S(BASE_Y + 14)],
+              fill=(230, 222, 210))
 
 
 def circle_avatar(im: Image.Image, size_px: int) -> Image.Image:
@@ -166,10 +178,10 @@ for r in top3:
     ry = S(bt + bh // 2) - (bbox[3] - bbox[1]) // 2 - bbox[1]
     d.text((rx, ry), rank_label, font=fnt_r, fill=ring)
 
-    # アバター
+    # アバター（名前＋プライズ額の2行分を確保）
     av_size = spec["avatar"]
     ax = bx + (BLOCK_W - av_size) // 2
-    name_h = 46
+    name_h = 80
     ay = bt - name_h - av_size - 18
 
     # リング（メダル色）と白フチ
@@ -186,10 +198,10 @@ for r in top3:
     if rank == 1:
         cw, ch = 76, 54
         cx = bx + BLOCK_W // 2 - cw // 2
-        cy = ay - ch - 16
-        ly = cy + ch // 2
-        d.line([S(cx - 150), S(ly), S(cx - 30), S(ly)], fill=GOLD, width=S(2))
-        d.line([S(cx + cw + 30), S(ly), S(cx + cw + 150), S(ly)], fill=GOLD, width=S(2))
+        cy = ay - ch - 14
+        ly = cy + 14
+        d.line([S(cx - 110), S(ly), S(cx - 30), S(ly)], fill=GOLD, width=S(2))
+        d.line([S(cx + cw + 30), S(ly), S(cx + cw + 110), S(ly)], fill=GOLD, width=S(2))
         pts = [
             (cx, cy + ch), (cx, cy + 14),
             (cx + cw * 0.25, cy + ch * 0.52), (cx + cw * 0.5, cy),
@@ -200,12 +212,21 @@ for r in top3:
         d.rounded_rectangle([S(cx), S(cy + ch), S(cx + cw), S(cy + ch + 10)],
                             radius=S(3), fill=(190, 150, 40))
 
-    # 名前（アバターとブロックの間）
+    # 名前とプライズ額（アバターとブロックの間に2行）
     fnt_n = f(S(30 if rank == 1 else 27), True)
-    label = f"{name} さん"
+    label = name
     bbox = d.textbbox((0, 0), label, font=fnt_n)
     nx = S(bx + BLOCK_W // 2) - (bbox[2] - bbox[0]) // 2
-    d.text((nx, S(ay + av_size + 14)), label, font=fnt_n, fill=TEXT)
+    ny = S(ay + av_size + 12)
+    d.text((nx, ny), label, font=fnt_n, fill=TEXT)
+
+    prize = r.get("prize") or 0
+    if prize > 0:
+        fnt_p = f(S(26), True)
+        prize_label = f"{prize:,}"
+        bbox = d.textbbox((0, 0), prize_label, font=fnt_p)
+        px = S(bx + BLOCK_W // 2) - (bbox[2] - bbox[0]) // 2
+        d.text((px, ny + S(38)), prize_label, font=fnt_p, fill=FOREST)
 
 # ---- フッター ----
 footer = "#BabyPLO"
