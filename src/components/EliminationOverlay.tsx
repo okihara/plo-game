@@ -1,4 +1,5 @@
 import { MiniCard } from './HandHistoryUtils';
+import { BrandText } from './BrandText';
 
 export interface HandSummaryForResult {
   handId: string;
@@ -157,7 +158,7 @@ export function EliminationOverlay({
             className="mx-auto w-[12cqw] h-[12cqw] object-contain mb-[1cqw] opacity-90 rounded-full"
           />
           <div className="text-cream-900 text-[2.8cqw] tracking-[0.3em]">
-            BabyPLO
+            <BrandText />
           </div>
         </div>
       </div>

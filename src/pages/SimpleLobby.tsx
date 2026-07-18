@@ -6,6 +6,7 @@ import { ProfileEditDialog } from '../components/ProfileEditDialog';
 import { RankingPopup } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { BottomNavigation, type LobbyTab } from '../components/BottomNavigation';
+import { BrandText } from '../components/BrandText';
 import { TournamentList } from '../components/TournamentList';
 import { SettingsPopup } from '../components/SettingsPopup';
 
@@ -156,7 +157,7 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
               className="w-full h-full object-cover scale-125"
             />
           </div>
-          <h1 className="text-[5cqw] font-bold text-white tracking-tight leading-none">BabyPLO <span className="text-[3.0cqw] font-normal text-white/60">ver.{__COMMIT_HASH__}</span></h1>
+          <h1 className="text-[5cqw] font-bold text-white tracking-tight leading-none"><BrandText /> <span className="text-[3.0cqw] font-normal text-white/60">ver.{__COMMIT_HASH__}</span></h1>
           <button onClick={() => setShowSettings(true)} className="ml-auto text-white/80 hover:text-white transition-colors shrink-0">
             <Settings className="w-[5cqw] h-[5cqw]" />
           </button>

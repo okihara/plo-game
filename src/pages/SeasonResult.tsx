@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { BrandText } from '../components/BrandText';
 
 type SeasonTab = 'overall' | 'me';
 
@@ -513,7 +514,7 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
           </button>
         </div>
         <div className="text-center mt-[2cqw]">
-          <p className="text-[3.4cqw] font-bold text-white/85">BabyPLO トーナメントランキング</p>
+          <p className="text-[3.4cqw] font-bold text-white/85"><BrandText /> トーナメントランキング</p>
           <h1 className="text-[6.5cqw] font-extrabold text-white leading-tight mt-[0.5cqw]">{data.season.name} 最終結果</h1>
           <p className="text-[3cqw] text-white/70 mt-[0.5cqw]">{data.season.label}</p>
         </div>

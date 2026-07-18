@@ -158,6 +158,10 @@ PostgreSQL の接続文字列（`DATABASE_URL`、Railway の URL など）は **
 
 9:16 縦画面のブロック構成と `PokerTable` の回転配置は [docs/ui-mobile-layout.md](docs/ui-mobile-layout.md)。
 
+### ブランド表記「BabyPLO」
+
+画面にブランド名を表示するときは生文字列ではなく `src/components/BrandText.tsx` の `BrandText` を使う（規定ロゴフォント Baloo 2 = Tailwind `font-logo` が適用される）。表記は「BabyPLO」（スペースなし）に統一。
+
 ### ハンド履歴
 
 - 保存: `server/src/modules/table/helpers/HandHistoryRecorder.ts`（ハンド完了時、fire-and-forget）

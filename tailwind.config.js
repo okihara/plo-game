@@ -8,6 +8,10 @@ export default {
   ],
   theme: {
     extend: {
+      fontFamily: {
+        // ブランドロゴ「BabyPLO」専用フォント（表示は BrandText コンポーネント経由で統一）
+        logo: ['"Baloo 2"', 'Roboto', 'sans-serif'],
+      },
       colors: {
         'poker-green': {
           light: '#1e5631',
