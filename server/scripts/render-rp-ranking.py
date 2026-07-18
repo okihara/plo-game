@@ -36,11 +36,17 @@ def f(size, bold=False):
 # ---- 入力読み取り ----
 lines = [l.rstrip("\n") for l in sys.stdin if l.strip()]
 meta = {}
+footers = []  # #footer= は複数行可。出現順に画像下部へ描画する
 rows = []
 for l in lines:
     if l.startswith("#"):
         k, _, v = l[1:].partition("=")
-        meta[k.strip()] = v.strip()
+        k, v = k.strip(), v.strip()
+        if k == "footer":
+            if v:
+                footers.append(v)
+        else:
+            meta[k] = v
     elif "\t" in l:
         rows.append(l.split("\t"))
 
@@ -54,7 +60,8 @@ GAP = 40
 ROW_H = 54
 HEADER_H = 64
 TITLE_H = 140
-FOOTER_H = 56
+FOOTER_LINE_H = 30
+FOOTER_H = 24 + FOOTER_LINE_H * len(footers) if footers else 20
 
 HALF = 15
 left_rows = rows[:HALF]
@@ -176,9 +183,10 @@ draw_card(PAD, left_rows)
 draw_card(PAD + card_w + GAP, right_rows)
 
 # ---- フッター ----
-footer = meta.get("footer", "")
-if footer:
-    d.text((PAD, H - FOOTER_H + 10), footer, font=f(16), fill=SUB_TEXT)
+fy = TITLE_H + HEADER_H + ROW_H * col_rows + 24
+for line in footers:
+    d.text((PAD, fy), line, font=f(16), fill=SUB_TEXT)
+    fy += FOOTER_LINE_H
 
 img.save(OUT_PATH)
 print(f"saved: {OUT_PATH}", file=sys.stderr)
