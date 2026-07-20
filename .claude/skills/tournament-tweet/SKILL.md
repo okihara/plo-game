@@ -1,6 +1,6 @@
 ---
 name: tournament-tweet
-description: Use this skill when the user wants to generate a tournament result tweet for the plo-game project. Triggered by `/tournament-tweet` (optionally with a tournamentId). Fetches tournament info, top finishers, and the winner's hands from the production DB, then drafts a Japanese result tweet in the BabyPLO style for the user to tweak by hand.
+description: Use this skill when the user wants to generate (and optionally post) a tournament result tweet for the plo-game project. Triggered by `/tournament-tweet` (optionally with a tournamentId). Fetches tournament info, top finishers, and the winner's hands from the production DB, drafts a Japanese result tweet in the BabyPLO style, renders a podium image (top-3 avatars on 1st/2nd/3rd blocks), and—after explicit user confirmation—can post the tweet with the image to the official account via post-tweet.ts.
 ---
 
 # Tournament Tweet
@@ -30,12 +30,20 @@ stdout に JSON が出る。主要フィールド:
 
 - `tournament.name` / `completedAt` / `totalEntries`（リエントリー込みの総エントリー数）/ `uniqueRegistrations`（実参加者数＝ユニーク登録数）
 - `winner.displayName` / `winner.prize`
-- `topResults[]` — 上位5名（`position`, `displayName`, `prize`, `reentries`）。**順位の列挙は `prize > 0` の人数まで**（インマネ＝賞金が出た人数。固定の5位ではない）
+- `topResults[]` — 上位5名（`position`, `displayName`, `prize`, `reentries`, `avatarUrl`）。**順位の列挙は `prize > 0` の人数まで**（インマネ＝賞金が出た人数。固定の5位ではない）。`avatarUrl` は Step 4 の表彰台画像で使う
 - `lastHands[]` — トナメ全体の最後の30ハンド（古い順）。`communityCards`, `potSize`, `winnerNames`, `blinds`, `players[]`（startChips / profit / `finalHand` / 優勝者のホールカードのみ入る）, `actions`
   - `blinds` — `"SB/BB/BBアンティ"` 形式（例 `"0/0/60000"` は BB アンティ＝**実質 BB が 60000**）。`potSize ÷ 実質BB` で **BB 換算**できる
   - `finalHand` — ショーダウン時の役。**ダブルボードのハンドは `"B1: 7フラッシュ / B2: Kストレート"` のように2ボード分が入る**。両ボードを同一プレイヤーが勝つと**スクープ**（`winnerNames` がその1名のみ＝両ボードのポットを総取り）
 
 ### Step 2: 優勝者コメントの材料を抜き出す
+
+**初優勝かどうかを必ず確認する:**
+
+```bash
+cd server && npx tsx scripts/count-tournament-wins.ts --prod --user <winner.userId>
+```
+
+`winCount` が 1（今回のみ）なら**初優勝**としてコメントに織り込む。2 なら「2度目の優勝」のように回数に触れてよい。
 
 `lastHands` から、**優勝者のプレースタイル**を示す具体的な観察を拾う:
 
@@ -95,14 +103,55 @@ stdout に JSON が出る。主要フィールド:
   - 「拮抗した状況が続く中、要所でしっかりと勝負を決めて〜」
   - 「ハイレベルなファイナルテーブルを勝ち抜き〜」
 - エントリー数は **`Nエントリー（参加者M名）`** の形式で書く（N = `totalEntries`、M = `uniqueRegistrations`）。前置きは曜日・祝日・特記事項があれば織り込む（例: 「休みの中」「本日は」「平日の夜に」）。分からなければシンプルに「本日は」
+- **曜日を書く場合は必ず開催日（`completedAt`）から曜日を計算して検証する**。思い込みで書かない（`date -j -f %Y-%m-%d <日付> +%A` 等で確認）
 - 絵文字は過去サンプルと同じく 🥇🏆🙇‍♂️ を使用。増やしすぎない
 - ハッシュタグは `#BabyPLO` のみ
 
 **出力形式:** 下書きをコードブロックでそのまま提示する。その後に、どの観察を採用したか（1〜2行）を補足し、ユーザーが書き換えやすいよう**別案の優勝者コメント**を2案ほど添える。
 
-### Step 4: 完了
+### Step 4: 表彰台画像の生成
 
-- ファイル保存はしない（ユーザーが手直しして使う想定）
+ツイートに添付する表彰台画像（上位3名のアイコンを 1st/2nd/3rd の台に載せた PNG）を生成する。
+
+```bash
+# 引数なしの場合（直近の COMPLETED）
+cd server && npx tsx scripts/tournament-tweet-data.ts --prod \
+  | python3 scripts/render-podium.py /tmp/tournament-podium.png
+
+# tournamentId 指定
+cd server && npx tsx scripts/tournament-tweet-data.ts --prod --tournament <tournamentId> \
+  | python3 scripts/render-podium.py /tmp/tournament-podium.png
+```
+
+- レンダラーは `server/scripts/render-podium.py`（PIL / cream・forest パレット / 1200×675）。`topResults` の `avatarUrl` を使い、リモートURLはダウンロード、`/images/...` はリポジトリの `public/` から読む。SVG や取得失敗時は人型シルエットにフォールバックする
+- 生成後は **Read ツールで PNG を必ず目視確認**する（名前のはみ出し・アイコン欠けがないか）。問題なければ `open /tmp/tournament-podium.png` でユーザーにも見せる
+- 画像は Step 5 の投稿に使う（ユーザーが手動添付する場合もこのパスを案内する）
+
+### Step 5: 投稿（画像付き）
+
+下書きを提示したら、**公式アカウントへの公開投稿は取り消せない**ため、必ず一度ユーザーに最終文面の確認を取る。承認を得てから以下を実行する。
+
+1. 確定した本文を **`/tmp/tournament-tweet.txt`** に書き出す（Write ツール）。本文をコマンドラインに載せないため、必ずファイル経由で渡す。画像は Step 4 で生成済みの `/tmp/tournament-podium.png` を使う。
+2. まずドライランで内容と文字数を確認する:
+
+   ```bash
+   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/tournament-tweet.txt --image=/tmp/tournament-podium.png
+   ```
+
+3. 問題なければ `--confirm` を付けて実投稿する:
+
+   ```bash
+   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/tournament-tweet.txt --image=/tmp/tournament-podium.png --confirm
+   ```
+
+- 投稿は汎用スクリプト `scripts/post-tweet.ts` を使う。本文は `--text-file`、画像は `--image` のファイルから読み、`server/.env` の `TWITTER_POST_*` で投稿する（本文・接続URL・トークンはコマンドラインに出さない）。
+- `--confirm` が無いと投稿せずプレビューのみ（安全側の既定）。
+- 投稿後、出力された tweetId と `https://x.com/i/status/<id>` をユーザーに伝える。
+- ユーザーが「下書きだけでいい／自分で投稿する」と言った場合は Step 5 をスキップし、画像パス（`/tmp/tournament-podium.png`）の案内だけで完了とする。
+
+### Step 6: 完了
+
+- 下書き・本文ファイル（`/tmp/tournament-tweet.txt`）は一時ファイルなので保存管理は不要
 - メモリ保存も不要（毎回異なる内容なので）
 
 ## 参考: 過去ツイートサンプル

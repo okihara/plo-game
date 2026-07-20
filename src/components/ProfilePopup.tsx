@@ -46,7 +46,7 @@ export function ProfilePopup({
   onLabelRemove,
   defaultMode = 'cash',
 }: ProfilePopupProps) {
-  const { loading, stats, tournamentStats, badges, profitHistory } = usePlayerStats(userId, { withProfitHistory: isSelf });
+  const { loading, stats, tournamentStats, badges, profitHistory, profitTotalHands } = usePlayerStats(userId, { withProfitHistory: isSelf });
   const [mode, setMode] = useState<'cash' | 'tournament'>(defaultMode);
   const [activeBadge, setActiveBadge] = useState<string | null>(null);
   const badgeTooltipRef = useRef<HTMLDivElement>(null);
@@ -297,7 +297,7 @@ export function ProfilePopup({
           {/* Profit Chart (self only, cash mode only) */}
           {isSelf && mode === 'cash' && !loading && profitHistory.length >= 2 && (
             <div className="bg-white rounded-[3cqw] p-[2.5cqw] mt-[3cqw] border border-cream-200/90 shadow-[0_2px_8px_rgba(139,126,106,0.12)]">
-              <ProfitChart points={profitHistory} />
+              <ProfitChart points={profitHistory} totalHands={profitTotalHands} />
             </div>
           )}
 

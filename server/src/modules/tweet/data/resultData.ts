@@ -5,6 +5,7 @@
  * scripts 側もこの関数を呼ぶ形に DRY 化されている。
  */
 import type { PrismaClient } from '@prisma/client';
+import { DEFAULT_AVATAR_URL } from '@plo/shared';
 import { maskName } from '../../../shared/utils.js';
 
 export interface ResultDataOptions {
@@ -38,6 +39,8 @@ export interface ResultBundle {
     displayName: string;
     prize: number;
     reentries: number;
+    /** ゲーム内表示と同じ解決済みアイコン（URL か /images/... のパス） */
+    avatarUrl: string;
   }>;
   lastHands: Array<{
     handNumber: number;
@@ -89,7 +92,15 @@ export async function fetchResultData(
       where: { tournamentId: tournament.id },
       orderBy: { position: 'asc' },
       include: {
-        user: { select: { id: true, username: true, displayName: true, nameMasked: true } },
+        user: {
+          select: {
+            id: true,
+            username: true,
+            displayName: true,
+            nameMasked: true,
+            avatarUrl: true,
+          },
+        },
       },
     }),
     prisma.handHistory.findMany({
@@ -123,6 +134,7 @@ export async function fetchResultData(
       displayName: resolveDisplay(r.user),
       prize: r.prize,
       reentries: r.reentries,
+      avatarUrl: r.user.avatarUrl || DEFAULT_AVATAR_URL,
     }));
 
   const handsAsc = [...lastHands].reverse();

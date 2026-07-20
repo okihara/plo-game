@@ -4,10 +4,14 @@ import { prisma } from '../../config/database.js';
 import type { PlayerStats } from './computeStats.js';
 import { maskName } from '../../shared/utils.js';
 import { getUserBadges, groupBadgesForDisplay } from '../badges/badgeService.js';
+import { buildProfitHistoryPoints } from './profitHistory.js';
 
 // ランキングキャッシュ（60秒TTL）
 const rankingsCache = new Map<string, { data: unknown; expiresAt: number }>();
 const CACHE_TTL_MS = 60_000;
+
+// 収支グラフの最大ポイント数（超過分は等間隔バケットにダウンサンプリング）
+const PROFIT_HISTORY_MAX_POINTS = 2000;
 
 export async function statsRoutes(fastify: FastifyInstance) {
   fastify.get('/:userId', async (request: FastifyRequest, reply) => {
@@ -86,9 +90,10 @@ export async function statsRoutes(fastify: FastifyInstance) {
     const { userId } = request.params as { userId: string };
 
     const [rows, cache] = await Promise.all([
+      // 非正規化した tournamentId / createdAt で JOIN なしのインデックススキャンに乗せる
       prisma.handHistoryPlayer.findMany({
-        where: { userId, handHistory: { tournamentId: null } },
-        orderBy: { handHistory: { createdAt: 'asc' } },
+        where: { userId, tournamentId: null },
+        orderBy: { createdAt: 'asc' },
         select: { profit: true, finalHand: true, allInEVProfit: true },
       }),
       prisma.playerStatsCache.findUnique({
@@ -101,27 +106,8 @@ export async function statsRoutes(fastify: FastifyInstance) {
     // DB の allInEVProfit はほとんど NULL のため、キャッシュの差分を使って補正する
     const cacheEvDiff = cache ? cache.totalAllInEVProfit - cache.totalProfit : 0;
 
-    let cumTotal = 0;
-    let cumSD = 0;
-    let cumNoSD = 0;
-    let cumEV = 0;
-    const points = rows.map(r => {
-      const sd = r.finalHand != null;
-      cumTotal += r.profit;
-      cumEV += r.allInEVProfit ?? r.profit;
-      if (sd) cumSD += r.profit; else cumNoSD += r.profit;
-      return { p: r.profit, c: cumTotal, s: cumSD, n: cumNoSD, e: cumEV };
-    });
-
-    // allInEVProfit が全てNULLの場合(cumEV === cumTotal)、キャッシュの差分で補正
-    if (points.length > 0 && cumEV === cumTotal && cacheEvDiff !== 0) {
-      // EV差分をハンド位置に比例して段階的に適用
-      for (let i = 0; i < points.length; i++) {
-        points[i].e = Math.round(points[i].c + cacheEvDiff * ((i + 1) / points.length));
-      }
-    }
-
-    return { points };
+    const { points, totalHands } = buildProfitHistoryPoints(rows, cacheEvDiff, PROFIT_HISTORY_MAX_POINTS);
+    return { points, totalHands };
   });
 
   // ランキング（全プレイヤー）— period: all | weekly | daily

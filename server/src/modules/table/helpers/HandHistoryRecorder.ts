@@ -139,6 +139,9 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
       // seatIndex → profit（後追い EV 更新時の差分補正に使う）
       const profitBySeat = new Map<number, number>();
 
+      // 親子で同一の createdAt を持たせる（HandHistoryPlayer 側は非正規化コピー）
+      const handCreatedAt = new Date();
+
       // 全プレイヤーの HandHistoryPlayer レコードを準備
       const playerRecords = seats
         .map((seat, seatIndex) => {
@@ -185,6 +188,9 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
             profit,
             // EV は即時には未確定。null で保存し、ワーカー計算後に後追い UPDATE する。
             allInEVProfit: null as number | null,
+            // ユーザー単位クエリを JOIN なしで捌くための非正規化コピー（親と同値）
+            tournamentId: this.tournamentId,
+            createdAt: handCreatedAt,
           };
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
@@ -199,6 +205,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
         data: {
           tableId,
           ...(this.tournamentId ? { tournamentId: this.tournamentId } : {}),
+          createdAt: handCreatedAt,
           handNumber: this.handCount,
           blinds: this.blinds,
           communityCards: serializeCards(board1),

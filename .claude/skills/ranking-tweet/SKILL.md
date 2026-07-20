@@ -1,6 +1,6 @@
 ---
 name: ranking-tweet
-description: Use this skill when the user wants to generate (and optionally post) a RP ranking update tweet for the plo-game project (BabyPLO). Triggered by `/ranking-tweet`. Runs the rank-points-ranking script with `--diff` to compare the latest completed tournament against the previous standings, drafts a Japanese tweet highlighting position movements in the BabyPLO style, renders the TOP 30 ranking image, and—after explicit user confirmation—can post the tweet with the image to the official account via post-ranking-tweet.ts.
+description: Use this skill when the user wants to generate (and optionally post) a RP ranking update tweet for the plo-game project (BabyPLO). Triggered by `/ranking-tweet`. Runs the rank-points-ranking script with `--diff` to compare the latest completed tournament against the previous standings, drafts a Japanese tweet highlighting position movements in the BabyPLO style, renders the TOP 30 ranking image, and—after explicit user confirmation—can post the tweet with the image to the official account via post-tweet.ts.
 ---
 
 # Ranking Tweet
@@ -111,16 +111,16 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 2. まずドライランで内容と文字数を確認する:
 
    ```bash
-   cd server && npx tsx scripts/post-ranking-tweet.ts
+   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/ranking-tweet.txt --image=/tmp/rp-ranking.png
    ```
 
 3. 問題なければ `--confirm` を付けて実投稿する:
 
    ```bash
-   cd server && npx tsx scripts/post-ranking-tweet.ts --confirm
+   cd server && npx tsx scripts/post-tweet.ts --text-file=/tmp/ranking-tweet.txt --image=/tmp/rp-ranking.png --confirm
    ```
 
-- スクリプトは本文を `/tmp/ranking-tweet.txt`、画像を `/tmp/rp-ranking.png` から読み、`server/.env` の `TWITTER_POST_*` で投稿する（接続URL・トークンはコマンドラインに出さない）。
+- 投稿は汎用スクリプト `scripts/post-tweet.ts` を使う。本文は `--text-file`、画像は `--image` のファイルから読み、`server/.env` の `TWITTER_POST_*` で投稿する（本文・接続URL・トークンはコマンドラインに出さない）。
 - `--confirm` が無いと投稿せずプレビューのみ（安全側の既定）。
 - 投稿後、出力された tweetId と `https://x.com/i/status/<id>` をユーザーに伝える。
 - ユーザーが「下書きだけでいい／自分で投稿する」と言った場合は Step 5 をスキップし、クリップボードコピー（Step 3）だけで完了とする。

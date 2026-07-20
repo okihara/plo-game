@@ -8,6 +8,8 @@ interface Point {
 
 interface ProfitChartProps {
   points: Point[];
+  /** サーバー側でダウンサンプリングされた場合の元のハンド数。省略時は points.length。 */
+  totalHands?: number;
 }
 
 const W = 300;
@@ -72,7 +74,7 @@ function formatCompact(v: number): string {
   return v.toString();
 }
 
-export function ProfitChart({ points }: ProfitChartProps) {
+export function ProfitChart({ points, totalHands: totalHandsProp }: ProfitChartProps) {
   if (points.length < 2) return null;
 
   // 大量ハンド時に Math.min(...arr) がスタック上限で落ちるのでループで畳む
@@ -102,13 +104,16 @@ export function ProfitChart({ points }: ProfitChartProps) {
   const toY = (val: number) => PAD_T + (1 - (val - adjMinY) / rangeY) * chartH;
 
   // X-axis ticks (hand numbers)
-  const totalHands = points.length;
-  const xTickCount = Math.min(4, totalHands);
+  const totalHands = totalHandsProp ?? points.length;
+  const xTickCount = Math.min(4, points.length);
   const xTicks: number[] = [];
   for (let i = 0; i < xTickCount; i++) {
-    const idx = Math.round((i / (xTickCount - 1)) * (totalHands - 1));
+    const idx = Math.round((i / (xTickCount - 1)) * (points.length - 1));
     xTicks.push(idx);
   }
+  // ポイント index → 元系列でのハンド番号（ダウンサンプリング時に補間）
+  const toHandNumber = (idx: number) =>
+    Math.round((idx / (points.length - 1)) * (totalHands - 1)) + 1;
 
   const series: { key: SeriesKey; get: (pt: Point) => number; color: string; width: number }[] = [
     { key: 'nonShowdown', get: pt => pt.n, color: COLORS.nonShowdown, width: 1 },
@@ -158,7 +163,7 @@ export function ProfitChart({ points }: ProfitChartProps) {
               textAnchor="middle" dominantBaseline="middle"
               fill="#8B7E6A" fontSize="7"
             >
-              {idx + 1}
+              {toHandNumber(idx)}
             </text>
           ))}
 
@@ -188,7 +193,7 @@ export function ProfitChart({ points }: ProfitChartProps) {
         {/* Legend */}
         <div className="flex items-center justify-between mt-[1.5cqw]">
           <span className="text-cream-700 text-[2.2cqw]">
-            {points.length} hands
+            {totalHands} hands
           </span>
           <div className="flex items-center gap-[3cqw]">
             {series.slice().reverse().map(s => (
