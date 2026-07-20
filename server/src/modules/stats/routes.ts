@@ -220,6 +220,11 @@ export async function statsRoutes(fastify: FastifyInstance) {
         }
       }
 
+      // HandHistory と JOIN すると 1,900万行超の HandHistoryPlayer がフルスキャンされ約60秒かかるため、
+      // 非正規化コピー（hp.tournamentId / hp.createdAt）で JOIN を外す。
+      // 対象期間は直近の日/週のみで、非正規化列はバックフィル済み（NULL は期間外の旧データのみ）。
+      // さらに集計をサブクエリに分けて User との JOIN を集計後（〜200行）に行うことで、
+      // ranking 用カバリングインデックスの index-only scan に乗せる（実測 59s → 0.3s）。
       const rows = await prisma.$queryRaw<Array<{
         userId: string;
         username: string;
@@ -233,25 +238,31 @@ export async function statsRoutes(fastify: FastifyInstance) {
         winCount: bigint;
       }>>(Prisma.sql`
         SELECT
-          hp."userId",
+          s."userId",
           u."username",
           u."displayName",
           u."avatarUrl",
           u."nameMasked",
           u."useTwitterAvatar",
           u."provider",
-          COUNT(*)                                              AS "handsPlayed",
-          SUM(COALESCE(hp."allInEVProfit", hp."profit"))        AS "totalAllInEVProfit",
-          SUM(CASE WHEN hp."profit" > 0 THEN 1 ELSE 0 END)     AS "winCount"
-        FROM "HandHistoryPlayer" hp
-        JOIN "HandHistory" hh ON hp."handHistoryId" = hh."id"
-        JOIN "User" u ON hp."userId" = u."id"
-        WHERE hp."userId" IS NOT NULL
-          AND hh."tournamentId" IS NULL
-          AND hh."createdAt" >= ${startDate}
-          ${endDate ? Prisma.sql`AND hh."createdAt" < ${endDate}` : Prisma.empty}
-        GROUP BY hp."userId", u."username", u."displayName", u."avatarUrl", u."nameMasked", u."useTwitterAvatar", u."provider"
-        HAVING COUNT(*) >= ${MIN_HANDS}
+          s."handsPlayed",
+          s."totalAllInEVProfit",
+          s."winCount"
+        FROM (
+          SELECT
+            hp."userId",
+            COUNT(*)                                              AS "handsPlayed",
+            SUM(COALESCE(hp."allInEVProfit", hp."profit"))        AS "totalAllInEVProfit",
+            SUM(CASE WHEN hp."profit" > 0 THEN 1 ELSE 0 END)     AS "winCount"
+          FROM "HandHistoryPlayer" hp
+          WHERE hp."userId" IS NOT NULL
+            AND hp."tournamentId" IS NULL
+            AND hp."createdAt" >= ${startDate}
+            ${endDate ? Prisma.sql`AND hp."createdAt" < ${endDate}` : Prisma.empty}
+          GROUP BY hp."userId"
+          HAVING COUNT(*) >= ${MIN_HANDS}
+        ) s
+        JOIN "User" u ON s."userId" = u."id"
       `);
 
       result = {
