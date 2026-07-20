@@ -37,11 +37,16 @@ const INDEXES: Array<{ name: string; ddl: string }> = [
           ON "HandHistoryPlayer" ("userId", "createdAt" DESC)`,
   },
   {
-    name: 'HandHistoryPlayer_userId_tournamentId_createdAt_idx',
-    ddl: `CREATE INDEX CONCURRENTLY IF NOT EXISTS "HandHistoryPlayer_userId_tournamentId_createdAt_idx"
-          ON "HandHistoryPlayer" ("userId", "tournamentId", "createdAt" DESC)`,
+    // profit-history を index-only scan で捌くカバリングインデックス。
+    // (userId, tournamentId, createdAt) プレフィックスで count / フィルタ付き一覧も兼ねる。
+    name: 'HandHistoryPlayer_userId_tid_createdAt_covering_idx',
+    ddl: `CREATE INDEX CONCURRENTLY IF NOT EXISTS "HandHistoryPlayer_userId_tid_createdAt_covering_idx"
+          ON "HandHistoryPlayer" ("userId", "tournamentId", "createdAt" DESC, "profit", "finalHand", "allInEVProfit")`,
   },
 ];
+
+// カバリングインデックスに置き換えられて不要になったインデックス
+const SUPERSEDED_INDEXES = ['HandHistoryPlayer_userId_tournamentId_createdAt_idx'];
 
 async function main() {
   console.log(`対象DB: ${isProd ? '本番 (DATABASE_PROD_PUBLIC_URL)' : 'ローカル (DATABASE_URL)'}`);
@@ -62,6 +67,11 @@ async function main() {
   if (invalid.length > 0) {
     console.error('WARNING: INVALID なインデックスがあります。DROP INDEX して再実行してください:', invalid);
     process.exit(1);
+  }
+
+  for (const name of SUPERSEDED_INDEXES) {
+    console.log(`不要になったインデックスを削除: ${name}`);
+    await prisma.$executeRawUnsafe(`DROP INDEX CONCURRENTLY IF EXISTS "${name}"`);
   }
 
   console.log('ANALYZE 実行中...');
