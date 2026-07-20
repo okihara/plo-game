@@ -90,12 +90,18 @@ export async function statsRoutes(fastify: FastifyInstance) {
     const { userId } = request.params as { userId: string };
 
     const [rows, cache] = await Promise.all([
-      // 非正規化した tournamentId / createdAt で JOIN なしのインデックススキャンに乗せる
-      prisma.handHistoryPlayer.findMany({
-        where: { userId, tournamentId: null },
-        orderBy: { createdAt: 'asc' },
-        select: { profit: true, finalHand: true, allInEVProfit: true },
-      }),
+      // カバリングインデックス (userId, tournamentId, createdAt, profit, finalHand, allInEVProfit)
+      // の index-only scan に乗せるため raw SQL を使う。Prisma の findMany は select 指定でも
+      // 暗黙に id を SELECT に含めるため index-only にならず、数万ハンド級ユーザーで
+      // ヒープランダム読みが50秒超かかる。
+      prisma.$queryRaw<Array<{ profit: number; finalHand: string | null; allInEVProfit: number | null }>>(
+        Prisma.sql`
+          SELECT "profit", "finalHand", "allInEVProfit"
+          FROM "HandHistoryPlayer"
+          WHERE "userId" = ${userId} AND "tournamentId" IS NULL
+          ORDER BY "createdAt" ASC
+        `,
+      ),
       prisma.playerStatsCache.findUnique({
         where: { userId },
         select: { totalProfit: true, totalAllInEVProfit: true },

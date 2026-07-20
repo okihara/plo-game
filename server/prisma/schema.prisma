@@ -126,7 +126,9 @@ model HandHistoryPlayer {
   @@index([userId])
   @@index([handHistoryId])
   @@index([userId, createdAt(sort: Desc)])
-  @@index([userId, tournamentId, createdAt(sort: Desc)])
+  // profit-history（収支グラフ）を index-only scan で捌くためのカバリングインデックス。
+  // 数万ハンド級ユーザーで69k行のヒープランダム読みが50秒超かかるのを回避する。
+  @@index([userId, tournamentId, createdAt(sort: Desc), profit, finalHand, allInEVProfit], map: "HandHistoryPlayer_userId_tid_createdAt_covering_idx")
 }
 
 model PlayerStatsCache {
