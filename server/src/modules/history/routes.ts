@@ -86,14 +86,10 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
     const { userId } = request.user as { userId: string };
 
     // ユーザーのハンド履歴から重複なしの tournamentId を取得
-    const rows = await prisma.handHistory.findMany({
-      where: {
-        NOT: { tournamentId: null },
-        players: { some: { userId } },
-      },
-      distinct: ['tournamentId'],
-      select: { tournamentId: true },
-      orderBy: { createdAt: 'desc' },
+    // (userId, tournamentId) 複合インデックスで HandHistoryPlayer 側だけで完結させる
+    const rows = await prisma.handHistoryPlayer.groupBy({
+      by: ['tournamentId'],
+      where: { userId, NOT: { tournamentId: null } },
     });
 
     const tournamentIds = rows
@@ -139,6 +135,8 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
     const take = Math.min(Number(limit), 50);
     const skip = Number(offset);
 
+    // 非正規化した HandHistoryPlayer.tournamentId / createdAt を使い、
+    // ソート・絞り込みを JOIN なしで (userId, tournamentId, createdAt) インデックスに乗せる
     const tournamentFilter = tournamentId
       ? { tournamentId }
       : gameType === 'cash'
@@ -149,8 +147,8 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
 
     const [playerHands, total] = await Promise.all([
       prisma.handHistoryPlayer.findMany({
-        where: { userId, handHistory: tournamentFilter },
-        orderBy: { handHistory: { createdAt: 'desc' } },
+        where: { userId, ...tournamentFilter },
+        orderBy: { createdAt: 'desc' },
         take,
         skip,
         include: {
@@ -183,7 +181,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
           },
         },
       }),
-      prisma.handHistoryPlayer.count({ where: { userId, handHistory: tournamentFilter } }),
+      prisma.handHistoryPlayer.count({ where: { userId, ...tournamentFilter } }),
     ]);
 
     const hands = playerHands.map(ph => ({

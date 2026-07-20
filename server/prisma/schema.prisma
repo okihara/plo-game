@@ -115,12 +115,18 @@ model HandHistoryPlayer {
   startChips    Int      @default(0) // Chips at hand start (before blinds)
   profit        Int      // Can be negative for losses
   allInEVProfit Int?     // EV-based profit for all-in runouts (null = not all-in hand)
+  // HandHistory からの非正規化コピー。ユーザー単位の履歴クエリを JOIN なしで捌くために持つ。
+  // null = 旧データ未バックフィル（scripts/backfill-hhp-denorm.ts で埋める）
+  tournamentId  String?
+  createdAt     DateTime?
 
   handHistory HandHistory @relation(fields: [handHistoryId], references: [id], onDelete: Cascade)
   user        User?       @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([handHistoryId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([userId, tournamentId, createdAt(sort: Desc)])
 }
 
 model PlayerStatsCache {

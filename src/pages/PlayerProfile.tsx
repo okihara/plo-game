@@ -28,6 +28,7 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
   const [stats, setStats] = useState<PlayerStatsDisplay | null>(null);
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [profitHistory, setProfitHistory] = useState<{ p: number; c: number; s: number; n: number; e: number }[]>([]);
+  const [profitTotalHands, setProfitTotalHands] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [playerName, setPlayerName] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -61,19 +62,25 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
 
   useEffect(() => {
     setLoading(true);
-    Promise.all([
-      fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
-        .catch(() => null),
-      fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
-        .catch(() => null),
-    ]).then(([statsData, historyData]) => {
-      if (statsData?.stats) setStats(statsData.stats);
-      if (statsData?.badges) setBadges(statsData.badges);
-      if (statsData?.displayName) setPlayerName(statsData.displayName);
-      if (historyData?.points) setProfitHistory(historyData.points);
-    }).finally(() => setLoading(false));
+    // profit-history はスタッツ本体と分離して取得する。
+    // 片方が遅延・失敗してもスタッツ表示を道連れにしない。
+    fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .catch(() => null)
+      .then(statsData => {
+        if (statsData?.stats) setStats(statsData.stats);
+        if (statsData?.badges) setBadges(statsData.badges);
+        if (statsData?.displayName) setPlayerName(statsData.displayName);
+      })
+      .finally(() => setLoading(false));
+
+    fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .catch(() => null)
+      .then(historyData => {
+        if (historyData?.points) setProfitHistory(historyData.points);
+        if (typeof historyData?.totalHands === 'number') setProfitTotalHands(historyData.totalHands);
+      });
   }, [userId]);
 
   return (
@@ -153,7 +160,7 @@ export function PlayerProfile({ userId, onBack }: PlayerProfileProps) {
           {/* Profit Chart */}
           {!loading && profitHistory.length >= 2 && (
             <div className="bg-cream-100 rounded-[3cqw] p-[3.5cqw] mt-[2cqw]">
-              <ProfitChart points={profitHistory} />
+              <ProfitChart points={profitHistory} totalHands={profitTotalHands} />
             </div>
           )}
         </div>

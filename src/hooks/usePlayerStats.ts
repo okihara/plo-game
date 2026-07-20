@@ -37,31 +37,35 @@ export function usePlayerStats(
   const [tournamentStats, setTournamentStats] = useState<PlayerStatsDisplay | null>(null);
   const [badges, setBadges] = useState<DisplayBadge[]>([]);
   const [profitHistory, setProfitHistory] = useState<ProfitHistoryPoint[]>([]);
+  const [profitTotalHands, setProfitTotalHands] = useState<number | undefined>(undefined);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!userId || userId.startsWith('bot_')) return;
 
     setLoading(true);
-    const fetches: Promise<any>[] = [
-      fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
-        .then(res => res.ok ? res.json() : null)
-        .catch(() => null),
-    ];
+    // profit-history はスタッツ本体と分離して取得する。
+    // 片方が遅延・失敗してもスタッツ表示を道連れにしない。
+    fetch(`${API_BASE}/api/stats/${userId}`, { credentials: 'include' })
+      .then(res => res.ok ? res.json() : null)
+      .catch(() => null)
+      .then(statsData => {
+        if (statsData?.stats) setStats(statsData.stats);
+        if (statsData?.tournamentStats) setTournamentStats(statsData.tournamentStats);
+        if (statsData?.badges) setBadges(statsData.badges);
+      })
+      .finally(() => setLoading(false));
+
     if (withProfitHistory) {
-      fetches.push(
-        fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
-          .then(res => res.ok ? res.json() : null)
-          .catch(() => null),
-      );
+      fetch(`${API_BASE}/api/stats/${userId}/profit-history`, { credentials: 'include' })
+        .then(res => res.ok ? res.json() : null)
+        .catch(() => null)
+        .then(historyData => {
+          if (historyData?.points) setProfitHistory(historyData.points);
+          if (typeof historyData?.totalHands === 'number') setProfitTotalHands(historyData.totalHands);
+        });
     }
-    Promise.all(fetches).then(([statsData, historyData]) => {
-      if (statsData?.stats) setStats(statsData.stats);
-      if (statsData?.tournamentStats) setTournamentStats(statsData.tournamentStats);
-      if (statsData?.badges) setBadges(statsData.badges);
-      if (historyData?.points) setProfitHistory(historyData.points);
-    }).finally(() => setLoading(false));
   }, [userId, withProfitHistory]);
 
-  return { loading, stats, tournamentStats, badges, profitHistory };
+  return { loading, stats, tournamentStats, badges, profitHistory, profitTotalHands };
 }
