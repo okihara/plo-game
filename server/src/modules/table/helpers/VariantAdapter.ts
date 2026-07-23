@@ -1,13 +1,17 @@
 // バリアント固有ロジックの抽象化
-// PLO / Stud系 の分岐を一箇所に集約し、TableInstance から variant 判定を排除する
+// エンジンの実体は shared/logic/engine/ の共通コア + バリアント記述子。
+// このクラスはテーブル層と記述子の橋渡し（+ ショーダウン表示などのUI寄り処理）を担う。
 
 import { GameState, GameVariant, Action, Player, Card, getVariantConfig } from '../../../shared/logic/types.js';
-import { createInitialGameState, startNewHand, getValidActions, applyAction, wouldAdvanceStreet, determineWinner } from '../../../shared/logic/gameEngine.js';
-import { createStudGameState, startStudHand, getStudValidActions, applyStudAction, wouldStudAdvanceStreet, determineStudWinner } from '../../../shared/logic/studEngine.js';
-import { createDrawGameState, startDrawHand, getDrawValidActions, applyDrawAction, wouldDrawAdvanceStreet, determineDrawWinner } from '../../../shared/logic/drawEngine.js';
-import { createLimitHoldemGameState, startLimitHoldemHand, getLimitHoldemValidActions, applyLimitHoldemAction, wouldLimitHoldemAdvanceStreet, determineLimitHoldemWinner } from '../../../shared/logic/limitHoldemEngine.js';
-import { createOmahaHiLoGameState, startOmahaHiLoHand, getOmahaHiLoValidActions, applyOmahaHiLoAction, wouldOmahaHiLoAdvanceStreet, determineOmahaHiLoWinner } from '../../../shared/logic/omahaHiLoEngine.js';
-import { createBombPotGameState, startBombPotHand, getBombPotValidActions, applyBombPotAction, wouldBombPotAdvanceStreet, determineBombPotWinner } from '../../../shared/logic/bombPotEngine.js';
+import {
+  startHandCore,
+  getValidActionsCore,
+  applyActionCore,
+  wouldAdvanceStreetCore,
+  determineWinnerCore,
+} from '../../../shared/logic/engine/core.js';
+import { getEngineDescriptor } from '../../../shared/logic/engine/registry.js';
+import { VariantDescriptor } from '../../../shared/logic/engine/descriptor.js';
 import { evaluatePLOHand, evaluateHoldemHand, evaluate27LowHand, evaluateOmahaHiLoHand, formatHandName } from '../../../shared/logic/handEvaluator.js';
 import { StudVariantRules } from '../../../shared/logic/studVariantRules.js';
 import { StudHighRules } from '../../../shared/logic/rules/studHighRules.js';
@@ -19,7 +23,7 @@ import { TABLE_CONSTANTS } from '../constants.js';
 
 export type ValidAction = { action: Action; minAmount: number; maxAmount: number };
 
-/** variant から対応する StudVariantRules を取得 */
+/** variant から対応する StudVariantRules を取得（ショーダウン表示用） */
 function getStudRules(variant: GameVariant): StudVariantRules {
   switch (variant) {
     case 'razz': return new RazzRules();
@@ -31,10 +35,12 @@ function getStudRules(variant: GameVariant): StudVariantRules {
 
 export class VariantAdapter {
   private readonly config;
+  private readonly engine: VariantDescriptor;
   private readonly studRules?: StudVariantRules;
 
   constructor(private readonly variant: GameVariant) {
     this.config = getVariantConfig(variant);
+    this.engine = getEngineDescriptor(variant);
     if (this.config.family === 'stud') {
       this.studRules = getStudRules(variant);
     }
@@ -44,88 +50,21 @@ export class VariantAdapter {
    * 初期ゲーム状態を作成
    */
   createGameState(buyInChips: number, smallBlind: number, bigBlind: number, ante: number = 0): GameState {
-    // omaha_hilo は family === 'omaha' だが PLO とは別エンジン
-    if (this.variant === 'omaha_hilo') {
-      return createOmahaHiLoGameState(buyInChips, smallBlind, bigBlind);
-    }
-    // plo_double_board_bomb は family === 'omaha' だが専用エンジン。
-    // SB/BB は投稿せず全員アンテのみ。blind level の ante フィールドを直接使う。
-    if (this.variant === 'plo_double_board_bomb') {
-      const state = createBombPotGameState(buyInChips);
-      state.smallBlind = smallBlind;
-      state.bigBlind = bigBlind;
-      state.ante = ante;
-      return state;
-    }
-    switch (this.config.family) {
-      case 'stud': {
-        // Stud は SB を 1/4 にしたものを ante として使う既存ルール (blind level の ante は未使用)
-        const studAnte = Math.ceil(smallBlind / 4);
-        return createStudGameState(buyInChips, studAnte, smallBlind, this.variant);
-      }
-      case 'draw': {
-        const state = createDrawGameState(buyInChips, smallBlind, this.config.maxDraws);
-        // No-Limit Single Draw は実ブラインド (SB/BB) をそのまま使うため、
-        // ブラインド表の bigBlind を反映する（createDrawGameState は SB×2 を仮置きする）。
-        // Fixed-Limit (Triple Draw) は smallBlind/bigBlind を small bet/big bet のラダー
-        // (big bet = SB×2) として使うため、ここでは上書きしない。
-        if (this.config.betting === 'no_limit') {
-          state.bigBlind = bigBlind;
-        }
-        // BBアンティ: ブラインド表に ante があれば反映（NL Single Draw のトナメ等）。
-        // ante=0 の種目（Triple Draw・キャッシュ）は従来通りアンティ無し。
-        state.ante = ante;
-        return state;
-      }
-      case 'holdem':
-        return createLimitHoldemGameState(buyInChips, smallBlind, bigBlind);
-      default: {
-        // PLO / PLO5 はどちらも createInitialGameState を経由する。
-        // 配布枚数は startNewHand 内で variant.holeCardCount から動的に決まるため、
-        // ここで variant を正しく設定しておく必要がある（デフォルトは 'plo'）。
-        const state = createInitialGameState(buyInChips);
-        state.variant = this.variant;
-        state.smallBlind = smallBlind;
-        state.bigBlind = bigBlind;
-        return state;
-      }
-    }
+    return this.engine.createTableState(this.variant, buyInChips, smallBlind, bigBlind, ante);
   }
 
   /**
    * ハンドを開始（ディーラーポジション進行・カード配布等）
    */
   startHand(gameState: GameState): GameState {
-    if (this.variant === 'omaha_hilo') return startOmahaHiLoHand(gameState);
-    if (this.variant === 'plo_double_board_bomb') return startBombPotHand(gameState);
-    switch (this.config.family) {
-      case 'stud':
-        return startStudHand(gameState, this.studRules!);
-      case 'draw':
-        return startDrawHand(gameState);
-      case 'holdem':
-        return startLimitHoldemHand(gameState);
-      default:
-        return startNewHand(gameState);
-    }
+    return startHandCore(gameState, this.engine);
   }
 
   /**
    * 有効なアクション一覧を取得
    */
   getValidActions(gameState: GameState, seatIndex: number): ValidAction[] {
-    if (this.variant === 'omaha_hilo') return getOmahaHiLoValidActions(gameState, seatIndex);
-    if (this.variant === 'plo_double_board_bomb') return getBombPotValidActions(gameState, seatIndex);
-    switch (this.config.family) {
-      case 'stud':
-        return getStudValidActions(gameState, seatIndex);
-      case 'draw':
-        return getDrawValidActions(gameState, seatIndex);
-      case 'holdem':
-        return getLimitHoldemValidActions(gameState, seatIndex);
-      default:
-        return getValidActions(gameState, seatIndex);
-    }
+    return getValidActionsCore(gameState, seatIndex, this.engine);
   }
 
   /**
@@ -185,54 +124,21 @@ export class VariantAdapter {
    * アクションを適用して新しいGameStateを返す
    */
   applyAction(gameState: GameState, seatIndex: number, action: Action, amount: number, rakePercent: number, rakeCapBB: number, discardIndices?: number[]): GameState {
-    if (this.variant === 'omaha_hilo') return applyOmahaHiLoAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
-    if (this.variant === 'plo_double_board_bomb') return applyBombPotAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
-    switch (this.config.family) {
-      case 'stud':
-        return applyStudAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB, this.studRules!);
-      case 'draw':
-        return applyDrawAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB, discardIndices);
-      case 'holdem':
-        return applyLimitHoldemAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
-      default:
-        return applyAction(gameState, seatIndex, action, amount, rakePercent, rakeCapBB);
-    }
+    return applyActionCore(gameState, seatIndex, action, amount, this.engine, rakePercent, rakeCapBB, discardIndices);
   }
 
   /**
    * アクション適用前にストリートが変わるかを判定
    */
   wouldAdvanceStreet(gameState: GameState, seatIndex: number, action: Action, amount: number, discardIndices?: number[]): boolean {
-    if (this.variant === 'omaha_hilo') return wouldOmahaHiLoAdvanceStreet(gameState, seatIndex, action, amount);
-    if (this.variant === 'plo_double_board_bomb') return wouldBombPotAdvanceStreet(gameState, seatIndex, action, amount);
-    switch (this.config.family) {
-      case 'stud':
-        return wouldStudAdvanceStreet(gameState, seatIndex, action, amount, this.studRules!);
-      case 'draw':
-        return wouldDrawAdvanceStreet(gameState, seatIndex, action, amount, discardIndices);
-      case 'holdem':
-        return wouldLimitHoldemAdvanceStreet(gameState, seatIndex, action, amount);
-      default:
-        return wouldAdvanceStreet(gameState, seatIndex, action, amount);
-    }
+    return wouldAdvanceStreetCore(gameState, seatIndex, action, amount, this.engine, discardIndices);
   }
 
   /**
    * 勝者を決定
    */
   determineWinner(gameState: GameState, rakePercent: number = 0, rakeCapBB: number = 0): GameState {
-    if (this.variant === 'omaha_hilo') return determineOmahaHiLoWinner(gameState, rakePercent, rakeCapBB);
-    if (this.variant === 'plo_double_board_bomb') return determineBombPotWinner(gameState, rakePercent, rakeCapBB);
-    switch (this.config.family) {
-      case 'stud':
-        return determineStudWinner(gameState, rakePercent, rakeCapBB, this.studRules!);
-      case 'draw':
-        return determineDrawWinner(gameState, rakePercent, rakeCapBB);
-      case 'holdem':
-        return determineLimitHoldemWinner(gameState, rakePercent, rakeCapBB);
-      default:
-        return determineWinner(gameState, rakePercent, rakeCapBB);
-    }
+    return determineWinnerCore(gameState, this.engine, rakePercent, rakeCapBB);
   }
 
   /**

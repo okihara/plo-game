@@ -100,7 +100,7 @@ PostgreSQL の接続文字列（`DATABASE_URL`、Railway の URL など）は **
 - **`src/`** — クライアント。`main.tsx`（ルーティング）、`pages/`、`components/`、`hooks/`（例: `useOnlineGameState.ts`）、`services/websocket.ts`（`wsService`）、`logic/`。
 - **`server/src/index.ts`** — Fastify + Socket.io + 本番静的配信のエントリ。
 - **`server/src/modules/`** — 機能別モジュール（例: `game/` の socket・handlers、`table/` の `TableManager`・`TableInstance` と helpers、`fastfold/`、`auth/`、`history/`、`stats/`、`tournament/`、`admin/` 等）。**新規機能は既存モジュールに収まるか検討してから追加**。
-- **`server/src/shared/logic/`** — サーバー側ゲームエンジン・Bot AI（`ai/` 以下）。ゲーム進行の正は `gameEngine` とテーブル層。
+- **`server/src/shared/logic/`** — サーバー側ゲームエンジン・Bot AI（`ai/` 以下）。ゲーム進行の正は `engine/`（1本の進行コア + バリアント記述子、[docs/engine-core-variants.md](docs/engine-core-variants.md)）とテーブル層。`gameEngine.ts` 等の旧エンジンファイルは公開API維持の委譲層。**新バリアントは `engine/variants/` に記述子を追加 + `engine/registry.ts` に1行登録**。
 
 ### game/handlers.ts と TableInstance の責務分担
 
