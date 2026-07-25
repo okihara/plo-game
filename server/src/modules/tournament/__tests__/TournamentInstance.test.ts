@@ -136,6 +136,20 @@ function simulateHandSettled(
   (tournament as any).onHandPresentationComplete();
 }
 
+/**
+ * 全テーブルの getPlayerChips を差し替えて、着席中プレイヤーのライブチップを固定する。
+ * getStandings() は表示との一致のためテーブル側のライブチップを優先して読むが、
+ * テストでは実際のハンドを進行させないため、その読み取り経路を直接制御する。
+ */
+function setLiveChips(tournament: TournamentInstance, chipsByOdId: Record<string, number>): void {
+  const tables = (tournament as any).tables as Map<string, any>;
+  for (const table of tables.values()) {
+    vi.spyOn(table, 'getPlayerChips').mockImplementation(
+      (odId: unknown) => chipsByOdId[odId as string] ?? null
+    );
+  }
+}
+
 // ============================================
 // テスト
 // ============================================
@@ -2082,6 +2096,200 @@ it('リエントリー成功でチップがリセットされプライズプー�
       const winner = tournament.getPlayer(odIds[0]);
       expect(winner!.finishPosition).toBe(1);
       expect(winner!.chips).toBe(totalChips);
+    });
+  });
+
+  // ============================================
+  // クライアント状態: 締切情報
+  // ============================================
+
+  describe('getClientState の締切フィールド', () => {
+    it('未開始なら締切時刻は両方 null', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({ allowReentry: true }));
+      const state = tournament.getClientState();
+
+      expect(state.registrationDeadlineAt).toBeNull();
+      expect(state.reentryDeadlineAt).toBeNull();
+    });
+
+    it('registrationDeadlineAt はレイト登録レベルぶんの経過時刻', () => {
+      // registrationLevels: 2, durationMinutes: 5 → 開始から10分後に締切
+      const tournament = new TournamentInstance(io, createTestConfig({ registrationLevels: 2 }));
+      const startedAt = Date.now();
+      startAndEnterNPlayers(tournament, 3);
+
+      const state = tournament.getClientState();
+      expect(state.registrationDeadlineAt).toBe(startedAt + 10 * 60 * 1000);
+      expect(state.isRegistrationOpen).toBe(true);
+    });
+
+    it('isRegistrationOpen が false になる瞬間と registrationDeadlineAt が一致する', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({ registrationLevels: 2 }));
+      startAndEnterNPlayers(tournament, 3);
+      const deadline = tournament.getClientState().registrationDeadlineAt!;
+
+      // 締切の1秒前はまだ登録可
+      vi.advanceTimersByTime(deadline - Date.now() - 1000);
+      expect(tournament.getClientState().isRegistrationOpen).toBe(true);
+
+      // 締切時刻に到達したら締切済み。deadline 自体は動かない
+      vi.advanceTimersByTime(1000);
+      const closed = tournament.getClientState();
+      expect(closed.isRegistrationOpen).toBe(false);
+      expect(closed.registrationDeadlineAt).toBe(deadline);
+    });
+
+    it('allowReentry=false なら reentryDeadlineAt は null', () => {
+      const tournament = new TournamentInstance(io, createTestConfig({ allowReentry: false }));
+      startAndEnterNPlayers(tournament, 3);
+
+      const state = tournament.getClientState();
+      expect(state.allowReentry).toBe(false);
+      expect(state.reentryDeadlineAt).toBeNull();
+    });
+
+    it('allowReentry=true なら reentryDeadlineLevel ぶんの経過時刻', () => {
+      const tournament = new TournamentInstance(
+        io,
+        createTestConfig({ allowReentry: true, maxReentries: 1, reentryDeadlineLevel: 2 })
+      );
+      const startedAt = Date.now();
+      startAndEnterNPlayers(tournament, 3);
+
+      const state = tournament.getClientState();
+      expect(state.allowReentry).toBe(true);
+      expect(state.reentryDeadlineAt).toBe(startedAt + 10 * 60 * 1000);
+    });
+  });
+
+  // ============================================
+  // チップスタンディング
+  // ============================================
+
+  describe('getStandings', () => {
+    it('chips 降順に並べて順位を付ける', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      setLiveChips(tournament, {
+        [odIds[0]]: 1000,
+        [odIds[1]]: 3000,
+        [odIds[2]]: 500,
+      });
+
+      const standings = tournament.getStandings();
+      expect(standings.entries.map(e => e.odId)).toEqual([odIds[1], odIds[0], odIds[2]]);
+      expect(standings.entries.map(e => e.rank)).toEqual([1, 2, 3]);
+      expect(standings.tournamentId).toBe('test-tournament');
+    });
+
+    it('eliminated は除外し、entries は playersRemaining と一致する', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      simulateBust(tournament, odIds[2], 300);
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: 2500 },
+        { odId: odIds[1], seatIndex: 1, chips: 2000 },
+      ]);
+
+      const standings = tournament.getStandings();
+      expect(standings.entries.map(e => e.odId)).not.toContain(odIds[2]);
+      expect(standings.entries).toHaveLength(standings.playersRemaining);
+      expect(standings.playersRemaining).toBe(2);
+    });
+
+    it('disconnected は残存者として含む', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      tournament.getPlayer(odIds[1])!.status = 'disconnected';
+
+      const standings = tournament.getStandings();
+      const entry = standings.entries.find(e => e.odId === odIds[1]);
+      expect(entry?.status).toBe('disconnected');
+      expect(standings.playersRemaining).toBe(3);
+    });
+
+    it('averageStack は getStackSummary と一致する', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: 1000 },
+        { odId: odIds[1], seatIndex: 1, chips: 3000 },
+        { odId: odIds[2], seatIndex: 2, chips: 500 },
+      ]);
+
+      expect(tournament.getStandings().averageStack).toBe(
+        tournament.getClientState().averageStack
+      );
+    });
+
+    it('name はマスク済み表示名で、生の username を漏らさない', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      tournament.start();
+      tournament.enterPlayer('player_x', 'secret_username', createMockSocket());
+
+      const entry = tournament.getStandings().entries[0];
+      expect(entry.name).toBe(tournament.getPlayer('player_x')!.profile.name);
+      expect(entry.name).not.toBe('secret_username');
+    });
+
+    it('TTL 内は同じスナップショットを返し、チップ更新で無効化される', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      const first = tournament.getStandings();
+      expect(tournament.getStandings()).toBe(first); // TTL 内は同一オブジェクト
+
+      setLiveChips(tournament, {
+        [odIds[0]]: 4000,
+        [odIds[1]]: 250,
+        [odIds[2]]: 250,
+      });
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: 4000 },
+        { odId: odIds[1], seatIndex: 1, chips: 250 },
+        { odId: odIds[2], seatIndex: 2, chips: 250 },
+      ]);
+
+      const second = tournament.getStandings();
+      expect(second).not.toBe(first);
+      expect(second.entries[0].odId).toBe(odIds[0]);
+      expect(second.entries[0].chips).toBe(4000);
+    });
+
+    it('バスト確定後はキャッシュを跨がず最新の残存者を返す', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      tournament.getStandings(); // キャッシュを作る
+
+      simulateBust(tournament, odIds[2], 300);
+      setLiveChips(tournament, { [odIds[0]]: 2500, [odIds[1]]: 2000 });
+      simulateHandSettled(tournament, [
+        { odId: odIds[0], seatIndex: 0, chips: 2500 },
+        { odId: odIds[1], seatIndex: 1, chips: 2000 },
+      ]);
+
+      expect(tournament.getStandings().entries.map(e => e.odId)).toEqual([odIds[0], odIds[1]]);
+    });
+
+    it('着席中はテーブル側のライブチップを優先する', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // TournamentPlayer.chips は onHandSettled まで更新されないが、
+      // テーブル側は既に動いている状況を作る
+      const player = tournament.getPlayer(odIds[0])!;
+      const table = tournament.getTable(player.tableId!)!;
+      vi.spyOn(table, 'getPlayerChips').mockImplementation((odId: string) =>
+        odId === odIds[0] ? 9999 : null
+      );
+
+      const entry = tournament.getStandings().entries.find(e => e.odId === odIds[0]);
+      expect(entry?.chips).toBe(9999);
+      expect(player.chips).not.toBe(9999);
     });
   });
 });

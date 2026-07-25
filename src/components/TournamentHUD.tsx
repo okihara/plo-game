@@ -1,45 +1,44 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import type { ClientTournamentState, TournamentPlayerEliminatedData } from '@plo/shared';
+import { useCountdown } from '../hooks/useCountdown';
 import { TournamentClockPanel } from './TournamentClockPanel';
 
 interface TournamentHUDProps {
   tournamentState: ClientTournamentState;
   myChips: number | null;
   lastEliminated: TournamentPlayerEliminatedData | null;
+  /** 自分の odId。観戦モードでは null */
+  myOdId?: string | null;
+  /** 自席テーブルの人数（クロックパネルの M レシオ補正用） */
+  tableSize?: number;
 }
 
 const HUD_FINAL_LEVEL_CLOCK = '--:--';
 
-function formatCountdownTo(targetMs: number): string {
-  const diff = Math.max(0, targetMs - Date.now());
-  const minutes = Math.floor(diff / 60000);
-  const seconds = Math.floor((diff % 60000) / 1000);
-  return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
-}
-
-function useCountdown(targetMs: number): string {
-  const [remaining, setRemaining] = useState(() => formatCountdownTo(targetMs));
-
-  useEffect(() => {
-    const tick = () => setRemaining(formatCountdownTo(targetMs));
-    tick();
-    const interval = setInterval(tick, 1000);
-    return () => clearInterval(interval);
-  }, [targetMs]);
-
-  return remaining;
-}
-
-export function TournamentHUD({ tournamentState: ts, myChips, lastEliminated }: TournamentHUDProps) {
+export function TournamentHUD({
+  tournamentState: ts,
+  myChips,
+  lastEliminated,
+  myOdId = null,
+  tableSize,
+}: TournamentHUDProps) {
   const [clockOpen, setClockOpen] = useState(false);
-  const countdown = useCountdown(ts.nextLevelAt);
   const isFinalBlindLevel = ts.nextBlindLevel == null;
+  const countdown = useCountdown(isFinalBlindLevel ? null : ts.nextLevelAt);
   const { currentBlindLevel: bl } = ts;
 
   return (
     <>
-      {clockOpen && <TournamentClockPanel tournamentState={ts} myChips={myChips} onClose={() => setClockOpen(false)} />}
+      {clockOpen && (
+        <TournamentClockPanel
+          tournamentState={ts}
+          myChips={myChips}
+          myOdId={myOdId}
+          tableSize={tableSize}
+          onClose={() => setClockOpen(false)}
+        />
+      )}
       {/* トーナメント情報 — 設定ボタンの下 */}
       <div className="absolute top-[14cqw] right-0 z-30 pointer-events-none">
         <button

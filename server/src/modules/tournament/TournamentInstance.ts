@@ -13,10 +13,16 @@ import {
   BlindLevel,
   PendingMove,
   TournamentResult,
+  TournamentStandings,
 } from './types.js';
-import { computeBubbleFactors, type PlayerProfile } from '@plo/shared';
+import { computeBubbleFactors, rankStandings, type PlayerProfile } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
-import { BUBBLE_FACTOR_PLAYER_THRESHOLD, PLAYERS_PER_TABLE, TOURNAMENT_DISCONNECT_GRACE_MS } from './constants.js';
+import {
+  BUBBLE_FACTOR_PLAYER_THRESHOLD,
+  PLAYERS_PER_TABLE,
+  STANDINGS_CACHE_MS,
+  TOURNAMENT_DISCONNECT_GRACE_MS,
+} from './constants.js';
 import { TABLE_CONSTANTS } from '../table/constants.js';
 
 /**
@@ -47,6 +53,7 @@ export class TournamentInstance {
   private pendingBusts: { odId: string; socket: Socket | null; chipsAtHandStart: number }[] = [];
   private disconnectTimers: Map<string, NodeJS.Timeout> = new Map();
   private bfCache: { key: string; value: Record<string, number> | undefined } | null = null;
+  private standingsCache: { at: number; value: TournamentStandings } | null = null;
   private readonly io: Server;
   private readonly roomName: string;
 
@@ -409,6 +416,10 @@ export class TournamentInstance {
       payoutStructure: this.prizes.map(p => ({ position: p.position, amount: p.amount })),
       gameVariant: this.config.gameVariant,
       bubbleFactors: this.computeBubbleFactorsForClient(),
+      registrationDeadlineAt: this.getRegistrationDeadlineAt(),
+      reentryDeadlineAt: this.getReentryDeadlineAt(),
+      isRegistrationOpen: this.isRegistrationOpen(),
+      allowReentry: this.config.allowReentry,
     };
   }
 
@@ -424,14 +435,9 @@ export class TournamentInstance {
   private computeBubbleFactorsForClient(): Record<string, number> | undefined {
     if (this.prizes.length === 0) return undefined;
 
-    const odIds: string[] = [];
-    const stacks: number[] = [];
-    for (const p of this.players.values()) {
-      if (p.status === 'playing' || p.status === 'disconnected') {
-        odIds.push(p.odId);
-        stacks.push(p.chips);
-      }
-    }
+    const active = this.getActivePlayers();
+    const odIds = active.map(p => p.odId);
+    const stacks = active.map(p => p.chips);
     if (odIds.length === 0 || odIds.length > BUBBLE_FACTOR_PLAYER_THRESHOLD) return undefined;
 
     const payouts = this.prizes.map(p => p.amount);
@@ -455,6 +461,7 @@ export class TournamentInstance {
     const isStarted = this.blindScheduler.isStarted();
     const currentBlind = this.blindScheduler.getCurrentLevel();
     const stackSummary = this.getStackSummary();
+    const registrationDeadlineAt = this.getRegistrationDeadlineAt();
     return {
       id: this.id,
       name: this.config.name,
@@ -484,14 +491,19 @@ export class TournamentInstance {
       maxReentries: this.config.maxReentries,
       totalReentries: this.getTotalReentries(),
       reentryDeadlineLevel: this.config.reentryDeadlineLevel,
-      registrationDeadlineAt: this.blindScheduler.isStarted()
-        ? new Date(this.blindScheduler.getLevelStartTimestamp(this.config.registrationLevels)).toISOString()
+      registrationDeadlineAt: registrationDeadlineAt != null
+        ? new Date(registrationDeadlineAt).toISOString()
         : undefined,
       finalTableId: isFt ? Array.from(this.tables.keys())[0] : undefined,
       gameVariant: this.config.gameVariant,
     };
   }
 
+  /**
+   * getClientState() / getLobbyInfo() の両方から毎回呼ばれるホットパス
+   * （ロビー一覧 API は全トーナメント分をまとめて呼ぶ）。
+   * 配列を確保しないループのまま保つ。一覧が必要な用途は getActivePlayers() を使う。
+   */
   private getStackSummary(): { playersRemaining: number; averageStack: number } {
     let stackSum = 0;
     let playersRemaining = 0;
@@ -505,6 +517,64 @@ export class TournamentInstance {
       playersRemaining,
       averageStack: playersRemaining > 0 ? Math.round(stackSum / playersRemaining) : 0,
     };
+  }
+
+  /** まだ生き残っているプレイヤー（playing / disconnected）の一覧 */
+  private getActivePlayers(): TournamentPlayer[] {
+    const out: TournamentPlayer[] = [];
+    for (const p of this.players.values()) {
+      if (p.status === 'playing' || p.status === 'disconnected') out.push(p);
+    }
+    return out;
+  }
+
+  /** レイト登録が閉じる時刻 (ms)。未開始なら null。isRegistrationOpen() と同じ境界。 */
+  private getRegistrationDeadlineAt(): number | null {
+    if (!this.blindScheduler.isStarted()) return null;
+    return this.blindScheduler.getLevelStartTimestamp(this.config.registrationLevels);
+  }
+
+  /** リエントリーが閉じる時刻 (ms)。未開始 or リエントリー不可なら null。 */
+  private getReentryDeadlineAt(): number | null {
+    if (!this.blindScheduler.isStarted() || !this.config.allowReentry) return null;
+    return this.blindScheduler.getLevelStartTimestamp(this.config.reentryDeadlineLevel);
+  }
+
+  /**
+   * チップスタンディングのスナップショット。
+   *
+   * broadcastTournamentState() はチップ変動では飛ばないので、これは
+   * `tournament:request_standings` からのオンデマンド取得専用。
+   * bubbleFactors のような fingerprint メモ化は不要（毎 broadcast では呼ばれない）で、
+   * 同時に多数が開いたときだけ効けばよいので単純な TTL にしてある。
+   */
+  public getStandings(): TournamentStandings {
+    const now = Date.now();
+    if (this.standingsCache && now - this.standingsCache.at < STANDINGS_CACHE_MS) {
+      return this.standingsCache.value;
+    }
+
+    const rows = this.getActivePlayers().map(p => ({
+      odId: p.odId,
+      // profile.name はマスク済み表示名。生の odName (username) は出さない
+      name: p.profile.name,
+      avatarUrl: p.profile.avatarUrl,
+      avatarId: p.profile.avatarId,
+      // ハンド進行中はテーブル側のライブチップを優先し、卓の表示と順位がズレないようにする
+      chips: (p.tableId ? this.tables.get(p.tableId)?.getPlayerChips(p.odId) : null) ?? p.chips,
+      status: p.status === 'disconnected' ? ('disconnected' as const) : ('playing' as const),
+      reentries: p.reentryCount,
+    }));
+
+    const value: TournamentStandings = {
+      tournamentId: this.id,
+      updatedAt: now,
+      playersRemaining: rows.length,
+      averageStack: this.getStackSummary().averageStack,
+      entries: rankStandings(rows),
+    };
+    this.standingsCache = { at: now, value };
+    return value;
   }
 
   // ============================================
@@ -674,6 +744,8 @@ export class TournamentInstance {
         player.chips = chips;
       }
     }
+
+    this.standingsCache = null;
   }
 
   /**
@@ -702,6 +774,7 @@ export class TournamentInstance {
 
     if (busts.length === 0) return;
 
+    this.standingsCache = null;
     const remaining = this.getPlayersRemaining();
 
     // 同時バストはチップ降順ソート（チップが多い方が上位 = 小さいposition）

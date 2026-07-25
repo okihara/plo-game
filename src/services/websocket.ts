@@ -7,6 +7,7 @@ import type {
   TournamentEliminationInfo,
   TournamentPlayerEliminatedData,
   TournamentCompletedData,
+  TournamentStandings,
   BlindLevel,
 } from '@plo/shared';
 import type { Card, Action } from '../logic/types';
@@ -64,6 +65,7 @@ export type WsListeners = {
   // Tournament events
   onTournamentUnregistered?: (data: { tournamentId: string }) => void;
   onTournamentState?: (state: ClientTournamentState) => void;
+  onTournamentStandings?: (data: TournamentStandings) => void;
   onTournamentTableAssigned?: (data: { tableId: string; tournamentId: string }) => void;
   onTournamentTableMove?: (data: { fromTableId: string; toTableId: string; reason: string }) => void;
   onTournamentBlindChange?: (data: { level: BlindLevel; nextLevel: BlindLevel | null; nextLevelAt: number }) => void;
@@ -314,6 +316,10 @@ class WebSocketService {
         wsLog('tournament:state', data);
         this.emit('onTournamentState', data);
       });
+      this.socket.on('tournament:standings', (data) => {
+        wsLog('tournament:standings', data);
+        this.emit('onTournamentStandings', data);
+      });
       this.socket.on('tournament:table_assigned', (data) => {
         wsLog('tournament:table_assigned', data);
         this.emit('onTournamentTableAssigned', data);
@@ -444,6 +450,11 @@ class WebSocketService {
 
   requestTournamentState(tournamentId: string): void {
     this.socket?.emit('tournament:request_state', { tournamentId });
+  }
+
+  /** チップスタンディングのスナップショットを要求する（クロックパネルを開いている間のみ） */
+  requestTournamentStandings(tournamentId: string): void {
+    this.socket?.emit('tournament:request_standings', { tournamentId });
   }
 
   /**

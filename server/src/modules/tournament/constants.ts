@@ -146,6 +146,11 @@ export const DEFAULT_MAX_REENTRIES = 2;
 // 30ms 程度に収まるため、broadcast がブロックされない上限として 12 を採用。
 export const BUBBLE_FACTOR_PLAYER_THRESHOLD = 12;
 
+// チップスタンディングのスナップショットを使い回す時間 (ms)。
+// クロックパネルを開いている全員が同時にポーリングしても、この間隔でしか
+// 再計算しない。1秒ならプレイヤーの体感では常に最新に見える。
+export const STANDINGS_CACHE_MS = 1000;
+
 /**
  * structureId と variant からブラインド表を組み立てる。
  * ベース ladder は variant に応じて DEFAULT_BLIND_SCHEDULE / DEFAULT_BOMB_POT_BLIND_SCHEDULE。
