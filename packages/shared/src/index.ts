@@ -6,5 +6,6 @@ export * from './handName';
 export * from './protocol';
 export * from './preflopEquity';
 export * from './tournament';
+export * from './tournamentMetrics';
 export * from './pokerStarsHandHistory';
 export * from './icm';

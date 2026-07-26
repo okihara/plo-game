@@ -43,6 +43,48 @@ export interface ClientTournamentState {
    * 値の意味: 1.0=リング相当、>1.0=ICM 圧あり。
    */
   bubbleFactors?: Record<string, number>;
+  /** レイト登録が閉じる時刻 (UNIX ms)。トーナメント未開始なら null。 */
+  registrationDeadlineAt: number | null;
+  /** リエントリーが閉じる時刻 (UNIX ms)。未開始 or allowReentry=false なら null。 */
+  reentryDeadlineAt: number | null;
+  /** 現時点でレイト登録を受け付けているか（クライアント側のクロック誤差に依存しない権威ある値） */
+  isRegistrationOpen: boolean;
+  /** そもそもリエントリー可能なトーナメントか（「不可」と「締切済み」を UI で出し分けるため） */
+  allowReentry: boolean;
+}
+
+// --- Chip Standings (オンデマンド配信) ---
+
+/**
+ * チップスタンディングの1行。
+ *
+ * `ClientTournamentState` に同梱しないのは、`broadcastTournamentState()` が
+ * チップ変動では飛ばない（参加/バスト/ブラインドアップ等でしか飛ばない）ため。
+ * 同梱すると「古いチップの一覧が、たまに更新される」状態になる。
+ * `tournament:request_standings` で必要なときだけ取りに行く。
+ */
+export interface TournamentStandingEntry {
+  odId: string;
+  /** 表示名（displayName またはマスク済み username）。生の username は送らない */
+  name: string;
+  avatarUrl: string | null;
+  avatarId: number;
+  chips: number;
+  /** 同点は同順位（1, 2, 2, 4 の competition ranking） */
+  rank: number;
+  status: 'playing' | 'disconnected';
+  reentries: number;
+}
+
+/** オンデマンド配信されるスタンディングのスナップショット */
+export interface TournamentStandings {
+  tournamentId: string;
+  /** スナップショットを取った時刻 (UNIX ms) */
+  updatedAt: number;
+  playersRemaining: number;
+  averageStack: number;
+  /** chips 降順。残存プレイヤー全員 */
+  entries: TournamentStandingEntry[];
 }
 
 // --- Tournament Lobby Info ---
