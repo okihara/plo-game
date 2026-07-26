@@ -46,14 +46,7 @@ const CARD_CLASS = 'bg-white rounded-[3cqw] border border-cream-300 shadow-sm p-
 const CARD_TITLE_CLASS =
   'text-[2.6cqw] font-bold uppercase tracking-wide text-cream-600';
 
-const M_ZONE_LABEL: Record<MZone, string> = {
-  green: '安全',
-  yellow: '注意',
-  orange: '警戒',
-  red: '危険',
-  dead: '消滅寸前',
-};
-
+/** ゾーンは文字では出さず、数値の色だけで示す */
 const M_ZONE_TEXT: Record<MZone, string> = {
   green: 'text-forest',
   yellow: 'text-cream-700',
@@ -288,7 +281,7 @@ function MyStackCard({
       <div className="mt-[3cqw] flex gap-[2cqw]">
         <StatTile label="残り" value={`${metrics.bigBlinds.toFixed(1)}BB`} />
         <StatTile
-          label={`M（${M_ZONE_LABEL[metrics.zone]}）`}
+          label="Mレシオ"
           value={metrics.m.toFixed(1)}
           valueClass={M_ZONE_TEXT[metrics.zone]}
         />
