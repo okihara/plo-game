@@ -161,6 +161,14 @@ export function registerTournamentHandlers(
     }
   }));
 
+  // チップスタンディングのオンデマンド取得（クロックパネルを開いている間だけ要求が来る）。
+  // 中身は全員に見せてよい公開情報なので、着席しているかどうかは問わない（観戦者も可）。
+  socket.on('tournament:request_standings', wrapSocketHandler(socket, 'tournament:request_standings', (data: { tournamentId: string }) => {
+    const tournament = tournamentManager.getTournament(data.tournamentId);
+    if (!tournament) return;
+    socket.emit('tournament:standings', tournament.getStandings());
+  }));
+
   // トーナメントゲーム中のアクション（game:action はキャッシュゲームと共通）
   // → game/socket.ts の game:action ハンドラで処理される
   // トーナメントテーブルも TableInstance を使っているため追加対応不要

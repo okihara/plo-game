@@ -12,6 +12,8 @@ export type {
   TournamentEliminationInfo,
   TournamentPlayerEliminatedData,
   TournamentCompletedData,
+  TournamentStandingEntry,
+  TournamentStandings,
 } from '@plo/shared';
 
 import type { BlindLevel, GameVariant, PlayerProfile } from '@plo/shared';

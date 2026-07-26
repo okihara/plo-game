@@ -96,6 +96,7 @@ playing ←→ disconnected（切断/再接続）
 | `tournament:register` | `{ tournamentId }` | 参加（新規・リエントリーを統合、DB でバイイン控除） |
 | `tournament:reenter` | `{ tournamentId }` | リエントリー（`eliminated` のみ、内部的には `enterPlayer` を使用） |
 | `tournament:request_state` | `{ tournamentId }` | ページ遷移後のテーブル状態再送信要求 |
+| `tournament:request_standings` | `{ tournamentId }` | チップスタンディングのスナップショット要求（クロックパネルを開いている間のみ） |
 
 ### Server → Client
 
@@ -103,6 +104,7 @@ playing ←→ disconnected（切断/再接続）
 |---------|-----------|---------|
 | `tournament:registered` | `{ tournamentId }` | 登録成功時 |
 | `tournament:state` | `ClientTournamentState` | 状態変更時（各プレイヤーに個別送信。`myChips`/`myTableId` が異なるため） |
+| `tournament:standings` | `TournamentStandings` | `tournament:request_standings` への応答（要求したソケットのみ） |
 | `tournament:table_assigned` | `{ tableId, tournamentId }` | テーブル割り当て時 |
 | `tournament:table_move` | `{ fromTableId, toTableId, reason }` | テーブル移動時 |
 | `tournament:blind_change` | `{ level, nextLevel, nextLevelAt }` | ブラインドレベルアップ時 |
@@ -114,6 +116,13 @@ playing ←→ disconnected（切断/再接続）
 | `tournament:cancelled` | `{ tournamentId }` | キャンセル時 |
 
 ゲーム中のアクション（`game:action`, `game:state`, `game:hole_cards` 等）はキャッシュゲームと共通の `TableInstance` 経由で処理される。
+
+**チップスタンディングが `tournament:state` に同梱されていない理由**: `broadcastTournamentState()` は
+参加/リエントリー/start/cancel/バスト確定/切断/FT 形成/ブラインドアップでしか飛ばず、
+**ハンドごとのチップ変動では飛ばない**（`onHandSettled()` は `player.chips` を同期するだけ）。
+同梱すると「古いチップの一覧が、たまに更新される」状態になるうえ、最大 102 人 × 全ソケットに
+毎回配ることになる。オンデマンド取得にして、常に最新のスナップショットを必要な人にだけ返す。
+サーバー側は `STANDINGS_CACHE_MS` の TTL キャッシュで同時要求をまとめる。
 
 ---
 
@@ -211,6 +220,27 @@ remaining ≤ PLAYERS_PER_TABLE && tables > 1 → formFinalTable()
 3. 次レベルのタイマーを設定
 
 デフォルトスケジュール: 15 レベル（1/2 ～ 300/600、各 5〜8 分）
+
+### ブレイク（休憩）は未実装
+
+`BlindLevel` にブレイクを表すフラグは無く、`TableInstance` にも停止/再開の仕組みが無い。
+トーナメントはノンストップで進行する。クロックパネルもその前提で「ブレイクなし」と明示している。
+
+将来入れるときに必要になる最小差分（実装前に必ず確認すること）:
+
+1. **`TableInstance` のポーズ API** — ハンド開始の抑止・再開、進行中ハンドの扱い、Bot の待機、
+   切断猶予タイマー（`TOURNAMENT_DISCONNECT_GRACE_MS`）との相互作用。ここが最大のコスト。
+2. **レベル番号と配列 index の分離** — `isRegistrationOpen()` と `canReenter()` は
+   `blindScheduler.getCurrentLevelIndex() + 1` を「レベル番号」として使っている。
+   ブレイク行をスケジュール配列に混ぜると index がズレ、**レイト登録・リエントリーの締切が
+   黙って前倒しになる**（バイイン課金が絡むので静かに壊れると痛い）。
+   `BlindLevel.level` を正として引くように直すこと。`getLevelStartTimestamp()` の
+   呼び出し側（`getRegistrationDeadlineAt()` / `getReentryDeadlineAt()`）も同様。
+3. **ブラインド文字列の抑止** — ブレイク行は sb/bb/ante がすべて 0 になる。
+   `formatBlindsStr()` がそのまま `"0/0"` を全テーブルへ配ってゲームエンジンを壊す。
+4. **既存テストの前提** — `__tests__/blindSchedule.test.ts` は全レベルをループして
+   `ante === bigBlind`（bomb pot は `ante > 0`）を検査している。ブレイク行を足すなら
+   除外フィルタが必要。
 
 ---
 

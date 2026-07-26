@@ -163,6 +163,8 @@ export function WatchGame({ tableId, tournamentId, onNavigateWatchTable, onBack 
                 tournamentState={tournamentState}
                 myChips={null}
                 lastEliminated={null}
+                myOdId={null}
+                tableSize={gameState.players.filter(Boolean).length}
               />
             )}
           </GameTable>

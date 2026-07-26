@@ -9,6 +9,7 @@ import type {
   TournamentEliminationInfo,
   TournamentPlayerEliminatedData,
   TournamentCompletedData,
+  TournamentStandings,
 } from './tournament';
 
 // ========== Client -> Server Events ==========
@@ -33,6 +34,8 @@ export interface ClientToServerEvents {
   'tournament:unregister': (data: { tournamentId: string }) => void;
   'tournament:reenter': (data: { tournamentId: string }) => void;
   'tournament:request_state': (data: { tournamentId: string }) => void;
+  /** チップスタンディングのスナップショット要求（クロックパネルを開いている間だけ） */
+  'tournament:request_standings': (data: { tournamentId: string }) => void;
 }
 
 // ========== Server -> Client Events ==========
@@ -82,6 +85,7 @@ export interface ServerToClientEvents {
   'tournament:registered': (data: { tournamentId: string }) => void;
   'tournament:unregistered': (data: { tournamentId: string }) => void;
   'tournament:state': (state: ClientTournamentState) => void;
+  'tournament:standings': (data: TournamentStandings) => void;
   'tournament:table_assigned': (data: { tableId: string; tournamentId: string }) => void;
   'tournament:table_move': (data: { fromTableId: string; toTableId: string; reason: string }) => void;
   'tournament:blind_change': (data: { level: BlindLevel; nextLevel: BlindLevel | null; nextLevelAt: number }) => void;

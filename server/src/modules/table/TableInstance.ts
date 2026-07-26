@@ -498,9 +498,30 @@ export class TableInstance {
   }
 
   /**
-   * プレイヤーのチップ数を取得（テーブル移動時に使用）
+   * プレイヤーの手元チップ数を取得（テーブル移動時に使用）。
+   * ハンド中はポットに投じた分を差し引いた「手元の残り」を返す。
    */
   public getPlayerChips(odId: string): number | null {
+    return this.readPlayerChips(odId, false);
+  }
+
+  /**
+   * プレイヤーの保有チップ総額を取得（トーナメントのチップスタンディング用）。
+   *
+   * getPlayerChips() は手元の残りを返すため、ハンド中のプレイヤーは実際の保有
+   * チップより少なく見え、オールインは 0 になってしまう。順位表では当該ハンドで
+   * ポットに投じた分 (totalBetThisRound) を足し戻した総額を使う。
+   *
+   * 注意: bomb pot / draw のアンティは仕様上 totalBetThisRound に載せていない
+   * （bombPotEngine.ts / drawEngine.ts のコメント参照）ため、ハンド中だけ
+   * アンティ 1 回分ぶん少なく出る。ハンド完了後は seat の値に戻り正確になる。
+   */
+  public getPlayerTournamentChips(odId: string): number | null {
+    return this.readPlayerChips(odId, true);
+  }
+
+  /** @param includeCommitted ハンド中にポットへ投じた分を足し戻すか */
+  private readPlayerChips(odId: string, includeCommitted: boolean): number | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
@@ -512,8 +533,9 @@ export class TableInstance {
     }
 
     // ハンド中（未完了）はgameStateの値が最新
-    if (this.gameState && this.gameState.players[seatIndex] && !this.gameState.isHandComplete) {
-      return this.gameState.players[seatIndex].chips;
+    const inHand = this.gameState?.players[seatIndex];
+    if (inHand && !this.gameState!.isHandComplete) {
+      return includeCommitted ? inHand.chips + inHand.totalBetThisRound : inHand.chips;
     }
 
     // ハンド完了後・ハンド外はseatの値を返す

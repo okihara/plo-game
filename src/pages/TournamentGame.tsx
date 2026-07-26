@@ -160,6 +160,8 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
                 tournamentState={tournamentState}
                 myChips={mySeat != null ? gameState.players[mySeat]?.chips ?? null : null}
                 lastEliminated={lastEliminated}
+                myOdId={mySeat != null ? gameState.players[mySeat]?.odId ?? null : null}
+                tableSize={gameState.players.filter(Boolean).length}
               />
             )}
           </GameTable>
