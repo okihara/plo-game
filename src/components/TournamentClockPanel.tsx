@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, X } from 'lucide-react';
 import {
@@ -121,77 +121,84 @@ export function TournamentClockPanel({
 
   const shell = (
     <div
-      className="absolute inset-0 z-[285] flex flex-col light-bg min-h-0 h-full animate-fade-in"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="tournament-clock-title"
+      className="absolute inset-0 z-[285] flex items-center justify-center animate-fade-in"
+      onClick={onClose}
     >
-      {/* —— ヘッダー —— */}
-      <header className="shrink-0 sticky top-0 z-10 flex items-center gap-[2cqw] border-b border-cream-300 bg-white px-[4cqw] py-[3cqw] shadow-sm">
-        <div className="min-w-0 flex-1">
-          <h2
-            id="tournament-clock-title"
-            className="truncate text-[3.4cqw] font-bold leading-snug tracking-tight text-cream-900"
+      <div className="absolute inset-0 bg-black/50" />
+      <div
+        className="relative flex h-[92%] w-[94%] min-h-0 flex-col overflow-hidden rounded-[4cqw] light-bg shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tournament-clock-title"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* —— ヘッダー —— */}
+        <header className="shrink-0 flex items-center gap-[2cqw] border-b border-cream-300 bg-white px-[4cqw] py-[3cqw] shadow-sm">
+          <div className="min-w-0 flex-1">
+            <h2
+              id="tournament-clock-title"
+              className="truncate text-[3.4cqw] font-bold leading-snug tracking-tight text-cream-900"
+            >
+              {ts.name}
+            </h2>
+            <p className="mt-[0.4cqw] truncate text-[2.6cqw] tabular-nums text-cream-600">
+              Lv.{bl.level} · {formatBlinds(bl)}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-[7cqw] w-[7cqw] shrink-0 items-center justify-center rounded-full text-cream-700 active:bg-cream-200"
+            aria-label="閉じる"
           >
-            {ts.name}
-          </h2>
-          <p className="mt-[0.4cqw] truncate text-[2.6cqw] tabular-nums text-cream-600">
-            Lv.{bl.level} · {formatBlinds(bl)}
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-[7cqw] w-[7cqw] shrink-0 items-center justify-center rounded-full text-cream-700 active:bg-cream-200"
-          aria-label="閉じる"
-        >
-          <X className="h-[4.5cqw] w-[4.5cqw]" />
-        </button>
-      </header>
+            <X className="h-[4.5cqw] w-[4.5cqw]" />
+          </button>
+        </header>
 
-      {/* —— 本体 —— */}
-      <div className="light-scrollbar min-h-0 flex-1 space-y-[3cqw] overflow-y-auto overscroll-contain px-[4cqw] py-[3cqw] pb-[4cqw]">
-        <ClockCard
-          clock={isFinalBlindLevel ? FINAL_LEVEL_CLOCK : levelClock ?? FINAL_LEVEL_CLOCK}
-          ts={ts}
-        />
-
-        {myChips != null && stackMetrics && (
-          <MyStackCard
-            myChips={myChips}
-            metrics={stackMetrics}
-            rank={myRank}
-            playersRemaining={ts.playersRemaining}
-            bubbleFactor={myBubbleFactor}
+        {/* —— 本体 —— */}
+        <div className="light-scrollbar min-h-0 flex-1 space-y-[3cqw] overflow-y-auto overscroll-contain px-[4cqw] py-[3cqw] pb-[4cqw]">
+          <ClockCard
+            clock={isFinalBlindLevel ? FINAL_LEVEL_CLOCK : levelClock ?? FINAL_LEVEL_CLOCK}
+            ts={ts}
           />
-        )}
 
-        <ItmCard ts={ts} itm={itm} />
+          {myChips != null && stackMetrics && (
+            <MyStackCard
+              myChips={myChips}
+              metrics={stackMetrics}
+              rank={myRank}
+              playersRemaining={ts.playersRemaining}
+              bubbleFactor={myBubbleFactor}
+            />
+          )}
 
-        <StandingsCard
-          entries={standings?.entries ?? null}
-          averageStack={standings?.averageStack ?? ts.averageStack}
-          playersRemaining={standings?.playersRemaining ?? ts.playersRemaining}
-          bbUnit={getBigBlindUnit(bl)}
-          myOdId={myOdId}
-          loading={loading}
-          error={error}
-          onRetry={refetch}
-        />
+          <ItmCard ts={ts} itm={itm} />
 
-        <DeadlineCard ts={ts} />
+          <StandingsCard
+            entries={standings?.entries ?? null}
+            averageStack={standings?.averageStack ?? ts.averageStack}
+            playersRemaining={standings?.playersRemaining ?? ts.playersRemaining}
+            bbUnit={getBigBlindUnit(bl)}
+            myOdId={myOdId}
+            loading={loading}
+            error={error}
+            onRetry={refetch}
+          />
+
+          <DeadlineCard ts={ts} />
+        </div>
+
+        {/* —— フッター —— */}
+        <footer className="shrink-0 border-t border-cream-300 bg-white px-[4cqw] py-[1.8cqw] shadow-[0_-4px_12px_rgba(139,126,106,0.08)]">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded-[2cqw] bg-forest py-[2cqw] text-[3.2cqw] font-bold text-white shadow-sm transition-transform active:scale-[0.99]"
+          >
+            閉じる
+          </button>
+        </footer>
       </div>
-
-      {/* —— フッター —— */}
-      <footer className="shrink-0 border-t border-cream-300 bg-white px-[4cqw] pt-[1.8cqw] pb-[max(1.8cqw,env(safe-area-inset-bottom))] shadow-[0_-4px_12px_rgba(139,126,106,0.08)]">
-        <button
-          type="button"
-          onClick={onClose}
-          className="w-full rounded-[2cqw] bg-forest py-[2cqw] text-[3.2cqw] font-bold text-white shadow-sm transition-transform active:scale-[0.99]"
-        >
-          閉じる
-        </button>
-      </footer>
     </div>
   );
 
@@ -424,15 +431,6 @@ function StandingsCard({
   error: boolean;
   onRetry: () => void;
 }) {
-  const myRowRef = useRef<HTMLLIElement>(null);
-  const hasScrolledRef = useRef(false);
-
-  useEffect(() => {
-    if (hasScrolledRef.current || !myRowRef.current) return;
-    hasScrolledRef.current = true;
-    myRowRef.current.scrollIntoView({ block: 'center' });
-  }, [entries]);
-
   const chipLeader = entries?.[0]?.chips ?? null;
   const shortStack = entries && entries.length > 0 ? entries[entries.length - 1].chips : null;
 
@@ -475,13 +473,12 @@ function StandingsCard({
           ))}
         </ul>
       ) : (
-        <ul className="light-scrollbar mt-[2.5cqw] max-h-[80cqw] overflow-y-auto overscroll-contain">
+        <ul className="mt-[2.5cqw]">
           {entries.map(entry => {
             const isMe = myOdId != null && entry.odId === myOdId;
             return (
               <li
                 key={entry.odId}
-                ref={isMe ? myRowRef : undefined}
                 className={`flex items-center gap-[2cqw] border-b border-cream-200 py-[1.6cqw] last:border-b-0 ${
                   isMe ? 'rounded-[1.5cqw] border-l-[0.8cqw] border-l-forest bg-forest/10 pl-[1.5cqw]' : ''
                 }`}
