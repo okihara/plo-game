@@ -137,16 +137,22 @@ function simulateHandSettled(
 }
 
 /**
- * 全テーブルの getPlayerChips を差し替えて、着席中プレイヤーのライブチップを固定する。
- * getStandings() は表示との一致のためテーブル側のライブチップを優先して読むが、
- * テストでは実際のハンドを進行させないため、その読み取り経路を直接制御する。
+ * 全テーブルのライブチップ読み取りを差し替えて、着席中プレイヤーのチップを固定する。
+ * getStandings() はテーブル側のライブチップを優先して読むが、テストでは実際の
+ * ハンドを進行させないため、その読み取り経路を直接制御する。
+ *
+ * getPlayerChips（手元の残り）と getPlayerTournamentChips（ポット内も含む総額）の
+ * 両方を差し替える。両者の差はハンド中のみ生じるもので、ハンドを進めないテストでは
+ * 同じ値になる。
  */
 function setLiveChips(tournament: TournamentInstance, chipsByOdId: Record<string, number>): void {
   const tables = (tournament as any).tables as Map<string, any>;
   for (const table of tables.values()) {
-    vi.spyOn(table, 'getPlayerChips').mockImplementation(
-      (odId: unknown) => chipsByOdId[odId as string] ?? null
-    );
+    for (const method of ['getPlayerChips', 'getPlayerTournamentChips'] as const) {
+      vi.spyOn(table, method).mockImplementation(
+        (odId: unknown) => chipsByOdId[odId as string] ?? null
+      );
+    }
   }
 }
 
@@ -2283,13 +2289,48 @@ it('リエントリー成功でチップがリセットされプライズプー�
       // テーブル側は既に動いている状況を作る
       const player = tournament.getPlayer(odIds[0])!;
       const table = tournament.getTable(player.tableId!)!;
-      vi.spyOn(table, 'getPlayerChips').mockImplementation((odId: string) =>
+      vi.spyOn(table, 'getPlayerTournamentChips').mockImplementation((odId: string) =>
         odId === odIds[0] ? 9999 : null
       );
 
       const entry = tournament.getStandings().entries.find(e => e.odId === odIds[0]);
       expect(entry?.chips).toBe(9999);
       expect(player.chips).not.toBe(9999);
+    });
+
+    it('オールイン中でもポットに出したチップを含めた総額で順位が付く', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      // odIds[0] が全チップをポットに投じた状態。
+      // getPlayerChips は手元 0 を返すが、getPlayerTournamentChips は総額を返す。
+      const player = tournament.getPlayer(odIds[0])!;
+      const table = tournament.getTable(player.tableId!)!;
+      const allInStack = player.chips;
+      vi.spyOn(table, 'getPlayerChips').mockImplementation((odId: string) =>
+        odId === odIds[0] ? 0 : null
+      );
+      vi.spyOn(table, 'getPlayerTournamentChips').mockImplementation((odId: string) =>
+        odId === odIds[0] ? allInStack : null
+      );
+
+      const entries = tournament.getStandings().entries;
+      const entry = entries.find(e => e.odId === odIds[0]);
+      expect(entry?.chips).toBe(allInStack);
+      // 0 チップ扱いで最下位に落ちていないこと
+      expect(entry?.rank).not.toBe(entries.length);
+    });
+
+    it('averageStack は entries と同じチップを平均したものになる', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      setLiveChips(tournament, { [odIds[0]]: 6000, [odIds[1]]: 3000, [odIds[2]]: 0 });
+
+      const standings = tournament.getStandings();
+      const sum = standings.entries.reduce((acc, e) => acc + e.chips, 0);
+      expect(standings.averageStack).toBe(Math.round(sum / standings.entries.length));
+      expect(standings.averageStack).toBe(3000);
     });
   });
 });

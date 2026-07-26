@@ -6,6 +6,13 @@ import { wsService } from '../services/websocket';
 const REQUEST_TIMEOUT_MS = 8000;
 /** イベント起点の再取得を取りこぼしたときの保険 (ms) */
 const FALLBACK_REFRESH_MS = 10_000;
+/**
+ * イベント起点の再取得を束ねる待ち時間 (ms)。
+ * 1回のバストで tournament:player_eliminated と tournament:state が続けて飛ぶ
+ * （残り2人になるときは state がもう1回飛ぶ）ため、素直に投げると同じ内容を
+ * 2〜3回取りに行くことになる。体感できない範囲で待って1回にまとめる。
+ */
+const COALESCE_MS = 300;
 
 /**
  * チップスタンディングをオンデマンドで取得する。
@@ -24,6 +31,7 @@ export function useTournamentStandings(tournamentId: string | null, enabled: boo
   const tournamentIdRef = useRef(tournamentId);
   tournamentIdRef.current = tournamentId;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const coalesceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const clearPendingTimeout = useCallback(() => {
     if (timeoutRef.current) {
@@ -32,6 +40,7 @@ export function useTournamentStandings(tournamentId: string | null, enabled: boo
     }
   }, []);
 
+  /** 即座に投げる。初回取得と手動リトライ用。 */
   const request = useCallback(() => {
     const id = tournamentIdRef.current;
     if (!id) return;
@@ -46,9 +55,26 @@ export function useTournamentStandings(tournamentId: string | null, enabled: boo
     wsService.requestTournamentStandings(id);
   }, [clearPendingTimeout]);
 
+  /** 短時間に連続するイベントを1回の要求に束ねる。 */
+  const scheduleRequest = useCallback(() => {
+    if (coalesceRef.current) return;
+    coalesceRef.current = setTimeout(() => {
+      coalesceRef.current = null;
+      request();
+    }, COALESCE_MS);
+  }, [request]);
+
+  const clearPendingCoalesce = useCallback(() => {
+    if (coalesceRef.current) {
+      clearTimeout(coalesceRef.current);
+      coalesceRef.current = null;
+    }
+  }, []);
+
   useEffect(() => {
     if (!enabled || !tournamentId) {
       clearPendingTimeout();
+      clearPendingCoalesce();
       setLoading(false);
       return;
     }
@@ -63,9 +89,10 @@ export function useTournamentStandings(tournamentId: string | null, enabled: boo
         setLoading(false);
         setError(false);
       },
-      // 残り人数やチップが動いたであろうタイミングで追随する
-      onTournamentState: () => request(),
-      onTournamentPlayerEliminated: () => request(),
+      // 残り人数やチップが動いたであろうタイミングで追随する。
+      // 同じバストで両方が飛ぶので、束ねてから1回だけ取りに行く。
+      onTournamentState: () => scheduleRequest(),
+      onTournamentPlayerEliminated: () => scheduleRequest(),
     });
 
     request();
@@ -74,9 +101,10 @@ export function useTournamentStandings(tournamentId: string | null, enabled: boo
     return () => {
       clearInterval(fallback);
       clearPendingTimeout();
+      clearPendingCoalesce();
       wsService.removeListeners('tournament-standings');
     };
-  }, [enabled, tournamentId, request, clearPendingTimeout]);
+  }, [enabled, tournamentId, request, scheduleRequest, clearPendingTimeout, clearPendingCoalesce]);
 
   return { standings, loading, error, refetch: request };
 }

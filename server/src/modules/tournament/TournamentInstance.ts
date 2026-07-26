@@ -560,17 +560,26 @@ export class TournamentInstance {
       name: p.profile.name,
       avatarUrl: p.profile.avatarUrl,
       avatarId: p.profile.avatarId,
-      // ハンド進行中はテーブル側のライブチップを優先し、卓の表示と順位がズレないようにする
-      chips: (p.tableId ? this.tables.get(p.tableId)?.getPlayerChips(p.odId) : null) ?? p.chips,
+      // ハンド進行中はテーブル側のライブチップを優先する。
+      // getPlayerChips() ではなく getPlayerTournamentChips() を使うこと:
+      // 前者はポットに出した分を引いた手元の残りなので、オールインが 0 として
+      // 最下位に並んでしまう。順位表で見たいのはポット内も含めた保有総額。
+      chips:
+        (p.tableId ? this.tables.get(p.tableId)?.getPlayerTournamentChips(p.odId) : null) ??
+        p.chips,
       status: p.status === 'disconnected' ? ('disconnected' as const) : ('playing' as const),
       reentries: p.reentryCount,
     }));
+
+    // 平均は entries と同じソースから出す。getStackSummary() は同期済みの
+    // TournamentPlayer.chips を見るため、ハンド中は一覧と食い違う。
+    const chipSum = rows.reduce((sum, r) => sum + r.chips, 0);
 
     const value: TournamentStandings = {
       tournamentId: this.id,
       updatedAt: now,
       playersRemaining: rows.length,
-      averageStack: this.getStackSummary().averageStack,
+      averageStack: rows.length > 0 ? Math.round(chipSum / rows.length) : 0,
       entries: rankStandings(rows),
     };
     this.standingsCache = { at: now, value };

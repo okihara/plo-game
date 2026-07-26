@@ -108,6 +108,11 @@ export function TournamentClockPanel({
   const myRank = myOdId ? standings?.entries.find(e => e.odId === myOdId)?.rank ?? null : null;
   const myBubbleFactor = myOdId ? ts.bubbleFactors?.[myOdId] : undefined;
 
+  // 順位はスタンディング由来なので母数も同じスナップショットから取る。
+  // ts.playersRemaining はブロードキャストが先に届く分だけ進んでいることがあり、
+  // 混ぜると「#12 / 11」のような表示になる。
+  const standingsPlayersRemaining = standings?.playersRemaining ?? ts.playersRemaining;
+
   if (typeof document === 'undefined') return null;
   const viewport = document.getElementById('plo-viewport');
   if (!viewport) return null;
@@ -160,7 +165,7 @@ export function TournamentClockPanel({
               myChips={myChips}
               metrics={stackMetrics}
               rank={myRank}
-              playersRemaining={ts.playersRemaining}
+              playersRemaining={standingsPlayersRemaining}
               bubbleFactor={myBubbleFactor}
             />
           )}
@@ -170,7 +175,7 @@ export function TournamentClockPanel({
           <StandingsCard
             entries={standings?.entries ?? null}
             averageStack={standings?.averageStack ?? ts.averageStack}
-            playersRemaining={standings?.playersRemaining ?? ts.playersRemaining}
+            playersRemaining={standingsPlayersRemaining}
             bbUnit={getBigBlindUnit(bl)}
             myOdId={myOdId}
             loading={loading}
