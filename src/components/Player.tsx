@@ -26,8 +26,6 @@ interface PlayerProps {
   wonBoards?: number[];
   /** Hi-Lo: このプレイヤーが勝ったサイドの配列（['high'], ['low'], ['high','low']）。非Hi-Lo では未定義 */
   wonHiLoSides?: ('high' | 'low')[];
-  /** トナメ ICM バブルファクター。残 2 卓以下のとき各席に表示される。 */
-  bubbleFactor?: number;
   /** ショウダウンでベストハンドに使ったホールカードのインデックス（少し上げて強調） */
   raisedCardIndices?: number[];
 }
@@ -78,12 +76,6 @@ const betPositionStyles: Record<number, string> = {
 
 const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
 
-function bubbleFactorColor(bf: number): string {
-  if (bf < 1.3) return '#86efac';  // green-300: 低 ICM 圧
-  if (bf < 1.7) return '#fcd34d';  // amber-300: 中
-  return '#fca5a5';                // red-300:   高 ICM 圧
-}
-
 const actionColorStyles: Record<Action, string> = {
   fold: 'text-gray-400 border-gray-400',
   check: 'text-blue-400 border-blue-400',
@@ -114,7 +106,6 @@ export function Player({
   labelColor,
   wonBoards,
   wonHiLoSides,
-  bubbleFactor,
   raisedCardIndices,
 }: PlayerProps) {
   const { formatChips } = useGameSettings();
@@ -254,22 +245,15 @@ export function Player({
 
         {/* Player Info */}
         <div className={`relative bg-black/80 border border-white/60 -ml-[4cqw] px-[1cqw] pl-[5cqw] rounded-lg text-center h-[13cqw] w-[32cqw] flex flex-col justify-center z-[20] ${player.nameplate ? NAMEPLATE_STYLES[player.nameplate] : ''} ${player.folded ? 'brightness-[0.3]' : ''} ${isWinner ? 'animate-[win-box-glow_2s_ease-in-out_infinite]' : ''}`}>
+          {/* Color Label Dot: プレート右上角（左上角はアバターが z-22 で覆い被さるため不可） */}
           {labelColor && (
             <div
-              className="absolute top-[-1cqw] left-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"
+              className="absolute top-[-1cqw] right-[-1cqw] w-[5cqw] h-[5cqw] rounded-full border-[0.6cqw] border-black/80 z-[25]"
               style={{ backgroundColor: labelColor }}
             />
           )}
           <div className="text-[3.5cqw] text-white truncate">{player.name}</div>
           <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
-          {bubbleFactor !== undefined && (
-            <div
-              className="absolute -top-[2cqw] -right-[1cqw] px-[1.2cqw] py-[0.2cqw] bg-black/90 border border-white/40 rounded text-[2.8cqw] leading-none whitespace-nowrap z-[26]"
-              style={{ color: bubbleFactorColor(bubbleFactor) }}
-            >
-              BF{bubbleFactor.toFixed(2)}
-            </div>
-          )}
         </div>
       </div>
 

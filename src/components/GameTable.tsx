@@ -59,9 +59,6 @@ export interface GameTableProps {
 
   /** トーナメントプレイ中（プロフィールのスタッツタブ初期値をトナメにする等） */
   isTournament?: boolean;
-
-  /** トナメ ICM バブルファクター (odId → 数値)。2 卓以下のときのみ供給される。 */
-  bubbleFactors?: Record<string, number>;
 }
 
 export function GameTable({
@@ -90,7 +87,6 @@ export function GameTable({
   children,
   isSpectator = false,
   isTournament = false,
-  bubbleFactors,
 }: GameTableProps) {
   const { settings, setBigBlind } = useGameSettings();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
@@ -310,7 +306,6 @@ export function GameTable({
             onPlayerClick={handlePlayerClick}
             showdownHandNames={showdownHandNames}
             getLabel={getLabel}
-            bubbleFactors={bubbleFactors}
           />
 
           {!isSpectator && (

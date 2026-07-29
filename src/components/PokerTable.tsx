@@ -16,8 +16,6 @@ interface PokerTableProps {
   onPlayerClick?: (player: PlayerType) => void;
   showdownHandNames?: Map<number, string>;
   getLabel?: (targetUserId: string) => { color: string } | undefined;
-  /** odId → ICM バブルファクター。トナメ 2 卓以下のときのみ供給される。 */
-  bubbleFactors?: Record<string, number>;
 }
 
 export function PokerTable({
@@ -31,7 +29,6 @@ export function PokerTable({
   onPlayerClick,
   showdownHandNames,
   getLabel,
-  bubbleFactors,
 }: PokerTableProps) {
   const { formatChips } = useGameSettings();
 
@@ -161,7 +158,6 @@ export function PokerTable({
               labelColor={player.odId ? LABEL_COLORS.find(c => c.id === getLabel?.(player.odId!)?.color)?.hex : undefined}
               wonBoards={wonBoards}
               wonHiLoSides={wonHiLoSides}
-              bubbleFactor={player.odId ? bubbleFactors?.[player.odId] : undefined}
               raisedCardIndices={raisedCardIndices}
             />
           );
