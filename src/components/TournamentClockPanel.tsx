@@ -177,6 +177,7 @@ export function TournamentClockPanel({
             averageStack={standings?.averageStack ?? ts.averageStack}
             playersRemaining={standingsPlayersRemaining}
             bbUnit={getBigBlindUnit(bl)}
+            bubbleFactors={ts.bubbleFactors}
             myOdId={myOdId}
             loading={loading}
             error={error}
@@ -415,6 +416,7 @@ function StandingsCard({
   averageStack,
   playersRemaining,
   bbUnit,
+  bubbleFactors,
   myOdId,
   loading,
   error,
@@ -424,6 +426,8 @@ function StandingsCard({
   averageStack: number;
   playersRemaining: number;
   bbUnit: number;
+  /** odId → ICM バブルファクター。残り 2 卓以下のときのみ供給される。 */
+  bubbleFactors: Record<string, number> | undefined;
   myOdId: string | null;
   loading: boolean;
   error: boolean;
@@ -474,6 +478,7 @@ function StandingsCard({
         <ul className="mt-[2.5cqw]">
           {entries.map(entry => {
             const isMe = myOdId != null && entry.odId === myOdId;
+            const bf = bubbleFactors?.[entry.odId];
             return (
               <li
                 key={entry.odId}
@@ -503,6 +508,14 @@ function StandingsCard({
                     </span>
                   )}
                 </span>
+                {bf != null && (
+                  <span
+                    className="shrink-0 text-[2.4cqw] font-semibold tabular-nums"
+                    style={{ color: bubbleFactorColor(bf) }}
+                  >
+                    BF{bf.toFixed(2)}
+                  </span>
+                )}
                 <span className="shrink-0 text-right">
                   <span className="block text-[3cqw] font-bold tabular-nums text-cream-900">
                     {formatChipsAbsolute(entry.chips)}
@@ -527,6 +540,13 @@ function rankColor(rank: number): string {
   if (rank === 2) return 'text-cream-500';
   if (rank === 3) return 'text-amber-700';
   return 'text-cream-600';
+}
+
+/** 明色カード上での ICM 圧の色分け（低・中・高） */
+function bubbleFactorColor(bf: number): string {
+  if (bf < 1.3) return '#16a34a'; // green-600: 低 ICM 圧
+  if (bf < 1.7) return '#d97706'; // amber-600: 中
+  return '#dc2626';               // red-600:   高 ICM 圧
 }
 
 // ============================================

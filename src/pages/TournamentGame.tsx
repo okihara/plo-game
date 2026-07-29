@@ -153,7 +153,6 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
             maintenanceStatus={maintenanceStatus}
             announcementStatus={announcementStatus}
             isTournament
-            bubbleFactors={tournamentState?.bubbleFactors}
           >
             {tournamentState && (
               <TournamentHUD
