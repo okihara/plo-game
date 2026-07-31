@@ -190,11 +190,17 @@ Phase 0 の実測に基づき優先順位を変更。構造は変えず 2 箇所
   - エクスプロイター 5 種は粗い近似。v2 固有の穴（FE 事前分布が定数、ブロッカー未使用等）は
     本番 A/B と Phase 4 の集団適応で検証・補強する
 
-### Phase 3: 本番 A/B 投入（1 週）
+### Phase 3: 本番 A/B 投入（🚧 2026-07-31 配線済み）
 
-- strategyRegistry で Bot の一部（例: 3 分の 1）を新エンジンに割り当て
-- `/morning-bot-improve` の集計を新旧比較レポートに拡張
-- 対人間 BB/100 で新旧比較 → 良ければ全量切替
+- ✅ `ai2/engineSelector.ts`: Bot 名（providerId）の決定的ハッシュで v1/v2 割当。
+  **`BOT_ENGINE_V2_RATIO`**（既定 1/3）で制御 — `0` で緊急停止、`1` で全量。コード変更・再デプロイ不要（Railway の env 変更のみ）
+- ✅ BotClient → `AIContext.engine` → `getCPUAction` の経路で切替。
+  **リング PLO4 のみ**（トーナメントは常に v1、variant≠plo も v1）
+- ✅ 決定コスト: モンテカルロ標本数を既定 64 に設定（`BOT_V2_MC_SAMPLES` で調整可）。
+  ローカル実測 p50 9ms / p99 16ms（`scripts/bot-v2-bench.ts`）
+- ✅ 効果測定: `scripts/bot-ab-report.ts --prod --days 1` — エンジン別 BB/100（全体/人間同席）
+- 運用: デプロイ後、日次で ab-report を確認。人間同席 BB/100 で v2 > v1 が数日続けば
+  ratio を 2/3 → 1 に拡大。逆なら `BOT_ENGINE_V2_RATIO=0` で停止して原因分析
 
 ### Phase 4: 適応層（その後）
 
