@@ -417,8 +417,9 @@ describe('getPostflopDecision', () => {
       it.each([
         { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, min: 0.05, max: 0.70 },
         { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  min: 0.10, max: 0.85 },
-        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, min: 0.03, max: 0.65 },
-        { char: 'TatsuyaN'  as const, board: 'paired'as const, betSize: 100, min: 0.00, max: 0.55 },
+        // 2026-07 リバー防御強化（docs/bot-redesign.md Phase 0/1）で上限を引き上げ
+        { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, min: 0.03, max: 0.85 },
+        { char: 'TatsuyaN'  as const, board: 'paired'as const, betSize: 100, min: 0.00, max: 0.75 },
       ])('$char / $board ボード / betSize=$betSize → コール率 $min-$max', ({ char, board, betSize, min, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -431,9 +432,10 @@ describe('getPostflopDecision', () => {
 
       // フラッシュボード + セット → フォールド寄りだがコールも残す
       it.each([
-        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.45 },
-        { char: 'YuHayashi' as const, betSize: 100, max: 0.45 },
-        { char: 'yuna0312'  as const, betSize: 100, max: 0.45 },
+        // 2026-07 リバー防御強化（docs/bot-redesign.md Phase 0/1）で上限を引き上げ
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.60 },
+        { char: 'YuHayashi' as const, betSize: 100, max: 0.60 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.60 },
       ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
@@ -463,10 +465,11 @@ describe('getPostflopDecision', () => {
       });
 
       // フラッシュボード → フォールド寄りだが最低限のコールは残す
+      // 2026-07 リバー防御強化（docs/bot-redesign.md Phase 0/1）で上限を微増
       it.each([
-        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.20 },
-        { char: 'YuHayashi' as const, betSize: 100, max: 0.20 },
-        { char: 'yuna0312'  as const, betSize: 100, max: 0.20 },
+        { char: 'TatsuyaN'  as const, betSize: 100, max: 0.30 },
+        { char: 'YuHayashi' as const, betSize: 100, max: 0.30 },
+        { char: 'yuna0312'  as const, betSize: 100, max: 0.30 },
         { char: 'TatsuyaN'  as const, betSize: 50,  max: 0.40 },
         { char: 'yuna0312'  as const, betSize: 50,  max: 0.35 },
       ])('$char / flush ボード / betSize=$betSize → コール率 $max 以下', ({ char, betSize, max }) => {
