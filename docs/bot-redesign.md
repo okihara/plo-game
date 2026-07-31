@@ -198,6 +198,9 @@ Phase 0 の実測に基づき優先順位を変更。構造は変えず 2 箇所
   **リング PLO4 のみ**（トーナメントは常に v1、variant≠plo も v1）
 - ✅ 決定コスト: モンテカルロ標本数を既定 64 に設定（`BOT_V2_MC_SAMPLES` で調整可）。
   ローカル実測 p50 9ms / p99 16ms（`scripts/bot-v2-bench.ts`）
+- ✅ 標本 64 でも品質ゲート合格を再確認（各 10,000 ハンド, seed=5）:
+  RiverBomber -382 / 3BetBluffer -388 / MinBetter -37 / Floater -1243 / Nit +3.6±19(≒0)、
+  新旧対決 15,000 ハンドで v2 側合計 +248 BB/100
 - ✅ 効果測定: `scripts/bot-ab-report.ts --prod --days 1` — エンジン別 BB/100（全体/人間同席）
 - 運用: デプロイ後、日次で ab-report を確認。人間同席 BB/100 で v2 > v1 が数日続けば
   ratio を 2/3 → 1 に拡大。逆なら `BOT_ENGINE_V2_RATIO=0` で停止して原因分析
