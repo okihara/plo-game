@@ -33,7 +33,7 @@
 - 影響範囲: 全 bot（リバー防御・3bet/4bet 防御のみ。フロップ/ターンは不変）
 
 ### PR
-（作成時に記入）
+#203
 
 ### 評価予定
 翌日以降 `bot-exploit-analysis.ts --prod --days 1` で:
