@@ -105,6 +105,12 @@ export function decidePostflop(
 
   const equity = estimateEquity(player.holeCards, state.communityCards, specs, rand);
 
+  // エクイティ実現率: リバー以外は「ショーダウンまでタダで見られる」わけではない。
+  // 受け身のアクション (check/call) は将来ストリートの被ベットで実現率が下がる。
+  // ベット側 (イニシアチブ) には適用しない → 強い手はコールよりベットが自然に優位になる
+  const realization = street === 'river' ? 1.0 : street === 'turn' ? 0.90 : 0.82;
+  const passiveEquity = equity * realization;
+
   const candidates: Candidate[] = [];
 
   // === fold ===
@@ -114,7 +120,7 @@ export function decidePostflop(
 
   // === check ===
   if (validActions.some(a => a.action === 'check')) {
-    candidates.push({ action: 'check', amount: 0, ev: equity * pot });
+    candidates.push({ action: 'check', amount: 0, ev: passiveEquity * pot });
   }
 
   // === call ===
@@ -124,7 +130,7 @@ export function decidePostflop(
     candidates.push({
       action: 'call',
       amount: callCost,
-      ev: equity * (pot + callCost) - callCost,
+      ev: passiveEquity * (pot + callCost) - callCost,
     });
   }
 
