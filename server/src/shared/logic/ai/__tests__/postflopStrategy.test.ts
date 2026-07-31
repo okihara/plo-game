@@ -451,10 +451,12 @@ describe('getPostflopDecision', () => {
     // =========================================================
     describe('nutRank 5+ (ツーペア以下)', () => {
       // ドライボードでもポットベットにはフォールド寄り
+      // 2026-07 リバー防御強化（docs/bot-redesign.md Phase 0/1）: 中小ベットへの
+      // コール率は意図的に上昇。期待コール率 ~0.51 のため CI フレーク余裕込みで 0.70
       it.each([
         { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, max: 0.45 },
         { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, max: 0.35 },
-        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  max: 0.55 },
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  max: 0.70 },
       ])('$char / $board ボード / betSize=$betSize → コール率 $max 以下', ({ char, board, betSize, max }) => {
         mathRandomSpy.mockRestore();
         const callRate = measureCallRate({
