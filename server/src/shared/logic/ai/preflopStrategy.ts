@@ -53,9 +53,16 @@ export function getPreflopDecision(
     return playPremium(state, validActions, Math.max(effectiveStrength, 0.80), facingRaise, personality);
   }
 
-  // === 4ベット以上に直面: AA以外はフォールド ===
-  // PLOでは4bet+ポットにAAxx以外で参加するのは-EV
+  // === 4ベット以上に直面 ===
+  // AAxx 以外全降りだと 4bet ブラフに搾取される（2026-07 実測: fold 79.7%、採算ライン約67%。
+  // docs/bot-redesign.md Phase 0 参照）。良構造のプレミアムはコールで継続する
   if (facing4Bet) {
+    const goodStructure =
+      evaluation.isDoubleSuited || (evaluation.isRundown && !evaluation.hasDangler);
+    if (effectiveStrength > 0.80 && goodStructure) {
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+    }
     return { action: 'fold', amount: 0 };
   }
 
@@ -172,8 +179,9 @@ function facing3BetDecision(
   random: number
 ): { action: Action; amount: number } {
   // 3ベットに対する最低必要強度（パーソナリティ依存）
-  // TAG (vpip=0.20): ~0.72, LAG (vpip=0.38): ~0.69
-  const minStrength = 0.60 + (1 - personality.vpip) * 0.15;
+  // 2026-07 実測で vs3bet fold 79.6%（採算ライン約67%）と搾取されていたため引き下げ。
+  // TAG (vpip=0.20): ~0.65, LAG (vpip=0.38): ~0.62
+  const minStrength = 0.55 + (1 - personality.vpip) * 0.12;
 
   // 最低強度未満は即フォールド
   if (effectiveStrength < minStrength) {
@@ -194,8 +202,8 @@ function facing3BetDecision(
   );
 
   if (!hasGoodStructure) {
-    // 構造が悪い手は高確率でフォールド（最低55%、foldTo3Bet+15%）
-    const foldRate = Math.max(0.55, personality.foldTo3Bet + 0.15);
+    // 構造が悪い手は高確率でフォールド（最低45%、foldTo3Bet+5%）
+    const foldRate = Math.max(0.45, personality.foldTo3Bet + 0.05);
     if (random < foldRate) {
       return { action: 'fold', amount: 0 };
     }
@@ -203,7 +211,7 @@ function facing3BetDecision(
 
   // 構造が良い手でもパーソナリティベースのフォールド判定
   const strengthBonus = Math.max(0, (effectiveStrength - minStrength) * 0.8);
-  const adjustedFoldRate = Math.max(0.10, personality.foldTo3Bet - strengthBonus);
+  const adjustedFoldRate = Math.max(0.08, personality.foldTo3Bet - 0.12 - strengthBonus);
   if (random < adjustedFoldRate) {
     return { action: 'fold', amount: 0 };
   }
