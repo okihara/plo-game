@@ -10,6 +10,10 @@ export { getPreFlopEvaluation, evaluatePreFlopStrength, type PreFlopEvaluation }
 import { AIContext, StreetHistory } from './ai/types.js';
 import { getPersonality } from './ai/personalities.js';
 import { getVariantStrategy } from './ai/strategyRegistry.js';
+import { PLOStrategy2 } from './ai2/PLOStrategy2.js';
+
+// v2 (EVベース) エンジン。状態を持たないためシングルトンで共有する
+const plo2Strategy = new PLOStrategy2();
 
 // === エントリポイント ===
 // 3番目のパラメータはオプショナルで後方互換を維持
@@ -24,6 +28,10 @@ export function getCPUAction(
   // AIContext がある場合: バリアント別戦略を使用
   if (context) {
     const personality = getPersonality(context.botName);
+    // A/B: engine='v2' の Bot は PLO4 のみ新 EV エンジン（docs/bot-redesign.md Phase 3）
+    if (context.engine === 'v2' && state.variant === 'plo') {
+      return plo2Strategy.getAction(state, playerIndex, personality, positionBonus, context);
+    }
     const strategy = getVariantStrategy(state.variant);
     return strategy.getAction(state, playerIndex, personality, positionBonus, context);
   }
