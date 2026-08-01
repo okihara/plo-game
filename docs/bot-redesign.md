@@ -193,7 +193,8 @@ Phase 0 の実測に基づき優先順位を変更。構造は変えず 2 箇所
 ### Phase 3: 本番 A/B 投入（🚧 2026-07-31 配線済み）
 
 - ✅ `ai2/engineSelector.ts`: Bot 名（providerId）の決定的ハッシュで v1/v2 割当。
-  **`BOT_ENGINE_V2_RATIO`**（既定 1/3）で制御 — `0` で緊急停止、`1` で全量
+  **`BOT_ENGINE_V2_RATIO`**（**既定 1 = 全 Bot v2**）で制御 — `0` で緊急停止、
+  `0.33` 等で部分 A/B（2026-07-31 ユーザー判断で全量デフォルトに変更）
 - ⚠️ **Bot は Railway ではなく独立プロセス**（`npm run bot:prod`、`server/src/bot/index.ts`）。
   したがって: ① env は Bot プロセスを起動するマシン側で設定
   （例: `BOT_ENGINE_V2_RATIO=0 npm run bot:prod`）、
