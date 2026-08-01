@@ -5,6 +5,7 @@ import { ClientGameState } from '../shared/types/websocket.js';
 import { convertOnlinePlayerToPlayer } from '@plo/shared';
 import { AIContext } from '../shared/logic/ai/types.js';
 import { SimpleOpponentModel } from '../shared/logic/ai/opponentModel.js';
+import { getEngineForBot, BotEngine } from '../shared/logic/ai2/engineSelector.js';
 import { logSocketError } from './socketErrorLogger.js';
 
 
@@ -390,6 +391,7 @@ export class BotClient {
       botName: this.config.name,
       opponentModel: this.opponentModel,
       handActions: this.handActions,
+      engine: this.selectEngine(),
     });
 
     // Validate action against valid actions
@@ -668,6 +670,15 @@ export class BotClient {
   /**
    * ファストフォールド: ターン前にAIがフォールド判定したら即座にfold送信
    */
+  /**
+   * A/B 用エンジン選択（docs/bot-redesign.md Phase 3）。
+   * リング戦のみ v2 候補。トーナメントは常に v1（対象外スコープ）。
+   */
+  private selectEngine(): BotEngine {
+    if (this.tournamentId || this.config.tournamentMode) return 'v1';
+    return getEngineForBot(this.config.name);
+  }
+
   private maybeEarlyFold(): void {
     if (!this.gameState || !this.socket || !this.isConnected) return;
     if (this.holeCards.length === 0) return;
@@ -687,6 +698,7 @@ export class BotClient {
       botName: this.config.name,
       opponentModel: this.opponentModel,
       handActions: this.handActions,
+      engine: this.selectEngine(),
     });
 
     if (aiDecision.action === 'fold') {

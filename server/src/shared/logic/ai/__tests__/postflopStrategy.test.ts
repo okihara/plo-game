@@ -415,7 +415,8 @@ describe('getPostflopDecision', () => {
     // =========================================================
     describe('nutRank 4', () => {
       it.each([
-        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, min: 0.05, max: 0.70 },
+        // 2026-07 リバー防御強化後の期待コール率は ~0.70。境界フレーク回避で 0.85
+        { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 100, min: 0.05, max: 0.85 },
         { char: 'TatsuyaN'  as const, board: 'dry'   as const, betSize: 50,  min: 0.10, max: 0.85 },
         // 2026-07 リバー防御強化（docs/bot-redesign.md Phase 0/1）で上限を引き上げ
         { char: 'yuna0312'  as const, board: 'dry'   as const, betSize: 100, min: 0.03, max: 0.85 },

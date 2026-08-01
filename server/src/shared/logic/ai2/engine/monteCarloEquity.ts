@@ -26,6 +26,13 @@ export interface EquityOptions {
   bluffRatio?: number;
 }
 
+/** ヘッズアップ時の既定サンプル数。BOT_V2_MC_SAMPLES で本番調整可能（決定コストと精度のトレードオフ）。
+ *  既定 64 ≒ ローカル p50 10ms / p99 14ms（scripts/bot-v2-bench.ts 実測、本番はより遅い想定） */
+function baseSamples(): number {
+  const raw = Number(process.env.BOT_V2_MC_SAMPLES);
+  return Number.isFinite(raw) && raw >= 20 ? raw : 64;
+}
+
 const ALL_RANKS = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'] as const;
 const ALL_SUITS = ['h', 'd', 'c', 's'] as const;
 
@@ -81,7 +88,9 @@ export function estimateEquity(
   options?: EquityOptions
 ): number {
   if (opponents.length === 0) return 1;
-  const samples = options?.samples ?? (opponents.length <= 1 ? 160 : 100);
+  const requested = options?.samples ?? baseSamples();
+  // マルチウェイは 1 サンプルあたりの評価コストが人数分増えるため、サンプル数を落とす
+  const samples = opponents.length <= 1 ? requested : Math.max(40, Math.round(requested * 0.625));
   const bluffRatio = options?.bluffRatio ?? 0.2;
 
   const base = remainingDeck([...hero, ...board]);

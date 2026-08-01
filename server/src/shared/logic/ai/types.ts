@@ -122,6 +122,8 @@ export interface AIContext {
   botName: string;
   opponentModel?: OpponentModel;
   handActions?: GameAction[];
+  /** A/B 用エンジン指定。'v2' かつ variant='plo' のとき ai2 の EV エンジンを使う（既定 'v1'） */
+  engine?: 'v1' | 'v2';
 }
 
 // 相手モデル（インターフェース）
