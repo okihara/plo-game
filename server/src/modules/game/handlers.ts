@@ -281,8 +281,13 @@ export async function handleMatchmakingJoin(
     // 別ステークスへの移動などで明示的にテーブルを変えたい場合は、UI 側で先に table:leave を投げる前提。
     const currentTable = tableManager.getPlayerTable(socket.odId!);
     if (currentTable) {
-      console.log(`[matchmaking] Already seated at ${currentTable.id}, skipping rejoin for ${socket.odId}`);
-      return;
+      if (currentTable.isPlayerSeated(socket.odId!)) {
+        console.log(`[matchmaking] Already seated at ${currentTable.id}, skipping rejoin for ${socket.odId}`);
+        return;
+      }
+      // 紐付きだけ残って実座席がない幽霊状態（バスト直後の再参加など）は掃除して参加を続行する
+      console.warn(`[matchmaking] Stale table tracking for ${socket.odId} at ${currentTable.id}, clearing and rejoining`);
+      tableManager.removePlayerFromTracking(socket.odId!);
     }
 
     // Find available table or create one
