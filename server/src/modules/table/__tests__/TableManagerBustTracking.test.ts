@@ -12,6 +12,30 @@ import {
   resetSocketCounter,
 } from './testHelpers.js';
 
+// CI には .env が無く、config/env.ts の検証が process.exit(1) を呼ぶため
+// DB へ届く import 連鎖をモックする（TableInstance.test.ts と同じ構成）
+vi.mock('../../../config/database.js', () => ({
+  prisma: {
+    handHistory: {
+      create: vi.fn().mockResolvedValue({ id: 'test-hand-id' }),
+    },
+  },
+}));
+
+vi.mock('../../maintenance/MaintenanceService.js', () => ({
+  maintenanceService: {
+    isMaintenanceActive: vi.fn().mockReturnValue(false),
+  },
+}));
+
+vi.mock('../../stats/updateStatsIncremental.js', () => ({
+  updatePlayerStats: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../../shared/logic/equityCalculator.js', () => ({
+  calculateAllInEVProfits: vi.fn().mockReturnValue(new Map()),
+}));
+
 describe('TableManager バスト時の紐付き解除', () => {
   beforeEach(() => {
     resetSocketCounter();
