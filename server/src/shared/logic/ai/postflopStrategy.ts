@@ -269,14 +269,14 @@ function playRiver(
   if (handEval.madeHandRank >= 3) {
     if (toCall > 0) {
       const rank = handEval.madeHandRank;
-      // ツーペアのベースフォールド率を大幅引き上げ（PLOでは弱い手）
-      let foldRate = rank === 3 ? 0.65 : rank === 4 ? 0.30 : 0.15;
-
-      // ベットサイズ: 大ベットにはもっとフォールド
-      if (betToPotRatio < 0.3) foldRate -= 0.10;
-      else if (betToPotRatio < 0.6) foldRate += 0.00;
-      else if (betToPotRatio < 1.0) foldRate += 0.12;
-      else foldRate += 0.25;
+      // ベットサイズ主導のフォールド率。サイズ不問の過剰フォールドが最大の搾取源だった
+      // （2026-07 実測: リバーはサイズ不問で55〜69%フォールドし、小型ベットブラフが打ち放題。
+      //  docs/bot-redesign.md Phase 0 参照）ため、サイズ係数を乗算で効かせる
+      const sizeFactor = betToPotRatio < 0.3 ? 0.45
+        : betToPotRatio < 0.6 ? 0.75
+        : betToPotRatio < 1.0 ? 1.0
+        : 1.15;
+      let foldRate = (rank === 3 ? 0.60 : rank === 4 ? 0.30 : 0.15) * sizeFactor;
 
       // ボードテクスチャ: フラッシュ未保持やストレート未保持で加算
       if (boardTexture.flushPossible && rank < 6) foldRate += 0.15;
@@ -292,13 +292,14 @@ function playRiver(
       // パーソナリティ
       foldRate += (personality.foldToRiverBet - 0.6) * 0.3;
 
-      // クランプ: ツーペアの下限を大幅引き上げ
+      // クランプ: 小型ベットには上限を強制し、最低限の防御頻度を保証する
+      const smallBet = betToPotRatio < 0.3;
       if (rank === 3) {
-        foldRate = Math.max(0.40, Math.min(0.93, foldRate));
+        foldRate = Math.max(0.20, Math.min(smallBet ? 0.40 : 0.80, foldRate));
       } else if (rank === 4) {
-        foldRate = Math.max(0.10, Math.min(0.65, foldRate));
+        foldRate = Math.max(0.08, Math.min(smallBet ? 0.30 : 0.55, foldRate));
       } else {
-        foldRate = Math.max(0.05, Math.min(0.40, foldRate));
+        foldRate = Math.max(0.05, Math.min(smallBet ? 0.20 : 0.35, foldRate));
       }
 
       if (Math.random() < foldRate) {
@@ -329,14 +330,14 @@ function playRiver(
   // === 4. ワンペア (rank 2) ===
   if (handEval.madeHandRank === 2) {
     if (toCall > 0) {
-      // PLOリバーのワンペアは非常に弱い。ベースフォールド率を高めに設定
-      let foldRate = 0.80;
-
-      // ベットサイズ: 小さいベットのみ少しコール寄り
-      if (betToPotRatio < 0.3) foldRate -= 0.12;
-      else if (betToPotRatio < 0.6) foldRate += 0.00;
-      else if (betToPotRatio < 1.0) foldRate += 0.08;
-      else foldRate += 0.10;
+      // PLOリバーのワンペアは非常に弱いが、小型ベットにまで一律に降りると
+      // ミニベットブラフの採算ライン（20%フォールドで利益）を大幅に超えて搾取される。
+      // ベースフォールド率をベットサイズで階層化する
+      let foldRate: number;
+      if (betToPotRatio < 0.3) foldRate = 0.50;
+      else if (betToPotRatio < 0.6) foldRate = 0.78;
+      else if (betToPotRatio < 1.0) foldRate = 0.85;
+      else foldRate = 0.88;
 
       // ボードテクスチャ: 危険なボードほどフォールド寄り
       if (boardTexture.flushPossible) foldRate += 0.08;
@@ -356,8 +357,10 @@ function playRiver(
       // パーソナリティ
       foldRate += (personality.foldToRiverBet - 0.6) * 0.2;
 
-      // クランプ: 下限を引き上げ（PLOリバーのワンペアコールはほぼ損）
-      foldRate = Math.max(0.65, Math.min(0.95, foldRate));
+      // クランプ: 小型ベットには防御上限を強制、それ以外は従来通り高フォールド
+      foldRate = betToPotRatio < 0.3
+        ? Math.max(0.40, Math.min(0.60, foldRate))
+        : Math.max(0.65, Math.min(0.95, foldRate));
 
       if (Math.random() < foldRate) {
         return { action: 'fold', amount: 0 };

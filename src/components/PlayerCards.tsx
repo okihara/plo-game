@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import { Player as PlayerType, GameVariant, getVariantConfig } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction } from '../hooks/useOnlineGameState';
@@ -51,7 +51,9 @@ export function PlayerCards({
   // ショウダウン時のカード公開アニメーション
   const [isRevealing, setIsRevealing] = useState(false);
 
-  useEffect(() => {
+  // useLayoutEffect: paint前に isRevealing を立てないと、showCards が true になった
+  // 最初のフレームで全カードが表向きのまま一瞬描画されてしまう
+  useLayoutEffect(() => {
     const shouldShowCards = showCards && !player.folded && player.holeCards.length > 0;
     if (shouldShowCards) {
       setIsRevealing(true);
