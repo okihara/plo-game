@@ -20,7 +20,20 @@ export class TableManager {
     // ハンド履歴は omaha 系 variant (PLO / PLO5 / Bomb Pot) のみ保存。それ以外 (Stud/Razz/Draw/Holdem 等) は Null Recorder。
     const handHistoryEnabledVariants: GameVariant[] = ['plo', 'plo5', 'plo_double_board_bomb'];
     const historyRecorder = handHistoryEnabledVariants.includes(variant) ? undefined : new NullHandHistoryRecorder();
-    const table = new TableInstance(this.io, blinds, isFastFold, { variant, historyRecorder, isHorse });
+    const table = new TableInstance(this.io, blinds, isFastFold, {
+      variant,
+      historyRecorder,
+      isHorse,
+      // キャッシュゲームのバスト処理: 通知・離席に加えて playerTables の紐付きも解除する。
+      // 解除しないと matchmaking:join が「着席済み」と誤判定し、再参加できなくなる
+      lifecycleCallbacks: {
+        onPlayerBusted: (odId, _seatIndex, socket) => {
+          socket?.emit('table:busted', { message: 'チップがなくなりました' });
+          this.removePlayerFromTracking(odId);
+          return true; // TableInstanceがunseatPlayerを呼ぶ
+        },
+      },
+    });
     this.tables.set(table.id, table);
     return table;
   }

@@ -162,6 +162,11 @@ export class TableInstance {
     return seatIndex;
   }
 
+  /** 指定プレイヤーが実際に着席しているか（TableManager の紐付けとは独立した実座席の有無） */
+  public isPlayerSeated(odId: string): boolean {
+    return this.playerManager.findSeatByOdId(odId) !== -1;
+  }
+
   // Remove a player from the table
   public unseatPlayer(odId: string): { odId: string; chips: number } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
