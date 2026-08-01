@@ -193,7 +193,12 @@ Phase 0 の実測に基づき優先順位を変更。構造は変えず 2 箇所
 ### Phase 3: 本番 A/B 投入（🚧 2026-07-31 配線済み）
 
 - ✅ `ai2/engineSelector.ts`: Bot 名（providerId）の決定的ハッシュで v1/v2 割当。
-  **`BOT_ENGINE_V2_RATIO`**（既定 1/3）で制御 — `0` で緊急停止、`1` で全量。コード変更・再デプロイ不要（Railway の env 変更のみ）
+  **`BOT_ENGINE_V2_RATIO`**（既定 1/3）で制御 — `0` で緊急停止、`1` で全量
+- ⚠️ **Bot は Railway ではなく独立プロセス**（`npm run bot:prod`、`server/src/bot/index.ts`）。
+  したがって: ① env は Bot プロセスを起動するマシン側で設定
+  （例: `BOT_ENGINE_V2_RATIO=0 npm run bot:prod`）、
+  ② v2 の決定コストが載るのは Bot プロセスのみで**ゲームサーバー（Railway）の負荷は不変**、
+  ③ 反映は Railway デプロイ不要 — main 取り込み後に Bot プロセスを再起動するだけ
 - ✅ BotClient → `AIContext.engine` → `getCPUAction` の経路で切替。
   **リング PLO4 のみ**（トーナメントは常に v1、variant≠plo も v1）
 - ✅ 決定コスト: モンテカルロ標本数を既定 64 に設定（`BOT_V2_MC_SAMPLES` で調整可）。
