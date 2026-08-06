@@ -184,6 +184,30 @@ describe('getPreflopDecision', () => {
       const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
       expect(result.action).not.toBe('fold');
     });
+
+    it('スーテッドAAはオープンに対しほぼ常に3betする', () => {
+      setRandom(0.8); // レインボーのトラップ帯（0.65超）でもスーテッドはレイズ
+      const state = makePreflopState({
+        heroIndex: 5, heroPosition: 'BB', heroCards: PREMIUM_HAND,
+        currentBet: 30, pot: 45,
+        heroCurrentBet: 10,
+        handHistory: [{ playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
+      });
+      const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
+      expect(result.action).toBe('raise');
+    });
+
+    it('レインボーAAは一部トラップ（コール止め）に回る', () => {
+      setRandom(0.8); // raiseFreq 0.65 を超える → コール
+      const state = makePreflopState({
+        heroIndex: 5, heroPosition: 'BB', heroCards: AA_WEAK,
+        currentBet: 30, pot: 45,
+        heroCurrentBet: 10,
+        handHistory: [{ playerId: 3, action: 'raise' as const, amount: 30, street: 'preflop' }],
+      });
+      const result = getPreflopDecision(state, 5, BALANCED, POS_BB);
+      expect(result.action).toBe('call');
+    });
   });
 
   // ============================
@@ -272,6 +296,30 @@ describe('getPreflopDecision', () => {
       const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
       expect(result.action).toBe('fold');
     });
+
+    // レインボーは「降りるか殴るか」の二極（ソルバー: fold 69% / 4bet 14% / call 17%）
+    const RAINBOW_STRONG: Card[] = [c('Kh'), c('Qd'), c('Jc'), c('Ts')]; // KQJT rainbow
+
+    it('3ベットに対しレインボー(KQJTr)は基本フォールドする', () => {
+      setRandom(0.5); // < 0.69 → フォールド
+      const state = make3BetState(RAINBOW_STRONG);
+      const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
+      expect(result.action).toBe('fold');
+    });
+
+    it('3ベットに対しレインボーの強い手は4bet（ポットレイズ）に回る', () => {
+      setRandom(0.75); // 0.69〜0.83 → 4bet
+      const state = make3BetState(RAINBOW_STRONG);
+      const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
+      expect(result.action).toBe('raise');
+    });
+
+    it('3ベットに対しレインボーのコールは低頻度のみ', () => {
+      setRandom(0.95); // > 0.83 → コール
+      const state = make3BetState(RAINBOW_STRONG);
+      const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
+      expect(result.action).toBe('call');
+    });
   });
 
   // ============================
@@ -289,11 +337,35 @@ describe('getPreflopDecision', () => {
       ],
     });
 
-    it('4ベットに対しAAKKdsはコール/レイズする', () => {
-      setRandom(0.01);
+    it('4ベットに対しAAKKdsは5bet（ポットレイズ）を返す', () => {
+      setRandom(0.5);
       const state = make4BetState(PREMIUM_HAND);
       const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
-      expect(result.action).not.toBe('fold');
+      expect(result.action).toBe('raise');
+      expect(result.amount).toBeGreaterThan(state.currentBet);
+    });
+
+    it('4ベットに対しAAxxレインボーでも5betを返す', () => {
+      setRandom(0.5);
+      const state = make4BetState(AA_WEAK);
+      const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
+      expect(result.action).toBe('raise');
+    });
+
+    it('4ベットに対しKKxx（良構造）は基本フォールドする', () => {
+      setRandom(0.5); // < 0.80 → フォールド
+      const kkGood: Card[] = [c('Kh'), c('Kd'), c('Qh'), c('Jd')]; // KKQJds
+      const state = make4BetState(kkGood);
+      const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
+      expect(result.action).toBe('fold');
+    });
+
+    it('4ベットに対しKKxxは低頻度でコールに回る', () => {
+      setRandom(0.9); // >= 0.80 → コール
+      const kkGood: Card[] = [c('Kh'), c('Kd'), c('Qh'), c('Jd')];
+      const state = make4BetState(kkGood);
+      const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
+      expect(result.action).toBe('call');
     });
 
     it('4ベットに対し弱いハンド(Q832r)はフォールドする', () => {
@@ -331,15 +403,14 @@ describe('getPreflopDecision', () => {
   // レイズサイジング
   // ============================
   describe('レイズサイジング', () => {
-    it('オープンレイズはBBの2.5〜4倍程度', () => {
+    it('オープンレイズはポット（3.5BB）に固定', () => {
       setRandom(0.01);
       const state = makePreflopState({
         heroIndex: 3, heroPosition: 'BTN', heroCards: STRONG_HAND,
       });
       const result = getPreflopDecision(state, 3, BALANCED, POS_BTN);
       expect(result.action).toBe('raise');
-      expect(result.amount).toBeGreaterThanOrEqual(state.bigBlind * 2);
-      expect(result.amount).toBeLessThanOrEqual(state.bigBlind * 5);
+      expect(result.amount).toBe(state.bigBlind * 3.5);
     });
   });
 });

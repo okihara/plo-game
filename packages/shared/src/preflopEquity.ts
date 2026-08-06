@@ -173,7 +173,8 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
     }
   }
 
-  const tripleOrMoreSuited = suitCountValues.some(c => c >= 3);
+  const isTripleSuited = suitCountValues.some(c => c === 3);
+  const isMonotone = suitCountValues.some(c => c === 4);
   const isRainbow = suitCountValues.every(c => c === 1);
 
   // === プレイアビリティ補正 ===
@@ -183,18 +184,30 @@ export function getPreFlopEvaluation(holeCards: Card[]): PreFlopEvaluation {
   let playability = 0;
 
   // スーテッドネス: フラッシュドローでポストフロップのエクイティを実現しやすい
+  // 順序はソルバーのオープン率準拠: ダブル > シングル > トリプル > モノトーン > レインボー
+  // （モノトーンでも2枚使えばフラッシュになるが、レインボーは永久にならない）
   if (isDoubleSuited) playability += 0.04;
   else if (isSingleSuited) playability += 0.02;
-  if (tripleOrMoreSuited) playability -= 0.03; // 同スート3枚はフラッシュアウツ減少
-  if (isRainbow) playability -= 0.02;
+  else if (isTripleSuited) playability -= 0.01;
+  else if (isMonotone) playability -= 0.02;
+  else if (isRainbow) playability -= 0.03;
 
   // コネクティビティ: ストレートドロー・ラップで多くのボードに絡める
-  if (isRundown && !hasDangler) playability += 0.03;
-  else if (hasWrap) playability += 0.01;
+  // ランダウンは高さで価値が大きく変わる（AKQJ 100%オープン / 7654 ほぼ0%）ため
+  // 一律加点にせず、一番上のカードのランクで段階を付ける
+  if (isRundown && !hasDangler) {
+    const topValue = uniqueValues[uniqueValues.length - 1];
+    if (topValue >= 10) playability += 0.03;
+    else if (topValue >= 8) playability += 0.02;
+    else playability += 0.01;
+  } else if (hasWrap) {
+    playability += 0.01;
+  }
   if (hasDangler) playability -= 0.04; // 1枚が孤立、ポストフロップで機能しない
 
-  // ナットフラッシュドロー: Aスーテッドはドロー時にナッツ保証
-  if (hasAceSuited) playability += 0.02;
+  // ナットフラッシュドロー: Aスーテッドはドロー保証に加え、相手のAAを消す
+  // ブロッカー効果もあり、ダブルスーテッドと同等以上の重み
+  if (hasAceSuited) playability += 0.04;
 
   // ペア + バックアップなし: セット以外のポストフロップが弱い
   if (pairRanks.length > 0 && isRainbow && !hasWrap && !isRundown) {

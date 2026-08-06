@@ -39,24 +39,43 @@ export function getPreflopDecision(
   const facing4Bet = preflopRaiseCount >= 3;
 
   const isAAxx = evaluation.hasPair && evaluation.pairRank?.startsWith('A');
+  const isKKxx = evaluation.hasPair && evaluation.pairRank?.startsWith('K');
+  const isRainbow = isRainbowHand(player.holeCards);
 
   // === AAxx は常にプレミアムハンド扱い ===
   // PLOでAAxxはどんな構成でもプリフロップでレイズすべき最強カテゴリ
-  // ただし4bet+に直面した場合はコール止め（オールインしない）
   if (isAAxx) {
     if (facing4Bet) {
-      // AAxxでも4bet+ではコール止め（さらにレイズしない）
+      // 4betに対しては構成を問わず5bet（ポットレイズ＝実質オールイン圏）を返す。
+      // AAxxはプリフロップの瞬間が相対的に一番強く、コール止めはSPR1前後で
+      // 相性の悪い相手とフロップを見ることになる。5betしないBotは4betブラフの
+      // コストが下がり搾取される（ソルバー: 構成問わず5betオールイン約96〜100%）
+      const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'allin');
+      if (raiseAction) return { action: raiseAction.action, amount: raiseAction.maxAmount };
       const callAction = validActions.find(a => a.action === 'call');
       if (callAction) return { action: 'call', amount: callAction.minAmount };
       return { action: 'fold', amount: 0 };
     }
-    return playPremium(state, validActions, Math.max(effectiveStrength, 0.80), facingRaise, personality);
+    // トラップ（コール止め）に回すのはほぼレインボーAAのみ
+    // （ソルバー: ダブルスーテッド100% 3bet、レインボーは3bet 64%/コール36%）
+    const raiseFreq = isRainbow ? 0.65 : 0.97;
+    return playPremium(
+      state, playerIndex, validActions, Math.max(effectiveStrength, 0.80), facingRaise, raiseFreq
+    );
   }
 
   // === 4ベット以上に直面 ===
   // AAxx 以外全降りだと 4bet ブラフに搾取される（2026-07 実測: fold 79.7%、採算ライン約67%。
   // docs/bot-redesign.md Phase 0 参照）。良構造のプレミアムはコールで継続する
   if (facing4Bet) {
+    // KKxx は相手のレンジが絞られるほど弱くなる手で、4betを受けた時点で
+    // ほとんど降りる側（ソルバー: フォールド80.1%）。良構造でも残しすぎない
+    if (isKKxx) {
+      if (random < 0.80) return { action: 'fold', amount: 0 };
+      const callAction = validActions.find(a => a.action === 'call');
+      if (callAction) return { action: 'call', amount: callAction.minAmount };
+      return { action: 'fold', amount: 0 };
+    }
     const goodStructure =
       evaluation.isDoubleSuited || (evaluation.isRundown && !evaluation.hasDangler);
     if (effectiveStrength > 0.80 && goodStructure) {
@@ -69,7 +88,7 @@ export function getPreflopDecision(
   // === 3ベットに直面: ハンド構造を考慮した判断 ===
   // プレミアムハンド（0.85+）でも3betに直面したら構造を考慮
   if (facing3Bet) {
-    return facing3BetDecision(state, effectiveStrength, evaluation, validActions, personality, random);
+    return facing3BetDecision(state, effectiveStrength, evaluation, isRainbow, validActions, personality, random);
   }
 
   // VPIP閾値: パーソナリティに基づいてハンド参加閾値を計算
@@ -83,7 +102,8 @@ export function getPreflopDecision(
   // === プレミアムハンド (effectiveStrength > 0.85) ===
   // ここに到達するのはオープンor単一レイズに直面した場合のみ
   if (effectiveStrength > 0.85) {
-    return playPremium(state, validActions, effectiveStrength, facingRaise, personality);
+    const raiseFreq = 0.70 + personality.aggression * 0.20;
+    return playPremium(state, playerIndex, validActions, effectiveStrength, facingRaise, raiseFreq);
   }
 
   // === 3ベット判断（オープンレイズに対して re-raise） ===
@@ -109,7 +129,7 @@ export function getPreflopDecision(
     if (!facingRaise) {
       const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
       if (raiseAction) {
-        const raiseSize = getOpenRaiseSize(state, playerIndex, personality);
+        const raiseSize = getOpenRaiseSize(state, playerIndex);
         const amount = Math.min(raiseAction.maxAmount, Math.max(raiseAction.minAmount, raiseSize));
         return { action: raiseAction.action, amount };
       }
@@ -174,6 +194,7 @@ function facing3BetDecision(
   state: GameState,
   effectiveStrength: number,
   evaluation: PreFlopEvaluation,
+  isRainbow: boolean,
   validActions: { action: Action; minAmount: number; maxAmount: number }[],
   personality: BotPersonality,
   random: number
@@ -185,6 +206,20 @@ function facing3BetDecision(
 
   // 最低強度未満は即フォールド
   if (effectiveStrength < minStrength) {
+    return { action: 'fold', amount: 0 };
+  }
+
+  // レインボーは3betポットのフラッシュ経路がなく、コールして見に行っても
+  // 勝ちを拾いにくい。「降りるか殴るか」の二極でプレイし、真ん中（コール）を
+  // ほぼ残さない（ソルバー: フォールド69% / 4bet 14% / コール17%）
+  if (isRainbow) {
+    if (random < 0.69) return { action: 'fold', amount: 0 };
+    const raiseAction = validActions.find(a => a.action === 'raise');
+    if (raiseAction && random < 0.83 && effectiveStrength > minStrength + 0.10) {
+      return { action: 'raise', amount: raiseAction.maxAmount };
+    }
+    const callAction = validActions.find(a => a.action === 'call');
+    if (callAction) return { action: 'call', amount: callAction.minAmount };
     return { action: 'fold', amount: 0 };
   }
 
@@ -220,10 +255,8 @@ function facing3BetDecision(
   if (effectiveStrength > 0.85 && hasGoodStructure) {
     const raiseAction = validActions.find(a => a.action === 'raise');
     if (raiseAction && random < personality.threeBetFreq * 0.5) {
-      // 4betサイズ: ポットの2.5倍（控えめ）
-      const raiseSize = Math.floor(state.pot * 2.5);
-      const amount = Math.min(raiseAction.maxAmount, Math.max(raiseAction.minAmount, raiseSize));
-      return { action: 'raise', amount };
+      // 4betサイズ: ポットレイズ固定（サイズを1種類にして情報を漏らさない）
+      return { action: 'raise', amount: raiseAction.maxAmount };
     }
   }
 
@@ -236,28 +269,28 @@ function facing3BetDecision(
 
 /**
  * プレミアムハンドのプレイ。
+ * サイズはポットに固定（オープン3.5BB基準、3bet/4betはポットレイズ）。
  */
 function playPremium(
   state: GameState,
+  playerIndex: number,
   validActions: { action: Action; minAmount: number; maxAmount: number }[],
   effectiveStrength: number,
   facingRaise: boolean,
-  personality: BotPersonality
+  raiseFreq: number
 ): { action: Action; amount: number } {
   const random = Math.random();
   const raiseAction = validActions.find(a => a.action === 'raise' || a.action === 'bet');
 
   if (raiseAction) {
-    // レイズ頻度: personality依存 (TAG: 90%, LP: 70%)
-    const raiseFreq = 0.70 + personality.aggression * 0.20;
     if (random < raiseFreq) {
       let raiseSize: number;
       if (facingRaise) {
-        // 3ベット: ポットの2.5-3.5倍
-        raiseSize = Math.floor(state.pot * (2.5 + personality.aggression * 0.5));
+        // 3ベット: ポットレイズ固定
+        raiseSize = raiseAction.maxAmount;
       } else {
-        // オープン: ポットの2-3倍
-        raiseSize = Math.floor(state.pot * (2.0 + personality.aggression * 0.5));
+        // オープン: ポット（3.5BB + リンパー分）
+        raiseSize = getOpenRaiseSize(state, playerIndex);
       }
       const amount = Math.min(raiseAction.maxAmount, Math.max(raiseAction.minAmount, raiseSize));
       return { action: raiseAction.action, amount };
@@ -297,37 +330,28 @@ function evaluate3Bet(
 
   if (random >= threeBetChance) return null;
 
-  // 3ベットサイズ: ポットの3-4倍
-  const raiseSize = Math.floor(state.pot * (3.0 + personality.aggression * 0.5));
-  const amount = Math.min(raiseAction.maxAmount, Math.max(raiseAction.minAmount, raiseSize));
-  return { action: 'raise', amount };
+  // 3ベットサイズ: ポットレイズ固定（サイズを1種類にして情報を漏らさない）
+  return { action: 'raise', amount: raiseAction.maxAmount };
 }
 
 /**
  * オープンレイズサイズ。
- * ポジションとリンパー数に応じて変動。
+ * ポットに固定: 3.5BB + リンパー1人につき+1BB（ポットリミットの正しいレイズ額
+ * 「3×直前のベット＋デッドマネー」と一致する）。小さく開けると相手が受ける値段が
+ * 安くなり、PLOでは最弱手でも最強手に対し3割前後あるためほぼ何でも受けられてしまう。
+ * サイズを1種類に固定することで情報漏れも防ぐ。
  */
-function getOpenRaiseSize(
-  state: GameState,
-  playerIndex: number,
-  personality: BotPersonality
-): number {
-  const player = state.players[playerIndex];
-  const hasPosition = ['BTN', 'CO'].includes(player.position);
-
-  // リンパー数（BB以上を既にベットしている人数）
+function getOpenRaiseSize(state: GameState, playerIndex: number): number {
+  // リンパー数（ちょうどBB額をベットしている人数。ブラインド投稿のBB自身は除く）
   const limpers = state.players.filter(p =>
-    !p.folded && p.currentBet >= state.bigBlind && p.currentBet <= state.bigBlind && p.id !== playerIndex
+    !p.folded && p.currentBet === state.bigBlind && p.id !== playerIndex && p.position !== 'BB'
   ).length;
 
-  // ベースサイズ
-  let baseMultiplier = hasPosition ? 2.5 : 3.0;
+  return Math.floor(state.bigBlind * (3.5 + limpers * 1.0));
+}
 
-  // リンパーごとに +1BB
-  baseMultiplier += limpers * 1.0;
-
-  // パーソナリティ補正
-  baseMultiplier += (personality.aggression - 0.7) * 0.5;
-
-  return Math.floor(state.bigBlind * baseMultiplier);
+/** 4枚すべて異なるスートか（レインボー判定） */
+function isRainbowHand(holeCards: { suit: string }[]): boolean {
+  const suits = new Set(holeCards.filter(c => c && c.suit).map(c => c.suit));
+  return suits.size === 4;
 }
