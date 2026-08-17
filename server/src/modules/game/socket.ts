@@ -18,6 +18,8 @@ import {
   handleMatchmakingLeave,
   handleDisconnect,
   handleDebugSetChips,
+  handlePrivateCreate,
+  handlePrivateJoin,
   handleSpectateJoin,
   handleSpectateLeave,
   handleSpectatorDisconnect,
@@ -146,6 +148,12 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
       handleMatchmakingJoin(socket, data, tableManager, tournamentManager)
     ));
     socket.on('matchmaking:leave', wrapSocketHandler(socket, 'matchmaking:leave', () => handleMatchmakingLeave(socket, tableManager)));
+    socket.on('private:create', wrapSocketHandler(socket, 'private:create', (data: Parameters<typeof handlePrivateCreate>[1]) =>
+      handlePrivateCreate(socket, data, tableManager)
+    ));
+    socket.on('private:join', wrapSocketHandler(socket, 'private:join', (data: Parameters<typeof handlePrivateJoin>[1]) =>
+      handlePrivateJoin(socket, data, tableManager)
+    ));
 
     // トーナメントイベント登録
     registerTournamentHandlers(socket, tournamentManager, tableManager);

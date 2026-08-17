@@ -45,6 +45,8 @@ interface TableStats {
   blinds: string;
   variant: string;
   isFastFold: boolean;
+  isPrivate: boolean;
+  inviteCode: string | null;
   /** Fast fold 卓は観戦不可 */
   canSpectate: boolean;
   playerCount: number;
@@ -166,6 +168,8 @@ export function adminRoutes(deps: AdminDependencies) {
             blinds: info.blinds,
             variant: info.variant,
             isFastFold: info.isFastFold,
+            isPrivate: table.isPrivate,
+            inviteCode: table.inviteCode,
             canSpectate: !table.isFastFold,
             playerCount: info.players,
             maxPlayers: info.maxPlayers,
@@ -199,6 +203,8 @@ export function adminRoutes(deps: AdminDependencies) {
               blinds: table.blinds,
               variant: table.variant ?? 'plo',
               isFastFold: false,
+              isPrivate: table.isPrivate,
+              inviteCode: table.inviteCode,
               canSpectate: !table.isFastFold,
               playerCount: table.getAdminSeats().filter((s): s is NonNullable<typeof s> => s !== null).length,
               maxPlayers: 6,
