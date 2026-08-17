@@ -273,7 +273,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
           {/* Tournament Button — 受付中はボタン自体を派手にして目立たせる */}
           <button
             onClick={() => setActiveTab('tournament')}
-            className={`relative flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw] ${
+            className={`relative flex-1 h-[29cqw] px-[3cqw] pt-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw] ${
               tournamentOpen
                 ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-orange-600 border-amber-300 ring-[0.5cqw] ring-amber-300/80 animate-tournament-glow active:scale-[0.97]'
                 : 'bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
@@ -310,7 +310,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
                 key={table.id}
                 onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                 disabled={!table.enabled || !!maintenance?.isActive || !user}
-                className={`flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] flex flex-col items-center gap-[1cqw] ${
+                className={`flex-1 h-[29cqw] px-[3cqw] pt-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] flex flex-col items-center gap-[1cqw] ${
                   table.enabled && !maintenance?.isActive && user
                     ? 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 shadow-[0_4px_12px_rgba(45,90,61,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
                     : 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 opacity-50 cursor-not-allowed'
@@ -331,17 +331,15 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         <button
           onClick={() => user && !maintenance?.isActive && setShowPrivateDialog(true)}
           disabled={!user || !!maintenance?.isActive}
-          className={`mt-[2cqw] w-full flex items-center gap-[2cqw] px-[3cqw] py-[2.5cqw] rounded-[2.5cqw] text-white transition-all border-[0.4cqw] ${
+          className={`mt-[1.5cqw] w-full flex items-center gap-[2cqw] px-[3cqw] py-[1.5cqw] rounded-[2.5cqw] text-white transition-all border-[0.4cqw] ${
             user && !maintenance?.isActive
               ? 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 shadow-[0_4px_12px_rgba(139,126,106,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(139,126,106,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.98]'
               : 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 opacity-50 cursor-not-allowed'
           }`}
         >
-          <Users className="w-[5cqw] h-[5cqw] shrink-0" />
-          <div className="flex-1 min-w-0 text-left">
-            <p className="text-[3cqw] font-bold leading-tight">プライベートテーブル</p>
-            <p className="text-[2.5cqw] text-white/70">招待コードで友達と対戦（PLO 1/3）</p>
-          </div>
+          <Users className="w-[4.5cqw] h-[4.5cqw] shrink-0" />
+          <span className="text-[3cqw] font-bold">プライベートテーブル</span>
+          <span className="flex-1 min-w-0 text-left text-[2.5cqw] text-white/70 truncate">招待コードで友達と対戦</span>
           <svg className="w-[3.5cqw] h-[3.5cqw] text-white/60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
 
