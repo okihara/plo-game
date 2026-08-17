@@ -17,6 +17,7 @@ import { HandHistory } from './pages/HandHistory';
 import { PlayerProfile } from './pages/PlayerProfile';
 import { HandDetailPage } from './pages/HandDetailPage';
 import { WatchGame } from './pages/WatchGame';
+import { PrivateRooms } from './pages/PrivateRooms';
 import { SeasonResult } from './pages/SeasonResult';
 import { GameSettingsProvider } from './contexts/GameSettingsContext';
 import { AuthProvider } from './contexts/AuthContext';
@@ -107,6 +108,15 @@ function App() {
     page = <PlayerProfile userId={playerId} onBack={goBackToLobby} />;
   } else if (currentPath === '/season') {
     page = <SeasonResult onBack={goBackToLobby} />;
+  } else if (currentPath === '/rooms') {
+    page = (
+      <PrivateRooms
+        onWatch={(tableId, inviteCode) =>
+          navigateWatchTable(tableId, inviteCode ? { invite: inviteCode } : undefined)
+        }
+        onBack={goBackToLobby}
+      />
+    );
   } else if (currentPath === '/history') {
     page = (
       <HandHistory onBack={goBackToLobby} />
