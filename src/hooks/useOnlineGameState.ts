@@ -21,6 +21,10 @@ export interface LastAction {
 // アクションタイムアウト時刻（UNIXタイムスタンプ、ミリ秒）
 export type ActionTimeoutAt = number;
 
+export type PrivateMode =
+  | { type: 'create'; blinds: string }
+  | { type: 'join'; inviteCode: string };
+
 export interface OnlineGameHookResult {
   // 接続状態
   isConnecting: boolean;
@@ -51,6 +55,7 @@ export interface OnlineGameHookResult {
   maintenanceStatus: { isActive: boolean; message: string } | null;
   announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
+  privateTableInfo: { inviteCode: string } | null;
 
   // アクション
   connect: () => Promise<void>;
@@ -66,7 +71,7 @@ export interface OnlineGameHookResult {
 // メインフック
 // ============================================
 
-export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false, variant?: string): OnlineGameHookResult {
+export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean = false, privateMode?: PrivateMode, variant?: string): OnlineGameHookResult {
   // 接続状態
   const [isConnecting, setIsConnecting] = useState(false);
   const [isConnected, setIsConnected] = useState(wsService.isConnected());
@@ -94,6 +99,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
+  const [privateTableInfo, setPrivateTableInfo] = useState<{ inviteCode: string } | null>(null);
 
   // Refs
   const prevStreetRef = useRef<string | null>(null);
@@ -180,12 +186,20 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   // ============================================
 
   const joinMatchmaking = useCallback(() => {
-    wsService.joinMatchmaking(blinds, isFastFold, variant);
-  }, [blinds, isFastFold, variant]);
+    if (privateMode?.type === 'create') {
+      wsService.createPrivateTable(privateMode.blinds);
+    } else if (privateMode?.type === 'join') {
+      wsService.joinPrivateTable(privateMode.inviteCode);
+    } else {
+      wsService.joinMatchmaking(blinds, isFastFold, variant);
+    }
+  }, [blinds, isFastFold, privateMode, variant]);
 
   // 再接続時の自動再マッチング用に最新値を ref で持つ
   const joinMatchmakingRef = useRef(joinMatchmaking);
+  const privateModeRef = useRef(privateMode);
   useEffect(() => { joinMatchmakingRef.current = joinMatchmaking; }, [joinMatchmaking]);
+  useEffect(() => { privateModeRef.current = privateMode; }, [privateMode]);
 
   const leaveMatchmaking = useCallback(() => {
     wsService.leaveMatchmaking();
@@ -254,7 +268,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onSessionNoSeat: () => {
         // サーバーには席がない: 元々席に着いていた前提のとき (mySeat あり) のみ反応する。
         // 例: FastFold で切断中に move-and-cashout されて再接続したケース。
-        if (mySeatRef.current !== null) {
+        // プライベートテーブルは自動で作り直すと別 invite code になるので除外。
+        if (mySeatRef.current !== null && !privateModeRef.current) {
           console.log('[session:no_seat] re-joining matchmaking after losing seat');
           joinMatchmakingRef.current();
         }
@@ -281,6 +296,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setMyHoleCards([]);
         setClientState(null);
         setActionTimeoutAt(null);
+        setPrivateTableInfo(null);
         setWinners([]);
         setShowdownCards(new Map());
         setShowdownHandNames(new Map());
@@ -464,6 +480,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
       onAnnouncementStatus: (data) => {
         setAnnouncementStatus(data);
       },
+      onPrivateCreated: (data) => {
+        setPrivateTableInfo({ inviteCode: data.inviteCode });
+        setTableId(data.tableId);
+      },
       onDisplaced: () => {
         setIsDisplaced(true);
         setIsConnected(false);
@@ -542,6 +562,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     maintenanceStatus,
     announcementStatus,
     bustedMessage,
+    privateTableInfo,
     connect,
     disconnect,
     joinMatchmaking,

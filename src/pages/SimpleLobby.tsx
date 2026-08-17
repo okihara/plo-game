@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Pencil, Trophy, Settings, Zap } from 'lucide-react';
+import { Pencil, Trophy, Settings, Zap, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { ProfileEditDialog } from '../components/ProfileEditDialog';
@@ -14,6 +14,8 @@ import { WeeklyChampions } from '../components/WeeklyChampions';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
+  onCreatePrivate: (blinds: string) => void;
+  onJoinPrivate: (inviteCode: string) => void;
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
@@ -41,16 +43,18 @@ const TABLE_OPTIONS: TableOption[] = [
   { id: 'horse-4-8', gameType: 'HORSE', gameLabel: 'HORSE', blinds: '4/8', blindsLabel: '4/8', buyIn: 300, rake: '5% (3bb cap)', enabled: true, isFastFold: false, variant: 'horse' },
 ];
 
-export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, initialTab = 'home' }: SimpleLobbyProps) {
+export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, initialTab = 'home' }: SimpleLobbyProps) {
   const { user, loading, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<LobbyTab>(initialTab);
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
   const [claimingBonus, setClaimingBonus] = useState(false);
+  const [inviteCodeInput, setInviteCodeInput] = useState('');
   const [playerCounts, setPlayerCounts] = useState<Record<string, number>>({});
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
+  const [showPrivateDialog, setShowPrivateDialog] = useState(false);
   const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string; isRegistrationOpen?: boolean; deadlineTime?: string }>({ status: 'none' });
 
 
@@ -269,7 +273,7 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
           {/* Tournament Button — 受付中はボタン自体を派手にして目立たせる */}
           <button
             onClick={() => setActiveTab('tournament')}
-            className={`relative flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw] ${
+            className={`relative flex-1 h-[29cqw] px-[3cqw] pt-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] text-white font-bold text-[4cqw] flex flex-col items-center gap-[1cqw] ${
               tournamentOpen
                 ? 'bg-gradient-to-b from-amber-400 via-amber-500 to-orange-600 border-amber-300 ring-[0.5cqw] ring-amber-300/80 animate-tournament-glow active:scale-[0.97]'
                 : 'bg-gradient-to-b from-amber-500 to-amber-600 border-amber-700/40 shadow-[0_4px_12px_rgba(180,120,30,0.35),inset_0_1px_0_rgba(255,255,255,0.3)] hover:shadow-[0_6px_20px_rgba(180,120,30,0.5),inset_0_1px_0_rgba(255,255,255,0.3)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(180,120,30,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
@@ -306,7 +310,7 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
                 key={table.id}
                 onClick={() => table.enabled && !maintenance?.isActive && user && onPlayOnline(table.blinds, true)}
                 disabled={!table.enabled || !!maintenance?.isActive || !user}
-                className={`flex-1 h-[34cqw] px-[3cqw] pt-[6cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] flex flex-col items-center gap-[1cqw] ${
+                className={`flex-1 h-[29cqw] px-[3cqw] pt-[4cqw] rounded-[3cqw] transition-all duration-150 border-[0.4cqw] flex flex-col items-center gap-[1cqw] ${
                   table.enabled && !maintenance?.isActive && user
                     ? 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 shadow-[0_4px_12px_rgba(45,90,61,0.35),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(45,90,61,0.45),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.97] active:shadow-[0_2px_6px_rgba(45,90,61,0.3),inset_0_1px_4px_rgba(0,0,0,0.1)]'
                     : 'bg-gradient-to-b from-forest to-forest-dark border-forest-dark/30 opacity-50 cursor-not-allowed'
@@ -322,6 +326,22 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
         </div>
         );
         })()}
+
+        {/* Private Table Button */}
+        <button
+          onClick={() => user && !maintenance?.isActive && setShowPrivateDialog(true)}
+          disabled={!user || !!maintenance?.isActive}
+          className={`mt-[1.5cqw] w-full flex items-center gap-[2cqw] px-[3cqw] py-[1.5cqw] rounded-[2.5cqw] text-white transition-all border-[0.4cqw] ${
+            user && !maintenance?.isActive
+              ? 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 shadow-[0_4px_12px_rgba(139,126,106,0.3),inset_0_1px_0_rgba(255,255,255,0.2)] hover:shadow-[0_6px_20px_rgba(139,126,106,0.4),inset_0_1px_0_rgba(255,255,255,0.2)] active:scale-[0.98]'
+              : 'bg-gradient-to-b from-cream-700 to-cream-800 border-cream-900/40 opacity-50 cursor-not-allowed'
+          }`}
+        >
+          <Users className="w-[4.5cqw] h-[4.5cqw] shrink-0" />
+          <span className="text-[3cqw] font-bold">プライベートテーブル</span>
+          <span className="flex-1 min-w-0 text-left text-[2.5cqw] text-white/70 truncate">招待コードで友達と対戦</span>
+          <svg className="w-[3.5cqw] h-[3.5cqw] text-white/60 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
 
         {/* Spacer for bottom nav */}
         <div className="h-[16cqw]" />
@@ -413,6 +433,60 @@ export function SimpleLobby({ onPlayOnline, onJoinTournament, onViewMyResult, on
         />
       )}
 
+      {/* Private Table Dialog */}
+      {showPrivateDialog && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center" onClick={() => setShowPrivateDialog(false)}>
+          <div className="absolute inset-0 bg-black/50" />
+          <div
+            className="relative w-[85cqw] bg-white rounded-[4cqw] shadow-2xl overflow-hidden p-[5cqw]"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-[4cqw] font-bold text-cream-900 text-center mb-[4cqw]">プライベートテーブル</h2>
+
+            {/* 招待コードで参加 */}
+            <div className="mb-[4cqw]">
+              <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">招待コードで参加</p>
+              <div className="flex gap-[2cqw]">
+                <input
+                  type="text"
+                  placeholder="コード入力"
+                  value={inviteCodeInput}
+                  onChange={(e) => setInviteCodeInput(e.target.value.toUpperCase().replace(/[^A-Z2-9]/g, ''))}
+                  maxLength={5}
+                  className="w-[52cqw] px-[3cqw] py-[2.5cqw] text-[3.5cqw] border border-cream-300 rounded-[2cqw] text-cream-900 placeholder-cream-400 text-center tracking-[0.3em] font-mono uppercase bg-cream-50"
+                />
+                <button
+                  onClick={() => { if (inviteCodeInput.length >= 4) { onJoinPrivate(inviteCodeInput); setInviteCodeInput(''); setShowPrivateDialog(false); } }}
+                  disabled={inviteCodeInput.length < 4 || !!maintenance?.isActive}
+                  className="w-[21cqw] py-[2.5cqw] text-[3cqw] bg-forest text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97]"
+                >
+                  参加
+                </button>
+              </div>
+            </div>
+
+            {/* テーブル作成 */}
+            <div className="border-t border-cream-200 pt-[4cqw]">
+              <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">新しいテーブルを作成</p>
+              <button
+                onClick={() => { onCreatePrivate('1/3'); setShowPrivateDialog(false); }}
+                disabled={!!maintenance?.isActive}
+                className="w-full py-[3cqw] text-[3.5cqw] bg-cream-800 text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97] shadow-[0_4px_12px_rgba(139,126,106,0.3)]"
+              >
+                PLO 1/3 テーブルを作成
+              </button>
+            </div>
+
+            {/* 閉じるボタン */}
+            <button
+              onClick={() => setShowPrivateDialog(false)}
+              className="mt-[4cqw] w-full py-[2.5cqw] text-[3cqw] text-cream-700 hover:text-cream-900 transition-colors"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

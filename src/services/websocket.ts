@@ -57,6 +57,7 @@ export type WsListeners = {
   onBusted?: (message: string) => void;
   onMaintenanceStatus?: (data: { isActive: boolean; message: string; activatedAt: string | null }) => void;
   onAnnouncementStatus?: (data: { isActive: boolean; message: string }) => void;
+  onPrivateCreated?: (data: { tableId: string; inviteCode: string }) => void;
   onDisplaced?: () => void;
   /** サーバーに自分の席がない: 再接続時にキャッシュ席が失われていた等。UI 側で再マッチング判断する。 */
   onSessionNoSeat?: () => void;
@@ -297,6 +298,12 @@ class WebSocketService {
         this.emit('onAnnouncementStatus', data);
       });
 
+      // Private table events
+      this.socket.on('private:created', (data) => {
+        wsLog('private:created', data);
+        this.emit('onPrivateCreated', data);
+      });
+
       this.socket.on('table:spectate_joined', (data) => {
         wsLog('table:spectate_joined', data);
         this.emit('onSpectateJoined', data.tableId);
@@ -435,8 +442,17 @@ class WebSocketService {
     this.socket?.emit('matchmaking:leave');
   }
 
-  joinSpectate(tableId: string): void {
-    this.socket?.emit('table:spectate_join', { tableId });
+  // Private table
+  createPrivateTable(blinds: string): void {
+    this.socket?.emit('private:create', { blinds });
+  }
+
+  joinPrivateTable(inviteCode: string): void {
+    this.socket?.emit('private:join', { inviteCode });
+  }
+
+  joinSpectate(tableId: string, inviteCode?: string): void {
+    this.socket?.emit('table:spectate_join', { tableId, inviteCode });
   }
 
   leaveSpectate(): void {
