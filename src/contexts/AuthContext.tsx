@@ -11,6 +11,7 @@ interface User {
   loginBonusAvailable: boolean;
   nameMasked: boolean;
   useTwitterAvatar: boolean;
+  role: 'ADMIN' | 'GUEST' | 'PLAYER';
 }
 
 interface AuthContextType {

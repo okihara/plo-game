@@ -191,11 +191,11 @@ export class TableManager {
   }
 
   public getPrivateTableCount(): number {
-    let count = 0;
-    for (const table of this.tables.values()) {
-      if (table.isPrivate) count++;
-    }
-    return count;
+    return this.getPrivateTables().length;
+  }
+
+  public getPrivateTables(): TableInstance[] {
+    return Array.from(this.tables.values()).filter(t => t.isPrivate);
   }
 
   public createPrivateTable(blinds: string): { table: TableInstance; inviteCode: string } {
