@@ -303,6 +303,7 @@ export async function authRoutes(fastify: FastifyInstance) {
       loginBonusAvailable,
       nameMasked: user.nameMasked,
       useTwitterAvatar: user.useTwitterAvatar,
+      role: user.role,
     };
   });
 

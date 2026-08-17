@@ -16,6 +16,7 @@ import { authRoutes } from './modules/auth/routes.js';
 import { bankrollRoutes } from './modules/auth/bankroll.js';
 import { setupGameSocket } from './modules/game/socket.js';
 import { adminRoutes } from './modules/admin/routes.js';
+import { privateRoomsRoutes } from './modules/admin/privateRoomsRoutes.js';
 import { lobbyRoutes } from './modules/lobby/routes.js';
 import { handHistoryRoutes, publicHandHistoryRoutes } from './modules/history/routes.js';
 import { statsRoutes } from './modules/stats/routes.js';
@@ -293,6 +294,7 @@ const start = async () => {
 
     // Register admin routes (needs io, tableManager, tournamentManager)
     await fastify.register(adminRoutes({ io, tableManager, tournamentManager }));
+    await fastify.register(privateRoomsRoutes({ tableManager }));
     await fastify.register(lobbyRoutes({ tableManager }));
     await fastify.register(tournamentRoutes({ tournamentManager }));
     await fastify.register(maintenanceRoutes());
