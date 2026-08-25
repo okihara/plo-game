@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 
 // ヘルパーモジュール
 import { TABLE_CONSTANTS } from './constants.js';
-import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks } from './types.js';
+import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks, PauseInfo } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
@@ -34,6 +34,8 @@ export class TableInstance {
   public readonly variant: GameVariant = 'plo';
   public readonly isPrivate: boolean = false;
   public readonly inviteCode: string | null = null;
+  /** プライベート卓の作成者。コーチング用ポーズを操作できる唯一のプレイヤー */
+  public readonly ownerOdId: string | null = null;
 
   // ゲームモード（キャッシュ / トーナメント）
   public readonly gameMode: GameMode = 'cash';
@@ -73,6 +75,11 @@ export class TableInstance {
   /** 観戦者（着席なし・socket.id → Socket） */
   private spectators: Map<string, Socket> = new Map();
 
+  // コーチング用ポーズ（プライベートキャッシュ卓のみ）
+  private paused = false;
+  private pauseAutoResumeTimer: NodeJS.Timeout | null = null;
+  private pausedUntil: number | null = null;
+
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
   private readonly broadcast: BroadcastService;
@@ -81,7 +88,7 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
@@ -89,6 +96,7 @@ export class TableInstance {
     this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
     this.isPrivate = options?.isPrivate ?? false;
     this.inviteCode = options?.inviteCode ?? null;
+    this.ownerOdId = options?.ownerOdId ?? null;
     this.gameMode = options?.gameMode ?? 'cash';
     this.tournamentId = options?.tournamentId ?? null;
 
@@ -177,6 +185,14 @@ export class TableInstance {
     if (seatIndex === -1) {
       console.warn(`Player ${odId} not found in table ${this.id}`);
       return null;
+    }
+
+    // ポーズ中に誰かが抜けたら卓を凍らせ続けない。
+    // 席を動かす前に解除して、以降は通常の離席処理（フォールド・手番進行）に任せる。
+    // 次ハンド開始だけは離席処理の後に呼び出し側が行うのでここではスキップする。
+    if (this.paused) {
+      console.log(`[Table ${this.id}] Pause released by unseat: odId=${odId}`);
+      this.doResume({ skipStartHand: true });
     }
 
     const seat = this.playerManager.getSeat(seatIndex);
@@ -278,6 +294,13 @@ export class TableInstance {
     if (!this.gameState || this.gameState.isHandComplete || this.isRunOutInProgress) {
       // クライアント-サーバー間のレース（連打・遅延到着）で頻発するため info レベル
       console.log(`[Table ${this.id}] handleAction rejected: odId=${odId}, action=${action}, amount=${amount}, gameState=${!this.gameState ? 'null' : 'exists'}, isHandComplete=${this.gameState?.isHandComplete}, isRunOutInProgress=${this.isRunOutInProgress}`);
+      return false;
+    }
+
+    // ポーズ中は一切のアクションを受け付けない。
+    // Bot は別プロセスなので「ポーズを知らない古い Bot」が来てもここで止まる。
+    if (this.paused) {
+      console.log(`[Table ${this.id}] handleAction rejected (paused): odId=${odId}, action=${action}, source=${source}`);
       return false;
     }
 
@@ -427,6 +450,110 @@ export class TableInstance {
 
   public triggerMaybeStartHand(): void {
     this.maybeStartHand();
+  }
+
+  // ========== コーチング用ポーズ ==========
+
+  public get isPaused(): boolean {
+    return this.paused;
+  }
+
+  /**
+   * ポーズを操作できるのはプライベートキャッシュ卓の作成者だけ。
+   * 通常のキャッシュ卓・トーナメント卓では常に false。
+   */
+  public canControlPause(odId: string): boolean {
+    return this.isPrivate && this.gameMode === 'cash' && this.ownerOdId !== null && this.ownerOdId === odId;
+  }
+
+  /**
+   * 卓の進行を止める。手番のタイマーは残り時間を保持したまま停止し、
+   * ポーズ中のアクションはサーバー側で拒否される。
+   */
+  public pause(odId: string): { ok: true } | { ok: false; message: string } {
+    if (!this.canControlPause(odId)) {
+      return { ok: false, message: 'ポーズできるのはルーム作成者だけです' };
+    }
+    if (this.paused) return { ok: true };
+
+    this.paused = true;
+    this.actionController.pauseActionTimer();
+    this.pausedUntil = Date.now() + TABLE_CONSTANTS.PAUSE_MAX_MS;
+    this.pauseAutoResumeTimer = setTimeout(() => {
+      console.log(`[Table ${this.id}] Pause auto-resumed after ${TABLE_CONSTANTS.PAUSE_MAX_MS}ms`);
+      this.doResume();
+    }, TABLE_CONSTANTS.PAUSE_MAX_MS);
+
+    console.log(`[Table ${this.id}] Paused by ${odId}`);
+    this.broadcastGameState();
+    return { ok: true };
+  }
+
+  /** ポーズを解除して進行を再開する */
+  public resume(odId: string): { ok: true } | { ok: false; message: string } {
+    if (!this.canControlPause(odId)) {
+      return { ok: false, message: 'ポーズを解除できるのはルーム作成者だけです' };
+    }
+    if (!this.paused) return { ok: true };
+
+    console.log(`[Table ${this.id}] Resumed by ${odId}`);
+    this.doResume();
+    return { ok: true };
+  }
+
+  /**
+   * ポーズ解除の実処理（権限チェック済み・自動解除からも呼ばれる）。
+   * 止めた地点に応じて「手番の再開」「手番の仕切り直し」「次ハンド開始」のいずれかへ復帰する。
+   */
+  private doResume(options?: { skipStartHand?: boolean }): void {
+    if (!this.paused) return;
+    this.paused = false;
+    this.pausedUntil = null;
+    if (this.pauseAutoResumeTimer) {
+      clearTimeout(this.pauseAutoResumeTimer);
+      this.pauseAutoResumeTimer = null;
+    }
+
+    // 1. 止めた手番のタイマーを残り時間で張り直す
+    const resumed = this.actionController.resumeActionTimer(this.playerManager.getSeats());
+    if (resumed) {
+      // クライアント・Bot に「再開した・誰の手番か」を再通知する
+      this.broadcastGameState();
+      return;
+    }
+
+    // 2. ハンド進行中なのに手番が立っていない（ポーズ中に離席した等）→ 手番を仕切り直す
+    if (this.isHandInProgress && this.gameState && !this.gameState.isHandComplete) {
+      this.broadcastGameState();
+      this.requestNextAction();
+      return;
+    }
+
+    // 3. ハンド外で止めていた → 次のハンドを開始する
+    this.broadcastGameState();
+    if (!options?.skipStartHand) {
+      this.maybeStartHand();
+    }
+  }
+
+  /** テーブル破棄時のタイマー後始末（ポーズしたまま卓が消えるケース） */
+  public dispose(): void {
+    if (this.pauseAutoResumeTimer) {
+      clearTimeout(this.pauseAutoResumeTimer);
+      this.pauseAutoResumeTimer = null;
+    }
+    this.paused = false;
+    this.pausedUntil = null;
+    this.actionController.clearTimers();
+  }
+
+  /** ポーズ状態のスナップショット（クライアント送信用） */
+  private getPauseInfo(): PauseInfo {
+    return {
+      isPaused: this.paused,
+      ownerOdId: this.isPrivate && this.gameMode === 'cash' ? this.ownerOdId : null,
+      pausedUntil: this.pausedUntil,
+    };
   }
 
   // Get the number of connected players
@@ -601,7 +728,8 @@ export class TableInstance {
       this.isHandInProgress,
       this.smallBlind,
       this.bigBlind,
-      va
+      va,
+      this.getPauseInfo(),
     );
   }
 
@@ -793,6 +921,8 @@ export class TableInstance {
   private maybeStartHand(): void {
     if (this.isHandInProgress || this.pendingStartHand) return;
     if (maintenanceService.isMaintenanceActive()) return;
+    // ポーズ中は次のハンドを始めない（解除時に doResume から再度呼ばれる）
+    if (this.paused) return;
 
     const playerCount = this.getPlayerCount();
     if (playerCount < this.minPlayersToStart) return;
@@ -924,6 +1054,8 @@ export class TableInstance {
 
   private requestNextAction(): void {
     if (!this.gameState || this.gameState.isHandComplete) return;
+    // ポーズ中は手番を立てない（解除時に doResume から仕切り直す）
+    if (this.paused) return;
 
     // currentPlayerIndex が -1 の場合（全員オールインなど）はハンド完了処理へ
     if (this.gameState.currentPlayerIndex === -1) {

@@ -20,6 +20,8 @@ import {
   handleDebugSetChips,
   handlePrivateCreate,
   handlePrivateJoin,
+  handleTablePause,
+  handleTableResume,
   handleSpectateJoin,
   handleSpectateLeave,
   handleSpectatorDisconnect,
@@ -154,6 +156,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     socket.on('private:join', wrapSocketHandler(socket, 'private:join', (data: Parameters<typeof handlePrivateJoin>[1]) =>
       handlePrivateJoin(socket, data, tableManager)
     ));
+    socket.on('table:pause', wrapSocketHandler(socket, 'table:pause', () => handleTablePause(socket, tableManager)));
+    socket.on('table:resume', wrapSocketHandler(socket, 'table:resume', () => handleTableResume(socket, tableManager)));
 
     // トーナメントイベント登録
     registerTournamentHandlers(socket, tournamentManager, tableManager);

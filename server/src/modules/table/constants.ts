@@ -19,6 +19,13 @@ export const TABLE_CONSTANTS = {
   ACTION_TIMEOUT_PENALTY_FACTORS: [1.0, 0.9, 0.5, 0.3] as const,
   /** ペナルティ後でもこの時間は確保する */
   ACTION_TIMEOUT_MIN_MS: 5000,
+  /**
+   * コーチング用ポーズの最大時間。卓が凍ったまま放置されるのを防ぐため、
+   * これを超えたら自動的に再開する。
+   */
+  PAUSE_MAX_MS: 15 * 60 * 1000,
+  /** ポーズ解除時、手番のプレイヤーに最低限これだけの持ち時間を残す */
+  PAUSE_RESUME_MIN_ACTION_MS: 5000,
   ACTION_ANIMATION_DELAY_MS: 1200,    // ストリート変更前のアクション演出待ち
   STREET_TRANSITION_DELAY_MS: 800,    // コミュニティカード確認時間
   SHOWDOWN_DELAY_MS: 1800,            // ショウダウンカード公開前の待ち時間

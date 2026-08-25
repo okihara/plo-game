@@ -451,6 +451,15 @@ class WebSocketService {
     this.socket?.emit('private:join', { inviteCode });
   }
 
+  /** コーチング用ポーズ（プライベート卓の作成者のみサーバー側で受理される） */
+  pauseTable(): void {
+    this.socket?.emit('table:pause');
+  }
+
+  resumeTable(): void {
+    this.socket?.emit('table:resume');
+  }
+
   joinSpectate(tableId: string, inviteCode?: string): void {
     this.socket?.emit('table:spectate_join', { tableId, inviteCode });
   }

@@ -56,6 +56,8 @@ export interface OnlineGameHookResult {
   announcementStatus: { isActive: boolean; message: string } | null;
   bustedMessage: string | null;
   privateTableInfo: { inviteCode: string } | null;
+  /** コーチング用ポーズの状態（プライベート卓のみ意味を持つ） */
+  pauseState: PauseState;
 
   // アクション
   connect: () => Promise<void>;
@@ -65,7 +67,20 @@ export interface OnlineGameHookResult {
   handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
   handleFastFold: () => void;
   startNextHand: () => void;
+  pauseTable: () => void;
+  resumeTable: () => void;
 }
+
+/** コーチング用ポーズの表示状態 */
+export interface PauseState {
+  isPaused: boolean;
+  /** 自分がポーズを操作できるか（プライベート卓の作成者のみ true） */
+  canControl: boolean;
+  /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
+  pausedUntil: number | null;
+}
+
+const NO_PAUSE: PauseState = { isPaused: false, canControl: false, pausedUntil: null };
 
 // ============================================
 // メインフック
@@ -100,6 +115,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [bustedMessage, setBustedMessage] = useState<string | null>(null);
   const [privateTableInfo, setPrivateTableInfo] = useState<{ inviteCode: string } | null>(null);
+  const [pauseState, setPauseState] = useState<PauseState>(NO_PAUSE);
 
   // Refs
   const prevStreetRef = useRef<string | null>(null);
@@ -221,6 +237,14 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const startNextHand = useCallback(() => {
     // サーバー側で自動的に次のハンドが始まるので、クライアントでは何もしない
     // 必要であればサーバーに準備完了を通知
+  }, []);
+
+  const pauseTable = useCallback(() => {
+    wsService.pauseTable();
+  }, []);
+
+  const resumeTable = useCallback(() => {
+    wsService.resumeTable();
   }, []);
 
   // ============================================
@@ -393,6 +417,18 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // タイマー情報を更新
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
+
+        // ポーズ状態を更新（ポーズを扱わない卓では常に NO_PAUSE 相当）
+        const myOdId = wsService.getPlayerId();
+        setPauseState(
+          state.isPaused || state.pauseOwnerOdId
+            ? {
+                isPaused: state.isPaused ?? false,
+                canControl: !!myOdId && state.pauseOwnerOdId === myOdId,
+                pausedUntil: state.pausedUntil ?? null,
+              }
+            : NO_PAUSE
+        );
       },
       onHoleCards: ({ cards }) => {
         // サーバーは自席のカードしか送らないのでseatIndexチェック不要
@@ -563,6 +599,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     announcementStatus,
     bustedMessage,
     privateTableInfo,
+    pauseState,
     connect,
     disconnect,
     joinMatchmaking,
@@ -570,5 +607,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     handleAction,
     handleFastFold,
     startNextHand,
+    pauseTable,
+    resumeTable,
   };
 }
