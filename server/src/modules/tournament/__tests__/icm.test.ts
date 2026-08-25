@@ -90,6 +90,23 @@ describe('computeBubbleFactors', () => {
     expect(bfs[1]).toBeCloseTo(1.0, 6);
   });
 
+  it('flat satellite payouts (everyone locked into the same prize) yield NaN, not noise', () => {
+    // With payouts equal for every remaining player, both gainEv and lossEv
+    // are mathematically 0. Floating-point noise (~1e-14) used to slip past
+    // the `gainEv > 0` guard and produce bogus finite BFs like -2.
+    const bfs = computeBubbleFactors([3000, 2000, 1000], [100, 100, 100]);
+    bfs.forEach(bf => expect(Number.isNaN(bf)).toBe(true));
+  });
+
+  it('flatter payouts increase bubble pressure (closer to WTA → BF closer to 1)', () => {
+    const stacks = [5000, 4000, 1000];
+    const flat = computeBubbleFactors(stacks, [55, 45]);
+    const topHeavy = computeBubbleFactors(stacks, [80, 20]);
+    // Short stack: near-flat payouts → satellite-like → bigger BF.
+    expect(flat[2]).toBeGreaterThan(topHeavy[2]);
+    expect(topHeavy[2]).toBeGreaterThan(1.0);
+  });
+
   it('WTA reduces to chip-EV: all BFs are exactly 1.0', () => {
     // Winner-take-all with any stack distribution. $EV is linear in chips,
     // so chip and $ trade 1:1 for every player.
