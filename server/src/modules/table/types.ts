@@ -80,6 +80,18 @@ export interface PendingAction {
   timeoutMs: number;
 }
 
+/**
+ * コーチング用ポーズの状態。プライベートキャッシュ卓のみで意味を持つ。
+ * ClientGameState への反映は StateTransformer が行う。
+ */
+export interface PauseInfo {
+  isPaused: boolean;
+  /** ポーズを操作できるプレイヤー（プライベート卓の作成者）。いない卓では null */
+  ownerOdId: string | null;
+  /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
+  pausedUntil: number | null;
+}
+
 // ダッシュボード用：ゲーム状態デバッグ情報
 export interface DebugState {
   messageLog: MessageLog[];

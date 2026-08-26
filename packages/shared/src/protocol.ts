@@ -32,6 +32,9 @@ export interface ClientToServerEvents {
   // Private table
   'private:create': (data: { blinds: string }) => void;
   'private:join': (data: { inviteCode: string }) => void;
+  /** コーチング用ポーズ（プライベートキャッシュ卓の作成者のみ） */
+  'table:pause': () => void;
+  'table:resume': () => void;
 
   // Tournament
   'tournament:register': (data: { tournamentId: string }) => void;
@@ -151,6 +154,12 @@ export interface ClientGameState {
   /** 最小チップ単位。クライアントの bet スライダーがこの倍数しか選べないように
    *  step を切り上げる用途。トーナメント=100、キャッシュ=undefined(1相当)。 */
   chipUnit?: number;
+  /** コーチング用ポーズ中。true の間は全プレイヤーのアクションがサーバーで拒否される。 */
+  isPaused?: boolean;
+  /** ポーズを操作できるプレイヤーの odId（プライベート卓の作成者）。操作者がいない卓では undefined。 */
+  pauseOwnerOdId?: string;
+  /** ポーズの自動解除時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ。 */
+  pausedUntil?: number;
 }
 
 export interface TableInfo {

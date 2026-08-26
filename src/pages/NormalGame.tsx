@@ -38,11 +38,14 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
     announcementStatus,
     bustedMessage,
     privateTableInfo,
+    pauseState,
     connect,
     disconnect,
     joinMatchmaking,
     handleAction,
     handleFastFold,
+    pauseTable,
+    resumeTable,
   } = useOnlineGameState(blinds, isFastFold, privateMode, variant);
 
   // 接続と参加
@@ -101,6 +104,9 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
           announcementStatus={announcementStatus}
           bustedMessage={bustedMessage}
           privateTableInfo={privateTableInfo}
+          pauseState={pauseState}
+          onPause={pauseTable}
+          onResume={resumeTable}
           isChangingTable={isChangingTable}
           isWaitingForPlayers={isWaitingForPlayers}
           seatedPlayerCount={seatedPlayerCount}

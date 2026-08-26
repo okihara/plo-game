@@ -77,6 +77,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 今回の目玉:
 <1〜2 行のコメント>
 
+シーズン<N>は <M/D>（<曜日>）まで。
+
 #BabyPLO
 ```
 
@@ -84,6 +86,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 
 - Step 3 で生成したランキング画像のタイトル（現行シーズン名が入っている）
 - `server/src/modules/season/seasonConfig.ts` の `CURRENT_SEASON`（シーズン定義の単一の真実の源泉）
+
+**シーズン終了日も必ず本文に入れる。** 「あと何日で締まるか」が伝わるとラストスパートの動機になるため、ハッシュタグの直前に 1 行で締切を書く。日付は `CURRENT_SEASON.end`（`seasonConfig.ts`）を唯一の根拠にする（画像のサブタイトルには終了日が入っていない場合がある）。曜日はハードコードせず、終了日から計算して添える。残りが少ないときは「ラスト<日数>日」のように緊張感を足してもよい。
 
 マーカーは以下の凡例を使う（本文に説明は入れない、直感で伝わる範囲で）:
 
@@ -145,6 +149,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 
 今回の目玉:
 ふちがち さんが 23位 → 9位 に急浮上、ノーリエントリー優勝で一気に TOP 10 入り🔥
+
+シーズン<N>は 4/30（水）まで。
 
 #BabyPLO
 ```

@@ -42,7 +42,7 @@ describe('handleSpectateJoin', () => {
   });
 
   it('プライベート卓は招待コードなしで拒否', () => {
-    const { table } = tm.createPrivateTable('1/2');
+    const { table } = tm.createPrivateTable('1/2', 'owner1');
     const socket = mockSocket({ odConnectionMode: 'spectate', odId: 'u1' });
     handleSpectateJoin(socket, { tableId: table.id }, tm, tr);
     expect(socket.emit).toHaveBeenCalledWith(
@@ -52,7 +52,7 @@ describe('handleSpectateJoin', () => {
   });
 
   it('プライベート卓は正しい招待コードで spectate_joined する', () => {
-    const { table, inviteCode } = tm.createPrivateTable('1/2');
+    const { table, inviteCode } = tm.createPrivateTable('1/2', 'owner1');
     const socket = mockSocket({ odConnectionMode: 'spectate', odId: 'u1' });
     handleSpectateJoin(socket, { tableId: table.id, inviteCode }, tm, tr);
     expect(socket.emit).toHaveBeenCalledWith('table:spectate_joined', { tableId: table.id });
@@ -60,7 +60,7 @@ describe('handleSpectateJoin', () => {
   });
 
   it('プレイ用接続モードでは拒否', () => {
-    const { table } = tm.createPrivateTable('1/2');
+    const { table } = tm.createPrivateTable('1/2', 'owner1');
     const socket = mockSocket({ odConnectionMode: 'play', odId: 'u1' });
     handleSpectateJoin(socket, { tableId: table.id }, tm, tr);
     expect(socket.emit).toHaveBeenCalledWith(

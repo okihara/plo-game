@@ -2,7 +2,7 @@
 
 import { GameState, Player, Rank, Suit } from '../../../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
-import { SeatInfo, PendingAction } from '../types.js';
+import { SeatInfo, PendingAction, PauseInfo } from '../types.js';
 
 /** 裏カードの値を隠してダミー値に置換（セキュリティ: 他プレイヤーに見せない） */
 export function toProtocolHoleCards(player: Player | null): OnlinePlayer['cards'] {
@@ -65,12 +65,20 @@ export class StateTransformer {
     smallBlind: number,
     bigBlind: number,
     validActions?: { action: string; minAmount: number; maxAmount: number }[] | null,
+    pause?: PauseInfo,
   ): ClientGameState {
     // タイムアウト情報を計算
     const actionTimeoutAt = pendingAction
       ? pendingAction.requestedAt + pendingAction.timeoutMs
       : null;
     const actionTimeoutMs = pendingAction?.timeoutMs ?? null;
+
+    // ポーズ情報（ポーズを扱わない卓では undefined のまま = 既存クライアントに影響なし）
+    const pauseFields = {
+      ...(pause?.isPaused ? { isPaused: true as const } : {}),
+      ...(pause?.ownerOdId ? { pauseOwnerOdId: pause.ownerOdId } : {}),
+      ...(pause?.isPaused && pause.pausedUntil ? { pausedUntil: pause.pausedUntil } : {}),
+    };
 
     if (!gameState) {
       return {
@@ -96,6 +104,7 @@ export class StateTransformer {
         ante: 0,
         bringIn: 0,
         validActions: null,
+        ...pauseFields,
       };
     }
 
@@ -127,6 +136,7 @@ export class StateTransformer {
       bringIn: gameState.bringIn ?? 0,
       validActions: validActions ?? null,
       chipUnit: gameState.chipUnit,
+      ...pauseFields,
     };
   }
 }

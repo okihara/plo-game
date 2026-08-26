@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName, findUsedHoleCardIndices } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Copy, Check } from 'lucide-react';
+import { DoorOpen, Settings, History, Copy, Check, Pause, Play } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
@@ -12,7 +12,7 @@ import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from './HandHistoryPanel';
 import { BustedScreen } from './BustedScreen';
 import { SettingsPopup } from './SettingsPopup';
-import type { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
+import type { LastAction, ActionTimeoutAt, PauseState } from '../hooks/useOnlineGameState';
 import type { Card, Action, GameState } from '../logic/types';
 
 const NOTICE_DISPLAY_MS = 3000;
@@ -45,6 +45,10 @@ export interface GameTableProps {
   announcementStatus?: { isActive: boolean; message: string } | null;
   bustedMessage?: string | null;
   privateTableInfo?: { inviteCode: string } | null;
+  /** コーチング用ポーズ。canControl のときだけ操作ボタンを出す */
+  pauseState?: PauseState;
+  onPause?: () => void;
+  onResume?: () => void;
   isChangingTable?: boolean;
   isWaitingForPlayers?: boolean;
   seatedPlayerCount?: number;
@@ -82,6 +86,9 @@ export function GameTable({
   announcementStatus,
   bustedMessage,
   privateTableInfo,
+  pauseState,
+  onPause,
+  onResume,
   isChangingTable,
   isWaitingForPlayers,
   seatedPlayerCount,
@@ -326,6 +333,33 @@ export function GameTable({
                 </div>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* コーチング用ポーズ（操作できるのはプライベート卓の作成者のみ） */}
+      {!isSpectator && pauseState?.canControl && (
+        <div className="absolute top-[16cqh] right-[4cqw] z-[160]">
+          <button
+            onClick={pauseState.isPaused ? onResume : onPause}
+            className={`flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] rounded-full shadow-md transition-all active:scale-[0.97] ${
+              pauseState.isPaused ? 'bg-forest text-white' : 'bg-white/90 text-cream-800'
+            }`}
+            style={{ fontSize: '2.5cqw' }}
+          >
+            {pauseState.isPaused
+              ? <><Play style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">再開</span></>
+              : <><Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ</span></>}
+          </button>
+        </div>
+      )}
+
+      {/* ポーズ中の表示（同卓の全員に見せる） */}
+      {pauseState?.isPaused && (
+        <div className="absolute top-[16cqh] left-1/2 -translate-x-1/2 z-[150] pointer-events-none">
+          <div className="bg-forest/90 text-white font-bold px-[5cqw] py-[2cqw] rounded-full shadow-lg flex items-center gap-[2cqw] animate-fade-in" style={{ fontSize: '3.2cqw' }}>
+            <Pause style={{ width: '3.5cqw', height: '3.5cqw' }} />
+            ポーズ中
           </div>
         </div>
       )}
