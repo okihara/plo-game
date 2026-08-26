@@ -247,6 +247,13 @@ export class BotClient {
         this.pendingFastFoldCheck = false;
         this.maybeEarlyFold();
       }
+      // ポーズ中（コーチング用）は手番でも動かない。
+      // サーバー側でもアクションは拒否されるため、ここは無駄撃ち防止。
+      if (data.state.isPaused) {
+        this.actionGeneration++;
+        this.isThinking = false;
+        return;
+      }
       if (data.state.currentPlayerSeat === this.seatNumber && data.state.isHandInProgress) {
         this.handleMyTurn();
       }

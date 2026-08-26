@@ -119,6 +119,7 @@ export class TableManager {
       console.warn(`[TableManager] removeTable: table ${tableId} not found`);
     } else {
       table.disconnectAllSpectators('テーブルが閉じられました');
+      table.dispose();
       if (table.inviteCode) {
         this.inviteCodeToTable.delete(table.inviteCode);
       }
@@ -198,9 +199,10 @@ export class TableManager {
     return Array.from(this.tables.values()).filter(t => t.isPrivate);
   }
 
-  public createPrivateTable(blinds: string): { table: TableInstance; inviteCode: string } {
+  /** @param ownerOdId 作成者。コーチング用ポーズを操作できる唯一のプレイヤー */
+  public createPrivateTable(blinds: string, ownerOdId: string): { table: TableInstance; inviteCode: string } {
     const inviteCode = this.generateInviteCode();
-    const table = new TableInstance(this.io, blinds, false, { isPrivate: true, inviteCode });
+    const table = new TableInstance(this.io, blinds, false, { isPrivate: true, inviteCode, ownerOdId });
     this.tables.set(table.id, table);
     this.inviteCodeToTable.set(inviteCode, table.id);
     return { table, inviteCode };

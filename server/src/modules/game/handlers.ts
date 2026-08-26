@@ -61,6 +61,31 @@ export async function handleTableLeave(socket: AuthenticatedSocket, tableManager
   }
 }
 
+/**
+ * コーチング用ポーズの ON/OFF。
+ * 権限判定と進行制御は TableInstance 側が持つ（ここは odId → テーブル解決とエラー応答のみ）。
+ */
+export function handleTablePause(socket: AuthenticatedSocket, tableManager: TableManager): void {
+  applyPauseCommand(socket, tableManager, 'pause');
+}
+
+export function handleTableResume(socket: AuthenticatedSocket, tableManager: TableManager): void {
+  applyPauseCommand(socket, tableManager, 'resume');
+}
+
+function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManager, command: 'pause' | 'resume'): void {
+  const table = tableManager.getPlayerTable(socket.odId!);
+  if (!table) {
+    socket.emit('table:error', { message: 'テーブルに着席していません' });
+    return;
+  }
+
+  const result = command === 'pause' ? table.pause(socket.odId!) : table.resume(socket.odId!);
+  if (!result.ok) {
+    socket.emit('table:error', { message: result.message });
+  }
+}
+
 export async function handleGameAction(
   socket: AuthenticatedSocket,
   data: { action: Action; amount?: number; discardIndices?: number[] },
@@ -429,7 +454,7 @@ export async function handlePrivateCreate(
     }
 
     // Create private table
-    const { table, inviteCode } = tableManager.createPrivateTable(blinds);
+    const { table, inviteCode } = tableManager.createPrivateTable(blinds, socket.odId);
 
     // Deduct buy-in
     const deducted = await deductBuyIn(socket.odId, buyIn);

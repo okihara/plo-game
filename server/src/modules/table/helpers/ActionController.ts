@@ -21,10 +21,23 @@ export interface AdvanceResult {
   handComplete: boolean;
 }
 
+/**
+ * ポーズで止めた手番。pendingAction のスナップショット（timeoutMs は残り時間に置換済み）と、
+ * 再開時に張り直すタイムアウトコールバックを保持する。
+ */
+interface PausedTurn {
+  pendingAction: PendingAction;
+  onTimeout: (playerId: string, seatIndex: number) => void;
+}
+
 export class ActionController {
   private actionTimer: NodeJS.Timeout | null = null;
   private pendingAction: PendingAction | null = null;
   private actionGeneration = 0;
+  /** 現在の手番に対して張ったタイムアウトコールバック（ポーズ再開時に再利用） */
+  private currentOnTimeout: ((playerId: string, seatIndex: number) => void) | null = null;
+  /** ポーズで止めた手番。再開時にこの残り時間でタイマーを張り直す。 */
+  private pausedTurn: PausedTurn | null = null;
 
   private rakePercent: number;
   private rakeCapBB: number;
@@ -42,12 +55,7 @@ export class ActionController {
    * 全タイマーをクリア
    */
   clearTimers(): void {
-    this.actionGeneration++;
-    if (this.actionTimer) {
-      clearTimeout(this.actionTimer);
-      this.actionTimer = null;
-    }
-    this.pendingAction = null;
+    this.clearActionTimer();
   }
 
   /**
@@ -60,6 +68,68 @@ export class ActionController {
       this.actionTimer = null;
     }
     this.pendingAction = null;
+    this.pausedTurn = null;
+  }
+
+  /**
+   * 手番のタイマーを止め、残り時間を保持する（コーチング用ポーズ）。
+   * 手番が立っていないタイミング（ハンド間・演出中）で呼ばれた場合は何も保持しない。
+   * @returns 保持した残り時間（ms）。保持しなかった場合は null
+   */
+  pauseActionTimer(): number | null {
+    if (!this.actionTimer || !this.pendingAction || !this.currentOnTimeout) return null;
+
+    const elapsed = Date.now() - this.pendingAction.requestedAt;
+    const remainingMs = Math.max(
+      TABLE_CONSTANTS.PAUSE_RESUME_MIN_ACTION_MS,
+      this.pendingAction.timeoutMs - elapsed,
+    );
+
+    // 世代を進めて、動作中のコールバックを無効化してから停止する
+    this.actionGeneration++;
+    clearTimeout(this.actionTimer);
+    this.actionTimer = null;
+
+    this.pausedTurn = {
+      pendingAction: { ...this.pendingAction, timeoutMs: remainingMs },
+      onTimeout: this.currentOnTimeout,
+    };
+    // ポーズ中は「待機中のアクションなし」にして、クライアントのカウントダウンを止める
+    this.pendingAction = null;
+
+    return remainingMs;
+  }
+
+  /** ポーズで止めた手番があるか */
+  hasPausedTurn(): boolean {
+    return this.pausedTurn !== null;
+  }
+
+  /**
+   * ポーズで止めた手番のタイマーを、保持していた残り時間で張り直す。
+   * @returns 再開したら true、止めていた手番が無い・席が入れ替わっていた場合は false
+   */
+  resumeActionTimer(seats: (SeatInfo | null)[]): boolean {
+    const paused = this.pausedTurn;
+    this.pausedTurn = null;
+    if (!paused) return false;
+
+    const { playerId, seatNumber, timeoutMs } = paused.pendingAction;
+
+    // ポーズ中に離席・着席入れ替えが起きていたら再開しない（呼び出し側が仕切り直す）
+    const seat = seats[seatNumber];
+    if (!seat || seat.odId !== playerId) return false;
+
+    this.pendingAction = { ...paused.pendingAction, requestedAt: Date.now() };
+    this.currentOnTimeout = paused.onTimeout;
+
+    const gen = ++this.actionGeneration;
+    this.actionTimer = setTimeout(() => {
+      if (this.actionGeneration !== gen) return;
+      paused.onTimeout(playerId, seatNumber);
+    }, timeoutMs);
+
+    return true;
   }
 
   /**
@@ -217,6 +287,7 @@ export class ActionController {
     // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）
     const playerIdForTimeout = currentSeat.odId;
     const seatIndexForTimeout = currentPlayerIndex;
+    this.currentOnTimeout = onTimeout;
     const gen = ++this.actionGeneration;
 
     this.actionTimer = setTimeout(() => {
