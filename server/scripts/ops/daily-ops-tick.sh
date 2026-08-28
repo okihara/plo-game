@@ -1,8 +1,10 @@
 #!/bin/bash
-# daily-ops-tick の cron ラッパー。
-#   crontab 例（5分毎、JST 11:00〜01:55）:
+# daily-ops-tick の cron ラッパー。**現在は未使用（cron 運用は廃止済み）**。
+#   毎日の運用は Claude Code の scheduled task 3本に移行した（server/scripts/ops/README.md）。
+#   cron を復活させる場合の crontab 例（5分毎、JST 11:00〜01:55）:
 #     */5 11-23 * * * /Users/masa/work/plo-game/server/scripts/ops/daily-ops-tick.sh
 #     */5 0-1  * * * /Users/masa/work/plo-game/server/scripts/ops/daily-ops-tick.sh
+#   ただし `--only` 無しで回すとスキル側の投稿と二重になる点に注意。
 #
 # - PATH を明示（cron 環境には homebrew の node/python3 が無い）
 # - server/ に cd してから node_modules/.bin/tsx を直接叩く（npx 不使用）
