@@ -56,6 +56,8 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showPrivateDialog, setShowPrivateDialog] = useState(false);
   const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string; isRegistrationOpen?: boolean; deadlineTime?: string }>({ status: 'none' });
+  // 結果発表バナー用。シーズン名をハードコードせずサーバーの公開済みシーズンに追従する
+  const [latestSeason, setLatestSeason] = useState<{ id: number; name: string } | null>(null);
 
 
   useEffect(() => {
@@ -114,10 +116,22 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         }
       } catch { /* ignore */ }
     };
+    const fetchLatestSeason = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/season/list`);
+        if (!res.ok) return;
+        const data = await res.json() as { seasons?: { id: number; name: string }[] };
+        // 一覧は古い順。結果発表バナーは最新の確定シーズンを指す
+        const seasons = data.seasons ?? [];
+        const latest = seasons[seasons.length - 1];
+        if (latest) setLatestSeason(latest);
+      } catch { /* ignore */ }
+    };
     fetchTournaments();
     fetchCounts();
     fetchMaintenance();
     fetchAnnouncement();
+    fetchLatestSeason();
   }, []);
 
   const handleClaimLoginBonus = async () => {
@@ -228,7 +242,8 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
 
       {/* Main Content */}
       <div className="w-[88%]">
-        {/* Season 1 結果発表バナー */}
+        {/* シーズン結果発表バナー（公開済みシーズンがあるときだけ） */}
+        {latestSeason && (
         <button
           onClick={() => {
             window.history.pushState({}, '', '/season');
@@ -238,11 +253,12 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
         >
           <Trophy className="w-[7cqw] h-[7cqw] shrink-0 drop-shadow" />
           <div className="flex-1 min-w-0 text-left">
-            <p className="text-[3.8cqw] font-extrabold leading-tight">シーズン1 結果発表</p>
+            <p className="text-[3.8cqw] font-extrabold leading-tight">{latestSeason.name} 結果発表</p>
             <p className="text-[2.7cqw] text-white/85 leading-tight">TOP10表彰＆特別アワードを公開中！</p>
           </div>
           <svg className="w-[3.5cqw] h-[3.5cqw] text-white/80 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>
         </button>
+        )}
 
         {/* Weekly Champions */}
         <WeeklyChampions />
