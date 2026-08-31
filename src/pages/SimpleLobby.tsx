@@ -14,7 +14,7 @@ import { WeeklyChampions } from '../components/WeeklyChampions';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
-  onCreatePrivate: (blinds: string) => void;
+  onCreatePrivate: (blinds: string, maxPlayers: 6 | 9) => void;
   onJoinPrivate: (inviteCode: string) => void;
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
@@ -55,6 +55,7 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   const [maintenance, setMaintenance] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showPrivateDialog, setShowPrivateDialog] = useState(false);
+  const [privateSeatCount, setPrivateSeatCount] = useState<6 | 9>(6);
   const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string; isRegistrationOpen?: boolean; deadlineTime?: string }>({ status: 'none' });
   // 結果発表バナー用。シーズン名をハードコードせずサーバーの公開済みシーズンに追従する
   const [latestSeason, setLatestSeason] = useState<{ id: number; name: string } | null>(null);
@@ -484,8 +485,23 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             {/* テーブル作成 */}
             <div className="border-t border-cream-200 pt-[4cqw]">
               <p className="text-[2.8cqw] text-cream-700 mb-[2cqw]">新しいテーブルを作成</p>
+              <div className="flex gap-[2cqw] mb-[2.5cqw]">
+                {([6, 9] as const).map(count => (
+                  <button
+                    key={count}
+                    onClick={() => setPrivateSeatCount(count)}
+                    className={`flex-1 py-[2cqw] text-[3cqw] rounded-[2cqw] font-bold border transition-all ${
+                      privateSeatCount === count
+                        ? 'bg-forest text-white border-forest'
+                        : 'bg-cream-50 text-cream-700 border-cream-300'
+                    }`}
+                  >
+                    {count}人卓
+                  </button>
+                ))}
+              </div>
               <button
-                onClick={() => { onCreatePrivate('1/3'); setShowPrivateDialog(false); }}
+                onClick={() => { onCreatePrivate('1/3', privateSeatCount); setShowPrivateDialog(false); }}
                 disabled={!!maintenance?.isActive}
                 className="w-full py-[3cqw] text-[3.5cqw] bg-cream-800 text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97] shadow-[0_4px_12px_rgba(139,126,106,0.3)]"
               >

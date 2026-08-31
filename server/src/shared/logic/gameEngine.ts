@@ -1,4 +1,4 @@
-import { GameState, Player, Position, POSITIONS, Action, getVariantConfig } from './types.js';
+import { GameState, Player, Position, POSITIONS, getRingPositions, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands, formatHandName } from './handEvaluator.js';
 import { resolveHiLoShowdown } from './hiLoSplitPot.js';
@@ -8,18 +8,20 @@ import { resolveHiLoShowdown } from './hiLoSplitPot.js';
 /**
  * ゲームの初期状態を作成する
  * @param playerChips 各プレイヤーの初期チップ量（デフォルト: 600）
+ * @param seatCount 席数（デフォルト: 6。プライベート卓の 9-max で 9 を渡す）
  * @returns 初期化されたGameState
  */
-export function createInitialGameState(playerChips: number = 600): GameState {
+export function createInitialGameState(playerChips: number = 600, seatCount: number = 6): GameState {
   const players: Player[] = [];
 
   // プレイヤー作成
-  const names = ['You', 'Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka'];
-  for (let i = 0; i < 6; i++) {
+  const names = ['You', 'Miko', 'Kento', 'Luna', 'Hiro', 'Tomoka', 'Sora', 'Rin', 'Kaito'];
+  const ringPositions = getRingPositions(seatCount);
+  for (let i = 0; i < seatCount; i++) {
     players.push({
       id: i,
       name: names[i],
-      position: POSITIONS[i],
+      position: ringPositions[i],
       chips: playerChips,
       holeCards: [],         // PLO: 4枚 / PLO5: 5枚 (variant 設定で決まる)
       currentBet: 0,         // 現在のストリートでの累計ベット額
@@ -119,7 +121,7 @@ export function startNewHand(state: GameState): GameState {
     bbIndex = getNextPlayerWithChips(newState, sbIndex);
   }
 
-  assignBlindPostingPositions(newState, newState.dealerPosition, sbIndex, bbIndex, activeCount, 6);
+  assignBlindPostingPositions(newState, newState.dealerPosition, sbIndex, bbIndex, activeCount, newState.players.length);
 
   // === ブラインドを投稿 ===
   // スモールブラインド（チップが足りない場合はオールイン）
@@ -143,7 +145,7 @@ export function startNewHand(state: GameState): GameState {
   // === カードを配る ===
   // PLO: 4 枚 / PLO5: 5 枚 (variant の VariantConfig.holeCardCount から決定)
   const holeCardCount = getVariantConfig(newState.variant).holeCardCount;
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < newState.players.length; i++) {
     if (newState.players[i].isSittingOut) continue;
     const { cards, remainingDeck } = dealCards(newState.deck, holeCardCount);
     newState.players[i].holeCards = cards;
@@ -175,14 +177,15 @@ export function startNewHand(state: GameState): GameState {
  * @returns プレイヤーインデックス、見つからない場合は-1
  */
 function getNextActivePlayer(state: GameState, fromIndex: number): number {
-  let index = (fromIndex + 1) % 6;
+  const seatCount = state.players.length;
+  let index = (fromIndex + 1) % seatCount;
   let count = 0;
-  while (count < 6) {
+  while (count < seatCount) {
     // 着席中で、フォールドしておらず、オールインでもないプレイヤー
     if (!state.players[index].isSittingOut && !state.players[index].folded && !state.players[index].isAllIn) {
       return index;
     }
-    index = (index + 1) % 6;
+    index = (index + 1) % seatCount;
     count++;
   }
   return -1;  // 全員がフォールドかオールイン
@@ -201,13 +204,14 @@ function getActivePlayerCount(state: GameState): number {
  * ディーラーボタン移動やブラインド位置決定に使用
  */
 function getNextPlayerWithChips(state: GameState, fromIndex: number): number {
-  let index = (fromIndex + 1) % 6;
+  const seatCount = state.players.length;
+  let index = (fromIndex + 1) % seatCount;
   let count = 0;
-  while (count < 6) {
+  while (count < seatCount) {
     if (!state.players[index].isSittingOut && !state.players[index].folded) {
       return index;
     }
-    index = (index + 1) % 6;
+    index = (index + 1) % seatCount;
     count++;
   }
   return -1;
@@ -218,6 +222,9 @@ const POST_BB_POSITION_LABELS: Record<number, readonly Position[]> = {
   1: ['UTG'],
   2: ['UTG', 'CO'],
   3: ['UTG', 'HJ', 'CO'],
+  4: ['UTG', 'UTG1', 'HJ', 'CO'],
+  5: ['UTG', 'UTG1', 'LJ', 'HJ', 'CO'],
+  6: ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO'],
 };
 
 function getNextOccupiedSeatForLabels(
@@ -274,9 +281,10 @@ export function assignBlindPostingPositions(
     }
   }
 
+  const ringPositions = getRingPositions(maxSeats);
   for (let i = 0; i < maxSeats; i++) {
     if (state.players[i].isSittingOut) {
-      state.players[i].position = POSITIONS[(i - dealerPosition + maxSeats) % maxSeats];
+      state.players[i].position = ringPositions[(i - dealerPosition + maxSeats) % maxSeats];
     }
   }
 }
@@ -519,15 +527,16 @@ export function determineNextAction(state: GameState): { nextPlayerIndex: number
   }
 
   // 次のアクション待ちプレイヤーを探す
-  let index = (state.currentPlayerIndex + 1) % 6;
-  for (let i = 0; i < 6; i++) {
+  const seatCount = state.players.length;
+  let index = (state.currentPlayerIndex + 1) % seatCount;
+  for (let i = 0; i < seatCount; i++) {
     const p = state.players[index];
     // アクションが必要なプレイヤー: フォールドしておらず、オールインでもなく、
     // まだアクションしていないか、ベット額が足りていない
     if (!p.folded && !p.isAllIn && (!p.hasActed || p.currentBet < state.currentBet)) {
       return { nextPlayerIndex: index, moveToNextStreet: false };
     }
-    index = (index + 1) % 6;
+    index = (index + 1) % seatCount;
   }
 
   // 全員アクション完了 → 次のストリートへ
@@ -590,10 +599,11 @@ function moveToNextStreet(state: GameState, rakePercent: number = 0, rakeCapBB: 
 
   // === ポストフロップのアクション開始位置 ===
   // SB（ディーラーの次）から時計回りで最初のアクティブプレイヤー
-  const sbIndex = (newState.dealerPosition + 1) % 6;
+  const seatCount = newState.players.length;
+  const sbIndex = (newState.dealerPosition + 1) % seatCount;
   let firstActorIndex = -1;
-  for (let i = 0; i < 6; i++) {
-    const idx = (sbIndex + i) % 6;
+  for (let i = 0; i < seatCount; i++) {
+    const idx = (sbIndex + i) % seatCount;
     if (!newState.players[idx].folded && !newState.players[idx].isAllIn) {
       firstActorIndex = idx;
       break;
@@ -864,12 +874,14 @@ export function determineWinner(state: GameState, rakePercent: number = 0, rakeC
  */
 export function rotatePositions(state: GameState): GameState {
   const newState = JSON.parse(JSON.stringify(state)) as GameState;
-  newState.dealerPosition = (newState.dealerPosition + 1) % 6;
+  const seatCount = newState.players.length;
+  newState.dealerPosition = (newState.dealerPosition + 1) % seatCount;
 
   // ディーラー位置を基準にポジション名を再計算
-  for (let i = 0; i < 6; i++) {
-    const posIndex = (i - newState.dealerPosition + 6) % 6;
-    newState.players[i].position = POSITIONS[posIndex];
+  const ringPositions = getRingPositions(seatCount);
+  for (let i = 0; i < seatCount; i++) {
+    const posIndex = (i - newState.dealerPosition + seatCount) % seatCount;
+    newState.players[i].position = ringPositions[posIndex];
   }
 
   return newState;

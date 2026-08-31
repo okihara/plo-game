@@ -32,9 +32,10 @@ export function PokerTable({
 }: PokerTableProps) {
   const { formatChips } = useGameSettings();
 
+  const seatCount = state.players.length;
   const orderedPlayers = [];
-  for (let i = 0; i < 6; i++) {
-    const idx = (humanIndex + i) % 6;
+  for (let i = 0; i < seatCount; i++) {
+    const idx = (humanIndex + i) % seatCount;
     orderedPlayers.push({ player: state.players[idx], playerIdx: idx, posIndex: i });
   }
 
@@ -44,7 +45,7 @@ export function PokerTable({
   // 各プレイヤーの配布順序（SBから時計回り）を計算
   const getDealOrder = (playerIdx: number): number => {
     // playerIdxからSBまでの距離を計算（時計回り）
-    return (playerIdx - sbPlayerIdx + 6) % 6;
+    return (playerIdx - sbPlayerIdx + seatCount) % seatCount;
   };
 
   return (
@@ -142,6 +143,7 @@ export function PokerTable({
               key={player.id}
               player={player}
               positionIndex={posIndex}
+              seatCount={seatCount}
               isCurrentPlayer={isCurrentPlayer}
               isWinner={playerWins.length > 0}
               winAmount={playerWins.length > 0 ? playerWins.reduce((s, w) => s + w.amount, 0) : undefined}

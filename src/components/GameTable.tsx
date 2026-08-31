@@ -243,7 +243,8 @@ export function GameTable({
   }, [myHoleCards, gameState.communityCards, gameState.variant, showdownHandNames, myPlayerIdx, myPlayer?.folded]);
 
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
-  const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
+  const tableSeatCount = gameState.players.length;
+  const humanDealOrder = (myPlayerIdx - sbPlayerIdx + tableSeatCount) % tableSeatCount;
 
   return (
     <>
@@ -492,7 +493,7 @@ export function GameTable({
                 </p>
                 {true && (
                   <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-                    {seatedPlayerCount}/6 人着席中
+                    {seatedPlayerCount}/{tableSeatCount} 人着席中
                   </p>
                 )}
                 <button

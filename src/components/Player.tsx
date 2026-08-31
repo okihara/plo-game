@@ -8,6 +8,8 @@ import { PlayerCards } from './PlayerCards';
 interface PlayerProps {
   player: PlayerType;
   positionIndex: number;
+  /** テーブルの席数（6 or 9）。座標辞書の切り替えに使う */
+  seatCount?: number;
   isCurrentPlayer: boolean;
   isWinner: boolean;
   winAmount?: number;
@@ -56,22 +58,50 @@ const NAMEPLATE_STYLES: Record<NameplateDecoration, string> = {
   weekly_champion: 'champion-frame shadow-[0_0_2cqw_rgba(250,204,21,0.6)]',
 };
 
-const positionStyles: Record<number, string> = {
-  0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
-  1: 'bottom-[25.74cqw] left-[-14.05cqw]', // 左下
-  2: 'top-[35.7cqw] left-[-14.05cqw]', // 左上
-  3: 'top-[7.8cqw] left-1/2 -translate-x-1/2', // 上
-  4: 'top-[35.7cqw] right-[-14.05cqw]', // 右上
-  5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
+// 席数（6 or 9）→ posIndex → 配置クラス。posIndex 0 = 自分（下中央）、以降時計回りで左→上→右
+const positionStylesBySeatCount: Record<number, Record<number, string>> = {
+  6: {
+    0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
+    1: 'bottom-[25.74cqw] left-[-14.05cqw]', // 左下
+    2: 'top-[35.7cqw] left-[-14.05cqw]', // 左上
+    3: 'top-[7.8cqw] left-1/2 -translate-x-1/2', // 上
+    4: 'top-[35.7cqw] right-[-14.05cqw]', // 右上
+    5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
+  },
+  9: {
+    0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
+    1: 'bottom-[10cqw] left-[-14.05cqw]', // 左下
+    2: 'top-[42cqw] left-[-14.05cqw]', // 左中
+    3: 'top-[14cqw] left-[-14.05cqw]', // 左上
+    4: 'top-[-1cqw] left-[7cqw]', // 上左
+    5: 'top-[-1cqw] right-[7cqw]', // 上右
+    6: 'top-[14cqw] right-[-14.05cqw]', // 右上
+    7: 'top-[42cqw] right-[-14.05cqw]', // 右中
+    8: 'bottom-[10cqw] right-[-14.05cqw]', // 右下
+  },
 };
 
-const betPositionStyles: Record<number, string> = {
-  0: 'top-[-23cqw]',
-  1: 'top-[2cqw] right-[-17cqw]',
-  2: 'top-[2cqw] right-[-17cqw]',
-  3: 'top-[18cqw]',
-  4: 'top-[2cqw] left-[-17cqw]',
-  5: 'top-[2cqw] left-[-17cqw]',
+// ベットチップは常にテーブル中央方向へ置く
+const betPositionStylesBySeatCount: Record<number, Record<number, string>> = {
+  6: {
+    0: 'top-[-23cqw]',
+    1: 'top-[2cqw] right-[-17cqw]',
+    2: 'top-[2cqw] right-[-17cqw]',
+    3: 'top-[18cqw]',
+    4: 'top-[2cqw] left-[-17cqw]',
+    5: 'top-[2cqw] left-[-17cqw]',
+  },
+  9: {
+    0: 'top-[-23cqw]',
+    1: 'top-[2cqw] right-[-17cqw]',
+    2: 'top-[2cqw] right-[-17cqw]',
+    3: 'top-[2cqw] right-[-17cqw]',
+    4: 'top-[18cqw] left-[6cqw]',
+    5: 'top-[18cqw] right-[6cqw]',
+    6: 'top-[2cqw] left-[-17cqw]',
+    7: 'top-[2cqw] left-[-17cqw]',
+    8: 'top-[2cqw] left-[-17cqw]',
+  },
 };
 
 const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
@@ -90,6 +120,7 @@ const actionColorStyles: Record<Action, string> = {
 export function Player({
   player,
   positionIndex,
+  seatCount = 6,
   isCurrentPlayer,
   isWinner,
   winAmount,
@@ -152,8 +183,13 @@ export function Player({
     ? remainingTime / actionTimeoutMs
     : null;
 
+  const positionStyles = positionStylesBySeatCount[seatCount] ?? positionStylesBySeatCount[6];
+  const betPositionStyles = betPositionStylesBySeatCount[seatCount] ?? betPositionStylesBySeatCount[6];
+  // 9-max は席間が詰まるため、自分以外の席をひと回り縮小して衝突を避ける
+  const compactClass = seatCount === 9 && positionIndex !== 0 ? 'scale-[0.85]' : '';
+
   return (
-    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[40]' : ''}`} onClick={onAvatarClick}>
+    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${compactClass} ${isWinner ? 'z-[40]' : ''}`} onClick={onAvatarClick}>
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-25cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
@@ -261,6 +297,7 @@ export function Player({
       <PlayerCards
         player={player}
         positionIndex={positionIndex}
+        seatCount={seatCount}
         showCards={showCards}
         isDealing={isDealing}
         dealOrder={dealOrder}

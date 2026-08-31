@@ -2,7 +2,7 @@
  * ハンド履歴を PokerStars 風テキストに変換（クライアント・サーバー共通）。
  */
 
-import { VARIANT_POKERSTARS_LABEL, type GameVariant } from './types';
+import { VARIANT_POKERSTARS_LABEL, POSITION_LABELS_BY_PLAYER_COUNT, getSeatRingModulo, type GameVariant } from './types';
 
 export interface PokerStarsHandPlayer {
   username: string;
@@ -45,20 +45,16 @@ export interface PokerStarsHandInput {
 
 function getPos(seatPosition: number, dealerPosition: number, allSeats: number[]): string {
   if (dealerPosition < 0) return '';
+  const mod = getSeatRingModulo(dealerPosition, allSeats);
   const sorted = [...allSeats].sort((a, b) => {
-    return (a - dealerPosition + 6) % 6 - (b - dealerPosition + 6) % 6;
+    return (a - dealerPosition + mod) % mod - (b - dealerPosition + mod) % mod;
   });
   const index = sorted.indexOf(seatPosition);
   const count = sorted.length;
   if (count <= 1) return '';
   if (count === 2) return index === 0 ? 'BTN/SB' : 'BB';
-  const posMap: Record<number, string[]> = {
-    3: ['BTN', 'SB', 'BB'],
-    4: ['BTN', 'SB', 'BB', 'CO'],
-    5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
-    6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
-  };
-  return (posMap[count] || posMap[6]!)[index] || '';
+  const labels = POSITION_LABELS_BY_PLAYER_COUNT[count] || POSITION_LABELS_BY_PLAYER_COUNT[6]!;
+  return labels[index] || '';
 }
 
 function actionLine(name: string, action: string, amount: number): string {
@@ -90,9 +86,10 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   const allSeats = players.map(p => p.seatPosition);
 
+  const seatMod = getSeatRingModulo(dealerPosition, allSeats);
   const sortedPlayers = [...players].sort(
     (a, b) =>
-      ((a.seatPosition - dealerPosition + 6) % 6) - ((b.seatPosition - dealerPosition + 6) % 6)
+      ((a.seatPosition - dealerPosition + seatMod) % seatMod) - ((b.seatPosition - dealerPosition + seatMod) % seatMod)
   );
 
   const d = new Date(createdAt);
@@ -102,7 +99,8 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   const variantLabel = VARIANT_POKERSTARS_LABEL[hand.variant ?? 'plo'];
   lines.push(`PokerStars Hand #${handNum}: ${variantLabel} (${sb}/${bb}) - ${dateStr}`);
-  lines.push(`Table 'PLO Game' 6-max Seat #${dealerPosition + 1} is the button`);
+  const tableMax = allSeats.some(s => s > 5) ? 9 : 6;
+  lines.push(`Table 'PLO Game' ${tableMax}-max Seat #${dealerPosition + 1} is the button`);
 
   for (const p of sortedPlayers) {
     lines.push(`Seat ${p.seatPosition + 1}: ${p.username} (${p.startChips} in chips)`);

@@ -3,25 +3,52 @@ import { Player as PlayerType, GameVariant, getVariantConfig } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction } from '../hooks/useOnlineGameState';
 
-// カードがテーブル中央から各プレイヤー位置へ飛んでくる方向
-// positionIndex: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
-const dealFromOffsets: Record<number, { x: string; y: string }> = {
-  0: { x: '0', y: '-44cqw' },    // 下 ← 中央から下へ
-  1: { x: '31cqw', y: '-22cqw' },    // 左下 ← 中央から左下へ
-  2: { x: '31cqw', y: '22cqw' },     // 左上 ← 中央から左上へ
-  3: { x: '0', y: '44cqw' },     // 上 ← 中央から上へ
-  4: { x: '-31cqw', y: '22cqw' },    // 右上 ← 中央から右上へ
-  5: { x: '-31cqw', y: '-22cqw' },   // 右下 ← 中央から右下へ
+// カードがテーブル中央から各プレイヤー位置へ飛んでくる方向（席数 → posIndex → ベクトル）
+// 6席: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
+// 9席: 0=下(自分), 1=左下, 2=左中, 3=左上, 4=上左, 5=上右, 6=右上, 7=右中, 8=右下
+const dealFromOffsetsBySeatCount: Record<number, Record<number, { x: string; y: string }>> = {
+  6: {
+    0: { x: '0', y: '-44cqw' },    // 下 ← 中央から下へ
+    1: { x: '31cqw', y: '-22cqw' },    // 左下 ← 中央から左下へ
+    2: { x: '31cqw', y: '22cqw' },     // 左上 ← 中央から左上へ
+    3: { x: '0', y: '44cqw' },     // 上 ← 中央から上へ
+    4: { x: '-31cqw', y: '22cqw' },    // 右上 ← 中央から右上へ
+    5: { x: '-31cqw', y: '-22cqw' },   // 右下 ← 中央から右下へ
+  },
+  9: {
+    0: { x: '0', y: '-44cqw' },
+    1: { x: '31cqw', y: '-22cqw' },
+    2: { x: '36cqw', y: '0' },
+    3: { x: '31cqw', y: '22cqw' },
+    4: { x: '14cqw', y: '40cqw' },
+    5: { x: '-14cqw', y: '40cqw' },
+    6: { x: '-31cqw', y: '22cqw' },
+    7: { x: '-36cqw', y: '0' },
+    8: { x: '-31cqw', y: '-22cqw' },
+  },
 };
 
 // フォールド時にカードがテーブル中央へ飛んでいく方向（dealFromOffsetsの逆）
-const foldToOffsets: Record<number, { x: string; y: string; rotate: string }> = {
-  0: { x: '0', y: '-30cqw', rotate: '-20deg' },
-  1: { x: '20cqw', y: '-15cqw', rotate: '15deg' },
-  2: { x: '20cqw', y: '15cqw', rotate: '-15deg' },
-  3: { x: '0', y: '30cqw', rotate: '20deg' },
-  4: { x: '-20cqw', y: '15cqw', rotate: '15deg' },
-  5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
+const foldToOffsetsBySeatCount: Record<number, Record<number, { x: string; y: string; rotate: string }>> = {
+  6: {
+    0: { x: '0', y: '-30cqw', rotate: '-20deg' },
+    1: { x: '20cqw', y: '-15cqw', rotate: '15deg' },
+    2: { x: '20cqw', y: '15cqw', rotate: '-15deg' },
+    3: { x: '0', y: '30cqw', rotate: '20deg' },
+    4: { x: '-20cqw', y: '15cqw', rotate: '15deg' },
+    5: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
+  },
+  9: {
+    0: { x: '0', y: '-30cqw', rotate: '-20deg' },
+    1: { x: '20cqw', y: '-15cqw', rotate: '15deg' },
+    2: { x: '24cqw', y: '0', rotate: '-15deg' },
+    3: { x: '20cqw', y: '15cqw', rotate: '15deg' },
+    4: { x: '9cqw', y: '27cqw', rotate: '-15deg' },
+    5: { x: '-9cqw', y: '27cqw', rotate: '20deg' },
+    6: { x: '-20cqw', y: '15cqw', rotate: '15deg' },
+    7: { x: '-24cqw', y: '0', rotate: '-15deg' },
+    8: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
+  },
 };
 
 const cardPositionStyle = 'top-[-15.5cqw] left-1/2 -translate-x-1/2';
@@ -29,6 +56,8 @@ const cardPositionStyle = 'top-[-15.5cqw] left-1/2 -translate-x-1/2';
 interface PlayerCardsProps {
   player: PlayerType;
   positionIndex: number;
+  /** テーブルの席数（6 or 9）。アニメーション方向辞書の切り替えに使う */
+  seatCount?: number;
   showCards: boolean;
   isDealing: boolean;
   dealOrder: number;
@@ -41,6 +70,7 @@ interface PlayerCardsProps {
 export function PlayerCards({
   player,
   positionIndex,
+  seatCount = 6,
   showCards,
   isDealing,
   dealOrder,
@@ -119,9 +149,9 @@ export function PlayerCards({
                 </div>
               ))
             : (player.holeCards.length > 0 ? player.holeCards : Array(holeCardCount).fill(null)).map((card, cardIndex) => {
-                const dealDelay = (cardIndex * 6 + dealOrder) * 40;
+                const dealDelay = (cardIndex * seatCount + dealOrder) * 40;
                 const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
-                const foldOffset = foldToOffsets[positionIndex];
+                const foldOffset = (foldToOffsetsBySeatCount[seatCount] ?? foldToOffsetsBySeatCount[6])[positionIndex];
                 return (
                   <div
                     key={cardIndex}
@@ -129,8 +159,8 @@ export function PlayerCards({
                     style={isDealing ? {
                       opacity: 0,
                       animationDelay: `${dealDelay}ms`,
-                      '--deal-from-x': dealFromOffsets[positionIndex].x,
-                      '--deal-from-y': dealFromOffsets[positionIndex].y,
+                      '--deal-from-x': (dealFromOffsetsBySeatCount[seatCount] ?? dealFromOffsetsBySeatCount[6])[positionIndex].x,
+                      '--deal-from-y': (dealFromOffsetsBySeatCount[seatCount] ?? dealFromOffsetsBySeatCount[6])[positionIndex].y,
                     } as React.CSSProperties : isFolding ? {
                       animationDelay: `${cardIndex * 50}ms`,
                       '--fold-to-x': foldOffset.x,

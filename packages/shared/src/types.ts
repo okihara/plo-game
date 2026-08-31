@@ -123,10 +123,43 @@ export function isDrawBettingStreet(street: Street): boolean {
   return street === 'predraw' || street === 'postdraw1' || street === 'postdraw2' || street === 'final';
 }
 
-export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
+export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'UTG1' | 'UTG2' | 'LJ' | 'HJ' | 'CO';
 
-/** 席順のポジション配列。POSITIONS[(seatIndex - dealerPosition + 6) % 6] でポジションが求まる */
+/** 席順のポジション配列（6-max）。POSITIONS[(seatIndex - dealerPosition + 6) % 6] でポジションが求まる */
 export const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
+
+/** 席順のポジション配列（9-max） */
+export const POSITIONS_9: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO'];
+
+/** 席数に応じたリング配列。getRingPositions(n)[(seatIndex - dealerPosition + n) % n] でポジションが求まる */
+export function getRingPositions(seatCount: number): Position[] {
+  return seatCount === 9 ? POSITIONS_9 : POSITIONS;
+}
+
+/**
+ * プレイ人数（席数ではない）→ BTN 起点・ブラインド順のポジションラベル列。
+ * ハンド履歴・OGP などの表示系で共有する。2人時の表記（'BTN/SB' か 'SB' か）は
+ * 各利用箇所で差があるため、この表は 3 人以上のみを持つ。
+ */
+/**
+ * ハンド履歴表示用: 席番号を BTN 起点で並べるときの法（modulo）。
+ * 席数そのものは保存していないため、登場する席番号とディーラー位置から推定する。
+ * 法が「最大 seatIndex + 1」以上であれば循環順序は法の値によらず同一なので、
+ * 6-max の過去データの表示は変わらず、9-max（seat 6-8 を含む）も正しく並ぶ。
+ */
+export function getSeatRingModulo(dealerPosition: number, allSeats: readonly number[]): number {
+  return Math.max(6, dealerPosition + 1, ...allSeats.map(s => s + 1));
+}
+
+export const POSITION_LABELS_BY_PLAYER_COUNT: Record<number, readonly string[]> = {
+  3: ['BTN', 'SB', 'BB'],
+  4: ['BTN', 'SB', 'BB', 'CO'],
+  5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+  6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
+  7: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'HJ', 'CO'],
+  8: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'LJ', 'HJ', 'CO'],
+  9: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO'],
+};
 
 export interface Player {
   id: number;

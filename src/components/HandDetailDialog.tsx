@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { Share2, Link, Check, Image, FileText, Eye, EyeOff, UserRound } from 'lucide-react';
 import { evaluatePLOHand, formatHandName } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
+import { getSeatRingModulo } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
 import { ProfilePopup } from './ProfilePopup';
@@ -564,10 +565,11 @@ export function HandDetailDialog({
   }, [hand]);
   const sortedPlayers = useMemo(() => {
     const dealer = hand.dealerPosition;
+    const mod = getSeatRingModulo(dealer, hand.players.map(p => p.seatPosition));
     return [...hand.players].sort((a, b) => {
-      // SB→BB→UTG→HJ→CO→BTN（ディーラーの次=SBが先頭）
-      const offsetA = (a.seatPosition - dealer - 1 + 6) % 6;
-      const offsetB = (b.seatPosition - dealer - 1 + 6) % 6;
+      // SB→BB→UTG→…→BTN（ディーラーの次=SBが先頭）
+      const offsetA = (a.seatPosition - dealer - 1 + mod) % mod;
+      const offsetB = (b.seatPosition - dealer - 1 + mod) % mod;
       return offsetA - offsetB;
     });
   }, [hand.players, hand.dealerPosition]);

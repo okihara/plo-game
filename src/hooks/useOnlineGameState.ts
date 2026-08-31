@@ -23,7 +23,7 @@ export interface LastAction {
 export type ActionTimeoutAt = number;
 
 export type PrivateMode =
-  | { type: 'create'; blinds: string }
+  | { type: 'create'; blinds: string; maxPlayers?: 6 | 9 }
   | { type: 'join'; inviteCode: string };
 
 export interface OnlineGameHookResult {
@@ -197,7 +197,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
   const joinMatchmaking = useCallback(() => {
     if (privateMode?.type === 'create') {
-      wsService.createPrivateTable(privateMode.blinds);
+      wsService.createPrivateTable(privateMode.blinds, privateMode.maxPlayers);
     } else if (privateMode?.type === 'join') {
       wsService.joinPrivateTable(privateMode.inviteCode);
     } else {
@@ -346,7 +346,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsChangingTable(true);
         setClientState(prev => ({
           tableId: tid,
-          players: Array(6).fill(null),
+          players: Array(6).fill(null), // FastFold 専用経路のため 6-max 固定でよい
           communityCards: [],
           pot: 0,
           sidePots: [],

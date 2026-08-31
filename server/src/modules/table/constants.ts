@@ -3,6 +3,8 @@
 export const TABLE_CONSTANTS = {
   // テーブル設定
   MAX_PLAYERS: 6,
+  /** プライベート卓で選択できる席数 */
+  PRIVATE_ALLOWED_MAX_PLAYERS: [6, 9] as readonly number[],
   DEFAULT_AVATAR_COUNT: 15,
   DEFAULT_BUYIN_MULTIPLIER: 200, // bigBlind * 200
   MIN_PLAYERS_TO_START: 3,

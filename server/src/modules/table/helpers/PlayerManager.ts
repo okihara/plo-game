@@ -16,7 +16,11 @@ export interface SeatPlayerParams {
 }
 
 export class PlayerManager {
-  private seats: (SeatInfo | null)[] = Array(TABLE_CONSTANTS.MAX_PLAYERS).fill(null);
+  private seats: (SeatInfo | null)[];
+
+  constructor(private readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS) {
+    this.seats = Array(this.maxPlayers).fill(null);
+  }
 
   getSeat(index: number): SeatInfo | null {
     return this.seats[index];
@@ -47,7 +51,7 @@ export class PlayerManager {
 
     // 空き席を探す
     let seatIndex = preferredSeat ?? -1;
-    if (seatIndex >= 0 && seatIndex < TABLE_CONSTANTS.MAX_PLAYERS && this.seats[seatIndex] === null) {
+    if (seatIndex >= 0 && seatIndex < this.maxPlayers && this.seats[seatIndex] === null) {
       // 希望席が空いている
     } else {
       seatIndex = this.seats.findIndex(s => s === null);

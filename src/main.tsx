@@ -181,7 +181,7 @@ function App() {
     page = (
       <SimpleLobby
         onPlayOnline={(selectedBlinds, fastFold, selectedVariant) => { setBlinds(selectedBlinds); setIsFastFold(fastFold ?? false); setVariant(selectedVariant); }}
-        onCreatePrivate={(selectedBlinds) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds }); }}
+        onCreatePrivate={(selectedBlinds, maxPlayers) => { setBlinds(selectedBlinds); setPrivateMode({ type: 'create', blinds: selectedBlinds, maxPlayers }); }}
         onJoinPrivate={(inviteCode) => { setPrivateMode({ type: 'join', inviteCode }); }}
         onJoinTournament={(id) => { setTournamentId(id); window.history.pushState({}, '', `/tournament/${id}`); setCurrentPath(`/tournament/${id}`); }}
         onViewMyResult={(id) => { window.history.pushState({}, '', `/tournament/${id}/result`); setCurrentPath(`/tournament/${id}/result`); }}

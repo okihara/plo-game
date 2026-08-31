@@ -204,22 +204,23 @@ export class ActionController {
     }
 
     // 次のアクティブプレイヤーを探す
-    let nextIndex = (gameState.currentPlayerIndex + 1) % TABLE_CONSTANTS.MAX_PLAYERS;
+    const seatCount = gameState.players.length;
+    let nextIndex = (gameState.currentPlayerIndex + 1) % seatCount;
     let attempts = 0;
 
-    while (attempts < TABLE_CONSTANTS.MAX_PLAYERS) {
+    while (attempts < seatCount) {
       const player = gameState.players[nextIndex];
       const seat = seats[nextIndex];
       // waitingForNextHandのプレイヤーはスキップ
       if (player && !player.folded && !player.isAllIn && seat && !seat.waitingForNextHand) {
         break;
       }
-      nextIndex = (nextIndex + 1) % TABLE_CONSTANTS.MAX_PLAYERS;
+      nextIndex = (nextIndex + 1) % seatCount;
       attempts++;
     }
 
     // 全員アクション不可なら勝者決定
-    if (attempts >= TABLE_CONSTANTS.MAX_PLAYERS) {
+    if (attempts >= seatCount) {
       const newState = this.variantAdapter.determineWinner(gameState, this.rakePercent, this.rakeCapBB);
       return { gameState: newState, nextIndex: -1, handComplete: true };
     }

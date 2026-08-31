@@ -4,6 +4,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { ReactNode } from 'react';
+import { POSITION_LABELS_BY_PLAYER_COUNT, getSeatRingModulo } from '@plo/shared';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FONT_CACHE_DIR = join(__dirname, 'fonts');
@@ -95,16 +96,10 @@ interface HandOgpData {
 }
 
 function getPositionName(seatPosition: number, dealerPosition: number, allSeats: number[]): string | null {
-  const sorted = [...allSeats].sort((a, b) => ((a - dealerPosition + 6) % 6) - ((b - dealerPosition + 6) % 6));
+  const mod = getSeatRingModulo(dealerPosition, allSeats);
+  const sorted = [...allSeats].sort((a, b) => ((a - dealerPosition + mod) % mod) - ((b - dealerPosition + mod) % mod));
   const n = sorted.length;
-  const posNames: Record<number, string[]> = {
-    2: ['SB', 'BB'],
-    3: ['BTN', 'SB', 'BB'],
-    4: ['BTN', 'SB', 'BB', 'CO'],
-    5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
-    6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
-  };
-  const names = posNames[n];
+  const names = n === 2 ? ['SB', 'BB'] : POSITION_LABELS_BY_PLAYER_COUNT[n];
   if (!names) return null;
   const idx = sorted.indexOf(seatPosition);
   return idx >= 0 ? names[idx] : null;

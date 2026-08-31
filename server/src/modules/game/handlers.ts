@@ -1,5 +1,6 @@
 import { TableManager } from '../table/TableManager.js';
 import { TableInstance } from '../table/TableInstance.js';
+import { TABLE_CONSTANTS } from '../table/constants.js';
 import { TournamentManager } from '../tournament/TournamentManager.js';
 import { prisma } from '../../config/database.js';
 import { Action } from '../../shared/logic/types.js';
@@ -479,7 +480,7 @@ export function handlePrivateCreate(
 
 async function handlePrivateCreateImpl(
   socket: AuthenticatedSocket,
-  data: { blinds: string },
+  data: { blinds: string; maxPlayers?: number },
   tableManager: TableManager
 ): Promise<void> {
   if (maintenanceService.isMaintenanceActive()) {
@@ -498,7 +499,12 @@ async function handlePrivateCreateImpl(
     return;
   }
 
-  const { blinds } = data;
+  const { blinds, maxPlayers } = data;
+
+  if (maxPlayers !== undefined && !TABLE_CONSTANTS.PRIVATE_ALLOWED_MAX_PLAYERS.includes(maxPlayers)) {
+    socket.emit('table:error', { message: 'Invalid maxPlayers' });
+    return;
+  }
 
   try {
     const parts = blinds.split('/');
@@ -526,7 +532,7 @@ async function handlePrivateCreateImpl(
     }
 
     // Create private table
-    const { table, inviteCode } = tableManager.createPrivateTable(blinds, socket.odId);
+    const { table, inviteCode } = tableManager.createPrivateTable(blinds, socket.odId, maxPlayers);
 
     // Deduct buy-in
     const deducted = await deductBuyIn(socket.odId, buyIn);

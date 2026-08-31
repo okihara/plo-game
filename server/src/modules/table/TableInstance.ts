@@ -29,7 +29,7 @@ export class TableInstance {
   public bigBlind: number;
   /** ブラインドレベルから渡されるアンテ額。bomb pot / Stud では > 0 になる。 */
   public ante: number = 0;
-  public readonly maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS;
+  public readonly maxPlayers: number;
   public isFastFold: boolean = false;
   public readonly variant: GameVariant = 'plo';
   public readonly isPrivate: boolean = false;
@@ -91,13 +91,14 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
     this.isHorse = options?.isHorse ?? false;
     this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
     this.isPrivate = options?.isPrivate ?? false;
+    this.maxPlayers = options?.maxPlayers ?? TABLE_CONSTANTS.MAX_PLAYERS;
     this.inviteCode = options?.inviteCode ?? null;
     this.ownerOdId = options?.ownerOdId ?? null;
     this.gameMode = options?.gameMode ?? 'cash';
@@ -119,7 +120,7 @@ export class TableInstance {
 
     // ヘルパー初期化
     const roomName = `table:${this.id}`;
-    this.playerManager = new PlayerManager();
+    this.playerManager = new PlayerManager(this.maxPlayers);
     this.broadcast = new BroadcastService(io, roomName);
     this.variantAdapter = new VariantAdapter(this.variant);
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
@@ -1041,7 +1042,7 @@ export class TableInstance {
     // Create initial game state。bomb pot は bb=0 なので buy-in 計算には ante を使う。
     const buyInBase = this.bigBlind > 0 ? this.bigBlind : this.ante;
     const buyInChips = buyInBase * TABLE_CONSTANTS.DEFAULT_BUYIN_MULTIPLIER;
-    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind, this.ante);
+    this.gameState = this.variantAdapter.createGameState(buyInChips, this.smallBlind, this.bigBlind, this.ante, this.maxPlayers);
     // トナメは最小チップ単位 100。ポット分配で 100 未満の端数が出ないようにする
     if (this.gameMode === 'tournament') {
       this.gameState.chipUnit = 100;
@@ -1056,7 +1057,7 @@ export class TableInstance {
     this.playerManager.clearWaitingFlags();
 
     const seats = this.playerManager.getSeats();
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+    for (let i = 0; i < this.maxPlayers; i++) {
       const seat = seats[i];
       if (seat) {
         this.gameState.players[i].chips = seat.chips;
@@ -1085,7 +1086,7 @@ export class TableInstance {
     }
 
     // ホール配布: 着席者へはソケットがある相手のみ。観戦者へはソケット無し席（CPU等）も含め全参加席分送る。
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+    for (let i = 0; i < this.maxPlayers; i++) {
       const seat = seats[i];
       const holeCards = this.gameState.players[i].holeCards;
       if (holeCards.length === 0) continue;
@@ -1520,7 +1521,7 @@ export class TableInstance {
 
     // Update seat chips
     const settledChips: { odId: string; seatIndex: number; chips: number }[] = [];
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+    for (let i = 0; i < this.maxPlayers; i++) {
       const seat = seats[i];
       // waitingForNextHandのプレイヤーはハンドに参加していないのでチップを上書きしない
       // leftForFastFoldのプレイヤーはハンド中に他テーブルへ移動済み。チップの正は
@@ -1557,7 +1558,7 @@ export class TableInstance {
 
     // Remove busted players and players who left during hand
     const startChipsBySeat = this.historyRecorder.getStartChips();
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+    for (let i = 0; i < this.maxPlayers; i++) {
       const seat = seats[i];
       if (!seat) continue;
       if (seat.leftForFastFold) {
@@ -1605,7 +1606,7 @@ export class TableInstance {
     if (this.isFastFold && this.onFastFoldReassign) {
       const playersToMove: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket }[] = [];
       const currentSeats = this.playerManager.getSeats();
-      for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+      for (let i = 0; i < this.maxPlayers; i++) {
         const seat = currentSeats[i];
         if (!seat) continue;
 
