@@ -20,7 +20,7 @@ import { config as loadDotenv } from 'dotenv';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
 import { computeSeasonRanking, resolveDisplayName } from '../src/modules/season/computeSeasonRanking.js';
-import { CURRENT_SEASON } from '../src/modules/season/seasonConfig.js';
+import { CURRENT_SEASON, seasonBadgePrefix } from '../src/modules/season/seasonConfig.js';
 import { seasonBadgeTypes, seasonBadgeTypeForRank } from '../src/modules/badges/badgeService.js';
 
 const __dirname = fileURLToPath(new URL('.', import.meta.url));
@@ -44,7 +44,7 @@ const prisma = new PrismaClient({
 });
 
 async function main() {
-  const prefix = CURRENT_SEASON.badgePrefix;
+  const prefix = seasonBadgePrefix(CURRENT_SEASON);
   console.log(`\n=== ${CURRENT_SEASON.name} RPランキング バッジ (${prefix}_*) ===`);
   if (dryRun) console.log('(dry-run: 付与は行いません)');
 
