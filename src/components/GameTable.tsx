@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName, findUsedHoleCardIndices } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Copy, Check, Pause, Play } from 'lucide-react';
+import { DoorOpen, Settings, History, Copy, Check, Pause, Play, Eye, EyeOff } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
@@ -45,10 +45,11 @@ export interface GameTableProps {
   announcementStatus?: { isActive: boolean; message: string } | null;
   bustedMessage?: string | null;
   privateTableInfo?: { inviteCode: string } | null;
-  /** コーチング用ポーズ。canControl のときだけ操作ボタンを出す */
+  /** コーチング用ポーズ・ハンドオープン。canControl のときだけ操作ボタンを出す */
   pauseState?: PauseState;
   onPause?: () => void;
   onResume?: () => void;
+  onToggleRevealHands?: (enabled: boolean) => void;
   isChangingTable?: boolean;
   isWaitingForPlayers?: boolean;
   seatedPlayerCount?: number;
@@ -89,6 +90,7 @@ export function GameTable({
   pauseState,
   onPause,
   onResume,
+  onToggleRevealHands,
   isChangingTable,
   isWaitingForPlayers,
   seatedPlayerCount,
@@ -337,9 +339,9 @@ export function GameTable({
         </div>
       )}
 
-      {/* コーチング用ポーズ（操作できるのはプライベート卓の作成者のみ） */}
+      {/* コーチング操作（操作できるのはプライベート卓の作成者のみ） */}
       {!isSpectator && pauseState?.canControl && (
-        <div className="absolute top-[16cqh] right-[4cqw] z-[160]">
+        <div className="absolute top-[16cqh] right-[4cqw] z-[160] flex flex-col items-end gap-[1.5cqw]">
           <button
             onClick={pauseState.isPaused ? onResume : onPause}
             className={`flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] rounded-full shadow-md transition-all active:scale-[0.97] ${
@@ -351,6 +353,20 @@ export function GameTable({
               ? <><Play style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">再開</span></>
               : <><Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ</span></>}
           </button>
+
+          {onToggleRevealHands && (
+            <button
+              onClick={() => onToggleRevealHands(!pauseState.revealAllHands)}
+              className={`flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] rounded-full shadow-md transition-all active:scale-[0.97] ${
+                pauseState.revealAllHands ? 'bg-forest text-white' : 'bg-white/90 text-cream-800'
+              }`}
+              style={{ fontSize: '2.5cqw' }}
+            >
+              {pauseState.revealAllHands
+                ? <><Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span></>
+                : <><EyeOff style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ハンドオープン</span></>}
+            </button>
+          )}
         </div>
       )}
 
@@ -360,6 +376,16 @@ export function GameTable({
           <div className="bg-forest/90 text-white font-bold px-[5cqw] py-[2cqw] rounded-full shadow-lg flex items-center gap-[2cqw] animate-fade-in" style={{ fontSize: '3.2cqw' }}>
             <Pause style={{ width: '3.5cqw', height: '3.5cqw' }} />
             ポーズ中
+          </div>
+        </div>
+      )}
+
+      {/* ハンドオープン中の表示（同卓の全員に見せる。ポーズ表示とは重ならない位置） */}
+      {pauseState?.revealAllHands && !pauseState.isPaused && (
+        <div className="absolute top-[16cqh] left-1/2 -translate-x-1/2 z-[150] pointer-events-none">
+          <div className="bg-forest/90 text-white font-bold px-[5cqw] py-[2cqw] rounded-full shadow-lg flex items-center gap-[2cqw] animate-fade-in" style={{ fontSize: '3.2cqw' }}>
+            <Eye style={{ width: '3.5cqw', height: '3.5cqw' }} />
+            ハンドオープン中
           </div>
         </div>
       )}

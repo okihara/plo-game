@@ -35,6 +35,8 @@ export interface ClientToServerEvents {
   /** コーチング用ポーズ（プライベートキャッシュ卓の作成者のみ） */
   'table:pause': () => void;
   'table:resume': () => void;
+  /** コーチング用ハンドオープンの ON/OFF（プライベートキャッシュ卓の作成者のみ） */
+  'table:reveal_hands': (data: { enabled: boolean }) => void;
 
   // Tournament
   'tournament:register': (data: { tournamentId: string }) => void;
@@ -80,6 +82,12 @@ export interface ServerToClientEvents {
     winners: { playerId: string; amount: number; handName: string; cards: Card[]; hiLoType?: 'high' | 'low' | 'scoop' }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
+  /**
+   * コーチング用ハンドオープン。ハンド完了時のみ、フォールド済みを含む
+   * 全員のホールカードを同卓の全員（観戦者含む）へ送る。
+   * 役名は付けない（フォールドしたハンドに役名を出すと誤解を招くため）。
+   */
+  'game:reveal_hands': (data: { players: { seatIndex: number; cards: Card[] }[] }) => void;
   'game:hand_complete': (data: { winners: { playerId: string; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]; rake: number }) => void;
 
   // Maintenance
@@ -160,6 +168,8 @@ export interface ClientGameState {
   pauseOwnerOdId?: string;
   /** ポーズの自動解除時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ。 */
   pausedUntil?: number;
+  /** コーチング用ハンドオープンが ON。ハンド完了時に全員のホールカードが公開される。 */
+  revealAllHands?: boolean;
 }
 
 export interface TableInfo {

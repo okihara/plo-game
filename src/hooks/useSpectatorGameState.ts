@@ -256,6 +256,14 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         setShowdownCards(cardsMap);
         pendingShowdownHandNamesRef.current = handNamesMap;
       },
+      onRevealHands: ({ players: revealed }) => {
+        // コーチング用ハンドオープン（ハンド完了時のみ）。フォールド済みの席を足す。
+        setShowdownCards(prev => {
+          const next = new Map(prev);
+          for (const p of revealed) next.set(p.seatIndex, p.cards);
+          return next;
+        });
+      },
       onMaintenanceStatus: data => setMaintenanceStatus(data),
       onAnnouncementStatus: data => setAnnouncementStatus(data),
       onTournamentState: state => setTournamentState(state),

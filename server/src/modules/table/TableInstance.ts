@@ -8,7 +8,7 @@ import { nanoid } from 'nanoid';
 
 // ヘルパーモジュール
 import { TABLE_CONSTANTS } from './constants.js';
-import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks, PauseInfo } from './types.js';
+import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks, CoachingInfo } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
@@ -79,6 +79,9 @@ export class TableInstance {
   private paused = false;
   private pauseAutoResumeTimer: NodeJS.Timeout | null = null;
   private pausedUntil: number | null = null;
+
+  /** コーチング用ハンドオープン（プライベートキャッシュ卓のみ）。ハンド完了時に全員のホールを公開する */
+  private revealAllHands = false;
 
   // ヘルパーインスタンス
   private readonly playerManager: PlayerManager;
@@ -459,10 +462,11 @@ export class TableInstance {
   }
 
   /**
-   * ポーズを操作できるのはプライベートキャッシュ卓の作成者だけ。
+   * コーチング機能（ポーズ・ハンドオープン）を操作できるのは
+   * プライベートキャッシュ卓の作成者だけ。
    * 通常のキャッシュ卓・トーナメント卓では常に false。
    */
-  public canControlPause(odId: string): boolean {
+  public canControlCoaching(odId: string): boolean {
     return this.isPrivate && this.gameMode === 'cash' && this.ownerOdId !== null && this.ownerOdId === odId;
   }
 
@@ -471,7 +475,7 @@ export class TableInstance {
    * ポーズ中のアクションはサーバー側で拒否される。
    */
   public pause(odId: string): { ok: true } | { ok: false; message: string } {
-    if (!this.canControlPause(odId)) {
+    if (!this.canControlCoaching(odId)) {
       return { ok: false, message: 'ポーズできるのはルーム作成者だけです' };
     }
     if (this.paused) return { ok: true };
@@ -491,13 +495,29 @@ export class TableInstance {
 
   /** ポーズを解除して進行を再開する */
   public resume(odId: string): { ok: true } | { ok: false; message: string } {
-    if (!this.canControlPause(odId)) {
+    if (!this.canControlCoaching(odId)) {
       return { ok: false, message: 'ポーズを解除できるのはルーム作成者だけです' };
     }
     if (!this.paused) return { ok: true };
 
     console.log(`[Table ${this.id}] Resumed by ${odId}`);
     this.doResume();
+    return { ok: true };
+  }
+
+  /**
+   * コーチング用ハンドオープンの ON/OFF。
+   * ON の間もハンド進行中はカードを送らず、公開はハンド完了時のみ行う。
+   */
+  public setRevealAllHands(odId: string, enabled: boolean): { ok: true } | { ok: false; message: string } {
+    if (!this.canControlCoaching(odId)) {
+      return { ok: false, message: 'ハンドオープンを切り替えられるのはルーム作成者だけです' };
+    }
+    if (this.revealAllHands === enabled) return { ok: true };
+
+    this.revealAllHands = enabled;
+    console.log(`[Table ${this.id}] Reveal all hands ${enabled ? 'enabled' : 'disabled'} by ${odId}`);
+    this.broadcastGameState();
     return { ok: true };
   }
 
@@ -547,12 +567,13 @@ export class TableInstance {
     this.actionController.clearTimers();
   }
 
-  /** ポーズ状態のスナップショット（クライアント送信用） */
-  private getPauseInfo(): PauseInfo {
+  /** コーチング状態のスナップショット（クライアント送信用） */
+  private getCoachingInfo(): CoachingInfo {
     return {
       isPaused: this.paused,
       ownerOdId: this.isPrivate && this.gameMode === 'cash' ? this.ownerOdId : null,
       pausedUntil: this.pausedUntil,
+      revealAllHands: this.revealAllHands,
     };
   }
 
@@ -729,8 +750,24 @@ export class TableInstance {
       this.smallBlind,
       this.bigBlind,
       va,
-      this.getPauseInfo(),
+      this.getCoachingInfo(),
     );
+  }
+
+  /**
+   * コーチング用ハンドオープン: フォールド済みも含む全員のホールカードを同卓へ公開する。
+   * ハンド完了後にのみ呼ぶこと（進行中に呼ぶとプレイ中のカードが漏れる）。
+   */
+  private emitRevealedHands(): void {
+    if (!this.revealAllHands || !this.gameState || !this.gameState.isHandComplete) return;
+
+    const seats = this.playerManager.getSeats();
+    const players = this.gameState.players
+      .filter((p, seatIndex) => !!p && p.holeCards.length > 0 && !!seats[seatIndex])
+      .map(p => ({ seatIndex: p.id, cards: p.holeCards }));
+    if (players.length === 0) return;
+
+    this.broadcast.emitToRoom('game:reveal_hands', { players });
   }
 
   public getSpectatorCount(): number {
@@ -1407,6 +1444,9 @@ export class TableInstance {
       this.broadcast.emitToRoom('game:showdown', showdownData);
     }
     this.showdownSentDuringRunOut = false;
+
+    // コーチング用ハンドオープン（ON の卓のみ。フォールド済みのハンドもここで公開される）
+    this.emitRevealedHands();
 
     // ハンド完了時の演出ウェイト
     await new Promise(resolve => setTimeout(resolve, TABLE_CONSTANTS.HAND_COMPLETE_DELAY_MS));

@@ -2,7 +2,7 @@
 
 import { GameState, Player, Rank, Suit } from '../../../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
-import { SeatInfo, PendingAction, PauseInfo } from '../types.js';
+import { SeatInfo, PendingAction, CoachingInfo } from '../types.js';
 
 /** 裏カードの値を隠してダミー値に置換（セキュリティ: 他プレイヤーに見せない） */
 export function toProtocolHoleCards(player: Player | null): OnlinePlayer['cards'] {
@@ -65,7 +65,7 @@ export class StateTransformer {
     smallBlind: number,
     bigBlind: number,
     validActions?: { action: string; minAmount: number; maxAmount: number }[] | null,
-    pause?: PauseInfo,
+    coaching?: CoachingInfo,
   ): ClientGameState {
     // タイムアウト情報を計算
     const actionTimeoutAt = pendingAction
@@ -73,11 +73,12 @@ export class StateTransformer {
       : null;
     const actionTimeoutMs = pendingAction?.timeoutMs ?? null;
 
-    // ポーズ情報（ポーズを扱わない卓では undefined のまま = 既存クライアントに影響なし）
+    // コーチング情報（コーチング機能を扱わない卓では undefined のまま = 既存クライアントに影響なし）
     const pauseFields = {
-      ...(pause?.isPaused ? { isPaused: true as const } : {}),
-      ...(pause?.ownerOdId ? { pauseOwnerOdId: pause.ownerOdId } : {}),
-      ...(pause?.isPaused && pause.pausedUntil ? { pausedUntil: pause.pausedUntil } : {}),
+      ...(coaching?.isPaused ? { isPaused: true as const } : {}),
+      ...(coaching?.ownerOdId ? { pauseOwnerOdId: coaching.ownerOdId } : {}),
+      ...(coaching?.isPaused && coaching.pausedUntil ? { pausedUntil: coaching.pausedUntil } : {}),
+      ...(coaching?.revealAllHands ? { revealAllHands: true as const } : {}),
     };
 
     if (!gameState) {
