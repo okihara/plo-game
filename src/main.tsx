@@ -106,8 +106,10 @@ function App() {
   } else if (currentPath.startsWith('/player/')) {
     const playerId = currentPath.replace('/player/', '');
     page = <PlayerProfile userId={playerId} onBack={goBackToLobby} />;
-  } else if (currentPath === '/season') {
-    page = <SeasonResult onBack={goBackToLobby} />;
+  } else if (currentPath === '/season' || currentPath.startsWith('/season/')) {
+    // /season は最新の確定シーズン、/season/<番号> は過去シーズンのアーカイブ
+    const seasonId = Number(currentPath.replace('/season/', ''));
+    page = <SeasonResult seasonId={Number.isInteger(seasonId) ? seasonId : undefined} onBack={goBackToLobby} />;
   } else if (currentPath === '/rooms') {
     page = (
       <PrivateRooms

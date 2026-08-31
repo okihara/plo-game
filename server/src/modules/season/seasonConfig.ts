@@ -1,40 +1,57 @@
 /**
  * シーズン定義の単一の真実の源泉（Single Source of Truth）。
  *
- * RP ランキング集計スクリプト・特設ページ API の双方がここを参照する。
- * シーズンを切り替えるときはこのファイルだけ更新すればよい。
+ * RP ランキング集計スクリプト・特設ページ API・シーズンバッジの双方がここを参照する。
+ * 新シーズンを始めるときは SEASON_n を定義して SEASONS に足し、CURRENT_SEASON を進める。
  */
 
 export interface SeasonConfig {
+  /** シーズン番号。URL（/season/:id）とバッジ接頭辞（season{id}）の元になる。 */
+  id: number;
   name: string;
   label: string;
   start: Date;
   end: Date;
-  /** このシーズンのバッジ type の接頭辞（例 'season1' → 'season1_no1' 等。BADGE_META と対応）。 */
-  badgePrefix: string;
 }
 
 export const SEASON_1: SeasonConfig = {
+  id: 1,
   name: 'シーズン１',
   label: '2026 1/1 - 6/30',
   start: new Date('2026-01-01T00:00:00+09:00'),
   end: new Date('2026-06-30T23:59:59.999+09:00'),
-  badgePrefix: 'season1',
 };
 
 export const SEASON_2: SeasonConfig = {
+  id: 2,
   name: 'シーズン２',
-  label: '2026 7/1 -',
+  label: '2026 7/1 - 8/31',
   start: new Date('2026-07-01T00:00:00+09:00'),
   end: new Date('2026-08-31T23:59:59.999+09:00'),
-  badgePrefix: 'season2',
 };
+
+/** 定義済みシーズン（古い順）。特設ページのアーカイブ一覧もこれを元に作る。 */
+export const SEASONS: SeasonConfig[] = [SEASON_1, SEASON_2];
 
 /** 進行中のシーズン。ライブ集計（RPランキング・バッジ付与等）の対象。 */
 export const CURRENT_SEASON: SeasonConfig = SEASON_2;
 
 /**
- * 結果発表ページ（/season）で表示する確定済みシーズン。
+ * 結果発表ページ（/season）が既定で表示する確定済みシーズン。
  * 新シーズンの終了後、スナップショット生成が済んだらここを切り替える。
+ * これより新しいシーズンはアーカイブ一覧にも出さない（集計途中を公開しないため）。
  */
 export const RESULT_SEASON: SeasonConfig = SEASON_1;
+
+/** バッジ type の接頭辞（例 season1 → 'season1_no1' 等。BADGE_META と対応）。 */
+export function seasonBadgePrefix(season: SeasonConfig): string {
+  return `season${season.id}`;
+}
+
+/** シーズン番号（数値または数値文字列）→ シーズン定義。未知なら null。 */
+export function findSeasonById(id: number | string | null | undefined): SeasonConfig | null {
+  if (id === null || id === undefined || id === '') return null;
+  const n = typeof id === 'number' ? id : Number(id);
+  if (!Number.isInteger(n)) return null;
+  return SEASONS.find(s => s.id === n) ?? null;
+}
