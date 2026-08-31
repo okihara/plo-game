@@ -86,6 +86,27 @@ function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManag
   }
 }
 
+/**
+ * コーチング用ハンドオープンの ON/OFF。
+ * 権限判定と公開処理は TableInstance 側が持つ（ここは odId → テーブル解決とエラー応答のみ）。
+ */
+export function handleTableRevealHands(
+  socket: AuthenticatedSocket,
+  data: { enabled: boolean },
+  tableManager: TableManager
+): void {
+  const table = tableManager.getPlayerTable(socket.odId!);
+  if (!table) {
+    socket.emit('table:error', { message: 'テーブルに着席していません' });
+    return;
+  }
+
+  const result = table.setRevealAllHands(socket.odId!, !!data?.enabled);
+  if (!result.ok) {
+    socket.emit('table:error', { message: result.message });
+  }
+}
+
 export async function handleGameAction(
   socket: AuthenticatedSocket,
   data: { action: Action; amount?: number; discardIndices?: number[] },
