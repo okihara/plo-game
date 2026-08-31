@@ -14,6 +14,7 @@ import {
   PendingMove,
   TournamentResult,
   TournamentStandings,
+  TournamentEliminationInfo,
 } from './types.js';
 import { computeBubbleFactors, rankStandings, type PlayerProfile } from '@plo/shared';
 import { maskName } from '../../shared/utils.js';
@@ -134,6 +135,23 @@ export class TournamentInstance {
         reentries: p.reentryCount,
         avatarUrl: p.profile.avatarUrl,
       }));
+  }
+
+  /**
+   * 脱落済みプレイヤーに送る結果情報。
+   * `tournament:eliminated` を送る箇所（バスト確定時／脱落後の再入室時）で
+   * 同じ計算を繰り返さないよう、ここを唯一の生成元にする。
+   * 未脱落なら null。
+   */
+  public getEliminationInfo(odId: string): TournamentEliminationInfo | null {
+    const player = this.players.get(odId);
+    if (!player || player.finishPosition === null) return null;
+    return {
+      // レイト登録中は順位未確定
+      position: this.isRegistrationOpen() ? null : player.finishPosition,
+      totalPlayers: this.getTotalEntries(),
+      prizeAmount: this.getPrizeForPosition(player.finishPosition),
+    };
   }
 
   // ============================================
@@ -805,15 +823,21 @@ export class TournamentInstance {
         player.finishPosition = remaining + 1 + i;
       }
 
-      // 賞金チェック（既に計算済みの this.prizes を参照）
-      const prize = this.getPrizeForPosition(player.finishPosition);
-
-      // 個人通知（レイト登録中は順位未確定のためnull）
-      bust.socket?.emit('tournament:eliminated', {
-        position: this.isRegistrationOpen() ? null : player.finishPosition,
-        totalPlayers: this.getTotalEntries(),
-        prizeAmount: prize,
-      });
+      // 個人通知（レイト登録中は順位未確定のため position は null）。
+      // bust.socket はバストした席が持っていたソケット。ハンド中に再接続して
+      // ソケットが差し替わっているとそちらは死んでいるため、トーナメント側が持つ
+      // 最新ソケットにも送る（同一ならSetで重複排除される）。
+      // ここを取りこぼすとクライアントは結果画面へ遷移できず、卓を離れたまま
+      // 「テーブルに接続中...」で止まってしまう。
+      const eliminationInfo = this.getEliminationInfo(bust.odId);
+      if (eliminationInfo) {
+        const notifyTargets = new Set<Socket>(
+          [bust.socket, player.socket].filter((s): s is Socket => s != null)
+        );
+        for (const target of notifyTargets) {
+          target.emit('tournament:eliminated', eliminationInfo);
+        }
+      }
 
       // 全体通知（生の username は流さない）
       this.io.to(this.roomName).emit('tournament:player_eliminated', {

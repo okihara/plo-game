@@ -9,6 +9,9 @@ import { wsService } from '../services/websocket';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
+/** 盤面が来ないときにトーナメント状態を再要求する間隔 */
+const STATE_RESYNC_INTERVAL_MS = 10000;
+
 interface TournamentGameProps {
   tournamentId: string;
   onBack: () => void;
@@ -98,6 +101,19 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
     onBack();
   }, [elimination, completedData, clearElimination, clearCompleted, onBack]);
 
+  // 卓の状態が届かないまま固まるのを防ぐ保険。
+  // バスト時の tournament:eliminated を取りこぼす（切断・ソケット差し替え）と、
+  // table:left で盤面が消えたまま「テーブルに接続中...」から進めなくなる。
+  // 状態を定期的に要求し直せば、脱落済みならサーバーが tournament:eliminated を
+  // 返してくれるので結果画面へ抜けられる。
+  useEffect(() => {
+    if (gameState) return;
+    const timer = setInterval(() => {
+      wsService.requestTournamentState(tournamentId);
+    }, STATE_RESYNC_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [gameState, tournamentId]);
+
   // 脱落 or 完了 → 結果ページへ遷移
   useEffect(() => {
     if (elimination || completedData) {
@@ -129,6 +145,14 @@ export function TournamentGame({ tournamentId, onBack }: TournamentGameProps) {
           <div className="text-center px-[4cqw]">
             <div className="animate-spin w-[10cqw] h-[10cqw] mx-auto mb-[4cqw] rounded-full border-[1cqw] border-white/30 border-t-white" />
             <p className="text-white/60 text-[3cqw]">テーブルに接続中...</p>
+            {/* 接続が長引いても操作不能に見えないよう、必ず抜け道を用意する */}
+            <button
+              type="button"
+              onClick={handleBack}
+              className="mt-[6cqw] px-[6cqw] py-[2.5cqw] text-white/50 underline text-[3cqw]"
+            >
+              ロビーに戻る
+            </button>
           </div>
         </div>
       ) : (

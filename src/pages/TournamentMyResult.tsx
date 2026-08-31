@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { EliminationOverlay } from '../components/EliminationOverlay';
 import type { HandSummaryForResult } from '../components/EliminationOverlay';
+import { fetchWithTimeout } from '../utils/fetchWithTimeout';
 import { Loader2 } from 'lucide-react';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
@@ -30,29 +31,45 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
   const [handStats, setHandStats] = useState<HandStatsData | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // 順位カードとハンド統計は別々に取得する。
+  // ハンド統計は重いクエリになりうるため、待ち合わせると順位表示まで巻き添えで遅れ、
+  // 最悪ローディングのまま画面が固まる。統計は「後から埋まる付加情報」として扱う。
   useEffect(() => {
     let cancelled = false;
+
     (async () => {
       try {
-        const [resultRes, statsRes] = await Promise.all([
-          fetch(`${API_BASE}/api/tournaments/${tournamentId}/my-result`, { credentials: 'include' }),
-          fetch(`${API_BASE}/api/tournaments/${tournamentId}/my-hand-stats`, { credentials: 'include' }),
-        ]);
-        if (!resultRes.ok) {
-          const data = await resultRes.json().catch(() => ({}));
-          throw new Error(data.error ?? `HTTP ${resultRes.status}`);
+        const res = await fetchWithTimeout(
+          `${API_BASE}/api/tournaments/${tournamentId}/my-result`,
+          { credentials: 'include' },
+        );
+        if (!res.ok) {
+          const data = await res.json().catch(() => ({}));
+          throw new Error(data.error ?? `HTTP ${res.status}`);
         }
-        const data: MyResultData = await resultRes.json();
+        const data: MyResultData = await res.json();
         if (!cancelled) setResult(data);
-
-        if (statsRes.ok) {
-          const stats: HandStatsData = await statsRes.json();
-          if (!cancelled) setHandStats(stats);
-        }
       } catch (err) {
-        if (!cancelled) setError(err instanceof Error ? err.message : '取得に失敗しました');
+        if (cancelled) return;
+        const isTimeout = err instanceof DOMException && err.name === 'AbortError';
+        setError(isTimeout ? '結果の取得に時間がかかっています' : (err instanceof Error ? err.message : '取得に失敗しました'));
       }
     })();
+
+    (async () => {
+      try {
+        const res = await fetchWithTimeout(
+          `${API_BASE}/api/tournaments/${tournamentId}/my-hand-stats`,
+          { credentials: 'include' },
+        );
+        if (!res.ok) return;
+        const stats: HandStatsData = await res.json();
+        if (!cancelled) setHandStats(stats);
+      } catch {
+        // 統計は取れなくても順位カードは表示する
+      }
+    })();
+
     return () => { cancelled = true; };
   }, [tournamentId]);
 
@@ -73,8 +90,16 @@ export function TournamentMyResult({ tournamentId, onBack }: TournamentMyResultP
 
   if (!result) {
     return (
-      <div className="flex items-center justify-center h-full w-full min-h-0 light-bg">
+      <div className="flex flex-col items-center justify-center h-full w-full min-h-0 light-bg px-[4cqw]">
         <Loader2 className="w-[8cqw] h-[8cqw] animate-spin text-cream-700" />
+        {/* 取得が長引いても画面から抜けられるようにする（無反応に見える状態を作らない） */}
+        <button
+          type="button"
+          onClick={onBack}
+          className="mt-[6cqw] px-[6cqw] py-[2.5cqw] text-cream-700 underline text-[3.2cqw]"
+        >
+          トーナメント一覧に戻る
+        </button>
       </div>
     );
   }
