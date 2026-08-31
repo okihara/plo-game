@@ -51,18 +51,23 @@ export function PlayerCards({
   // ショウダウン時のカード公開アニメーション
   const [isRevealing, setIsRevealing] = useState(false);
 
+  // 表向きで見せる条件。コーチング用ハンドオープンではフォールド済みの席も公開されるため、
+  // folded を除外せず「公開カードが来ているか」だけで判定する。
+  const isFaceUp = showCards && player.holeCards.length > 0;
+  // 降りたハンドは薄く表示して、まだ生きているハンドと区別する
+  const isFoldedReveal = isFaceUp && player.folded;
+
   // useLayoutEffect: paint前に isRevealing を立てないと、showCards が true になった
   // 最初のフレームで全カードが表向きのまま一瞬描画されてしまう
   useLayoutEffect(() => {
-    const shouldShowCards = showCards && !player.folded && player.holeCards.length > 0;
-    if (shouldShowCards) {
+    if (isFaceUp) {
       setIsRevealing(true);
       const timer = setTimeout(() => setIsRevealing(false), 1200);
       return () => clearTimeout(timer);
     } else {
       setIsRevealing(false);
     }
-  }, [showCards, player.folded, player.holeCards.length]);
+  }, [isFaceUp]);
 
   
   const variantConfig = getVariantConfig(variant);
@@ -84,8 +89,8 @@ export function PlayerCards({
   return (
     <>
       {/* Hole Cards */}
-    <div className={`absolute flex ${showCards && !player.folded ? 'z-[15]' : 'z-[15]'} ${cardPositionStyle}`}>
-        {showCards && !player.folded
+    <div className={`absolute flex z-[15] ${isFoldedReveal ? 'opacity-70' : ''} ${cardPositionStyle}`}>
+        {isFaceUp
             ? player.holeCards.map((card, i) => (
                 <div
                   key={i}

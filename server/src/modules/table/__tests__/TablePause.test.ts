@@ -66,8 +66,8 @@ describe('コーチング用ポーズ', () => {
     it('プライベート卓の作成者だけが操作できる', () => {
       const { table } = setupPrivateHand();
 
-      expect(table.canControlPause(OWNER)).toBe(true);
-      expect(table.canControlPause('player_1')).toBe(false);
+      expect(table.canControlCoaching(OWNER)).toBe(true);
+      expect(table.canControlCoaching('player_1')).toBe(false);
 
       const rejected = table.resume('player_1');
       expect(rejected.ok).toBe(false);
@@ -84,7 +84,7 @@ describe('コーチング用ポーズ', () => {
       seatNPlayers(table, 3, 600);
       table.triggerMaybeStartHand();
 
-      expect(table.canControlPause(OWNER)).toBe(false);
+      expect(table.canControlCoaching(OWNER)).toBe(false);
       expect(table.pause(OWNER).ok).toBe(false);
       expect(table.isPaused).toBe(false);
     });

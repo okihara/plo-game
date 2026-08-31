@@ -5,6 +5,15 @@ type SeasonTab = 'overall' | 'me';
 
 interface SeasonResultProps {
   onBack: () => void;
+  /** 表示するシーズン番号（/season/2 など）。省略時はサーバー既定の最新確定シーズン。 */
+  seasonId?: number;
+}
+
+/** 特設ページで切替できる公開済みシーズン */
+interface SeasonSummary {
+  id: number;
+  name: string;
+  label: string;
 }
 
 interface SeasonAwardRank {
@@ -410,10 +419,16 @@ function PersonalSection({ player, rankedPlayers, viewerName, viewerAvatar }: {
   );
 }
 
-export function SeasonResult({ onBack }: SeasonResultProps) {
+/** シーズン指定のクエリ（未指定ならサーバー既定＝最新の確定シーズン） */
+function seasonQuery(seasonId?: number, prefix = '?'): string {
+  return seasonId ? `${prefix}s=${seasonId}` : '';
+}
+
+export function SeasonResult({ onBack, seasonId }: SeasonResultProps) {
   const { user } = useAuth();
   const [data, setData] = useState<SeasonData | null>(null);
   const [player, setPlayer] = useState<PlayerStats | null>(null);
+  const [seasons, setSeasons] = useState<SeasonSummary[]>([]);
   const [error, setError] = useState(false);
   const [tab, setTab] = useState<SeasonTab>('overall');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -426,10 +441,12 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
   useEffect(() => {
     let alive = true;
     let timer: ReturnType<typeof setTimeout>;
+    setData(null);
+    setError(false);
 
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/season`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/season${seasonQuery(seasonId)}`, { credentials: 'include' });
         const d = await res.json();
         if (!alive) return;
         if (d && d.ready) {
@@ -448,6 +465,22 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
       alive = false;
       clearTimeout(timer);
     };
+  }, [seasonId]);
+
+  // 切替タブ用の公開済みシーズン一覧
+  useEffect(() => {
+    let alive = true;
+    fetch(`${API_BASE}/api/season/list`, { credentials: 'include' })
+      .then((res) => res.json())
+      .then((d) => {
+        if (alive && Array.isArray(d?.seasons)) setSeasons(d.seasons);
+      })
+      .catch(() => {
+        /* 一覧が取れなくても本体は表示できるので無視 */
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   // 閲覧者本人の個人データ（ログイン時のみ）
@@ -460,7 +493,7 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
     let timer: ReturnType<typeof setTimeout>;
     const load = async () => {
       try {
-        const res = await fetch(`${API_BASE}/api/season/player/${user.id}`, { credentials: 'include' });
+        const res = await fetch(`${API_BASE}/api/season/player/${user.id}${seasonQuery(seasonId)}`, { credentials: 'include' });
         const d = await res.json();
         if (!alive) return;
         if (d && d.ready) {
@@ -477,7 +510,7 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
       alive = false;
       clearTimeout(timer);
     };
-  }, [user?.id]);
+  }, [user?.id, seasonId]);
 
   if (error) {
     return (
@@ -493,13 +526,21 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
   if (!data) {
     return (
       <div className="h-full flex flex-col items-center justify-center light-bg gap-[2cqw]">
-        <p className="text-[4cqw] text-cream-900 font-bold">シーズン1を集計中...</p>
+        <p className="text-[4cqw] text-cream-900 font-bold">
+          {seasons.find((s) => s.id === seasonId)?.name ?? 'シーズン'}を集計中...
+        </p>
         <p className="text-[2.8cqw] text-cream-700">全ハンドを計算しています。少々お待ちください</p>
       </div>
     );
   }
 
   const categories = [...new Set(data.awards.map((a) => a.category))];
+  // 表示中シーズン（URL 未指定時はサーバー既定＝最新確定シーズンなので名前で引く）
+  const activeSeasonId = seasonId ?? seasons.find((s) => s.name === data.season.name)?.id;
+  const navigateSeason = (id: number) => {
+    window.history.pushState({}, '', `/season/${id}`);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  };
   const showTabs = !!(user && player);
   const showMe = showTabs && tab === 'me';
 
@@ -532,6 +573,25 @@ export function SeasonResult({ onBack }: SeasonResultProps) {
           ))}
         </div>
       </div>
+
+      {/* シーズン切替（公開済みシーズンが複数あるとき） */}
+      {seasons.length > 1 && (
+        <div className="px-[4cqw] mt-[3cqw] flex gap-[1.5cqw] overflow-x-auto">
+          {seasons.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => navigateSeason(s.id)}
+              className={`shrink-0 px-[3.5cqw] py-[1.5cqw] rounded-[2cqw] text-[3cqw] font-bold border transition-colors ${
+                s.id === activeSeasonId
+                  ? 'bg-forest text-white border-forest'
+                  : 'bg-white text-cream-800 border-cream-300'
+              }`}
+            >
+              {s.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* 全体結果 / あなたの成績 タブ（ログイン時のみ） */}
       {showTabs && (

@@ -7,6 +7,17 @@ description: Use this skill when the user wants to draft a daily tournament anno
 
 plo-game（BabyPLO）の毎日トナメ **開催告知** ツイート下書きを作るスキル。結果ツイート（`/tournament-tweet`）と対になる、開催前の宣伝用。
 
+## 運用コンテキスト
+
+毎日 **12:05 JST の scheduled task（`~/.claude/scheduled-tasks/0/`）** から呼ばれる。ローカル cron による
+自動運用（`server/scripts/ops/daily-ops-tick.sh`）は廃止済みで、告知の生成・投稿はこのスキルが唯一の経路。
+
+そのため:
+
+- **人がいない前提で動く**（Step 4 参照）。自動実行では確認を挟まず自分で1案を選んで投稿まで進める
+- 告知の前に **今日のトナメが本番に登録済みか**を必ず確認する（Step 1.2）
+- 投稿前に **今日分が既に投稿されていないか**を確認する（Step 5）。scheduled task は二重発火することがある
+
 ## 入力
 
 - 引数なし → 今日の日付で標準的な告知を生成
@@ -77,6 +88,23 @@ plo-game（BabyPLO）の毎日トナメ **開催告知** ツイート下書き�
 - 新機能・直近のアップデート（例: AIレビュー）
 - 気分・トーン寄せ（例: 月曜の憂鬱、連休中、平日夜）
 
+### Step 1.2: 今日のトナメの存在確認（必須）
+
+未登録のトナメを告知しないため、先に本番の状態を見る。
+
+```bash
+cd server && npx tsx scripts/ops/daily-ops-tick.ts --prod --dry-run       # 読み取りのみ。今日のトナメの有無を表示
+```
+
+`tournament=none` なら作成する（冪等なので作成済みなら何もしない）:
+
+```bash
+cd server && npx tsx scripts/ops/daily-ops-tick.ts --prod --only=create
+```
+
+曜日ごとのバリアント・トナメ名・設定値は `server/src/modules/tournament/weeklySchedule.ts` が単一の真実の源泉。
+下の「曜日別バリアント」表と食い違ったら **weeklySchedule.ts を正とする**。
+
 ### Step 1.5: シーズン文脈の取得（必須）
 
 1. `server/src/modules/season/seasonConfig.ts` を Read し、`CURRENT_SEASON` の `name` / `label` / `end` と、`end` に暫定コメントが付いていないかを確認する
@@ -130,12 +158,18 @@ https://baby-plo.app
 
 ### Step 4: 出力
 
-3案それぞれをコードブロックで並べて提示する。各案の前に **どのトーン狙いか**を1行で添える（例: `# 案1: 特典押し`）。最後に「どれをベースに詰めますか？」と一言だけ確認する。
+3案それぞれをコードブロックで並べて提示する。各案の前に **どのトーン狙いか**を1行で添える（例: `# 案1: 特典押し`）。
+
+- **対話実行**: 最後に「どれをベースに詰めますか？」と一言だけ確認する
+- **自動実行（scheduled task から「投稿まで」を指示されている場合）**: 確認を挟まず、その日の切り口として一番効く案を
+  自分で選んで Step 5 へ進む。選んだ理由を1行添える
 
 ファイル保存・メモリ保存は **しない**（毎日書き捨て）。
 
-### Step 5: 投稿（ユーザーが案を選んで投稿を指示した場合のみ）
+### Step 5: 投稿（案が決まり、投稿を指示されている場合のみ）
 
+0. **重複チェック（必須）**: scheduled task の二重発火があるため、過去セッションの記録から
+   今日分の告知の「投稿完了 tweetId」を検索する。見つかったら **投稿せず** その tweetId を報告して終了する
 1. **本文をファイルに書き出す**（scratchpad など。コマンドライン引数に本文を載せない）
 2. **添付画像を選ぶ**: `server/src/modules/tweet/assets/` にバリアント別の告知画像がある。`announceImage.ts` の解決順に合わせる:
    - 金曜 → `friday_plo4.jpeg`（Happy Friday 版）

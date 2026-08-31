@@ -69,18 +69,21 @@ export interface OnlineGameHookResult {
   startNextHand: () => void;
   pauseTable: () => void;
   resumeTable: () => void;
+  setRevealHands: (enabled: boolean) => void;
 }
 
-/** コーチング用ポーズの表示状態 */
+/** コーチング機能（ポーズ・ハンドオープン）の表示状態 */
 export interface PauseState {
   isPaused: boolean;
-  /** 自分がポーズを操作できるか（プライベート卓の作成者のみ true） */
+  /** 自分がコーチング機能を操作できるか（プライベート卓の作成者のみ true） */
   canControl: boolean;
   /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
   pausedUntil: number | null;
+  /** ハンド完了時に全員のホールカードが公開される設定になっている */
+  revealAllHands: boolean;
 }
 
-const NO_PAUSE: PauseState = { isPaused: false, canControl: false, pausedUntil: null };
+const NO_PAUSE: PauseState = { isPaused: false, canControl: false, pausedUntil: null, revealAllHands: false };
 
 // ============================================
 // メインフック
@@ -245,6 +248,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
   const resumeTable = useCallback(() => {
     wsService.resumeTable();
+  }, []);
+
+  const setRevealHands = useCallback((enabled: boolean) => {
+    wsService.setRevealHands(enabled);
   }, []);
 
   // ============================================
@@ -426,6 +433,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
                 isPaused: state.isPaused ?? false,
                 canControl: !!myOdId && state.pauseOwnerOdId === myOdId,
                 pausedUntil: state.pausedUntil ?? null,
+                revealAllHands: state.revealAllHands ?? false,
               }
             : NO_PAUSE
         );
@@ -506,6 +514,15 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // カードを公開（役名はhand_completeで表示）
         setShowdownCards(cardsMap);
         pendingShowdownHandNamesRef.current = handNamesMap;
+      },
+      onRevealHands: ({ players: revealed }) => {
+        // ハンド完了時のみ届く。ショーダウンで公開済みの席はそのまま、
+        // フォールドして伏せられていた席のカードを足す（役名は付けない）。
+        setShowdownCards(prev => {
+          const next = new Map(prev);
+          for (const p of revealed) next.set(p.seatIndex, p.cards);
+          return next;
+        });
       },
       onBusted: (message) => {
         setBustedMessage(message);
@@ -609,5 +626,6 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     startNextHand,
     pauseTable,
     resumeTable,
+    setRevealHands,
   };
 }

@@ -562,6 +562,56 @@ describe('TournamentInstance', () => {
       expect(eliminatedData.position).toBe(3);
     });
 
+    it('席のソケットが古くても、トーナメント側の最新ソケットに脱落通知が届く', () => {
+      // ハンド中に再接続するとテーブル席と TournamentPlayer でソケットが食い違いうる。
+      // 片方にしか送らないとクライアントは結果画面へ遷移できず卓画面で固まる。
+      const tournament = new TournamentInstance(io, createTestConfig({ registrationLevels: 1 }));
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      const staleSocket = sockets[2];
+      const freshSocket = createMockSocket();
+      tournament.getPlayer('player_2')!.socket = freshSocket;
+
+      // バスト時に席が持っていたのは古いソケット
+      (tournament as any).onPlayerBusted('player_2', 0, staleSocket, 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      const expected = expect.objectContaining({ position: 3, totalPlayers: 3 });
+      expect(freshSocket.emit).toHaveBeenCalledWith('tournament:eliminated', expected);
+      expect(staleSocket.emit).toHaveBeenCalledWith('tournament:eliminated', expected);
+    });
+
+    it('getEliminationInfo: 脱落前は null、脱落後は結果情報、リエントリーで再び null', () => {
+      const tournament = new TournamentInstance(
+        io,
+        createTestConfig({ registrationLevels: 1, allowReentry: true, maxReentries: 1 })
+      );
+      const { sockets } = startAndEnterNPlayers(tournament, 3);
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      expect(tournament.getEliminationInfo('player_2')).toBeNull();
+
+      simulateBust(tournament, 'player_2', 300);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 2500 },
+        { odId: 'player_1', seatIndex: 1, chips: 2000 },
+      ]);
+
+      expect(tournament.getEliminationInfo('player_2')).toEqual({
+        position: 3,
+        totalPlayers: 3,
+        prizeAmount: tournament.getPrizeForPosition(3),
+      });
+
+      // リエントリーすると再びプレイ中 → 結果情報は返さない
+      tournament.enterPlayer('player_2', 'Player 2', sockets[2]);
+      expect(tournament.getEliminationInfo('player_2')).toBeNull();
+    });
+
     it('レイト登録中の内部finishPositionは正しく保持される', () => {
       // レイト登録中でも内部順位は計算・保持される（トーナメント完了時に使うため）
       const tournament = new TournamentInstance(io, createTestConfig());

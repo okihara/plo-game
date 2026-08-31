@@ -81,15 +81,18 @@ export interface PendingAction {
 }
 
 /**
- * コーチング用ポーズの状態。プライベートキャッシュ卓のみで意味を持つ。
+ * コーチング機能（ポーズ・ハンドオープン）の状態。
+ * プライベートキャッシュ卓のみで意味を持つ。
  * ClientGameState への反映は StateTransformer が行う。
  */
-export interface PauseInfo {
+export interface CoachingInfo {
   isPaused: boolean;
-  /** ポーズを操作できるプレイヤー（プライベート卓の作成者）。いない卓では null */
+  /** コーチング機能を操作できるプレイヤー（プライベート卓の作成者）。いない卓では null */
   ownerOdId: string | null;
   /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
   pausedUntil: number | null;
+  /** ハンド完了時に全員のホールカードを公開する */
+  revealAllHands: boolean;
 }
 
 // ダッシュボード用：ゲーム状態デバッグ情報

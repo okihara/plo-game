@@ -1,5 +1,6 @@
 import { prisma } from '../../config/database.js';
 import type { NameplateDecoration } from '@plo/shared';
+import { SEASONS, seasonBadgePrefix } from '../season/seasonConfig.js';
 
 // --- バッジ定義 ---
 
@@ -26,7 +27,31 @@ interface BadgeMeta {
   showRank?: boolean;
 }
 
+/** シーズンRPバッジ（順位帯6種）のメタをまとめて生成する。新シーズンは SEASON_BADGE_PREFIXES に1行足すだけでよい。 */
+function seasonBadgeMeta(prefix: string, num: number): Record<string, BadgeMeta> {
+  const s = `シーズン${num}`;
+  const base = { category: 'season_rank' as const };
+  const img = (suffix: string) => `/images/badges/${prefix}_${suffix}.png`;
+  return {
+    [`${prefix}_no1`]:    { ...base, label: `${s} 1位`,   description: `${s} RPランキング 1位`,    flavor: 'シーズンの頂点に立った者',      imageUrl: img('no1') },
+    [`${prefix}_no2`]:    { ...base, label: `${s} 2位`,   description: `${s} RPランキング 2位`,    flavor: '頂まであと一歩',                imageUrl: img('no2') },
+    [`${prefix}_no3`]:    { ...base, label: `${s} 3位`,   description: `${s} RPランキング 3位`,    flavor: '表彰台の一角を勝ち取った',      imageUrl: img('no3') },
+    [`${prefix}_top10`]:  { ...base, label: `${s} TOP10`, description: `${s} RPランキング TOP10入り`, flavor: 'シーズンを駆け抜けた強者の証', imageUrl: img('top10'), showRank: true },
+    [`${prefix}_top30`]:  { ...base, label: `${s} TOP30`, description: `${s} RPランキング TOP30入り`, flavor: '上位30人に名を刻んだ',       imageUrl: img('top30'), showRank: true },
+    [`${prefix}_member`]: { ...base, label: `${s} 参加`,  description: `${s} トーナメント参加記念`, flavor: 'このシーズンを共に戦った証',    imageUrl: img('member') },
+  };
+}
+
+/** 定義済み全シーズンのバッジ接頭辞。シーズン定義は seasonConfig が単一の源泉。 */
+export const SEASON_BADGE_PREFIXES: string[] = SEASONS.map(seasonBadgePrefix);
+
+const SEASON_BADGE_META: Record<string, BadgeMeta> = Object.assign(
+  {},
+  ...SEASONS.map(season => seasonBadgeMeta(seasonBadgePrefix(season), season.id)),
+);
+
 const BADGE_META: Record<string, BadgeMeta> = {
+  ...SEASON_BADGE_META,
   hands_1000:    { category: 'hands', label: '1000 Hands',  description: '1000ハンドプレイ',             flavor: '紙束',                           imageUrl: '/images/badges/hands_1000.png' },
   hands_3000:    { category: 'hands', label: '3000 Hands',  description: '3000ハンドプレイ',             flavor: '辞書',                        imageUrl: '/images/badges/hands_3000.png' },
   hands_10000:   { category: 'hands', label: '10K Hands',   description: '10,000ハンドプレイ',           flavor: '図書館',                imageUrl: '/images/badges/hands_10000.png' },
@@ -39,12 +64,6 @@ const BADGE_META: Record<string, BadgeMeta> = {
   daily_rank_1:  { category: 'daily_rank',  label: 'Daily Crown',  description: 'デイリーランキング1位',  flavor: 'あの日のチップは全てあなたの手に',                           imageUrl: '/images/badges/daily_rank.png' },
   weekly_rank_1: { category: 'weekly_rank', label: 'Weekly Crown', description: 'ウィークリーランキング1位', flavor: '不眠不休の王',                          imageUrl: '/images/badges/weekly_rank.png' },
   tournament_no1: { category: 'tournament', label: 'Tournament Winner', description: 'トーナメント優勝',     flavor: '賞金を全て持っていった',                  imageUrl: '/images/badges/tournament_no1.png' },
-  season1_no1:    { category: 'season_rank', label: 'シーズン1 1位',   description: 'シーズン1 RPランキング 1位',    flavor: 'シーズンの頂点に立った者',       imageUrl: '/images/badges/season1_no1.png' },
-  season1_no2:    { category: 'season_rank', label: 'シーズン1 2位',   description: 'シーズン1 RPランキング 2位',    flavor: '頂まであと一歩',                 imageUrl: '/images/badges/season1_no2.png' },
-  season1_no3:    { category: 'season_rank', label: 'シーズン1 3位',   description: 'シーズン1 RPランキング 3位',    flavor: '表彰台の一角を勝ち取った',        imageUrl: '/images/badges/season1_no3.png' },
-  season1_top10:  { category: 'season_rank', label: 'シーズン1 TOP10', description: 'シーズン1 RPランキング TOP10入り', flavor: 'シーズンを駆け抜けた強者の証',  imageUrl: '/images/badges/season1_top10.png', showRank: true },
-  season1_top30:  { category: 'season_rank', label: 'シーズン1 TOP30', description: 'シーズン1 RPランキング TOP30入り', flavor: '上位30人に名を刻んだ',        imageUrl: '/images/badges/season1_top30.png', showRank: true },
-  season1_member: { category: 'season_rank', label: 'シーズン1 参加',  description: 'シーズン1 トーナメント参加記念', flavor: 'このシーズンを共に戦った証',      imageUrl: '/images/badges/season1_member.png' },
   first_penguin: { category: 'special', label: '1st Penguin', description: '2026/3/1以前に1ハンド以上をプレイ', flavor: '誰も知らないアプリに最初に飛び込んだ勇者の証 ありがとうございます', imageUrl: '/images/badges/penguin.png' },
   special_guest_ryutaro: { category: 'special', label: 'Special Guest りゅうたろう', description: 'スペシャルゲスト りゅうたろう 参加記念', flavor: 'ダブルブレスレットホルダーと卓を囲んで戦った証', imageUrl: '/images/badges/special_guest_ryutaro.png' },
 };
@@ -196,7 +215,7 @@ export async function getUserBadges(userId: string): Promise<{ type: string; ran
  * 新しい装飾は NameplateDecoration にリテラルを足した上でここに1エントリ追加する。
  */
 const NAMEPLATE_RULES: { decoration: NameplateDecoration; badgeTypes: string[] }[] = [
-  { decoration: 'season_top3', badgeTypes: ['season1_no1', 'season1_no2', 'season1_no3'] },
+  { decoration: 'season_top3', badgeTypes: SEASON_BADGE_PREFIXES.flatMap(p => [`${p}_no1`, `${p}_no2`, `${p}_no3`]) },
   { decoration: 'weekly_champion', badgeTypes: ['weekly_rank_1'] },
 ];
 

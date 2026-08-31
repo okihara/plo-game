@@ -134,14 +134,19 @@ export function registerTournamentHandlers(
         }
         player = tournament.getPlayer(odId)!;
       } else {
-        // リエントリーしていない eliminated → ソケット更新のみ（ルーム参加しない）
+        // リエントリーしていない eliminated → ソケット更新のみ
         player.socket = socket;
-        // eliminated かつリエントリー不可の場合はエラーを返す
-        if (!tournament.canReenter(odId)) {
-          socket.emit('tournament:error', { message: 'リエントリー上限に達しています' });
-          return;
-        }
         socket.join(`tournament:${data.tournamentId}`);
+
+        // 脱落情報を再送する。バスト時の tournament:eliminated を取りこぼした場合や
+        // 脱落後にゲーム画面のURLを開き直した場合、これがないとクライアントは
+        // 卓に着席していないまま「テーブルに接続中...」で固まってしまう。
+        const eliminationInfo = tournament.getEliminationInfo(odId);
+        if (eliminationInfo) {
+          socket.emit('tournament:eliminated', eliminationInfo);
+        }
+        socket.emit('tournament:state', tournament.getClientState());
+        return;
       }
     } else {
       // 既存プレイヤー: ソケット更新（ページ遷移でリスナーが変わるため）

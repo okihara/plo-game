@@ -358,12 +358,15 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       const { userId } = request.user as { userId: string };
       const tournamentId = request.params.id;
 
-      // そのトーナメントの自分のハンドを profit 付きで取得
+      // そのトーナメントの自分のハンドを profit 付きで取得。
+      // 絞り込み・ソートは HandHistoryPlayer の非正規化カラム
+      // (userId, tournamentId, createdAt) だけで完結させ、
+      // (userId, tournamentId, createdAt) インデックスに乗せる。
+      // handHistory リレーション経由で where/orderBy すると JOIN + ヒープ読みになり、
+      // ハンド数の多いユーザーで数十秒かかって結果画面がローディングのまま固まる。
       const playerHands = await prisma.handHistoryPlayer.findMany({
-        where: {
-          userId,
-          handHistory: { tournamentId },
-        },
+        where: { userId, tournamentId },
+        orderBy: { createdAt: 'desc' },
         include: {
           handHistory: {
             select: {
@@ -371,11 +374,9 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
               blinds: true,
               communityCards: true,
               potSize: true,
-              createdAt: true,
             },
           },
         },
-        orderBy: { handHistory: { createdAt: 'desc' } },
       });
 
       if (playerHands.length === 0) {

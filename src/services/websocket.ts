@@ -52,6 +52,8 @@ export type WsListeners = {
     winners: { playerId: string; amount: number; handName: string; cards: Card[]; hiLoType?: 'high' | 'low' | 'scoop' }[];
     players: { seatIndex: number; odId: string; cards: Card[]; handName: string }[];
   }) => void;
+  /** コーチング用ハンドオープン: ハンド完了時に届く全員（フォールド済み含む）のホールカード */
+  onRevealHands?: (data: { players: { seatIndex: number; cards: Card[] }[] }) => void;
   onHandComplete?: (winners: { playerId: string; amount: number; handName: string; hiLoType?: 'high' | 'low' | 'scoop' }[]) => void;
   onTableChanged?: (tableId: string, seat: number) => void;
   onBusted?: (message: string) => void;
@@ -281,6 +283,11 @@ class WebSocketService {
         this.emit('onShowdown', { winners, players });
       });
 
+      this.socket.on('game:reveal_hands', (data) => {
+        wsLog('game:reveal_hands', data);
+        this.emit('onRevealHands', data);
+      });
+
       this.socket.on('game:hand_complete', ({ winners }) => {
         wsLog('game:hand_complete', { winners });
         this.emit('onHandComplete', winners);
@@ -458,6 +465,11 @@ class WebSocketService {
 
   resumeTable(): void {
     this.socket?.emit('table:resume');
+  }
+
+  /** コーチング用ハンドオープンの ON/OFF（プライベート卓の作成者のみサーバー側で受理される） */
+  setRevealHands(enabled: boolean): void {
+    this.socket?.emit('table:reveal_hands', { enabled });
   }
 
   joinSpectate(tableId: string, inviteCode?: string): void {

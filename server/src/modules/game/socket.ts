@@ -22,6 +22,7 @@ import {
   handlePrivateJoin,
   handleTablePause,
   handleTableResume,
+  handleTableRevealHands,
   handleSpectateJoin,
   handleSpectateLeave,
   handleSpectatorDisconnect,
@@ -158,6 +159,8 @@ export function setupGameSocket(io: Server, fastify: FastifyInstance): GameSocke
     ));
     socket.on('table:pause', wrapSocketHandler(socket, 'table:pause', () => handleTablePause(socket, tableManager)));
     socket.on('table:resume', wrapSocketHandler(socket, 'table:resume', () => handleTableResume(socket, tableManager)));
+    socket.on('table:reveal_hands', wrapSocketHandler(socket, 'table:reveal_hands', (data: unknown) =>
+      handleTableRevealHands(socket, data as { enabled: boolean }, tableManager)));
 
     // トーナメントイベント登録
     registerTournamentHandlers(socket, tournamentManager, tableManager);

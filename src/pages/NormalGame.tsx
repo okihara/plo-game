@@ -46,6 +46,7 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
     handleFastFold,
     pauseTable,
     resumeTable,
+    setRevealHands,
   } = useOnlineGameState(blinds, isFastFold, privateMode, variant);
 
   // 接続と参加
@@ -107,6 +108,7 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
           pauseState={pauseState}
           onPause={pauseTable}
           onResume={resumeTable}
+          onToggleRevealHands={setRevealHands}
           isChangingTable={isChangingTable}
           isWaitingForPlayers={isWaitingForPlayers}
           seatedPlayerCount={seatedPlayerCount}

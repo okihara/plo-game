@@ -8,7 +8,7 @@
  *   公開ランキング応答（GET /api/season）では省き、GET /api/season/player/:userId で本人ぶんだけ返す。
  */
 import type { PrismaClient } from '@prisma/client';
-import { CURRENT_SEASON } from './seasonConfig.js';
+import { CURRENT_SEASON, seasonBadgePrefix } from './seasonConfig.js';
 import { computeSeasonRanking } from './computeSeasonRanking.js';
 import { computeSeasonAwards, type Award, type MateRef } from './computeSeasonAwards.js';
 import { seasonBadgeTypeForRank, badgeDisplayMeta } from '../badges/badgeService.js';
@@ -183,7 +183,7 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       handsScanned,
     },
     ranking: topRanking.map((u, i) => {
-      const badge = badgeDisplayMeta(seasonBadgeTypeForRank(CURRENT_SEASON.badgePrefix, i + 1));
+      const badge = badgeDisplayMeta(seasonBadgeTypeForRank(seasonBadgePrefix(CURRENT_SEASON), i + 1));
       return {
         position: i + 1,
         userId: u.userId,
