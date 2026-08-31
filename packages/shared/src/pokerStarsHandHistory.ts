@@ -35,6 +35,8 @@ export interface PokerStarsHandInput {
   winners: string[];
   actions: PokerStarsHandAction[];
   dealerPosition: number;
+  /** 卓の席数（6 or 9）。未指定の旧データは席番号から推定する */
+  maxPlayers?: number;
   createdAt: string | Date;
   players: PokerStarsHandPlayer[];
   /** PokerStars ヘッダーで表示する variant 名のキー。
@@ -99,7 +101,8 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   const variantLabel = VARIANT_POKERSTARS_LABEL[hand.variant ?? 'plo'];
   lines.push(`PokerStars Hand #${handNum}: ${variantLabel} (${sb}/${bb}) - ${dateStr}`);
-  const tableMax = allSeats.some(s => s > 5) ? 9 : 6;
+  // 卓の席数はハンド履歴に保存された値を使う。旧データ（未保存）は席番号から推定
+  const tableMax = hand.maxPlayers ?? (allSeats.some(s => s > 5) ? 9 : 6);
   lines.push(`Table 'PLO Game' ${tableMax}-max Seat #${dealerPosition + 1} is the button`);
 
   for (const p of sortedPlayers) {

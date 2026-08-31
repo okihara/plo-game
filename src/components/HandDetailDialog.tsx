@@ -46,6 +46,8 @@ export interface HandDetail {
   winners: string[];
   actions: HandDetailAction[];
   dealerPosition: number;
+  /** 卓の席数（6 or 9）。旧データは未定義 = 6-max */
+  maxPlayers?: number;
   createdAt: string;
   players: HandDetailPlayer[];
   shareToken?: string;
@@ -158,8 +160,9 @@ function complementMissingFolds(
   if (missingSeats.size === 0) return actions;
 
   // プリフロのアクション順を算出: UTG→...→BTN→SB→BB
+  const seatMod = getSeatRingModulo(dealerPosition, players.map(p => p.seatPosition));
   const sortedSeats = [...new Set(players.map(p => p.seatPosition))].sort(
-    (a, b) => ((a - dealerPosition + 6) % 6) - ((b - dealerPosition + 6) % 6),
+    (a, b) => ((a - dealerPosition + seatMod) % seatMod) - ((b - dealerPosition + seatMod) % seatMod),
   );
   const n = sortedSeats.length;
   const preflopOrder = n <= 2

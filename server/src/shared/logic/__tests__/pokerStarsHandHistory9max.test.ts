@@ -36,6 +36,18 @@ describe('toPokerStarsHandText (9-max)', () => {
     expect(text).toContain("Table 'PLO Game' 9-max Seat #1 is the button");
   });
 
+  it('maxPlayers=9 なら seat 0-5 だけのハンドでも 9-max ヘッダーになる', () => {
+    const hand = { ...makeHand([0, 1, 2], 0), maxPlayers: 9 };
+    const text = toPokerStarsHandText(hand);
+    expect(text).toContain("Table 'PLO Game' 9-max Seat #1 is the button");
+  });
+
+  it('maxPlayers=6（保存済みの旧6-max卓）は 6-max ヘッダーになる', () => {
+    const hand = { ...makeHand([0, 1, 2, 3, 4, 5], 1), maxPlayers: 6 };
+    const text = toPokerStarsHandText(hand);
+    expect(text).toContain("Table 'PLO Game' 6-max Seat #2 is the button");
+  });
+
   it('9人でポジションラベルが UTG2/LJ まで正しく並ぶ', () => {
     const text = toPokerStarsHandText(makeHand([0, 1, 2, 3, 4, 5, 6, 7, 8], 0));
     // BTN=seat0, SB=seat1, BB=seat2, UTG=seat3, UTG1=seat4, UTG2=seat5, LJ=seat6, HJ=seat7, CO=seat8
