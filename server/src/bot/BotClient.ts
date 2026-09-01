@@ -733,6 +733,19 @@ export class BotClient {
     this.socket.emit('matchmaking:join', { blinds, isFastFold, variant: v });
   }
 
+  /**
+   * 招待コードでプライベートルームに着席する（マッチメイキングを経由しない）。
+   * 着席可否はサーバーの private:join 応答（table:joined / table:error）で決まる。
+   */
+  async joinPrivateRoom(inviteCode: string): Promise<void> {
+    if (!this.socket || !this.isConnected) {
+      throw new Error('Not connected to server');
+    }
+
+    console.log(`[${this.config.name}] Joining private room ${inviteCode}`);
+    this.socket.emit('private:join', { inviteCode });
+  }
+
   async joinTournament(tournamentId: string): Promise<void> {
     if (!this.socket || !this.isConnected || !this.authToken) {
       throw new Error('Not connected to server or no auth token');
