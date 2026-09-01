@@ -3,7 +3,8 @@ import { wsService } from '../services/websocket';
 import { playActionSound, playDealSound, playMyTurnSound } from '../services/actionSound';
 import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState } from '../logic/types';
-import { convertClientStateToGameState } from './onlineGameShared';
+import { convertClientStateToGameState, derivePauseState, NO_PAUSE } from './onlineGameShared';
+import type { PauseState } from './onlineGameShared';
 
 // ============================================
 // 型定義
@@ -71,19 +72,6 @@ export interface OnlineGameHookResult {
   resumeTable: () => void;
   setRevealHands: (enabled: boolean) => void;
 }
-
-/** コーチング機能（ポーズ・ハンドオープン）の表示状態 */
-export interface PauseState {
-  isPaused: boolean;
-  /** 自分がコーチング機能を操作できるか（プライベート卓の作成者のみ true） */
-  canControl: boolean;
-  /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
-  pausedUntil: number | null;
-  /** ハンド完了時に全員のホールカードが公開される設定になっている */
-  revealAllHands: boolean;
-}
-
-const NO_PAUSE: PauseState = { isPaused: false, canControl: false, pausedUntil: null, revealAllHands: false };
 
 // ============================================
 // メインフック
@@ -426,17 +414,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
 
         // ポーズ状態を更新（ポーズを扱わない卓では常に NO_PAUSE 相当）
-        const myOdId = wsService.getPlayerId();
-        setPauseState(
-          state.isPaused || state.pauseOwnerOdId
-            ? {
-                isPaused: state.isPaused ?? false,
-                canControl: !!myOdId && state.pauseOwnerOdId === myOdId,
-                pausedUntil: state.pausedUntil ?? null,
-                revealAllHands: state.revealAllHands ?? false,
-              }
-            : NO_PAUSE
-        );
+        setPauseState(derivePauseState(state, wsService.getPlayerId()));
       },
       onHoleCards: ({ cards }) => {
         // サーバーは自席のカードしか送らないのでseatIndexチェック不要

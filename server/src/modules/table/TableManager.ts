@@ -2,6 +2,7 @@ import { Server } from 'socket.io';
 import { GameVariant, getVariantConfig } from '../../shared/logic/types.js';
 import { TableInstance } from './TableInstance.js';
 import { NullHandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
+import { TableLifecycleCallbacks } from './types.js';
 import { TABLE_CONSTANTS } from './constants.js';
 
 export class TableManager {
@@ -10,10 +11,28 @@ export class TableManager {
   private inviteCodeToTable: Map<string, string> = new Map(); // inviteCode -> tableId
   /** 切断猶予中のクリーンアップタイマー（odId -> Timer）。 */
   private disconnectTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
+  /** 無人になったプライベート卓の削除待ちタイマー（tableId -> Timer）。 */
+  private emptyPrivateTimers: Map<string, ReturnType<typeof setTimeout>> = new Map();
   private io: Server;
 
   constructor(io: Server) {
     this.io = io;
+  }
+
+  /**
+   * キャッシュゲームのバスト処理: 通知・離席に加えて playerTables の紐付きも解除する。
+   * 解除しないと matchmaking:join が「着席済み」と誤判定し、再参加できなくなる。
+   * @param onBustsProcessed バスト処理ループ完了後の追加処理（プライベート卓の寿命再評価など）
+   */
+  private createCashLifecycleCallbacks(onBustsProcessed?: () => void): TableLifecycleCallbacks {
+    return {
+      onPlayerBusted: (odId, _seatIndex, socket) => {
+        socket?.emit('table:busted', { message: 'チップがなくなりました' });
+        this.removePlayerFromTracking(odId);
+        return true; // TableInstanceがunseatPlayerを呼ぶ
+      },
+      ...(onBustsProcessed ? { onBustsProcessed } : {}),
+    };
   }
 
   // Create a new table
@@ -25,15 +44,7 @@ export class TableManager {
       variant,
       historyRecorder,
       isHorse,
-      // キャッシュゲームのバスト処理: 通知・離席に加えて playerTables の紐付きも解除する。
-      // 解除しないと matchmaking:join が「着席済み」と誤判定し、再参加できなくなる
-      lifecycleCallbacks: {
-        onPlayerBusted: (odId, _seatIndex, socket) => {
-          socket?.emit('table:busted', { message: 'チップがなくなりました' });
-          this.removePlayerFromTracking(odId);
-          return true; // TableInstanceがunseatPlayerを呼ぶ
-        },
-      },
+      lifecycleCallbacks: this.createCashLifecycleCallbacks(),
     });
     this.tables.set(table.id, table);
     return table;
@@ -114,6 +125,7 @@ export class TableManager {
 
   // Remove a table
   public removeTable(tableId: string): void {
+    this.cancelPrivateTableCleanup(tableId);
     const table = this.tables.get(tableId);
     if (!table) {
       console.warn(`[TableManager] removeTable: table ${tableId} not found`);
@@ -202,7 +214,18 @@ export class TableManager {
   /** @param ownerOdId 作成者。コーチング用ポーズを操作できる唯一のプレイヤー */
   public createPrivateTable(blinds: string, ownerOdId: string): { table: TableInstance; inviteCode: string } {
     const inviteCode = this.generateInviteCode();
-    const table = new TableInstance(this.io, blinds, false, { isPrivate: true, inviteCode, ownerOdId });
+    // バストで全員いなくなるケースは unseatAndCashOut を通らないため、
+    // バスト処理の完了時点でも寿命を評価する
+    let created: TableInstance | null = null;
+    const table = new TableInstance(this.io, blinds, false, {
+      isPrivate: true,
+      inviteCode,
+      ownerOdId,
+      lifecycleCallbacks: this.createCashLifecycleCallbacks(() => {
+        if (created) this.syncPrivateTableLifetime(created);
+      }),
+    });
+    created = table;
     this.tables.set(table.id, table);
     this.inviteCodeToTable.set(inviteCode, table.id);
     return { table, inviteCode };
@@ -214,29 +237,40 @@ export class TableManager {
     return this.tables.get(tableId);
   }
 
-  // Clean up empty tables (except one for each blind level)
-  public cleanupEmptyTables(): void {
-    const tablesByBlinds: Map<string, TableInstance[]> = new Map();
+  /**
+   * プライベート卓の寿命を現在の在席状況に合わせて更新する。
+   * 無人なら PRIVATE_EMPTY_TTL_MS 後の削除を予約し、誰かが座っていれば予約を取り消す。
+   * 着席・離席のどちらの後に呼んでも良い（冪等）。
+   */
+  public syncPrivateTableLifetime(table: TableInstance): void {
+    if (!table.isPrivate) return;
 
-    for (const table of this.tables.values()) {
-      // プライベートテーブルは空なら即削除
-      if (table.isPrivate && table.getPlayerCount() === 0) {
-        this.removeTable(table.id);
-        continue;
-      }
-
-      const key = `${table.blinds}-${table.isFastFold}-${table.variant}-${table.isHorse}`;
-      const tables = tablesByBlinds.get(key) || [];
-      tables.push(table);
-      tablesByBlinds.set(key, tables);
+    if (table.getPlayerCount() > 0) {
+      this.cancelPrivateTableCleanup(table.id);
+      return;
     }
+    if (this.emptyPrivateTimers.has(table.id)) return;
 
-    for (const [_, tables] of tablesByBlinds) {
-      // Keep at least one table per blind level
-      const emptyTables = tables.filter(t => t.getPlayerCount() === 0);
-      for (let i = 1; i < emptyTables.length; i++) {
-        this.removeTable(emptyTables[i].id);
-      }
-    }
+    const timer = setTimeout(() => {
+      this.emptyPrivateTimers.delete(table.id);
+      const current = this.tables.get(table.id);
+      if (!current || current.getPlayerCount() > 0) return;
+      console.log(`[Private] Table ${current.id} (code: ${current.inviteCode}) removed (empty for TTL)`);
+      this.removeTable(current.id);
+    }, TABLE_CONSTANTS.PRIVATE_EMPTY_TTL_MS);
+
+    this.emptyPrivateTimers.set(table.id, timer);
+    console.log(
+      `[Private] Table ${table.id} (code: ${table.inviteCode}) is empty, closing in ${TABLE_CONSTANTS.PRIVATE_EMPTY_TTL_MS}ms`
+    );
+  }
+
+  /** 空室削除の予約を取り消す。予約が存在した場合は true。 */
+  private cancelPrivateTableCleanup(tableId: string): boolean {
+    const timer = this.emptyPrivateTimers.get(tableId);
+    if (!timer) return false;
+    clearTimeout(timer);
+    this.emptyPrivateTimers.delete(tableId);
+    return true;
   }
 }

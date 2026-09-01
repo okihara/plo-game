@@ -44,11 +44,8 @@ export async function unseatAndCashOut(table: TableInstance, odId: string, table
   if (result) {
     await cashOutPlayer(result.odId, result.chips, table.id);
   }
-  // プライベートテーブルが空になったら自動削除
-  if (table.isPrivate && table.getPlayerCount() === 0) {
-    console.log(`[Private] Table ${table.id} (code: ${table.inviteCode}) removed (empty)`);
-    tableManager.removeTable(table.id);
-  }
+  // プライベートテーブルは無人になっても即削除せず、TTL 付きで削除を予約する
+  tableManager.syncPrivateTableLifetime(table);
 }
 
 export async function handleTableLeave(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
@@ -74,9 +71,14 @@ export function handleTableResume(socket: AuthenticatedSocket, tableManager: Tab
 }
 
 function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManager, command: 'pause' | 'resume'): void {
-  const table = tableManager.getPlayerTable(socket.odId!);
+  // コーチは席を立って観戦から進行を止めることがあるため、着席卓・観戦卓の両方を見る。
+  // 実際に操作できるかは TableInstance 側の canControlPause（作成者のみ）が判定する。
+  // odSpectatingTableId は観戦接続でのみ立つため、観戦中の卓を優先して解決する
+  const table =
+    (socket.odSpectatingTableId ? tableManager.getTable(socket.odSpectatingTableId) : undefined) ??
+    tableManager.getPlayerTable(socket.odId!);
   if (!table) {
-    socket.emit('table:error', { message: 'テーブルに着席していません' });
+    socket.emit('table:error', { message: 'テーブルが見つかりません' });
     return;
   }
 
@@ -572,6 +574,13 @@ export async function handlePrivateJoin(
       return;
     }
 
+    // await の間に空室 TTL が満了して卓が消えている可能性がある
+    if (!tableManager.getTable(table.id)) {
+      await cashOutPlayer(socket.odId!, buyIn);
+      socket.emit('table:error', { message: 'テーブルが見つかりません' });
+      return;
+    }
+
     // Seat player
     const profile = await buildPlayerProfile(socket.odId!, user);
     const seatNumber = table.seatPlayer({
@@ -584,6 +593,8 @@ export async function handlePrivateJoin(
 
     if (seatNumber !== null) {
       tableManager.setPlayerTable(socket.odId!, table.id);
+      // 無人期間中に予約された削除を取り消す
+      tableManager.syncPrivateTableLifetime(table);
       socket.emit('private:created', { tableId: table.id, inviteCode });
       table.triggerMaybeStartHand();
     } else {

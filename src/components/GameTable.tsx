@@ -12,7 +12,8 @@ import { usePlayerLabels } from '../hooks/usePlayerLabels';
 import { HandHistoryPanel } from './HandHistoryPanel';
 import { BustedScreen } from './BustedScreen';
 import { SettingsPopup } from './SettingsPopup';
-import type { LastAction, ActionTimeoutAt, PauseState } from '../hooks/useOnlineGameState';
+import type { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
+import type { PauseState } from '../hooks/onlineGameShared';
 import type { Card, Action, GameState } from '../logic/types';
 
 const NOTICE_DISPLAY_MS = 3000;
@@ -107,11 +108,19 @@ export function GameTable({
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
-  const [inviteCopied, setInviteCopied] = useState(false);
+  const [copiedLink, setCopiedLink] = useState<'invite' | 'watch' | null>(null);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [centerNotice, setCenterNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  /** 招待/観戦リンクをクリップボードへ。押した方のボタンだけ「コピー済み」に切り替える */
+  const copyLink = useCallback((kind: 'invite' | 'watch', url: string) => {
+    navigator.clipboard.writeText(url).then(() => {
+      setCopiedLink(kind);
+      setTimeout(() => setCopiedLink(null), NOTICE_DISPLAY_MS);
+    });
+  }, []);
 
   const handlePlayerClick = useCallback((player: PlayerType) => {
     setSelectedPlayer(player);
@@ -318,19 +327,28 @@ export function GameTable({
                     {privateTableInfo.inviteCode}
                   </p>
                   <button
-                    onClick={() => {
-                      const url = `${window.location.origin}/private/${privateTableInfo.inviteCode}`;
-                      navigator.clipboard.writeText(url).then(() => {
-                        setInviteCopied(true);
-                        setTimeout(() => setInviteCopied(false), NOTICE_DISPLAY_MS);
-                      });
-                    }}
+                    onClick={() => copyLink('invite', `${window.location.origin}/private/${privateTableInfo.inviteCode}`)}
                     className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
                     style={{ fontSize: '2.8cqw' }}
                   >
-                    {inviteCopied
+                    {copiedLink === 'invite'
                       ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
                       : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
+                  </button>
+                  {/* コーチが席を外して観戦に回るための導線（観戦席からもポーズを操作できる） */}
+                  <button
+                    onClick={() =>
+                      copyLink(
+                        'watch',
+                        `${window.location.origin}/watch/${gameState.tableId}?invite=${privateTableInfo.inviteCode}`
+                      )
+                    }
+                    className="w-full mt-[2cqw] px-[4cqw] py-[2cqw] bg-white text-forest border border-forest rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                    style={{ fontSize: '2.8cqw' }}
+                  >
+                    {copiedLink === 'watch'
+                      ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                      : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 観戦リンクをコピー</>}
                   </button>
                 </div>
               </>
@@ -339,8 +357,8 @@ export function GameTable({
         </div>
       )}
 
-      {/* コーチング操作（操作できるのはプライベート卓の作成者のみ） */}
-      {!isSpectator && pauseState?.canControl && (
+      {/* コーチング操作（操作できるのはプライベート卓の作成者のみ。観戦中でも操作可） */}
+      {pauseState?.canControl && (
         <div className="absolute top-[16cqh] right-[4cqw] z-[160] flex flex-col items-end gap-[1.5cqw]">
           <button
             onClick={pauseState.isPaused ? onResume : onPause}
