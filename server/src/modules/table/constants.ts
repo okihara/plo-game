@@ -50,4 +50,10 @@ export const TABLE_CONSTANTS = {
    * 席に戻れる。クライアントの auto-reconnect (約15秒) + ユーザー操作の余裕を見て 30 秒。
    */
   DISCONNECT_GRACE_MS: 30_000,
+
+  /**
+   * プライベート卓が無人になってから削除するまでの猶予。コーチングで全員が一旦抜けても
+   * 招待コードのまま再集合できるように、即削除はせずこの時間だけ卓を残す。
+   */
+  PRIVATE_EMPTY_TTL_MS: 30 * 60_000,
 } as const;

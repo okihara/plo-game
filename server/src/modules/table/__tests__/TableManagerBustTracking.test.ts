@@ -85,4 +85,34 @@ describe('TableManager バスト時の紐付き解除', () => {
       expect(tm.getPlayerTable(odId)).toBe(table);
     }
   });
+
+  // プライベート卓は以前 lifecycleCallbacks を渡しておらず、バスト時に紐付きが残っていた
+  it('プライベート卓でも同じく紐付きが解除され、残りの在席者がいる間は卓が残る', async () => {
+    const io = createMockIO();
+    const tm = new TableManager(io);
+    const { table } = tm.createPrivateTable('1/2', 'owner');
+
+    const { odIds, sockets, seatMap } = seatNPlayers(table, 3, 600);
+    for (const odId of odIds) {
+      tm.setPlayerTable(odId, table.id);
+    }
+    table.triggerMaybeStartHand();
+
+    const target = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(target).not.toBeNull();
+    table.debugSetChips(target!.odId, 0);
+    table.handleAction(target!.odId, 'fold', 0);
+
+    const next = findCurrentPlayer(table, odIds, sockets, seatMap);
+    expect(next).not.toBeNull();
+    table.handleAction(next!.odId, 'fold', 0);
+
+    await vi.advanceTimersByTimeAsync(2000);
+    await vi.advanceTimersByTimeAsync(2000);
+
+    expect(table.isPlayerSeated(target!.odId)).toBe(false);
+    expect(tm.getPlayerTable(target!.odId)).toBeUndefined();
+    // まだ2人座っているので卓は残る
+    expect(tm.getTable(table.id)).toBeDefined();
+  });
 });

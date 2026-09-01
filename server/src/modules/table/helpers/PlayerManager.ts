@@ -31,6 +31,15 @@ export class PlayerManager {
   }
 
   /**
+   * 指定ユーザーの「現役席」があるか。
+   * leftForFastFold の席は他テーブルへ移動済みでハンド終了時に解放される表示用の残留席なので、
+   * 在席とはみなさない。
+   */
+  hasActiveSeat(odId: string): boolean {
+    return this.seats.some(s => s?.odId === odId && !s.leftForFastFold);
+  }
+
+  /**
    * プレイヤーを着席させる
    */
   seatPlayer(params: SeatPlayerParams): number | null {

@@ -1,5 +1,5 @@
 import { Server, Socket } from 'socket.io';
-import { GameState, Action, GameVariant, getVariantConfig } from '../../shared/logic/types.js';
+import { GameState, Action, Card, GameVariant, getVariantConfig } from '../../shared/logic/types.js';
 import { isDrawStreet } from '../../shared/logic/drawEngine.js';
 import { getActivePlayers, calculateSidePots } from '../../shared/logic/gameEngine.js';
 import { ClientGameState } from '../../shared/types/websocket.js';
@@ -145,6 +145,21 @@ export class TableInstance {
     skipJoinedEmit?: boolean;
   }): number | null {
     const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit } = params;
+
+    // 二重着席ガード: 同じユーザーの現役席が既にあるなら着席させない。
+    // 同一ユーザーの join（matchmaking:join / private:join 等）が並行して走った場合の最後の防衛線。
+    // 一度二重に座ると playerTables（odId→tableId が1件）と unseatPlayer（1席のみ解放）の
+    // 構造上、片方の席が誰にも回収されない永久ゴーストになるため、ここで必ず塞ぐ。
+    // 呼び出し元はいずれも null を受けてバイインを返金する。
+    // 対象外:
+    // - leftForFastFold の残留席（他卓へ移動済み、ハンド終了時に解放される表示用の席）
+    // - トーナメント卓（バスト直後の席が解放される前にリエントリーで正当に再着席することがある。
+    //   着席は TournamentInstance が管理しており、join ハンドラの競合経路を通らない）
+    if (this.tournamentId === null && this.playerManager.hasActiveSeat(odId)) {
+      console.warn(`[Table ${this.id}] seatPlayer rejected: ${odId} is already seated`);
+      return null;
+    }
+
     const seatIndex = this.playerManager.seatPlayer({
       odId,
       odName,
@@ -480,6 +495,15 @@ export class TableInstance {
     }
     if (this.paused) return { ok: true };
 
+    this.doPause(`by ${odId}`);
+    return { ok: true };
+  }
+
+  /**
+   * ポーズの実処理（作成者の操作・ハンドオープン中の自動ポーズの両方から呼ばれる）。
+   * 卓が凍ったまま放置されないよう、必ず自動解除タイマーを張る。
+   */
+  private doPause(reason: string): void {
     this.paused = true;
     this.actionController.pauseActionTimer();
     this.pausedUntil = Date.now() + TABLE_CONSTANTS.PAUSE_MAX_MS;
@@ -488,9 +512,19 @@ export class TableInstance {
       this.doResume();
     }, TABLE_CONSTANTS.PAUSE_MAX_MS);
 
-    console.log(`[Table ${this.id}] Paused by ${odId}`);
+    console.log(`[Table ${this.id}] Paused (${reason})`);
     this.broadcastGameState();
-    return { ok: true };
+  }
+
+  /**
+   * ハンドオープン中はハンド終了時に自動でポーズし、公開されたハンドを検討する時間を作る。
+   * 作成者が「再開」を押すまで次のハンドは始まらない（15分で自動解除）。
+   * @returns 自動ポーズしたら true
+   */
+  private autoPauseForHandReview(): boolean {
+    if (!this.revealAllHands || this.paused) return false;
+    this.doPause('hand review');
+    return true;
   }
 
   /** ポーズを解除して進行を再開する */
@@ -759,15 +793,35 @@ export class TableInstance {
    * ハンド完了後にのみ呼ぶこと（進行中に呼ぶとプレイ中のカードが漏れる）。
    */
   private emitRevealedHands(): void {
-    if (!this.revealAllHands || !this.gameState || !this.gameState.isHandComplete) return;
+    const players = this.buildRevealedHands();
+    if (!players) return;
+
+    this.broadcast.emitToRoom('game:reveal_hands', { players });
+  }
+
+  /**
+   * 公開できるハンドの一覧。公開条件を満たさなければ null。
+   * ハンド完了後のみ値が返るので、検討ポーズ中に後から入ってきた人へも同じものを送れる。
+   */
+  private buildRevealedHands(): { seatIndex: number; cards: Card[] }[] | null {
+    if (!this.revealAllHands || !this.gameState || !this.gameState.isHandComplete) return null;
 
     const seats = this.playerManager.getSeats();
     const players = this.gameState.players
       .filter((p, seatIndex) => !!p && p.holeCards.length > 0 && !!seats[seatIndex])
       .map(p => ({ seatIndex: p.id, cards: p.holeCards }));
-    if (players.length === 0) return;
+    return players.length > 0 ? players : null;
+  }
 
-    this.broadcast.emitToRoom('game:reveal_hands', { players });
+  /**
+   * 公開済みのハンドを個別のソケットへ送る。
+   * game:reveal_hands は公開時の一度きりのイベントなので、後から入ってきた観戦者・
+   * 再接続したプレイヤーには参加時に送り直さないと、検討ポーズ中でも裏面のままになる。
+   */
+  private sendRevealedHandsToSocket(socket: Socket): void {
+    const players = this.buildRevealedHands();
+    if (!players) return;
+    socket.emit('game:reveal_hands', { players });
   }
 
   public getSpectatorCount(): number {
@@ -815,6 +869,7 @@ export class TableInstance {
       socket.join(this.roomName);
     }
     this.sendCurrentHoleCardsToSpectator(socket);
+    this.sendRevealedHandsToSocket(socket);
     return { ok: true };
   }
 
@@ -1536,8 +1591,15 @@ export class TableInstance {
     // isHandInProgress=false の状態をブロードキャスト（待機中UIの表示に必要）
     this.broadcastGameState();
 
-    // ハンド終了後のGameStateをクリア（前ハンドのcommunityCards等が残らないように）
-    this.gameState = null;
+    // ハンドオープン中は次のハンドへ自動で進まず、卓を止めて検討時間を作る
+    const pausedForReview = this.autoPauseForHandReview();
+
+    // ハンド終了後のGameStateをクリア（前ハンドのcommunityCards等が残らないように）。
+    // 検討ポーズ中は公開されたハンドと一緒にボードも見られるよう残す。
+    // 次のハンドが始まるときに startNewHand が作り直すので残しても影響はない。
+    if (!pausedForReview) {
+      this.gameState = null;
+    }
 
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {

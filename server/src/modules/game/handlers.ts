@@ -35,6 +35,26 @@ function resolveTableInstance(
   return tournamentManager.findTableInstanceByTableId(tableId);
 }
 
+/**
+ * 同一ユーザーの着席・離席処理を直列化するためのチェーン（odId → 実行中 Promise）。
+ *
+ * join 系ハンドラは「着席チェック → await（DB照会・バイイン控除）→ 着席」という流れのため、
+ * 同じユーザーのリクエストが並行して走ると両方が着席チェックを素通りして二重着席する
+ * （例: クライアントの二重マウントによる private:join の連射）。
+ * odId 単位で順番に実行すれば、2本目は1本目の着席完了後にチェックを行うので安全になる。
+ */
+const playerOpChains = new Map<string, Promise<void>>();
+
+function serializePlayerOp(odId: string, fn: () => Promise<void>): Promise<void> {
+  const prev = playerOpChains.get(odId) ?? Promise.resolve();
+  const next = prev.then(fn, fn); // 前段の成否によらず次を実行する
+  const tail = next.catch(() => {}).finally(() => {
+    if (playerOpChains.get(odId) === tail) playerOpChains.delete(odId);
+  });
+  playerOpChains.set(odId, tail);
+  return next;
+}
+
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
   // unseat 経路に乗ったら、もう grace 復帰の対象ではないのでタイマーを止める
@@ -44,14 +64,15 @@ export async function unseatAndCashOut(table: TableInstance, odId: string, table
   if (result) {
     await cashOutPlayer(result.odId, result.chips, table.id);
   }
-  // プライベートテーブルが空になったら自動削除
-  if (table.isPrivate && table.getPlayerCount() === 0) {
-    console.log(`[Private] Table ${table.id} (code: ${table.inviteCode}) removed (empty)`);
-    tableManager.removeTable(table.id);
-  }
+  // プライベートテーブルは無人になっても即削除せず、TTL 付きで削除を予約する
+  tableManager.syncPrivateTableLifetime(table);
 }
 
-export async function handleTableLeave(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
+export function handleTableLeave(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handleTableLeaveImpl(socket, tableManager));
+}
+
+async function handleTableLeaveImpl(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
   const table = tableManager.getPlayerTable(socket.odId!);
   if (table) {
     await unseatAndCashOut(table, socket.odId!, tableManager);
@@ -73,10 +94,23 @@ export function handleTableResume(socket: AuthenticatedSocket, tableManager: Tab
   applyPauseCommand(socket, tableManager, 'resume');
 }
 
+/**
+ * コーチング操作（ポーズ・ハンドオープン）の対象卓を解決する。
+ * コーチは席を立って観戦から操作することがあるため、着席卓・観戦卓の両方を見る。
+ * odSpectatingTableId は観戦接続でのみ立つので、観戦中の卓を優先する。
+ * 実際に操作できるかは TableInstance 側の canControlPause（作成者のみ）が判定する。
+ */
+function resolveCoachingTable(socket: AuthenticatedSocket, tableManager: TableManager): TableInstance | undefined {
+  return (
+    (socket.odSpectatingTableId ? tableManager.getTable(socket.odSpectatingTableId) : undefined) ??
+    tableManager.getPlayerTable(socket.odId!)
+  );
+}
+
 function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManager, command: 'pause' | 'resume'): void {
-  const table = tableManager.getPlayerTable(socket.odId!);
+  const table = resolveCoachingTable(socket, tableManager);
   if (!table) {
-    socket.emit('table:error', { message: 'テーブルに着席していません' });
+    socket.emit('table:error', { message: 'テーブルが見つかりません' });
     return;
   }
 
@@ -95,9 +129,9 @@ export function handleTableRevealHands(
   data: { enabled: boolean },
   tableManager: TableManager
 ): void {
-  const table = tableManager.getPlayerTable(socket.odId!);
+  const table = resolveCoachingTable(socket, tableManager);
   if (!table) {
-    socket.emit('table:error', { message: 'テーブルに着席していません' });
+    socket.emit('table:error', { message: 'テーブルが見つかりません' });
     return;
   }
 
@@ -290,7 +324,16 @@ export function handleSpectateLeave(
   socket.emit('table:spectate_left');
 }
 
-export async function handleMatchmakingJoin(
+export function handleMatchmakingJoin(
+  socket: AuthenticatedSocket,
+  data: { blinds: string; isFastFold?: boolean; variant?: string },
+  tableManager: TableManager,
+  tournamentManager?: TournamentManager
+): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handleMatchmakingJoinImpl(socket, data, tableManager, tournamentManager));
+}
+
+async function handleMatchmakingJoinImpl(
   socket: AuthenticatedSocket,
   data: { blinds: string; isFastFold?: boolean; variant?: string },
   tableManager: TableManager,
@@ -426,7 +469,15 @@ export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: 
 
 // ========== Private table handlers ==========
 
-export async function handlePrivateCreate(
+export function handlePrivateCreate(
+  socket: AuthenticatedSocket,
+  data: { blinds: string },
+  tableManager: TableManager
+): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handlePrivateCreateImpl(socket, data, tableManager));
+}
+
+async function handlePrivateCreateImpl(
   socket: AuthenticatedSocket,
   data: { blinds: string },
   tableManager: TableManager
@@ -517,7 +568,15 @@ export async function handlePrivateCreate(
   }
 }
 
-export async function handlePrivateJoin(
+export function handlePrivateJoin(
+  socket: AuthenticatedSocket,
+  data: { inviteCode: string },
+  tableManager: TableManager
+): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handlePrivateJoinImpl(socket, data, tableManager));
+}
+
+async function handlePrivateJoinImpl(
   socket: AuthenticatedSocket,
   data: { inviteCode: string },
   tableManager: TableManager
@@ -572,6 +631,13 @@ export async function handlePrivateJoin(
       return;
     }
 
+    // await の間に空室 TTL が満了して卓が消えている可能性がある
+    if (!tableManager.getTable(table.id)) {
+      await cashOutPlayer(socket.odId!, buyIn);
+      socket.emit('table:error', { message: 'テーブルが見つかりません' });
+      return;
+    }
+
     // Seat player
     const profile = await buildPlayerProfile(socket.odId!, user);
     const seatNumber = table.seatPlayer({
@@ -584,6 +650,8 @@ export async function handlePrivateJoin(
 
     if (seatNumber !== null) {
       tableManager.setPlayerTable(socket.odId!, table.id);
+      // 無人期間中に予約された削除を取り消す
+      tableManager.syncPrivateTableLifetime(table);
       socket.emit('private:created', { tableId: table.id, inviteCode });
       table.triggerMaybeStartHand();
     } else {

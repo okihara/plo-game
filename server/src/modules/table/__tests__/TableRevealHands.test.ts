@@ -3,6 +3,8 @@ import type { Server, Socket } from 'socket.io';
 import { TableInstance } from '../TableInstance.js';
 import {
   createMockIO,
+  createMockSocket,
+  getSocketEmits,
   seatNPlayers,
   findCurrentPlayer,
   getRoomEmits,
@@ -129,12 +131,64 @@ describe('コーチング用ハンドオープン', () => {
       }
     });
 
+    it('公開後に入ってきた観戦者にも公開済みのハンドを送る', async () => {
+      const { table, odIds, sockets, seatMap } = setupPrivateHand();
+      table.setRevealAllHands(OWNER, true);
+
+      await foldToCompletion(table, odIds, sockets, seatMap);
+
+      // 公開ブロードキャストを見逃した観戦者が、検討ポーズ中に後から参加する
+      const latecomer = createMockSocket();
+      expect(table.addSpectator(latecomer).ok).toBe(true);
+
+      const emits = getSocketEmits(latecomer, 'game:reveal_hands') as RevealPayload[];
+      expect(emits).toHaveLength(1);
+      expect(emits[0].players).toHaveLength(3);
+    });
+
+    it('OFF の卓では後から入った観戦者にも公開しない', async () => {
+      const { table, odIds, sockets, seatMap } = setupPrivateHand();
+
+      await foldToCompletion(table, odIds, sockets, seatMap);
+
+      const latecomer = createMockSocket();
+      table.addSpectator(latecomer);
+
+      expect(getSocketEmits(latecomer, 'game:reveal_hands')).toHaveLength(0);
+    });
+
     it('OFF の卓ではハンドが完了しても公開しない', async () => {
       const { table, io, odIds, sockets, seatMap } = setupPrivateHand();
 
       await foldToCompletion(table, odIds, sockets, seatMap);
 
       expect(getRoomEmits(io, 'game:reveal_hands')).toHaveLength(0);
+    });
+
+    it('ON の卓はハンド完了後に自動でポーズし、次のハンドを始めない', async () => {
+      const { table, odIds, sockets, seatMap } = setupPrivateHand();
+      table.setRevealAllHands(OWNER, true);
+
+      await foldToCompletion(table, odIds, sockets, seatMap);
+
+      expect(table.getClientGameState().isPaused).toBe(true);
+      expect(table.isHandInProgress).toBe(false);
+
+      // 検討できるようボード（前ハンドの状態）も残っている
+      expect(table.getClientGameState().revealAllHands).toBe(true);
+
+      // 作成者が再開したら次のハンドが始まる
+      expect(table.resume(OWNER).ok).toBe(true);
+      expect(table.getClientGameState().isPaused).toBeUndefined();
+      expect(table.isHandInProgress).toBe(true);
+    });
+
+    it('OFF の卓はハンド完了後に自動ポーズしない', async () => {
+      const { table, odIds, sockets, seatMap } = setupPrivateHand();
+
+      await foldToCompletion(table, odIds, sockets, seatMap);
+
+      expect(table.getClientGameState().isPaused).toBeUndefined();
     });
 
     it('ハンド中に OFF に戻したらそのハンドは公開しない', async () => {
