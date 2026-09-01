@@ -97,6 +97,17 @@ describe('TableInstance - 着席/離席', () => {
     expect(seat).toBe(3);
   });
 
+  it('同じodIdの二重着席はnullで拒否される', () => {
+    const socket1 = createMockSocket();
+    const socket2 = createMockSocket();
+    const seat1 = table.seatPlayer(testSeatParams('user1', 'Alice', socket1, 600));
+    const seat2 = table.seatPlayer(testSeatParams('user1', 'Alice', socket2, 600));
+
+    expect(seat1).toBeTypeOf('number');
+    expect(seat2).toBeNull();
+    expect(table.getPlayerCount()).toBe(1);
+  });
+
   it('6人着席後は満席でnullが返る', () => {
     seatNPlayers(table, 6);
     const socket = createMockSocket();

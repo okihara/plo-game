@@ -3,7 +3,8 @@ import { wsService } from '../services/websocket';
 import { playActionSound } from '../services/actionSound';
 import type { ClientGameState, ClientTournamentState } from '@plo/shared';
 import type { Action, Card, GameState } from '../logic/types';
-import { convertClientStateToGameState } from './onlineGameShared';
+import { convertClientStateToGameState, derivePauseState, NO_PAUSE } from './onlineGameShared';
+import type { PauseState } from './onlineGameShared';
 import type { LastAction, ActionTimeoutAt } from './useOnlineGameState';
 
 export interface SpectatorGameHookResult {
@@ -26,8 +27,13 @@ export interface SpectatorGameHookResult {
   announcementStatus: { isActive: boolean; message: string } | null;
   /** 観戦中のテーブルがトーナメント所属なら、そのトーナメントの状態（HUD 用） */
   tournamentState: ClientTournamentState | null;
+  /** コーチング機能（ポーズ・ハンドオープン）。作成者は席を外して観戦中でも操作できる */
+  pauseState: PauseState;
   connectAndWatch: () => Promise<void>;
   disconnect: () => void;
+  pauseTable: () => void;
+  resumeTable: () => void;
+  setRevealHands: (enabled: boolean) => void;
 }
 
 /**
@@ -56,6 +62,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
   const [maintenanceStatus, setMaintenanceStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [announcementStatus, setAnnouncementStatus] = useState<{ isActive: boolean; message: string } | null>(null);
   const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
+  const [pauseState, setPauseState] = useState<PauseState>(NO_PAUSE);
 
   const prevStreetRef = useRef<string | null>(null);
   const prevCardCountRef = useRef(0);
@@ -194,6 +201,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         setClientState(state);
         setActionTimeoutAt(state.actionTimeoutAt ?? null);
         setActionTimeoutMs(state.actionTimeoutMs ?? null);
+        setPauseState(derivePauseState(state, wsService.getPlayerId()));
       },
       onHoleCards: ({ cards, seatIndex }) => {
         if (seatIndex === undefined) return;
@@ -279,6 +287,18 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     };
   }, [clearAllActionMarkers, recordAction]);
 
+  const pauseTable = useCallback(() => {
+    wsService.pauseTable();
+  }, []);
+
+  const resumeTable = useCallback(() => {
+    wsService.resumeTable();
+  }, []);
+
+  const setRevealHands = useCallback((enabled: boolean) => {
+    wsService.setRevealHands(enabled);
+  }, []);
+
   const baseGameState = clientState
     ? convertClientStateToGameState(clientState, myHoleCards, mySeat, showdownCards)
     : null;
@@ -310,7 +330,11 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     maintenanceStatus,
     announcementStatus,
     tournamentState,
+    pauseState,
     connectAndWatch,
     disconnect,
+    pauseTable,
+    resumeTable,
+    setRevealHands,
   };
 }

@@ -56,3 +56,35 @@ export function convertClientStateToGameState(
     chipUnit: clientState.chipUnit,
   };
 }
+
+/** コーチング機能（ポーズ・ハンドオープン）の表示状態 */
+export interface PauseState {
+  isPaused: boolean;
+  /** 自分がコーチング機能を操作できるか（プライベート卓の作成者のみ true） */
+  canControl: boolean;
+  /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
+  pausedUntil: number | null;
+  /** ハンド完了時に全員のホールカードが公開される設定になっている */
+  revealAllHands: boolean;
+}
+
+export const NO_PAUSE: PauseState = {
+  isPaused: false,
+  canControl: false,
+  pausedUntil: null,
+  revealAllHands: false,
+};
+
+/**
+ * game:state からコーチング機能の表示状態を導出する（プレイ中・観戦中で共通）。
+ * コーチング機能を扱わない卓（通常キャッシュ／トーナメント）では NO_PAUSE を返す。
+ */
+export function derivePauseState(state: ClientGameState, myOdId: string | null): PauseState {
+  if (!state.isPaused && !state.pauseOwnerOdId) return NO_PAUSE;
+  return {
+    isPaused: state.isPaused ?? false,
+    canControl: !!myOdId && state.pauseOwnerOdId === myOdId,
+    pausedUntil: state.pausedUntil ?? null,
+    revealAllHands: state.revealAllHands ?? false,
+  };
+}
