@@ -35,6 +35,26 @@ function resolveTableInstance(
   return tournamentManager.findTableInstanceByTableId(tableId);
 }
 
+/**
+ * 同一ユーザーの着席・離席処理を直列化するためのチェーン（odId → 実行中 Promise）。
+ *
+ * join 系ハンドラは「着席チェック → await（DB照会・バイイン控除）→ 着席」という流れのため、
+ * 同じユーザーのリクエストが並行して走ると両方が着席チェックを素通りして二重着席する
+ * （例: クライアントの二重マウントによる private:join の連射）。
+ * odId 単位で順番に実行すれば、2本目は1本目の着席完了後にチェックを行うので安全になる。
+ */
+const playerOpChains = new Map<string, Promise<void>>();
+
+function serializePlayerOp(odId: string, fn: () => Promise<void>): Promise<void> {
+  const prev = playerOpChains.get(odId) ?? Promise.resolve();
+  const next = prev.then(fn, fn); // 前段の成否によらず次を実行する
+  const tail = next.catch(() => {}).finally(() => {
+    if (playerOpChains.get(odId) === tail) playerOpChains.delete(odId);
+  });
+  playerOpChains.set(odId, tail);
+  return next;
+}
+
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
   // unseat 経路に乗ったら、もう grace 復帰の対象ではないのでタイマーを止める
@@ -48,7 +68,11 @@ export async function unseatAndCashOut(table: TableInstance, odId: string, table
   tableManager.syncPrivateTableLifetime(table);
 }
 
-export async function handleTableLeave(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
+export function handleTableLeave(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handleTableLeaveImpl(socket, tableManager));
+}
+
+async function handleTableLeaveImpl(socket: AuthenticatedSocket, tableManager: TableManager): Promise<void> {
   const table = tableManager.getPlayerTable(socket.odId!);
   if (table) {
     await unseatAndCashOut(table, socket.odId!, tableManager);
@@ -300,7 +324,16 @@ export function handleSpectateLeave(
   socket.emit('table:spectate_left');
 }
 
-export async function handleMatchmakingJoin(
+export function handleMatchmakingJoin(
+  socket: AuthenticatedSocket,
+  data: { blinds: string; isFastFold?: boolean; variant?: string },
+  tableManager: TableManager,
+  tournamentManager?: TournamentManager
+): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handleMatchmakingJoinImpl(socket, data, tableManager, tournamentManager));
+}
+
+async function handleMatchmakingJoinImpl(
   socket: AuthenticatedSocket,
   data: { blinds: string; isFastFold?: boolean; variant?: string },
   tableManager: TableManager,
@@ -436,7 +469,15 @@ export function handleDebugSetChips(socket: AuthenticatedSocket, data: { chips: 
 
 // ========== Private table handlers ==========
 
-export async function handlePrivateCreate(
+export function handlePrivateCreate(
+  socket: AuthenticatedSocket,
+  data: { blinds: string },
+  tableManager: TableManager
+): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handlePrivateCreateImpl(socket, data, tableManager));
+}
+
+async function handlePrivateCreateImpl(
   socket: AuthenticatedSocket,
   data: { blinds: string },
   tableManager: TableManager
@@ -527,7 +568,15 @@ export async function handlePrivateCreate(
   }
 }
 
-export async function handlePrivateJoin(
+export function handlePrivateJoin(
+  socket: AuthenticatedSocket,
+  data: { inviteCode: string },
+  tableManager: TableManager
+): Promise<void> {
+  return serializePlayerOp(socket.odId!, () => handlePrivateJoinImpl(socket, data, tableManager));
+}
+
+async function handlePrivateJoinImpl(
   socket: AuthenticatedSocket,
   data: { inviteCode: string },
   tableManager: TableManager

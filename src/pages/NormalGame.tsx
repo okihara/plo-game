@@ -42,6 +42,7 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
     connect,
     disconnect,
     joinMatchmaking,
+    leaveTable,
     handleAction,
     handleFastFold,
     pauseTable,
@@ -56,9 +57,12 @@ export function NormalGame({ blinds, isFastFold, privateMode, variant, onBack }:
     });
 
     return () => {
+      // ロビーへ戻る・ブラウザバックは意図した退席。切断猶予（30秒）を待たずに席を解放する。
+      // トーナメント卓（TournamentGame）では席を維持する必要があるため、この経路は通さない。
+      leaveTable();
       disconnect();
     };
-  }, [connect, disconnect, joinMatchmaking]);
+  }, [connect, disconnect, joinMatchmaking, leaveTable]);
 
   // バスト時にロビーへ戻す
   useEffect(() => {

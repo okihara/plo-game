@@ -1250,7 +1250,13 @@ describe('TournamentInstance', () => {
       const tableB = tables.get(tableBId)!;
       while (tableB.hasAvailableSeat()) {
         const dummyId = `dummy_${Math.random().toString(36).slice(2)}`;
-        tableB.seatPlayer(dummyId, 'Dummy', createMockSocket(), 1000);
+        tableB.seatPlayer({
+          odId: dummyId,
+          odName: 'Dummy',
+          profile: { name: 'Dummy', avatarId: 0, avatarUrl: null },
+          socket: createMockSocket(),
+          buyIn: 1000,
+        });
       }
 
       // movePlayer を呼ぶ（着席失敗 → リカバリ）

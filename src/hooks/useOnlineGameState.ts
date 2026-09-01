@@ -65,6 +65,8 @@ export interface OnlineGameHookResult {
   disconnect: () => void;
   joinMatchmaking: () => void;
   leaveMatchmaking: () => void;
+  /** キャッシュ卓から即離席する。トーナメントでは使わない */
+  leaveTable: () => void;
   handleAction: (action: Action, amount: number, discardIndices?: number[]) => void;
   handleFastFold: () => void;
   startNextHand: () => void;
@@ -114,6 +116,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   const dealingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const clientStateRef = useRef<ClientGameState | null>(null);
   const mySeatRef = useRef<number | null>(null);
+  const tableIdRef = useRef<string | null>(null);
   const myHoleCardsRef = useRef<Card[]>([]);
   /** 直前の game:state で自分のターンだったか（重複再生防止） */
   const wasMyTurnRef = useRef(false);
@@ -212,6 +215,18 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     wsService.leaveMatchmaking();
   }, []);
 
+  /**
+   * キャッシュ卓（リング／プライベート）から明示的に離席する。
+   * 「ロビーに戻る」は意図した退席なので、切断猶予（30秒）に乗せず即座に席を解放する。
+   *
+   * トーナメントでは呼ばないこと。トーナメントの席は切断しても維持する必要があり、
+   * サーバー側も TournamentInstance が独自の猶予で面倒を見ている。
+   */
+  const leaveTable = useCallback(() => {
+    if (!tableIdRef.current) return;
+    wsService.leaveTable();
+  }, []);
+
   // ============================================
   // ゲームアクション
   // ============================================
@@ -254,6 +269,10 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
   useEffect(() => {
     mySeatRef.current = mySeat;
   }, [mySeat]);
+
+  useEffect(() => {
+    tableIdRef.current = tableId;
+  }, [tableId]);
 
   useEffect(() => {
     myHoleCardsRef.current = myHoleCards;
@@ -599,6 +618,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     disconnect,
     joinMatchmaking,
     leaveMatchmaking,
+    leaveTable,
     handleAction,
     handleFastFold,
     startNextHand,

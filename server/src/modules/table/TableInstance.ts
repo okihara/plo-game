@@ -145,6 +145,21 @@ export class TableInstance {
     skipJoinedEmit?: boolean;
   }): number | null {
     const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit } = params;
+
+    // 二重着席ガード: 同じユーザーの現役席が既にあるなら着席させない。
+    // 同一ユーザーの join（matchmaking:join / private:join 等）が並行して走った場合の最後の防衛線。
+    // 一度二重に座ると playerTables（odId→tableId が1件）と unseatPlayer（1席のみ解放）の
+    // 構造上、片方の席が誰にも回収されない永久ゴーストになるため、ここで必ず塞ぐ。
+    // 呼び出し元はいずれも null を受けてバイインを返金する。
+    // 対象外:
+    // - leftForFastFold の残留席（他卓へ移動済み、ハンド終了時に解放される表示用の席）
+    // - トーナメント卓（バスト直後の席が解放される前にリエントリーで正当に再着席することがある。
+    //   着席は TournamentInstance が管理しており、join ハンドラの競合経路を通らない）
+    if (this.tournamentId === null && this.playerManager.hasActiveSeat(odId)) {
+      console.warn(`[Table ${this.id}] seatPlayer rejected: ${odId} is already seated`);
+      return null;
+    }
+
     const seatIndex = this.playerManager.seatPlayer({
       odId,
       odName,
