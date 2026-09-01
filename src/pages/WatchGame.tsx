@@ -38,6 +38,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
     disconnect,
     pauseTable,
     resumeTable,
+    setRevealHands,
   } = useSpectatorGameState(tableId, inviteCode);
 
   useEffect(() => {
@@ -160,6 +161,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
             pauseState={pauseState}
             onPause={pauseTable}
             onResume={resumeTable}
+            onToggleRevealHands={setRevealHands}
             isTournament={!!tournamentState}
             maintenanceStatus={maintenanceStatus}
             announcementStatus={announcementStatus}

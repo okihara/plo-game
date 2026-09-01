@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Server } from 'socket.io';
 import { TableManager } from '../../table/TableManager.js';
 import { TABLE_CONSTANTS } from '../../table/constants.js';
-import { handleTablePause, handleTableResume } from '../handlers.js';
+import { handleTablePause, handleTableResume, handleTableRevealHands } from '../handlers.js';
 import type { AuthenticatedSocket } from '../authMiddleware.js';
 import { createMockSocket, testSeatParams, resetSocketCounter } from '../../table/__tests__/testHelpers.js';
 
@@ -52,6 +52,15 @@ describe('プライベート卓のコーチング動線', () => {
 
       handleTableResume(socket, tm);
       expect(table.isPaused).toBe(false);
+    });
+
+    it('席を外して観戦中でも作成者はハンドオープンを切り替えられる', () => {
+      const { table } = tm.createPrivateTable('1/2', 'coach');
+      const socket = mockSocket({ odId: 'coach', odConnectionMode: 'spectate', odSpectatingTableId: table.id });
+
+      handleTableRevealHands(socket, { enabled: true }, tm);
+      expect(table.getClientGameState().revealAllHands).toBe(true);
+      expect(socket.emit).not.toHaveBeenCalledWith('table:error', expect.anything());
     });
 
     it('作成者でない観戦者は操作できない', () => {

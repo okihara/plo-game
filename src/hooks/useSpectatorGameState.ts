@@ -27,12 +27,13 @@ export interface SpectatorGameHookResult {
   announcementStatus: { isActive: boolean; message: string } | null;
   /** 観戦中のテーブルがトーナメント所属なら、そのトーナメントの状態（HUD 用） */
   tournamentState: ClientTournamentState | null;
-  /** コーチング用ポーズ。作成者は席を外して観戦中でも操作できる */
+  /** コーチング機能（ポーズ・ハンドオープン）。作成者は席を外して観戦中でも操作できる */
   pauseState: PauseState;
   connectAndWatch: () => Promise<void>;
   disconnect: () => void;
   pauseTable: () => void;
   resumeTable: () => void;
+  setRevealHands: (enabled: boolean) => void;
 }
 
 /**
@@ -294,6 +295,10 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     wsService.resumeTable();
   }, []);
 
+  const setRevealHands = useCallback((enabled: boolean) => {
+    wsService.setRevealHands(enabled);
+  }, []);
+
   const baseGameState = clientState
     ? convertClientStateToGameState(clientState, myHoleCards, mySeat, showdownCards)
     : null;
@@ -330,5 +335,6 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
     disconnect,
     pauseTable,
     resumeTable,
+    setRevealHands,
   };
 }

@@ -70,13 +70,21 @@ export function handleTableResume(socket: AuthenticatedSocket, tableManager: Tab
   applyPauseCommand(socket, tableManager, 'resume');
 }
 
-function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManager, command: 'pause' | 'resume'): void {
-  // コーチは席を立って観戦から進行を止めることがあるため、着席卓・観戦卓の両方を見る。
-  // 実際に操作できるかは TableInstance 側の canControlPause（作成者のみ）が判定する。
-  // odSpectatingTableId は観戦接続でのみ立つため、観戦中の卓を優先して解決する
-  const table =
+/**
+ * コーチング操作（ポーズ・ハンドオープン）の対象卓を解決する。
+ * コーチは席を立って観戦から操作することがあるため、着席卓・観戦卓の両方を見る。
+ * odSpectatingTableId は観戦接続でのみ立つので、観戦中の卓を優先する。
+ * 実際に操作できるかは TableInstance 側の canControlPause（作成者のみ）が判定する。
+ */
+function resolveCoachingTable(socket: AuthenticatedSocket, tableManager: TableManager): TableInstance | undefined {
+  return (
     (socket.odSpectatingTableId ? tableManager.getTable(socket.odSpectatingTableId) : undefined) ??
-    tableManager.getPlayerTable(socket.odId!);
+    tableManager.getPlayerTable(socket.odId!)
+  );
+}
+
+function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManager, command: 'pause' | 'resume'): void {
+  const table = resolveCoachingTable(socket, tableManager);
   if (!table) {
     socket.emit('table:error', { message: 'テーブルが見つかりません' });
     return;
@@ -97,9 +105,9 @@ export function handleTableRevealHands(
   data: { enabled: boolean },
   tableManager: TableManager
 ): void {
-  const table = tableManager.getPlayerTable(socket.odId!);
+  const table = resolveCoachingTable(socket, tableManager);
   if (!table) {
-    socket.emit('table:error', { message: 'テーブルに着席していません' });
+    socket.emit('table:error', { message: 'テーブルが見つかりません' });
     return;
   }
 
