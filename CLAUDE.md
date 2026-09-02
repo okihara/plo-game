@@ -221,4 +221,4 @@ PostgreSQL の接続文字列（`DATABASE_URL`、Railway の URL など）は **
 
 ## その他のドキュメント
 
-設計案・個別機能のメモは `docs/` 配下（例: `architecture-redesign.md`, `mtt-design.md`）。デプロイ詳細は [docs/deployment-railway.md](docs/deployment-railway.md)。
+設計案・個別機能のメモは `docs/` 配下（例: `architecture-redesign.md`, `mtt-design.md`）。デプロイ詳細は [docs/deployment-railway.md](docs/deployment-railway.md)。 コミュニティ Discord サーバーの構成・運用は [docs/discord-server-design.md](docs/discord-server-design.md)。
