@@ -73,10 +73,10 @@ const positionStylesBySeatCount: Record<number, Record<number, string>> = {
     0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
     1: 'bottom-[5cqw] left-[-14.05cqw]', // 左下
     2: 'top-[92cqw] left-[-14.05cqw]', // 左中下（ボードの下）
-    3: 'top-[36cqw] left-[-14.05cqw]', // 左中上（ボードの上）
-    4: 'top-[6cqw] left-[-14.05cqw]', // 左上
-    5: 'top-[6cqw] right-[-14.05cqw]', // 右上
-    6: 'top-[36cqw] right-[-14.05cqw]', // 右中上（ボードの上）
+    3: 'top-[38cqw] left-[-14.05cqw]', // 左中上（ボードの上）
+    4: 'top-[8cqw] left-[-14.05cqw]', // 左上
+    5: 'top-[8cqw] right-[-14.05cqw]', // 右上
+    6: 'top-[38cqw] right-[-14.05cqw]', // 右中上（ボードの上）
     7: 'top-[92cqw] right-[-14.05cqw]', // 右中下（ボードの下）
     8: 'bottom-[5cqw] right-[-14.05cqw]', // 右下
   },
