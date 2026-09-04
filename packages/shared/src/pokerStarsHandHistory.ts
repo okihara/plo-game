@@ -2,7 +2,7 @@
  * ハンド履歴を PokerStars 風テキストに変換（クライアント・サーバー共通）。
  */
 
-import { VARIANT_POKERSTARS_LABEL, POSITION_LABELS_BY_PLAYER_COUNT, getSeatRingModulo, type GameVariant } from './types';
+import { VARIANT_POKERSTARS_LABEL, createSeatRingComparator, getPositionLabel, type GameVariant } from './types';
 
 export interface PokerStarsHandPlayer {
   username: string;
@@ -45,18 +45,9 @@ export interface PokerStarsHandInput {
   variant?: GameVariant;
 }
 
+/** PokerStars 形式のポジション表記。ヘッズアップの BTN は 'BTN/SB' と書く */
 function getPos(seatPosition: number, dealerPosition: number, allSeats: number[]): string {
-  if (dealerPosition < 0) return '';
-  const mod = getSeatRingModulo(dealerPosition, allSeats);
-  const sorted = [...allSeats].sort((a, b) => {
-    return (a - dealerPosition + mod) % mod - (b - dealerPosition + mod) % mod;
-  });
-  const index = sorted.indexOf(seatPosition);
-  const count = sorted.length;
-  if (count <= 1) return '';
-  if (count === 2) return index === 0 ? 'BTN/SB' : 'BB';
-  const labels = POSITION_LABELS_BY_PLAYER_COUNT[count] || POSITION_LABELS_BY_PLAYER_COUNT[6]!;
-  return labels[index] || '';
+  return getPositionLabel(seatPosition, dealerPosition, allSeats, { headsUp: ['BTN/SB', 'BB'] });
 }
 
 function actionLine(name: string, action: string, amount: number): string {
@@ -88,11 +79,8 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   const allSeats = players.map(p => p.seatPosition);
 
-  const seatMod = getSeatRingModulo(dealerPosition, allSeats);
-  const sortedPlayers = [...players].sort(
-    (a, b) =>
-      ((a.seatPosition - dealerPosition + seatMod) % seatMod) - ((b.seatPosition - dealerPosition + seatMod) % seatMod)
-  );
+  const compareSeats = createSeatRingComparator(dealerPosition, allSeats);
+  const sortedPlayers = [...players].sort((a, b) => compareSeats(a.seatPosition, b.seatPosition));
 
   const d = new Date(createdAt);
   const pad = (n: number) => String(n).padStart(2, '0');

@@ -1,4 +1,4 @@
-import { POSITION_LABELS_BY_PLAYER_COUNT, getSeatRingModulo } from '../logic/types';
+import { getPositionLabel } from '../logic/types';
 const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
@@ -62,19 +62,7 @@ export function ProfitDisplay({ profit, size = 'normal', bb }: { profit: number;
 }
 
 export function getPositionName(seatPosition: number, dealerPosition: number, allSeatPositions: number[]): string {
-  if (dealerPosition < 0) return '';
-  const mod = getSeatRingModulo(dealerPosition, allSeatPositions);
-  const sorted = [...allSeatPositions].sort((a, b) => {
-    const offsetA = (a - dealerPosition + mod) % mod;
-    const offsetB = (b - dealerPosition + mod) % mod;
-    return offsetA - offsetB;
-  });
-  const index = sorted.indexOf(seatPosition);
-  const count = sorted.length;
-  if (count <= 1) return '';
-  if (count === 2) return index === 0 ? 'SB' : 'BB';
-  const positions = POSITION_LABELS_BY_PLAYER_COUNT[count] || POSITION_LABELS_BY_PLAYER_COUNT[6]!;
-  return positions[index] || '';
+  return getPositionLabel(seatPosition, dealerPosition, allSeatPositions);
 }
 
 export function PositionBadge({ position }: { position: string }) {

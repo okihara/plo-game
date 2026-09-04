@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import type { ReactNode } from 'react';
-import { POSITION_LABELS_BY_PLAYER_COUNT, getSeatRingModulo } from '@plo/shared';
+import { createSeatRingComparator, getPositionLabel } from '@plo/shared';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FONT_CACHE_DIR = join(__dirname, 'fonts');
@@ -96,13 +96,8 @@ interface HandOgpData {
 }
 
 function getPositionName(seatPosition: number, dealerPosition: number, allSeats: number[]): string | null {
-  const mod = getSeatRingModulo(dealerPosition, allSeats);
-  const sorted = [...allSeats].sort((a, b) => ((a - dealerPosition + mod) % mod) - ((b - dealerPosition + mod) % mod));
-  const n = sorted.length;
-  const names = n === 2 ? ['SB', 'BB'] : POSITION_LABELS_BY_PLAYER_COUNT[n];
-  if (!names) return null;
-  const idx = sorted.indexOf(seatPosition);
-  return idx >= 0 ? names[idx] : null;
+  // 人数が表にないときはラベルを出さない（6-max へフォールバックしない）
+  return getPositionLabel(seatPosition, dealerPosition, allSeats, { fallbackTo6Max: false }) || null;
 }
 
 const ACTION_LABELS: Record<string, string> = {
@@ -245,15 +240,15 @@ function buildActionElements(data: HandOgpData): ReactNode[] {
     ),
   );
 
-  // チップ変動があったプレイヤーのみ、ポジション順（BTN→SB→BB→UTG→HJ→CO）でソート
-  const POSITION_ORDER = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
+  // チップ変動があったプレイヤーのみ、席のリング順（BTN→SB→BB→UTG→…→CO）でソート。
+  // ラベル名で並べると 9-max の UTG1/UTG2/LJ を取りこぼすため席番号で並べる
+  const compareSeats = createSeatRingComparator(
+    data.dealerPosition,
+    data.players.map(p => p.seatPosition),
+  );
   const sortedPlayers = [...data.players]
     .filter(p => p.profit !== 0)
-    .sort((a, b) => {
-      const aIdx = a.position ? POSITION_ORDER.indexOf(a.position) : 99;
-      const bIdx = b.position ? POSITION_ORDER.indexOf(b.position) : 99;
-      return aIdx - bIdx;
-    });
+    .sort((a, b) => compareSeats(a.seatPosition, b.seatPosition));
 
   for (const p of sortedPlayers) {
     const profitColor = p.profit > 0 ? '#2d6a4f' : p.profit < 0 ? '#C0392B' : '#888';

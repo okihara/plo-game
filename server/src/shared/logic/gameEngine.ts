@@ -1,4 +1,4 @@
-import { GameState, Player, Position, POSITIONS, getRingPositions, Action, getVariantConfig } from './types.js';
+import { GameState, Player, Position, POSITION_LABELS_BY_PLAYER_COUNT, getRingPositions, Action, getVariantConfig } from './types.js';
 import { createDeck, shuffleDeck, dealCards } from './deck.js';
 import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands, formatHandName } from './handEvaluator.js';
 import { resolveHiLoShowdown } from './hiLoSplitPot.js';
@@ -217,15 +217,14 @@ function getNextPlayerWithChips(state: GameState, fromIndex: number): number {
   return -1;
 }
 
-/** BB 以降（人数に応じて）— 5-max は HJ を省略して UTG→CO */
-const POST_BB_POSITION_LABELS: Record<number, readonly Position[]> = {
-  1: ['UTG'],
-  2: ['UTG', 'CO'],
-  3: ['UTG', 'HJ', 'CO'],
-  4: ['UTG', 'UTG1', 'HJ', 'CO'],
-  5: ['UTG', 'UTG1', 'LJ', 'HJ', 'CO'],
-  6: ['UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO'],
-};
+/**
+ * BB の次から順に割り当てるポジション列（extra = プレイ人数 - 3）。
+ * 表示系と同じ POSITION_LABELS_BY_PLAYER_COUNT から導出し、卓上表示と
+ * ハンド履歴・OGP の表記が食い違わないようにする。
+ */
+function getPostBBPositionLabels(extra: number): readonly Position[] {
+  return POSITION_LABELS_BY_PLAYER_COUNT[extra + 3]?.slice(3) ?? [];
+}
 
 function getNextOccupiedSeatForLabels(
   state: GameState,
@@ -270,7 +269,7 @@ export function assignBlindPostingPositions(
     assigned.add(dealerPosition).add(sbIndex).add(bbIndex);
 
     const extra = activeCount - 3;
-    const labels = POST_BB_POSITION_LABELS[extra] ?? [];
+    const labels = getPostBBPositionLabels(extra);
     let cursor = bbIndex;
     for (const label of labels) {
       const next = getNextOccupiedSeatForLabels(state, cursor, assigned, maxSeats);

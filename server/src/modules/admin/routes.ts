@@ -24,6 +24,7 @@ import {
   BLIND_STRUCTURES,
   DEFAULT_BLIND_STRUCTURE_ID,
 } from '../tournament/constants.js';
+import { POSITION_LABELS_BY_PLAYER_COUNT } from '@plo/shared';
 
 const tournamentDefaults = {
   buyIn: DEFAULT_BUY_IN,
@@ -561,7 +562,7 @@ export function adminRoutes(deps: AdminDependencies) {
 
     // Hand history HTML page
     fastify.get('/admin/hands', async (request, reply) => {
-      return reply.view('hands.ejs', {});
+      return reply.view('hands.ejs', { positionLabels: POSITION_LABELS_BY_PLAYER_COUNT });
     });
 
     fastify.get('/admin/tournaments', async (request, reply) => {

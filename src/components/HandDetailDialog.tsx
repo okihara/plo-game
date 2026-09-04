@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { Share2, Link, Check, Image, FileText, Eye, EyeOff, UserRound } from 'lucide-react';
 import { evaluatePLOHand, formatHandName } from '../logic/handEvaluator';
 import type { Card } from '../logic/types';
-import { getSeatRingModulo } from '../logic/types';
+import { createSeatRingComparator, sortSeatsFromDealer } from '../logic/types';
 import { buildHandShareText, openXShare } from '../utils/share';
 import { toPokerStarsText } from '../utils/pokerStarsFormat';
 import { ProfilePopup } from './ProfilePopup';
@@ -160,9 +160,9 @@ function complementMissingFolds(
   if (missingSeats.size === 0) return actions;
 
   // プリフロのアクション順を算出: UTG→...→BTN→SB→BB
-  const seatMod = getSeatRingModulo(dealerPosition, players.map(p => p.seatPosition));
-  const sortedSeats = [...new Set(players.map(p => p.seatPosition))].sort(
-    (a, b) => ((a - dealerPosition + seatMod) % seatMod) - ((b - dealerPosition + seatMod) % seatMod),
+  const sortedSeats = sortSeatsFromDealer(
+    [...new Set(players.map(p => p.seatPosition))],
+    dealerPosition,
   );
   const n = sortedSeats.length;
   const preflopOrder = n <= 2
@@ -567,14 +567,13 @@ export function HandDetailDialog({
     };
   }, [hand]);
   const sortedPlayers = useMemo(() => {
-    const dealer = hand.dealerPosition;
-    const mod = getSeatRingModulo(dealer, hand.players.map(p => p.seatPosition));
-    return [...hand.players].sort((a, b) => {
-      // SB→BB→UTG→…→BTN（ディーラーの次=SBが先頭）
-      const offsetA = (a.seatPosition - dealer - 1 + mod) % mod;
-      const offsetB = (b.seatPosition - dealer - 1 + mod) % mod;
-      return offsetA - offsetB;
-    });
+    // SB→BB→UTG→…→BTN（ディーラーの次=SBが先頭）
+    const compareSeats = createSeatRingComparator(
+      hand.dealerPosition,
+      hand.players.map(p => p.seatPosition),
+      1,
+    );
+    return [...hand.players].sort((a, b) => compareSeats(a.seatPosition, b.seatPosition));
   }, [hand.players, hand.dealerPosition]);
 
   const [hideOpponentNames, setHideOpponentNames] = useState(initialHideOpponentNames ?? false);

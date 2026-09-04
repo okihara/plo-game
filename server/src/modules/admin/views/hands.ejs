@@ -277,14 +277,23 @@
       });
     }
 
-    function positionLabel(seatPos, dealerPos, playerCount) {
-      var positions = playerCount === 6
-        ? ['', '', '', '', '', '']
-        : ['', '', '', '', '', ''];
-      // Simple position labels based on dealer
-      var labels6 = ['SB','BB','UTG','HJ','CO','BTN'];
-      var offset = (seatPos - dealerPos - 1 + playerCount) % playerCount;
-      return labels6[offset] || '';
+    // ポジションラベルは packages/shared の POSITION_LABELS_BY_PLAYER_COUNT を注入して共有する
+    var POSITION_LABELS = <%- JSON.stringify(positionLabels) %>;
+
+    /** 席番号 → ポジションラベル。packages/shared の getPositionLabelsBySeat と同じ規則 */
+    function positionLabelsBySeat(dealerPos, allSeats) {
+      var map = {};
+      var seats = allSeats.filter(function (s, i) { return allSeats.indexOf(s) === i; });
+      if (dealerPos < 0 || seats.length <= 1) return map;
+
+      var mod = Math.max.apply(null, [6, dealerPos + 1].concat(seats.map(function (s) { return s + 1; })));
+      var offset = function (seat) { return (((seat - dealerPos) % mod) + mod) % mod; };
+      var sorted = seats.slice().sort(function (a, b) { return offset(a) - offset(b); });
+
+      var labels = seats.length === 2 ? ['SB', 'BB'] : (POSITION_LABELS[seats.length] || POSITION_LABELS[6]);
+      if (!labels) return map;
+      sorted.forEach(function (seat, i) { if (labels[i]) map[seat] = labels[i]; });
+      return map;
     }
 
     async function fetchHands() {
@@ -378,11 +387,12 @@
 
       // Players
       out += '<h3 style="margin-top:12px">プレイヤー</h3>';
+      var posBySeat = positionLabelsBySeat(h.dealerPosition, h.players.map(function (p) { return p.seatPosition; }));
       h.players.forEach(function(p) {
         var isWinner = h.winners.indexOf(p.userId) !== -1;
         var profitClass = p.profit > 0 ? 'profit-pos' : p.profit < 0 ? 'profit-neg' : '';
         var profitStr = p.profit > 0 ? '+$' + p.profit : p.profit < 0 ? '-$' + Math.abs(p.profit) : '$0';
-        var pos = positionLabel(p.seatPosition, h.dealerPosition, h.players.length);
+        var pos = posBySeat[p.seatPosition] || '';
 
         out += '<div class="player-row">';
         out += '<span class="seat-badge">' + pos + '</span>';
