@@ -43,7 +43,7 @@ export class VariantAdapter {
   /**
    * 初期ゲーム状態を作成
    */
-  createGameState(buyInChips: number, smallBlind: number, bigBlind: number, ante: number = 0): GameState {
+  createGameState(buyInChips: number, smallBlind: number, bigBlind: number, ante: number = 0, maxPlayers: number = TABLE_CONSTANTS.MAX_PLAYERS): GameState {
     // omaha_hilo は family === 'omaha' だが PLO とは別エンジン
     if (this.variant === 'omaha_hilo') {
       return createOmahaHiLoGameState(buyInChips, smallBlind, bigBlind);
@@ -83,7 +83,8 @@ export class VariantAdapter {
         // PLO / PLO5 はどちらも createInitialGameState を経由する。
         // 配布枚数は startNewHand 内で variant.holeCardCount から動的に決まるため、
         // ここで variant を正しく設定しておく必要がある（デフォルトは 'plo'）。
-        const state = createInitialGameState(buyInChips);
+        // 席数可変（9-max プライベート卓）に対応するのは PLO/PLO5 エンジンのみ
+        const state = createInitialGameState(buyInChips, maxPlayers);
         state.variant = this.variant;
         state.smallBlind = smallBlind;
         state.bigBlind = bigBlind;
@@ -248,7 +249,7 @@ export class VariantAdapter {
   ): void {
     if (this.config.usesCommunityCards) return;
 
-    for (let i = 0; i < TABLE_CONSTANTS.MAX_PLAYERS; i++) {
+    for (let i = 0; i < gameState.players.length; i++) {
       const seat = seats[i];
       const holeCards = gameState.players[i].holeCards;
       if (holeCards.length === 0) continue;

@@ -1,7 +1,7 @@
 // WebSocket event types shared between client and server
 
 import type { Action, Card, Position, Player } from './types';
-import { POSITIONS } from './types';
+import { getRingPositions } from './types';
 import type { PlayerProfile } from './profile';
 import type {
   BlindLevel,
@@ -30,7 +30,7 @@ export interface ClientToServerEvents {
   'matchmaking:leave': () => void;
 
   // Private table
-  'private:create': (data: { blinds: string }) => void;
+  'private:create': (data: { blinds: string; maxPlayers?: 6 | 9 }) => void;
   'private:join': (data: { inviteCode: string }) => void;
   /** コーチング用ポーズ（プライベートキャッシュ卓の作成者のみ） */
   'table:pause': () => void;
@@ -190,9 +190,10 @@ export interface TableInfo {
 export function convertOnlinePlayerToPlayer(
   online: OnlinePlayer | null,
   index: number,
-  dealerSeat: number
+  dealerSeat: number,
+  seatCount: number = 6
 ): Player {
-  const fallbackPosition = POSITIONS[(index - dealerSeat + 6) % 6];
+  const fallbackPosition = getRingPositions(seatCount)[(index - dealerSeat + seatCount) % seatCount];
   if (!online) {
     return {
       id: index,

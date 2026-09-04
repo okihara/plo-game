@@ -39,11 +39,11 @@ export function WeeklyChampions() {
   return (
     <>
       <div
-        className="mt-[2cqw] bg-white border border-cream-300 rounded-[3cqw] px-[3cqw] py-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
+        className="mt-[1cqw] bg-white border border-cream-300 rounded-[3cqw] px-[3cqw] py-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
         onClick={() => setShowDialog(true)}
       >
         <div className="flex items-center justify-between mb-[1.5cqw]">
-          <span className="text-[3.2cqw] font-bold text-cream-900">最近の週間チャンピオン</span>
+          <span className="text-[3.2cqw] font-bold text-cream-900">最近のリング週間チャンピオン</span>
           <span className="text-[2.8cqw] text-cream-700">もっと見る &gt;</span>
         </div>
         <div className="grid grid-cols-3 gap-[1.5cqw]">
@@ -103,7 +103,7 @@ function WeeklyRankingDialog({ onClose }: { onClose: () => void }) {
         {/* Header */}
         <div className="px-[4cqw] pt-[4cqw] pb-[2cqw] border-b border-cream-200">
           <div className="flex items-center justify-between">
-            <h2 className="text-[4cqw] font-bold text-cream-900">過去の週間チャンピオン</h2>
+            <h2 className="text-[4cqw] font-bold text-cream-900">過去のリング週間チャンピオン</h2>
             <button
               onClick={onClose}
               className="text-[5cqw] text-cream-700 hover:text-cream-900 leading-none"

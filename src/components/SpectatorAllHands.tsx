@@ -56,7 +56,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav, onRefresh }
 
   return (
     <div className="py-[5cqw]">
-      <div className="bg-black px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] h-[43cqw] overflow-hidden">
+      <div className={`bg-black px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] ${rows.length > 6 ? 'h-[64cqw]' : 'h-[43cqw]'} overflow-hidden`}>
         <div className="flex items-center justify-between gap-[1cqw] pb-[0.6cqw] border-b border-white/10 shrink-0">
           <button
             type="button"

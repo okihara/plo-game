@@ -95,6 +95,7 @@ model HandHistory {
   winners        String[] // Array of winner user IDs
   actions        Json     // Full action history
   dealerPosition Int      @default(-1)  // -1 = unknown (legacy data)
+  maxPlayers     Int      @default(6)   // 卓の席数（6 or 9）。既存データはすべて 6-max
   createdAt      DateTime @default(now())
 
   players HandHistoryPlayer[]

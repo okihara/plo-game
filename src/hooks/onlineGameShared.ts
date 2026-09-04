@@ -10,7 +10,7 @@ export function convertClientStateToGameState(
   mySeat: number | null,
   showdownCards: Map<number, Card[]>
 ): GameState {
-  const players = clientState.players.map((p, i) => convertOnlinePlayerToPlayer(p, i, clientState.dealerSeat));
+  const players = clientState.players.map((p, i) => convertOnlinePlayerToPlayer(p, i, clientState.dealerSeat, clientState.players.length));
 
   if (mySeat !== null && players[mySeat]) {
     players[mySeat].holeCards = myHoleCards;

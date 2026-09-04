@@ -158,6 +158,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
             onBack={onBack}
             blindsLabel={blindsLabel}
             isSpectator
+            privateTableInfo={inviteCode ? { inviteCode } : null}
             pauseState={pauseState}
             onPause={pauseTable}
             onResume={resumeTable}

@@ -5,6 +5,7 @@ import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState } from '../logic/types';
 import { convertClientStateToGameState, derivePauseState, NO_PAUSE } from './onlineGameShared';
 import type { PauseState } from './onlineGameShared';
+import { dealAnimationTotalMs } from '../utils/dealAnimation';
 
 // ============================================
 // 型定義
@@ -23,7 +24,7 @@ export interface LastAction {
 export type ActionTimeoutAt = number;
 
 export type PrivateMode =
-  | { type: 'create'; blinds: string }
+  | { type: 'create'; blinds: string; maxPlayers?: 6 | 9 }
   | { type: 'join'; inviteCode: string };
 
 export interface OnlineGameHookResult {
@@ -153,7 +154,11 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     setLastActions(new Map());
   }, []);
 
-  const startDealingAnimation = useCallback(() => {
+  /**
+   * 配布演出の開始。演出中フラグを落とすまでの時間は席数と配布枚数から決める。
+   * 固定値にすると 9人卓で最後に配られるカードが飛んでくる前に打ち切られる。
+   */
+  const startDealingAnimation = useCallback((seatCount: number, cardsPerPlayer: number) => {
     if (dealingTimerRef.current) {
       clearTimeout(dealingTimerRef.current);
     }
@@ -161,7 +166,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     dealingTimerRef.current = setTimeout(() => {
       setIsDealingCards(false);
       dealingTimerRef.current = null;
-    }, 1000);
+    }, dealAnimationTotalMs(seatCount, cardsPerPlayer));
   }, []);
 
   // ============================================
@@ -197,7 +202,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
   const joinMatchmaking = useCallback(() => {
     if (privateMode?.type === 'create') {
-      wsService.createPrivateTable(privateMode.blinds);
+      wsService.createPrivateTable(privateMode.blinds, privateMode.maxPlayers);
     } else if (privateMode?.type === 'join') {
       wsService.joinPrivateTable(privateMode.inviteCode);
     } else {
@@ -346,7 +351,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         setIsChangingTable(true);
         setClientState(prev => ({
           tableId: tid,
-          players: Array(6).fill(null),
+          players: Array(6).fill(null), // FastFold 専用経路のため 6-max 固定でよい
           communityCards: [],
           pot: 0,
           sidePots: [],
@@ -426,6 +431,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
         prevStreetRef.current = state.currentStreet;
         prevCardCountRef.current = state.communityCards.length;
+        // 配布演出は onHoleCards 側で席数を見るため、ref も同じタイミングで更新する
+        clientStateRef.current = state;
         setClientState(state);
 
         // タイマー情報を更新
@@ -440,7 +447,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // Stud: 各ストリートで呼ばれる。新ハンド初回だけディール演出（演出リセットは onGameState の isHandInProgress 遷移に任せる）
         if (cards.length > 0 && isNewHandRef.current) {
           isNewHandRef.current = false;
-          startDealingAnimation();
+          startDealingAnimation(clientStateRef.current?.players.length ?? 6, cards.length);
           playDealSound();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
@@ -586,7 +593,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     : 0;
 
   // 他のプレイヤーを待っている状態かどうか
-  const isWaitingForPlayers = clientState !== null && !clientState.isHandInProgress;
+  // ポーズ中は「他のプレイヤーを待っている」のではなく卓を止めているだけなので待機扱いにしない。
+  // ハンドオープンの検討ポーズはハンド終了後に止まるため、そのままだと毎回オーバーレイが出る
+  const isWaitingForPlayers = clientState !== null && !clientState.isHandInProgress && !clientState.isPaused;
 
   return {
     isConnecting,

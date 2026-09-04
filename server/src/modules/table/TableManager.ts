@@ -212,7 +212,7 @@ export class TableManager {
   }
 
   /** @param ownerOdId 作成者。コーチング用ポーズを操作できる唯一のプレイヤー */
-  public createPrivateTable(blinds: string, ownerOdId: string): { table: TableInstance; inviteCode: string } {
+  public createPrivateTable(blinds: string, ownerOdId: string, maxPlayers?: number): { table: TableInstance; inviteCode: string } {
     const inviteCode = this.generateInviteCode();
     // バストで全員いなくなるケースは unseatAndCashOut を通らないため、
     // バスト処理の完了時点でも寿命を評価する
@@ -221,6 +221,7 @@ export class TableManager {
       isPrivate: true,
       inviteCode,
       ownerOdId,
+      maxPlayers,
       lifecycleCallbacks: this.createCashLifecycleCallbacks(() => {
         if (created) this.syncPrivateTableLifetime(created);
       }),

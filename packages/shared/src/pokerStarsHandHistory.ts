@@ -2,7 +2,7 @@
  * ハンド履歴を PokerStars 風テキストに変換（クライアント・サーバー共通）。
  */
 
-import { VARIANT_POKERSTARS_LABEL, type GameVariant } from './types';
+import { VARIANT_POKERSTARS_LABEL, createSeatRingComparator, getPositionLabel, type GameVariant } from './types';
 
 export interface PokerStarsHandPlayer {
   username: string;
@@ -35,6 +35,8 @@ export interface PokerStarsHandInput {
   winners: string[];
   actions: PokerStarsHandAction[];
   dealerPosition: number;
+  /** 卓の席数（6 or 9）。未指定の旧データは席番号から推定する */
+  maxPlayers?: number;
   createdAt: string | Date;
   players: PokerStarsHandPlayer[];
   /** PokerStars ヘッダーで表示する variant 名のキー。
@@ -43,22 +45,9 @@ export interface PokerStarsHandInput {
   variant?: GameVariant;
 }
 
+/** PokerStars 形式のポジション表記。ヘッズアップの BTN は 'BTN/SB' と書く */
 function getPos(seatPosition: number, dealerPosition: number, allSeats: number[]): string {
-  if (dealerPosition < 0) return '';
-  const sorted = [...allSeats].sort((a, b) => {
-    return (a - dealerPosition + 6) % 6 - (b - dealerPosition + 6) % 6;
-  });
-  const index = sorted.indexOf(seatPosition);
-  const count = sorted.length;
-  if (count <= 1) return '';
-  if (count === 2) return index === 0 ? 'BTN/SB' : 'BB';
-  const posMap: Record<number, string[]> = {
-    3: ['BTN', 'SB', 'BB'],
-    4: ['BTN', 'SB', 'BB', 'CO'],
-    5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
-    6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
-  };
-  return (posMap[count] || posMap[6]!)[index] || '';
+  return getPositionLabel(seatPosition, dealerPosition, allSeats, { headsUp: ['BTN/SB', 'BB'] });
 }
 
 function actionLine(name: string, action: string, amount: number): string {
@@ -90,10 +79,8 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   const allSeats = players.map(p => p.seatPosition);
 
-  const sortedPlayers = [...players].sort(
-    (a, b) =>
-      ((a.seatPosition - dealerPosition + 6) % 6) - ((b.seatPosition - dealerPosition + 6) % 6)
-  );
+  const compareSeats = createSeatRingComparator(dealerPosition, allSeats);
+  const sortedPlayers = [...players].sort((a, b) => compareSeats(a.seatPosition, b.seatPosition));
 
   const d = new Date(createdAt);
   const pad = (n: number) => String(n).padStart(2, '0');
@@ -102,7 +89,9 @@ export function toPokerStarsHandText(hand: PokerStarsHandInput): string {
 
   const variantLabel = VARIANT_POKERSTARS_LABEL[hand.variant ?? 'plo'];
   lines.push(`PokerStars Hand #${handNum}: ${variantLabel} (${sb}/${bb}) - ${dateStr}`);
-  lines.push(`Table 'PLO Game' 6-max Seat #${dealerPosition + 1} is the button`);
+  // 卓の席数はハンド履歴に保存された値を使う。旧データ（未保存）は席番号から推定
+  const tableMax = hand.maxPlayers ?? (allSeats.some(s => s > 5) ? 9 : 6);
+  lines.push(`Table 'PLO Game' ${tableMax}-max Seat #${dealerPosition + 1} is the button`);
 
   for (const p of sortedPlayers) {
     lines.push(`Seat ${p.seatPosition + 1}: ${p.username} (${p.startChips} in chips)`);

@@ -1,3 +1,4 @@
+import { getPositionLabel } from '../logic/types';
 const SUIT_SYMBOLS: Record<string, string> = {
   h: '\u2665', d: '\u2666', c: '\u2663', s: '\u2660',
 };
@@ -61,24 +62,7 @@ export function ProfitDisplay({ profit, size = 'normal', bb }: { profit: number;
 }
 
 export function getPositionName(seatPosition: number, dealerPosition: number, allSeatPositions: number[]): string {
-  if (dealerPosition < 0) return '';
-  const sorted = [...allSeatPositions].sort((a, b) => {
-    const offsetA = (a - dealerPosition + 6) % 6;
-    const offsetB = (b - dealerPosition + 6) % 6;
-    return offsetA - offsetB;
-  });
-  const index = sorted.indexOf(seatPosition);
-  const count = sorted.length;
-  if (count <= 1) return '';
-  if (count === 2) return index === 0 ? 'SB' : 'BB';
-  const posMap: Record<number, string[]> = {
-    3: ['BTN', 'SB', 'BB'],
-    4: ['BTN', 'SB', 'BB', 'CO'],
-    5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
-    6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
-  };
-  const positions = posMap[count] || posMap[6]!;
-  return positions[index] || '';
+  return getPositionLabel(seatPosition, dealerPosition, allSeatPositions);
 }
 
 export function PositionBadge({ position }: { position: string }) {

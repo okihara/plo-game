@@ -21,6 +21,7 @@ export function toPokerStarsText(hand: HandDetail): string {
     winners: hand.winners,
     actions: hand.actions,
     dealerPosition: hand.dealerPosition,
+    maxPlayers: hand.maxPlayers,
     createdAt: hand.createdAt,
     players: hand.players.map(p => ({
       username: p.username,
