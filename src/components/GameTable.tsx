@@ -108,8 +108,8 @@ export function GameTable({
   const { settings, setBigBlind } = useGameSettings();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
-  /** 招待コードボタンを出すか（画面上部の種目・レートバッジ内に置く） */
-  const showInviteButton = !isSpectator && !!privateTableInfo;
+  /** 招待コードボタンを出すか（画面上部の種目・レートバッジ内に置く）。観戦者も招待コード付きで入っていれば出す */
+  const showInviteButton = !!privateTableInfo;
 
   const analysisEnabled = settings.analysisEnabled;
   const showHandName = settings.showHandName;
