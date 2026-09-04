@@ -85,6 +85,35 @@ async function oauth1Request(
   });
 }
 
+/**
+ * クエリ付き GET（OAuth 1.0a User Context）。
+ * クエリパラメータは署名ベース文字列に含める必要があるため oauth1Request とは別に持つ。
+ */
+export async function oauth1Get(
+  creds: TwitterCredentials,
+  url: string,
+  query: Record<string, string>,
+): Promise<Response> {
+  const oauthParams: Record<string, string> = {
+    oauth_consumer_key: creds.apiKey,
+    oauth_nonce: crypto.randomBytes(16).toString('hex'),
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: Math.floor(Date.now() / 1000).toString(),
+    oauth_token: creds.accessToken,
+    oauth_version: '1.0',
+  };
+  oauthParams.oauth_signature = signOAuth1(
+    'GET', url, { ...oauthParams, ...query }, creds.apiKeySecret, creds.accessTokenSecret,
+  );
+  const qs = Object.entries(query)
+    .map(([k, v]) => `${percentEncode(k)}=${percentEncode(v)}`)
+    .join('&');
+  return fetch(`${url}?${qs}`, {
+    method: 'GET',
+    headers: { Authorization: buildAuthHeader(oauthParams) },
+  });
+}
+
 /** 画像をアップロードし media_id を返す (v1.1 media/upload) */
 async function uploadMedia(creds: TwitterCredentials, imageBuffer: Buffer): Promise<string> {
   const boundary = `----FormBoundary${crypto.randomBytes(8).toString('hex')}`;
