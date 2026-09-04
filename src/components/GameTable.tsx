@@ -424,7 +424,7 @@ export function GameTable({
           {/* コーチング操作（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示）。
               左下の席の真下に置く。席の高さは席数で変わるため縦位置を切り替える */}
           {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands) && (
-            <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] w-[28.6cqw] z-[160] flex flex-col items-center gap-[1.5cqw]`}>
+            <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] z-[160] flex flex-col items-start gap-[1.5cqw]`}>
               {pauseState.canControl ? (
                 <>
                   <button
