@@ -112,6 +112,7 @@ type ActionType = 'fold' | 'check' | 'call' | 'bet' | 'raise' | 'allin';
 
 export function PlayerDebug() {
   const [variant, setVariant] = useState<GameVariant>('plo');
+  const [debugSeatCount, setDebugSeatCount] = useState<6 | 9>(6);
   const [playerState, setPlayerState] = useState<PlayerState>('normal');
   const [showCards, setShowCards] = useState(true);
   const [showBet, setShowBet] = useState(false);
@@ -203,6 +204,23 @@ export function PlayerDebug() {
                 }`}
               >
                 {label}
+              </button>
+            ))}
+          </div>
+
+          {/* Seat Count Selector (9-max プレビュー用) */}
+          <div className="flex gap-2 mb-8">
+            {([6, 9] as const).map(count => (
+              <button
+                key={count}
+                onClick={() => setDebugSeatCount(count)}
+                className={`px-4 py-2 rounded-lg font-semibold text-sm transition ${
+                  debugSeatCount === count
+                    ? 'bg-cream-900 text-white'
+                    : 'bg-white border border-cream-300 text-cream-700 hover:bg-cream-100'
+                }`}
+              >
+                {count}人卓
               </button>
             ))}
           </div>
@@ -467,7 +485,7 @@ export function PlayerDebug() {
                   {/* PokerTableと同じ構造: h-[129cqw] */}
                   <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
                     <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
-                      {[0, 1, 2, 3, 4, 5].map((posIndex) => {
+                      {Array.from({ length: debugSeatCount }, (_, posIndex) => posIndex).map((posIndex) => {
                         // DBBP / Hi-Lo は wonSides を winner / winAmount の真実とする
                         const dbbpWinCount = dbbpWonBoards?.length ?? 0;
                         const hiLoWinCount = hiLoWonSides?.length ?? 0;
@@ -486,6 +504,7 @@ export function PlayerDebug() {
                             key={posIndex}
                             player={player}
                             positionIndex={posIndex}
+                            seatCount={debugSeatCount}
                             isCurrentPlayer={isCurrentPlayer}
                             isWinner={playerIsWinner}
                             winAmount={playerWinAmount}

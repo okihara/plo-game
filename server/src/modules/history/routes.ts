@@ -46,6 +46,7 @@ export async function publicHandHistoryRoutes(fastify: FastifyInstance) {
       winners: hand.winners,
       actions: hand.actions,
       dealerPosition: hand.dealerPosition,
+      maxPlayers: hand.maxPlayers,
       createdAt: hand.createdAt,
       players: hand.players.map(p => {
         const rawName = p.username || p.user?.username || `Seat ${p.seatPosition + 1}`;
@@ -162,6 +163,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
               potSize: true,
               winners: true,
               dealerPosition: true,
+              maxPlayers: true,
               createdAt: true,
               players: {
                 select: {
@@ -196,6 +198,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       holeCards: ph.holeCards,
       isWinner: ph.handHistory.winners.includes(userId),
       dealerPosition: ph.handHistory.dealerPosition,
+      maxPlayers: ph.handHistory.maxPlayers,
       createdAt: ph.handHistory.createdAt,
       players: ph.handHistory.players.map(p => {
         const rawName = p.username || `Seat ${p.seatPosition + 1}`;
@@ -262,6 +265,7 @@ export async function handHistoryRoutes(fastify: FastifyInstance) {
       winners: hand.winners,
       actions: hand.actions,
       dealerPosition: hand.dealerPosition,
+      maxPlayers: hand.maxPlayers,
       createdAt: hand.createdAt,
       shareToken,
       players: hand.players.map(p => {

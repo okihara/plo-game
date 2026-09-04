@@ -67,11 +67,12 @@ export class StateTransformer {
     validActions?: { action: string; minAmount: number; maxAmount: number }[] | null,
     coaching?: CoachingInfo,
   ): ClientGameState {
-    // タイムアウト情報を計算
+    // タイムアウト情報を計算。締め切りは残り時間ベース、分母（リングの全長）は元の持ち時間で固定し、
+    // ポーズ再開後もタイマーリングの進行位置が保たれるようにする
     const actionTimeoutAt = pendingAction
       ? pendingAction.requestedAt + pendingAction.timeoutMs
       : null;
-    const actionTimeoutMs = pendingAction?.timeoutMs ?? null;
+    const actionTimeoutMs = pendingAction?.totalTimeoutMs ?? null;
 
     // コーチング情報（コーチング機能を扱わない卓では undefined のまま = 既存クライアントに影響なし）
     const pauseFields = {

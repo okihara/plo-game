@@ -108,8 +108,8 @@ export function GameTable({
   const { settings, setBigBlind } = useGameSettings();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
-  /** 招待コードボタンを出すか。コーチング操作ボタンはこの下に積むので縦位置もこれで決まる */
-  const showInviteButton = !isSpectator && !!privateTableInfo;
+  /** 招待コードボタンを出すか（画面上部の種目・レートバッジ内に置く）。観戦者も招待コード付きで入っていれば出す */
+  const showInviteButton = !!privateTableInfo;
 
   const analysisEnabled = settings.analysisEnabled;
   const showHandName = settings.showHandName;
@@ -243,7 +243,8 @@ export function GameTable({
   }, [myHoleCards, gameState.communityCards, gameState.variant, showdownHandNames, myPlayerIdx, myPlayer?.folded]);
 
   const sbPlayerIdx = gameState.players.findIndex(p => p.position === 'SB');
-  const humanDealOrder = (myPlayerIdx - sbPlayerIdx + 6) % 6;
+  const tableSeatCount = gameState.players.length;
+  const humanDealOrder = (myPlayerIdx - sbPlayerIdx + tableSeatCount) % tableSeatCount;
 
   return (
     <>
@@ -297,8 +298,13 @@ export function GameTable({
           ラベルボックスの背景色だけ variant ごとに変える（VARIANT_BADGE_BG）。色定義の
           ない plo（デフォルト）はラベル背景なし。
           sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
-      <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-        <div className="bg-cream-200 rounded-b-[3cqw] w-[44cqw] h-[7cqw] text-[3.2cqw] tracking-wide whitespace-nowrap shadow-sm flex items-center justify-center gap-[2cqw]">
+      {/* 招待コードポップオーバーの外側タップ判定。バッジは -translate-x-1/2 で
+          transform が効いており、その中の fixed は画面全体を覆えないためここに置く */}
+      {showInviteButton && showInvitePopover && (
+        <div className="absolute inset-0 z-[169]" onClick={() => setShowInvitePopover(false)} />
+      )}
+      <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-[170] pointer-events-none">
+        <div className="bg-cream-200 rounded-b-[3cqw] min-w-[44cqw] px-[3cqw] h-[7cqw] text-[3.2cqw] tracking-wide whitespace-nowrap shadow-sm flex items-center justify-center gap-[2cqw]">
           <span
             className={`${
               VARIANT_BADGE_BG[gameState.variant]
@@ -313,109 +319,61 @@ export function GameTable({
               ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
               : `ante ${gameState.ante}`}
           </span>
+            {/* 招待コードボタン（プライベートテーブル・観戦時は非表示）: 種目・レートのバッジ内に置く */}
+            {showInviteButton && (
+                <div className="relative pointer-events-auto">
+                  <button
+                    onClick={() => setShowInvitePopover(!showInvitePopover)}
+                    className="flex items-center gap-[0.8cqw] px-[1.8cqw] py-[0.5cqw] bg-forest text-white rounded-full transition-all active:scale-[0.97]"
+                    style={{ fontSize: '2.3cqw' }}
+                  >
+                    <Copy style={{ width: '2.5cqw', height: '2.5cqw' }} /><span className="font-bold">招待コード</span>
+                  </button>
+                  {showInvitePopover && (
+                    <>
+                      <div className="absolute top-full right-0 mt-1 z-[170] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw] text-left">
+                        <p className={`mb-[1cqw] ${copiedLink === 'code' ? 'text-forest font-bold' : 'text-cream-700'}`} style={{ fontSize: '2.5cqw' }}>
+                          {copiedLink === 'code' ? 'コードをコピーしました' : '招待コード（タップでコピー）'}
+                        </p>
+                        {/* コード自体のタップは「コードだけ」をコピー（リンクは下のボタン） */}
+                        <button
+                          onClick={() => copyLink('code', privateTableInfo.inviteCode)}
+                          className="w-full font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw] transition-all active:scale-[0.97]"
+                          style={{ fontSize: '6cqw' }}
+                        >
+                          {privateTableInfo.inviteCode}
+                        </button>
+                        <button
+                          onClick={() => copyLink('invite', `${window.location.origin}/private/${privateTableInfo.inviteCode}`)}
+                          className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                          style={{ fontSize: '2.8cqw' }}
+                        >
+                          {copiedLink === 'invite'
+                            ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                            : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
+                        </button>
+                        {/* コーチが席を外して観戦に回るための導線（観戦席からもポーズを操作できる） */}
+                        <button
+                          onClick={() =>
+                            copyLink(
+                              'watch',
+                              `${window.location.origin}/watch/${gameState.tableId}?invite=${privateTableInfo.inviteCode}`
+                            )
+                          }
+                          className="w-full mt-[2cqw] px-[4cqw] py-[2cqw] bg-white text-forest border border-forest rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                          style={{ fontSize: '2.8cqw' }}
+                        >
+                          {copiedLink === 'watch'
+                            ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                            : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 観戦リンクをコピー</>}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+            )}
         </div>
       </div>
-      {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}
-      {showInviteButton && (
-        <div className="absolute top-[9cqh] right-[4cqw] z-[170]">
-          <div className="relative">
-            <button
-              onClick={() => setShowInvitePopover(!showInvitePopover)}
-              className="flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] bg-white/90 rounded-full shadow-md text-cream-800 transition-all active:scale-[0.97]"
-              style={{ fontSize: '2.5cqw' }}
-            >
-              <span className="font-mono font-bold tracking-wider">招待コード</span>
-            </button>
-            {showInvitePopover && (
-              <>
-                <div className="fixed inset-0 z-[169]" onClick={() => setShowInvitePopover(false)} />
-                <div className="absolute top-full right-0 mt-1 z-[170] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw]">
-                  <p className={`mb-[1cqw] ${copiedLink === 'code' ? 'text-forest font-bold' : 'text-cream-700'}`} style={{ fontSize: '2.5cqw' }}>
-                    {copiedLink === 'code' ? 'コードをコピーしました' : '招待コード（タップでコピー）'}
-                  </p>
-                  {/* コード自体のタップは「コードだけ」をコピー（リンクは下のボタン） */}
-                  <button
-                    onClick={() => copyLink('code', privateTableInfo.inviteCode)}
-                    className="w-full font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw] transition-all active:scale-[0.97]"
-                    style={{ fontSize: '6cqw' }}
-                  >
-                    {privateTableInfo.inviteCode}
-                  </button>
-                  <button
-                    onClick={() => copyLink('invite', `${window.location.origin}/private/${privateTableInfo.inviteCode}`)}
-                    className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
-                    style={{ fontSize: '2.8cqw' }}
-                  >
-                    {copiedLink === 'invite'
-                      ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
-                      : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
-                  </button>
-                  {/* コーチが席を外して観戦に回るための導線（観戦席からもポーズを操作できる） */}
-                  <button
-                    onClick={() =>
-                      copyLink(
-                        'watch',
-                        `${window.location.origin}/watch/${gameState.tableId}?invite=${privateTableInfo.inviteCode}`
-                      )
-                    }
-                    className="w-full mt-[2cqw] px-[4cqw] py-[2cqw] bg-white text-forest border border-forest rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
-                    style={{ fontSize: '2.8cqw' }}
-                  >
-                    {copiedLink === 'watch'
-                      ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
-                      : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 観戦リンクをコピー</>}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* コーチング（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示） */}
-      {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands) && (
-        <div className={`absolute ${showInviteButton ? 'top-[14cqh]' : 'top-[9cqh]'} right-[4cqw] z-[160] flex flex-col items-end gap-[1.5cqw]`}>
-          {pauseState.canControl ? (
-            <>
-              <button
-                onClick={pauseState.isPaused ? onResume : onPause}
-                className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.isPaused ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
-                style={{ fontSize: '2.5cqw' }}
-              >
-                {pauseState.isPaused
-                  ? <><Play style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">再開</span></>
-                  : <><Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ</span></>}
-              </button>
-
-              {onToggleRevealHands && (
-                <button
-                  onClick={() => onToggleRevealHands(!pauseState.revealAllHands)}
-                  className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.revealAllHands ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
-                  style={{ fontSize: '2.5cqw' }}
-                >
-                  {pauseState.revealAllHands
-                    ? <><Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span></>
-                    : <><EyeOff style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ハンドオープン</span></>}
-                </button>
-              )}
-            </>
-          ) : (
-            // 操作はできないが、卓が止まっている・ハンドが公開される状態は全員に知らせる
-            <>
-              {pauseState.isPaused && (
-                <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
-                  <Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ中</span>
-                </div>
-              )}
-              {pauseState.revealAllHands && (
-                <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
-                  <Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
 
 
           {/* バリアント変更／ブラインドアップ通知（テーブル上部中央：コミュニティカードに重ならない位置） */}
@@ -451,6 +409,7 @@ export function GameTable({
               selectedCardIndices={selectedCardIndices}
               onCardToggle={handleCardToggle}
               raisedIndices={myRaisedCardIndices}
+              seatCount={tableSeatCount}
             />
           )}
 
@@ -465,6 +424,52 @@ export function GameTable({
               isDrawPhase={isDraw && isCurrentDrawStreet}
               selectedCardIndices={selectedCardIndices}
             />
+          )}
+
+          {/* コーチング操作（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示）。
+              左下の席の真下に置く。席の高さは席数で変わるため縦位置を切り替える */}
+          {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands) && (
+            <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] z-[160] flex flex-col items-start gap-[1.5cqw]`}>
+              {pauseState.canControl ? (
+                <>
+                  <button
+                    onClick={pauseState.isPaused ? onResume : onPause}
+                    className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.isPaused ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
+                    style={{ fontSize: '2.5cqw' }}
+                  >
+                    {pauseState.isPaused
+                      ? <><Play style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">再開</span></>
+                      : <><Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ</span></>}
+                  </button>
+
+                  {onToggleRevealHands && (
+                    <button
+                      onClick={() => onToggleRevealHands(!pauseState.revealAllHands)}
+                      className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.revealAllHands ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
+                      style={{ fontSize: '2.5cqw' }}
+                    >
+                      {pauseState.revealAllHands
+                        ? <><Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span></>
+                        : <><EyeOff style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ハンドオープン</span></>}
+                    </button>
+                  )}
+                </>
+              ) : (
+                // 操作はできないが、卓が止まっている・ハンドが公開される状態は全員に知らせる
+                <>
+                  {pauseState.isPaused && (
+                    <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
+                      <Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ中</span>
+                    </div>
+                  )}
+                  {pauseState.revealAllHands && (
+                    <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
+                      <Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
           )}
 
           {!isSpectator && myPlayer && (
@@ -492,7 +497,7 @@ export function GameTable({
                 </p>
                 {true && (
                   <p className="text-white/70 mt-2" style={{ fontSize: 'min(1.8vh, 3.2vw)' }}>
-                    {seatedPlayerCount}/6 人着席中
+                    {seatedPlayerCount}/{tableSeatCount} 人着席中
                   </p>
                 )}
                 <button

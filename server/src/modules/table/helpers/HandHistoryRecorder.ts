@@ -215,6 +215,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           winners: winnerOdIds,
           actions,
           dealerPosition: gameState.dealerPosition,
+          maxPlayers: gameState.players.length,
           players: {
             create: playerRecords,
           },

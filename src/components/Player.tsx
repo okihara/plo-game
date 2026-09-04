@@ -8,6 +8,8 @@ import { PlayerCards } from './PlayerCards';
 interface PlayerProps {
   player: PlayerType;
   positionIndex: number;
+  /** テーブルの席数（6 or 9）。座標辞書の切り替えに使う */
+  seatCount?: number;
   isCurrentPlayer: boolean;
   isWinner: boolean;
   winAmount?: number;
@@ -56,22 +58,51 @@ const NAMEPLATE_STYLES: Record<NameplateDecoration, string> = {
   weekly_champion: 'champion-frame shadow-[0_0_2cqw_rgba(250,204,21,0.6)]',
 };
 
-const positionStyles: Record<number, string> = {
-  0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
-  1: 'bottom-[25.74cqw] left-[-14.05cqw]', // 左下
-  2: 'top-[35.7cqw] left-[-14.05cqw]', // 左上
-  3: 'top-[7.8cqw] left-1/2 -translate-x-1/2', // 上
-  4: 'top-[35.7cqw] right-[-14.05cqw]', // 右上
-  5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
+// 席数（6 or 9）→ posIndex → 配置クラス。posIndex 0 = 自分（下中央）、以降時計回りで左→上→右
+const positionStylesBySeatCount: Record<number, Record<number, string>> = {
+  6: {
+    0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
+    1: 'bottom-[25.74cqw] left-[-14.05cqw]', // 左下
+    2: 'top-[35.7cqw] left-[-14.05cqw]', // 左上
+    3: 'top-[7.8cqw] left-1/2 -translate-x-1/2', // 上
+    4: 'top-[35.7cqw] right-[-14.05cqw]', // 右上
+    5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
+  },
+  9: {
+    // ボードを挟んで下に5人（自分＋左右2人ずつ）、上に4人（左右2人ずつ）
+    0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
+    1: 'bottom-[5cqw] left-[-14.05cqw]', // 左下
+    2: 'top-[92cqw] left-[-14.05cqw]', // 左中下（ボードの下）
+    3: 'top-[38cqw] left-[-14.05cqw]', // 左中上（ボードの上）
+    4: 'top-[8cqw] left-[-14.05cqw]', // 左上
+    5: 'top-[8cqw] right-[-14.05cqw]', // 右上
+    6: 'top-[38cqw] right-[-14.05cqw]', // 右中上（ボードの上）
+    7: 'top-[92cqw] right-[-14.05cqw]', // 右中下（ボードの下）
+    8: 'bottom-[5cqw] right-[-14.05cqw]', // 右下
+  },
 };
 
-const betPositionStyles: Record<number, string> = {
-  0: 'top-[-23cqw]',
-  1: 'top-[2cqw] right-[-17cqw]',
-  2: 'top-[2cqw] right-[-17cqw]',
-  3: 'top-[18cqw]',
-  4: 'top-[2cqw] left-[-17cqw]',
-  5: 'top-[2cqw] left-[-17cqw]',
+// ベットチップは常にテーブル中央方向へ置く
+const betPositionStylesBySeatCount: Record<number, Record<number, string>> = {
+  6: {
+    0: 'top-[-23cqw]',
+    1: 'top-[2cqw] right-[-17cqw]',
+    2: 'top-[2cqw] right-[-17cqw]',
+    3: 'top-[18cqw]',
+    4: 'top-[2cqw] left-[-17cqw]',
+    5: 'top-[2cqw] left-[-17cqw]',
+  },
+  9: {
+    0: 'top-[-23cqw]',
+    1: 'top-[2cqw] right-[-17cqw]',
+    2: 'top-[2cqw] right-[-17cqw]',
+    3: 'top-[2cqw] right-[-17cqw]',
+    4: 'top-[2cqw] right-[-17cqw]',
+    5: 'top-[2cqw] left-[-17cqw]',
+    6: 'top-[2cqw] left-[-17cqw]',
+    7: 'top-[2cqw] left-[-17cqw]',
+    8: 'top-[2cqw] left-[-17cqw]',
+  },
 };
 
 const dealerButtonStyle = 'bottom-[-5cqw] right-[-5cqw]';
@@ -90,6 +121,7 @@ const actionColorStyles: Record<Action, string> = {
 export function Player({
   player,
   positionIndex,
+  seatCount = 6,
   isCurrentPlayer,
   isWinner,
   winAmount,
@@ -152,8 +184,13 @@ export function Player({
     ? remainingTime / actionTimeoutMs
     : null;
 
+  const positionStyles = positionStylesBySeatCount[seatCount] ?? positionStylesBySeatCount[6];
+  const betPositionStyles = betPositionStylesBySeatCount[seatCount] ?? betPositionStylesBySeatCount[6];
+  // 9-max は席間が詰まるため、自分以外の席をひと回り縮小して衝突を避ける
+  const compactClass = seatCount === 9 && positionIndex !== 0 ? 'scale-[0.85]' : '';
+
   return (
-    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${isWinner ? 'z-[40]' : ''}`} onClick={onAvatarClick}>
+    <div className={`absolute flex flex-col items-center cursor-pointer ${positionStyles[positionIndex]} ${compactClass} ${isWinner ? 'z-[40]' : ''}`} onClick={onAvatarClick}>
       {/* Win Amount Display */}
       {isWinner && winAmount !== undefined && winAmount > 0 && (
         <div className="absolute top-[-25cqw] left-1/2 -translate-x-1/2 z-[40] animate-win-pop whitespace-nowrap">
@@ -261,6 +298,7 @@ export function Player({
       <PlayerCards
         player={player}
         positionIndex={positionIndex}
+        seatCount={seatCount}
         showCards={showCards}
         isDealing={isDealing}
         dealOrder={dealOrder}

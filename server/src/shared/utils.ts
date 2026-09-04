@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { MAX_TABLE_SEAT_COUNT } from '@plo/shared';
 
 /** 完全マスク（公開ページ・シェア用） */
 export const MASKED_PLAYER_NAME = '********';
@@ -29,7 +30,7 @@ export function verifyShareToken(handId: string, token: string, secret: string):
   const dot = token.indexOf('.');
   if (dot < 0) return null;
   const seatIndex = parseInt(token.slice(0, dot), 10);
-  if (isNaN(seatIndex) || seatIndex < 0 || seatIndex > 5) return null;
+  if (isNaN(seatIndex) || seatIndex < 0 || seatIndex >= MAX_TABLE_SEAT_COUNT) return null;
   const expected = generateShareToken(handId, seatIndex, secret);
   if (token !== expected) return null;
   return seatIndex;

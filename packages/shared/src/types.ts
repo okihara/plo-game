@@ -123,10 +123,126 @@ export function isDrawBettingStreet(street: Street): boolean {
   return street === 'predraw' || street === 'postdraw1' || street === 'postdraw2' || street === 'final';
 }
 
-export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'HJ' | 'CO';
+export type Position = 'BTN' | 'SB' | 'BB' | 'UTG' | 'UTG1' | 'UTG2' | 'LJ' | 'HJ' | 'CO';
 
-/** 席順のポジション配列。POSITIONS[(seatIndex - dealerPosition + 6) % 6] でポジションが求まる */
-export const POSITIONS: Position[] = ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'];
+/**
+ * プレイ人数 → BTN 起点・ブラインド順のポジションラベル列。
+ *
+ * ゲームエンジンのポジション割り当て（assignBlindPostingPositions）と、
+ * ハンド履歴・OGP・PokerStars 形式などの表示系が共有する **唯一の定義**。
+ * 片方だけ書き換えると同じハンドの卓上表示と履歴表示が食い違うため、必ずここを直す。
+ *
+ * 2人時の表記（'BTN/SB' か 'SB' か）は利用箇所で差があるため、この表は 3 人以上のみを持つ。
+ */
+export const POSITION_LABELS_BY_PLAYER_COUNT: Record<number, readonly Position[]> = {
+  3: ['BTN', 'SB', 'BB'],
+  // 4人時の中間席はエンジンの卓上表示に合わせて UTG（CO ではない）
+  4: ['BTN', 'SB', 'BB', 'UTG'],
+  5: ['BTN', 'SB', 'BB', 'UTG', 'CO'],
+  6: ['BTN', 'SB', 'BB', 'UTG', 'HJ', 'CO'],
+  7: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'HJ', 'CO'],
+  8: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'LJ', 'HJ', 'CO'],
+  9: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO'],
+};
+
+/**
+ * 卓の最大席数（9-max）。席番号は 0 〜 MAX_TABLE_SEAT_COUNT - 1 の範囲に収まる。
+ * ハンド共有トークンの席番号チェックなど、席番号の妥当性判定はここを基準にする。
+ */
+export const MAX_TABLE_SEAT_COUNT = 9;
+
+/** 席順のポジション配列（6-max）。POSITIONS[(seatIndex - dealerPosition + 6) % 6] でポジションが求まる */
+export const POSITIONS: Position[] = [...POSITION_LABELS_BY_PLAYER_COUNT[6]!];
+
+/** 席順のポジション配列（9-max） */
+export const POSITIONS_9: Position[] = [...POSITION_LABELS_BY_PLAYER_COUNT[9]!];
+
+/** 席数に応じたリング配列。getRingPositions(n)[(seatIndex - dealerPosition + n) % n] でポジションが求まる */
+export function getRingPositions(seatCount: number): Position[] {
+  const labels = POSITION_LABELS_BY_PLAYER_COUNT[seatCount];
+  return labels ? [...labels] : POSITIONS;
+}
+
+/**
+ * ハンド履歴表示用: 席番号を BTN 起点で並べるときの法（modulo）。
+ * 席数が保存されていない旧データのために、登場する席番号とディーラー位置から推定する。
+ * 法が「最大 seatIndex + 1」以上であれば循環順序は法の値によらず同一なので、
+ * 6-max の過去データの表示は変わらず、9-max（seat 6-8 を含む）も正しく並ぶ。
+ */
+export function getSeatRingModulo(dealerPosition: number, allSeats: readonly number[]): number {
+  return Math.max(6, dealerPosition + 1, ...allSeats.map(s => s + 1));
+}
+
+/**
+ * 席番号をディーラー起点のリング順で比較する比較関数を作る。
+ * ハンド履歴・OGP・PokerStars 形式の並び替えはすべてこれを使う。
+ *
+ * @param shift 起点のずらし幅。0 = BTN 起点、1 = SB 起点
+ */
+export function createSeatRingComparator(
+  dealerPosition: number,
+  allSeats: readonly number[],
+  shift: number = 0,
+): (a: number, b: number) => number {
+  const mod = getSeatRingModulo(dealerPosition, allSeats);
+  const offset = (seat: number) => (((seat - dealerPosition - shift) % mod) + mod) % mod;
+  return (a, b) => offset(a) - offset(b);
+}
+
+/** 席番号をディーラー起点のリング順に並べる。@see createSeatRingComparator */
+export function sortSeatsFromDealer(
+  allSeats: readonly number[],
+  dealerPosition: number,
+  shift: number = 0,
+): number[] {
+  return [...allSeats].sort(createSeatRingComparator(dealerPosition, allSeats, shift));
+}
+
+export interface PositionLabelOptions {
+  /** 2人時のラベル（index 0 = ディーラー側）。既定は ['SB', 'BB'] */
+  headsUp?: readonly [string, string];
+  /** 人数が表にないとき 6-max の表へフォールバックするか。既定 true */
+  fallbackTo6Max?: boolean;
+}
+
+/**
+ * 席番号 → ポジションラベルの対応表を作る。1ハンド分をまとめて引くときはこちらを使う。
+ * ディーラー不明（負値）や1人以下のときは空の Map を返す。
+ */
+export function getPositionLabelsBySeat(
+  dealerPosition: number,
+  allSeats: readonly number[],
+  options?: PositionLabelOptions,
+): Map<number, string> {
+  const result = new Map<number, string>();
+  if (dealerPosition < 0) return result;
+
+  const uniqueSeats = [...new Set(allSeats)];
+  const count = uniqueSeats.length;
+  if (count <= 1) return result;
+
+  const labels: readonly string[] | undefined = count === 2
+    ? (options?.headsUp ?? ['SB', 'BB'])
+    : POSITION_LABELS_BY_PLAYER_COUNT[count]
+      ?? (options?.fallbackTo6Max === false ? undefined : POSITION_LABELS_BY_PLAYER_COUNT[6]);
+  if (!labels) return result;
+
+  sortSeatsFromDealer(uniqueSeats, dealerPosition).forEach((seat, index) => {
+    const label = labels[index];
+    if (label) result.set(seat, label);
+  });
+  return result;
+}
+
+/** 1席分のポジションラベル。見つからないときは空文字。@see getPositionLabelsBySeat */
+export function getPositionLabel(
+  seatPosition: number,
+  dealerPosition: number,
+  allSeats: readonly number[],
+  options?: PositionLabelOptions,
+): string {
+  return getPositionLabelsBySeat(dealerPosition, allSeats, options).get(seatPosition) ?? '';
+}
 
 export interface Player {
   id: number;

@@ -131,6 +131,25 @@ describe('コーチング用ポーズ', () => {
       expect(table.getClientGameState().currentPlayerSeat).not.toBe(current.seatIndex);
     });
 
+    it('再開後もタイマーリングの分母は元の持ち時間のままで、締め切りだけ残り時間で復元される', async () => {
+      const { table } = setupPrivateHand();
+      const before = table.getClientGameState();
+      const total = before.actionTimeoutMs!;
+      expect(total).toBe(TABLE_CONSTANTS.ACTION_TIMEOUT_PREFLOP_MS);
+
+      const elapsedBeforePause = 6_000;
+      await vi.advanceTimersByTimeAsync(elapsedBeforePause);
+      table.pause(OWNER);
+      await vi.advanceTimersByTimeAsync(60_000);
+      table.resume(OWNER);
+
+      const after = table.getClientGameState();
+      // 分母（リング全長）は変わらない
+      expect(after.actionTimeoutMs).toBe(total);
+      // 締め切りはポーズ前の残り時間ぶん先（リングは途中から再開する）
+      expect(after.actionTimeoutAt! - Date.now()).toBe(total - elapsedBeforePause);
+    });
+
     it('ポーズが最大時間で自動解除される', async () => {
       const { table } = setupPrivateHand();
 
