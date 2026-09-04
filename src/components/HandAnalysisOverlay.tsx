@@ -37,7 +37,8 @@ export function HandAnalysisOverlay({
   const isPreflop = communityCards.length < 3;
 
   return (
-    <div className="absolute bottom-[25cqw] left-[0.7cqw] z-50 pointer-events-auto shrink-0">
+    // 配置は呼び出し側（GameTable の左下操作列）に任せる
+    <div className="pointer-events-auto shrink-0">
       <div className="bg-black/70 border border-gray-600 rounded p-[1cqw] shadow-xl text-[2.5cqw] backdrop-blur-sm w-[20cqw]">
         {/* ヘッダー */}
         <div className="flex justify-between items-center mb-[0.3cqw] border-b border-gray-700 pb-[0.3cqw]">
