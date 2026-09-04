@@ -70,7 +70,10 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
             const isSelected = isDrawPhase && selectedCardIndices?.has(cardIndex);
             return (
               <div
-                key={cardIndex}
+                // カードが入れ替わったら要素を作り直す。ハンドオープン中のポーズ経由で
+                // 手札が空にならずに次のハンドへ移ると、クラスが付いたままになり
+                // 配布アニメーションが再生されないため
+                key={`${cardIndex}-${cardKey(card)}`}
                 className={`transition-transform duration-150 ${card.isUp ? '-translate-y-[4cqw]' : ''} ${isSelected ? '-translate-y-[3cqw]' : ''} ${raisedIndices?.includes(cardIndex) ? '-translate-y-[4cqw]' : ''} ${shouldAnimate ? 'animate-deal-card' : ''} ${isDrawPhase ? 'cursor-pointer' : ''}`}
                 style={shouldAnimate ? {
                   opacity: 0,
