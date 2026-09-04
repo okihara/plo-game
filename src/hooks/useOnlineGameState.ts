@@ -593,7 +593,9 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     : 0;
 
   // 他のプレイヤーを待っている状態かどうか
-  const isWaitingForPlayers = clientState !== null && !clientState.isHandInProgress;
+  // ポーズ中は「他のプレイヤーを待っている」のではなく卓を止めているだけなので待機扱いにしない。
+  // ハンドオープンの検討ポーズはハンド終了後に止まるため、そのままだと毎回オーバーレイが出る
+  const isWaitingForPlayers = clientState !== null && !clientState.isHandInProgress && !clientState.isPaused;
 
   return {
     isConnecting,
