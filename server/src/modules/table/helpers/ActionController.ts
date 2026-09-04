@@ -22,8 +22,8 @@ export interface AdvanceResult {
 }
 
 /**
- * ポーズで止めた手番。pendingAction のスナップショット（timeoutMs は残り時間に置換済み）と、
- * 再開時に張り直すタイムアウトコールバックを保持する。
+ * ポーズで止めた手番。pendingAction のスナップショット（timeoutMs は残り時間に置換済み、
+ * totalTimeoutMs は元の持ち時間のまま）と、再開時に張り直すタイムアウトコールバックを保持する。
  */
 interface PausedTurn {
   pendingAction: PendingAction;
@@ -283,6 +283,7 @@ export class ActionController {
       })),
       requestedAt: Date.now(),
       timeoutMs,
+      totalTimeoutMs: timeoutMs,
     };
 
     // タイムアウトタイマー設定（世代カウンターで古いコールバックを無視）

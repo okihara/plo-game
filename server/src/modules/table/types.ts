@@ -77,7 +77,10 @@ export interface PendingAction {
   seatNumber: number;
   validActions: { action: string; minAmount: number; maxAmount: number }[];
   requestedAt: number;
+  /** requestedAt からの持ち時間。ポーズ再開時は残り時間に置き換わる */
   timeoutMs: number;
+  /** この手番に最初に与えた持ち時間。ポーズ再開後も変えず、クライアントのタイマーリングの分母に使う */
+  totalTimeoutMs: number;
 }
 
 /**
