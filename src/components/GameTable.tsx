@@ -108,7 +108,7 @@ export function GameTable({
   const { settings, setBigBlind } = useGameSettings();
   const { getLabel, setLabel, removeLabel } = usePlayerLabels();
 
-  /** 招待コードボタンを出すか（左下の操作列の先頭に積む） */
+  /** 招待コードボタンを出すか（画面上部の種目・レートバッジ内に置く） */
   const showInviteButton = !isSpectator && !!privateTableInfo;
 
   const analysisEnabled = settings.analysisEnabled;
@@ -298,8 +298,8 @@ export function GameTable({
           ラベルボックスの背景色だけ variant ごとに変える（VARIANT_BADGE_BG）。色定義の
           ない plo（デフォルト）はラベル背景なし。
           sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
-      <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-10 pointer-events-none">
-        <div className="bg-cream-200 rounded-b-[3cqw] w-[44cqw] h-[7cqw] text-[3.2cqw] tracking-wide whitespace-nowrap shadow-sm flex items-center justify-center gap-[2cqw]">
+      <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-[170] pointer-events-none">
+        <div className="bg-cream-200 rounded-b-[3cqw] min-w-[44cqw] px-[3cqw] h-[7cqw] text-[3.2cqw] tracking-wide whitespace-nowrap shadow-sm flex items-center justify-center gap-[2cqw]">
           <span
             className={`${
               VARIANT_BADGE_BG[gameState.variant]
@@ -314,6 +314,60 @@ export function GameTable({
               ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
               : `ante ${gameState.ante}`}
           </span>
+            {/* 招待コードボタン（プライベートテーブル・観戦時は非表示）: 種目・レートのバッジ内に置く */}
+            {showInviteButton && (
+                <div className="relative pointer-events-auto">
+                  <button
+                    onClick={() => setShowInvitePopover(!showInvitePopover)}
+                    className="flex items-center gap-[0.8cqw] px-[1.8cqw] py-[0.5cqw] bg-forest text-white rounded-full transition-all active:scale-[0.97]"
+                    style={{ fontSize: '2.3cqw' }}
+                  >
+                    <Copy style={{ width: '2.5cqw', height: '2.5cqw' }} /><span className="font-bold">招待コード</span>
+                  </button>
+                  {showInvitePopover && (
+                    <>
+                      <div className="fixed inset-0 z-[169]" onClick={() => setShowInvitePopover(false)} />
+                      <div className="absolute top-full right-0 mt-1 z-[170] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw] text-left">
+                        <p className={`mb-[1cqw] ${copiedLink === 'code' ? 'text-forest font-bold' : 'text-cream-700'}`} style={{ fontSize: '2.5cqw' }}>
+                          {copiedLink === 'code' ? 'コードをコピーしました' : '招待コード（タップでコピー）'}
+                        </p>
+                        {/* コード自体のタップは「コードだけ」をコピー（リンクは下のボタン） */}
+                        <button
+                          onClick={() => copyLink('code', privateTableInfo.inviteCode)}
+                          className="w-full font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw] transition-all active:scale-[0.97]"
+                          style={{ fontSize: '6cqw' }}
+                        >
+                          {privateTableInfo.inviteCode}
+                        </button>
+                        <button
+                          onClick={() => copyLink('invite', `${window.location.origin}/private/${privateTableInfo.inviteCode}`)}
+                          className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                          style={{ fontSize: '2.8cqw' }}
+                        >
+                          {copiedLink === 'invite'
+                            ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                            : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
+                        </button>
+                        {/* コーチが席を外して観戦に回るための導線（観戦席からもポーズを操作できる） */}
+                        <button
+                          onClick={() =>
+                            copyLink(
+                              'watch',
+                              `${window.location.origin}/watch/${gameState.tableId}?invite=${privateTableInfo.inviteCode}`
+                            )
+                          }
+                          className="w-full mt-[2cqw] px-[4cqw] py-[2cqw] bg-white text-forest border border-forest rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
+                          style={{ fontSize: '2.8cqw' }}
+                        >
+                          {copiedLink === 'watch'
+                            ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
+                            : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 観戦リンクをコピー</>}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+            )}
         </div>
       </div>
 
@@ -367,62 +421,8 @@ export function GameTable({
             />
           )}
 
-          {/* 左下の操作列: 招待コード・コーチング操作・オープンハンド評価を同じ位置に縦積み（アクションパネルの真上） */}
+          {/* 左下の操作列: コーチング操作・オープンハンド評価を同じ位置に縦積み（アクションパネルの真上） */}
           <div className="absolute bottom-[25cqw] left-[0.7cqw] z-[160] flex flex-col items-start gap-[1.5cqw] pointer-events-none">
-          {/* 招待コードボタン（プライベートテーブル・観戦時は非表示） */}
-          {showInviteButton && (
-              <div className="relative pointer-events-auto">
-                <button
-                  onClick={() => setShowInvitePopover(!showInvitePopover)}
-                  className="flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] bg-white/90 rounded-full shadow-md text-cream-800 transition-all active:scale-[0.97]"
-                  style={{ fontSize: '2.5cqw' }}
-                >
-                  <span className="font-mono font-bold tracking-wider">招待コード</span>
-                </button>
-                {showInvitePopover && (
-                  <>
-                    <div className="fixed inset-0 z-[169]" onClick={() => setShowInvitePopover(false)} />
-                    <div className="absolute bottom-full left-0 mb-1 z-[170] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw]">
-                      <p className={`mb-[1cqw] ${copiedLink === 'code' ? 'text-forest font-bold' : 'text-cream-700'}`} style={{ fontSize: '2.5cqw' }}>
-                        {copiedLink === 'code' ? 'コードをコピーしました' : '招待コード（タップでコピー）'}
-                      </p>
-                      {/* コード自体のタップは「コードだけ」をコピー（リンクは下のボタン） */}
-                      <button
-                        onClick={() => copyLink('code', privateTableInfo.inviteCode)}
-                        className="w-full font-bold text-cream-900 tracking-[0.3em] font-mono text-center mb-[2cqw] transition-all active:scale-[0.97]"
-                        style={{ fontSize: '6cqw' }}
-                      >
-                        {privateTableInfo.inviteCode}
-                      </button>
-                      <button
-                        onClick={() => copyLink('invite', `${window.location.origin}/private/${privateTableInfo.inviteCode}`)}
-                        className="w-full px-[4cqw] py-[2cqw] bg-forest text-white rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
-                        style={{ fontSize: '2.8cqw' }}
-                      >
-                        {copiedLink === 'invite'
-                          ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
-                          : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
-                      </button>
-                      {/* コーチが席を外して観戦に回るための導線（観戦席からもポーズを操作できる） */}
-                      <button
-                        onClick={() =>
-                          copyLink(
-                            'watch',
-                            `${window.location.origin}/watch/${gameState.tableId}?invite=${privateTableInfo.inviteCode}`
-                          )
-                        }
-                        className="w-full mt-[2cqw] px-[4cqw] py-[2cqw] bg-white text-forest border border-forest rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
-                        style={{ fontSize: '2.8cqw' }}
-                      >
-                        {copiedLink === 'watch'
-                          ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
-                          : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 観戦リンクをコピー</>}
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-          )}
 
           {/* コーチング（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示） */}
           {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands) && (
