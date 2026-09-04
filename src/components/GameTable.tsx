@@ -298,6 +298,11 @@ export function GameTable({
           ラベルボックスの背景色だけ variant ごとに変える（VARIANT_BADGE_BG）。色定義の
           ない plo（デフォルト）はラベル背景なし。
           sb/bb > 0 なら "sb/bb"、ante のみのときは "ante N"。両方あれば併記。 */}
+      {/* 招待コードポップオーバーの外側タップ判定。バッジは -translate-x-1/2 で
+          transform が効いており、その中の fixed は画面全体を覆えないためここに置く */}
+      {showInviteButton && showInvitePopover && (
+        <div className="absolute inset-0 z-[169]" onClick={() => setShowInvitePopover(false)} />
+      )}
       <div className="absolute top-[-0.1cqh] left-1/2 -translate-x-1/2 z-[170] pointer-events-none">
         <div className="bg-cream-200 rounded-b-[3cqw] min-w-[44cqw] px-[3cqw] h-[7cqw] text-[3.2cqw] tracking-wide whitespace-nowrap shadow-sm flex items-center justify-center gap-[2cqw]">
           <span
@@ -326,7 +331,6 @@ export function GameTable({
                   </button>
                   {showInvitePopover && (
                     <>
-                      <div className="fixed inset-0 z-[169]" onClick={() => setShowInvitePopover(false)} />
                       <div className="absolute top-full right-0 mt-1 z-[170] bg-white rounded-[2cqw] shadow-lg p-[4cqw] whitespace-nowrap min-w-[45cqw] text-left">
                         <p className={`mb-[1cqw] ${copiedLink === 'code' ? 'text-forest font-bold' : 'text-cream-700'}`} style={{ fontSize: '2.5cqw' }}>
                           {copiedLink === 'code' ? 'コードをコピーしました' : '招待コード（タップでコピー）'}
@@ -405,6 +409,7 @@ export function GameTable({
               selectedCardIndices={selectedCardIndices}
               onCardToggle={handleCardToggle}
               raisedIndices={myRaisedCardIndices}
+              seatCount={tableSeatCount}
             />
           )}
 

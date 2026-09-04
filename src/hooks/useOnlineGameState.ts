@@ -5,6 +5,7 @@ import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState } from '../logic/types';
 import { convertClientStateToGameState, derivePauseState, NO_PAUSE } from './onlineGameShared';
 import type { PauseState } from './onlineGameShared';
+import { dealAnimationTotalMs } from '../utils/dealAnimation';
 
 // ============================================
 // 型定義
@@ -153,7 +154,11 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     setLastActions(new Map());
   }, []);
 
-  const startDealingAnimation = useCallback(() => {
+  /**
+   * 配布演出の開始。演出中フラグを落とすまでの時間は席数と配布枚数から決める。
+   * 固定値にすると 9人卓で最後に配られるカードが飛んでくる前に打ち切られる。
+   */
+  const startDealingAnimation = useCallback((seatCount: number, cardsPerPlayer: number) => {
     if (dealingTimerRef.current) {
       clearTimeout(dealingTimerRef.current);
     }
@@ -161,7 +166,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
     dealingTimerRef.current = setTimeout(() => {
       setIsDealingCards(false);
       dealingTimerRef.current = null;
-    }, 1000);
+    }, dealAnimationTotalMs(seatCount, cardsPerPlayer));
   }, []);
 
   // ============================================
@@ -426,6 +431,8 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
 
         prevStreetRef.current = state.currentStreet;
         prevCardCountRef.current = state.communityCards.length;
+        // 配布演出は onHoleCards 側で席数を見るため、ref も同じタイミングで更新する
+        clientStateRef.current = state;
         setClientState(state);
 
         // タイマー情報を更新
@@ -440,7 +447,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // Stud: 各ストリートで呼ばれる。新ハンド初回だけディール演出（演出リセットは onGameState の isHandInProgress 遷移に任せる）
         if (cards.length > 0 && isNewHandRef.current) {
           isNewHandRef.current = false;
-          startDealingAnimation();
+          startDealingAnimation(clientStateRef.current?.players.length ?? 6, cards.length);
           playDealSound();
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;

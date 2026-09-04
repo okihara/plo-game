@@ -145,6 +145,12 @@ export const POSITION_LABELS_BY_PLAYER_COUNT: Record<number, readonly Position[]
   9: ['BTN', 'SB', 'BB', 'UTG', 'UTG1', 'UTG2', 'LJ', 'HJ', 'CO'],
 };
 
+/**
+ * 卓の最大席数（9-max）。席番号は 0 〜 MAX_TABLE_SEAT_COUNT - 1 の範囲に収まる。
+ * ハンド共有トークンの席番号チェックなど、席番号の妥当性判定はここを基準にする。
+ */
+export const MAX_TABLE_SEAT_COUNT = 9;
+
 /** 席順のポジション配列（6-max）。POSITIONS[(seatIndex - dealerPosition + 6) % 6] でポジションが求まる */
 export const POSITIONS: Position[] = [...POSITION_LABELS_BY_PLAYER_COUNT[6]!];
 

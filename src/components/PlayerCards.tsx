@@ -2,6 +2,7 @@ import { useState, useLayoutEffect } from 'react';
 import { Player as PlayerType, GameVariant, getVariantConfig } from '../logic';
 import { Card, FaceDownCard } from './Card';
 import { LastAction } from '../hooks/useOnlineGameState';
+import { dealCardDelayMs } from '../utils/dealAnimation';
 
 // カードがテーブル中央から各プレイヤー位置へ飛んでくる方向（席数 → posIndex → ベクトル）
 // 6席: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
@@ -149,7 +150,7 @@ export function PlayerCards({
                 </div>
               ))
             : (player.holeCards.length > 0 ? player.holeCards : Array(holeCardCount).fill(null)).map((card, cardIndex) => {
-                const dealDelay = (cardIndex * seatCount + dealOrder) * 40;
+                const dealDelay = dealCardDelayMs(cardIndex, dealOrder, seatCount);
                 const isFolding = lastAction?.action === 'fold' && Date.now() - lastAction.timestamp < 500;
                 const foldOffset = (foldToOffsetsBySeatCount[seatCount] ?? foldToOffsetsBySeatCount[6])[positionIndex];
                 return (

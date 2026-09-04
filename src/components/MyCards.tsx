@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState } from 'react';
 import { Card as CardType, getVariantConfig, GameVariant } from '../logic';
 import { Card } from './Card';
+import { dealCardDelayMs } from '../utils/dealAnimation';
 
 function cardKey(c: CardType): string {
   return `${c.rank}${c.suit}`;
@@ -17,9 +18,11 @@ interface MyCardsProps {
   onCardToggle?: (index: number) => void;
   /** ショウダウンでベストハンドに使ったホールカードのインデックス（少し上げて強調） */
   raisedIndices?: number[];
+  /** 卓の席数。他プレイヤーと配布アニメーションの間隔を揃えるのに使う */
+  seatCount?: number;
 }
 
-export function MyCards({ cards, dealOrder, folded = false, handName, variant, isDrawPhase, selectedCardIndices, onCardToggle, raisedIndices }: MyCardsProps) {
+export function MyCards({ cards, dealOrder, folded = false, handName, variant, isDrawPhase, selectedCardIndices, onCardToggle, raisedIndices, seatCount = 6 }: MyCardsProps) {
   const v = (variant ?? 'plo') as GameVariant;
   const config = getVariantConfig(v);
   const useSmallCards = config.family === 'stud' || config.family === 'draw';
@@ -63,7 +66,7 @@ export function MyCards({ cards, dealOrder, folded = false, handName, variant, i
           [...animatingIndices].sort((a, b) => a - b).forEach((idx, order) => animOrderMap.set(idx, order));
           return cards.map((card, cardIndex) => {
             const shouldAnimate = animatingIndices.has(cardIndex);
-            const dealDelay = ((animOrderMap.get(cardIndex) ?? 0) * 6 + dealOrder) * 40;
+            const dealDelay = dealCardDelayMs(animOrderMap.get(cardIndex) ?? 0, dealOrder, seatCount);
             const isSelected = isDrawPhase && selectedCardIndices?.has(cardIndex);
             return (
               <div
