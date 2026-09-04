@@ -421,12 +421,10 @@ export function GameTable({
             />
           )}
 
-          {/* 左下の操作列: コーチング操作・オープンハンド評価を同じ位置に縦積み（アクションパネルの真上） */}
-          <div className="absolute bottom-[25cqw] left-[0.7cqw] z-[160] flex flex-col items-start gap-[1.5cqw] pointer-events-none">
-
-          {/* コーチング（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示） */}
+          {/* コーチング操作（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示）。
+              左下の席の真下に置く。席の高さは席数で変わるため縦位置を切り替える */}
           {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands) && (
-            <div className="flex flex-col items-start gap-[1.5cqw] pointer-events-auto">
+            <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] w-[28.6cqw] z-[160] flex flex-col items-center gap-[1.5cqw]`}>
               {pauseState.canControl ? (
                 <>
                   <button
@@ -469,14 +467,13 @@ export function GameTable({
             </div>
           )}
 
-            {!isSpectator && myPlayer && (
-              <HandAnalysisOverlay
-                holeCards={myHoleCards}
-                communityCards={gameState.communityCards}
-                isVisible={analysisEnabled && gameState.currentStreet === 'preflop'}
-              />
-            )}
-          </div>
+          {!isSpectator && myPlayer && (
+            <HandAnalysisOverlay
+              holeCards={myHoleCards}
+              communityCards={gameState.communityCards}
+              isVisible={analysisEnabled && gameState.currentStreet === 'preflop'}
+            />
+          )}
 
           {/* バスト通知オーバーレイ */}
           {bustedMessage && (
