@@ -202,7 +202,7 @@ export function ActionPanel({ state, mySeat, onAction, isFastFold, onFastFold, i
     <div className={`h-[25cqw] px-[1cqw] pt-[2.7cqw] pb-[1.8cqw] relative overflow-visible`}>
       {/* Vertical Bet Slider (absolute, extends above ActionPanel) */}
       {showSlider && (
-        <div className={`absolute right-[4cqw] bottom-[15cqw] h-[50cqw] w-[17cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
+        <div className={`absolute right-[4cqw] bottom-[15cqw] h-[40cqw] w-[17cqw] flex flex-col items-center gap-[0.8cqw] ${(!canRaise || !isMyTurn || actionSent) ? 'brightness-[0.3] pointer-events-none' : ''}`}>
           <span className="text-white text-[3cqw] text-center border-[0.3cqw] border-gray-600 rounded-[3cqw] px-[1.2cqw] py-[0.7cqw] bg-black backdrop-blur-sm w-full">
             {formatChips(sliderTotalChips)}
           </span>

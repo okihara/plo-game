@@ -5,7 +5,7 @@ import { LastAction } from '../hooks/useOnlineGameState';
 
 // カードがテーブル中央から各プレイヤー位置へ飛んでくる方向（席数 → posIndex → ベクトル）
 // 6席: 0=下(自分), 1=左下, 2=左上, 3=上, 4=右上, 5=右下
-// 9席: 0=下(自分), 1=左下, 2=左中, 3=左上, 4=上左, 5=上右, 6=右上, 7=右中, 8=右下
+// 9席: 0=下(自分), 1=左下, 2=左中下, 3=左中上, 4=左上, 5=右上, 6=右中上, 7=右中下, 8=右下（左右4人ずつ縦並び）
 const dealFromOffsetsBySeatCount: Record<number, Record<number, { x: string; y: string }>> = {
   6: {
     0: { x: '0', y: '-44cqw' },    // 下 ← 中央から下へ
@@ -17,14 +17,14 @@ const dealFromOffsetsBySeatCount: Record<number, Record<number, { x: string; y: 
   },
   9: {
     0: { x: '0', y: '-44cqw' },
-    1: { x: '31cqw', y: '-22cqw' },
-    2: { x: '36cqw', y: '0' },
-    3: { x: '31cqw', y: '22cqw' },
-    4: { x: '14cqw', y: '40cqw' },
-    5: { x: '-14cqw', y: '40cqw' },
-    6: { x: '-31cqw', y: '22cqw' },
-    7: { x: '-36cqw', y: '0' },
-    8: { x: '-31cqw', y: '-22cqw' },
+    1: { x: '31cqw', y: '-30cqw' },
+    2: { x: '34cqw', y: '-8cqw' },
+    3: { x: '34cqw', y: '26cqw' },
+    4: { x: '31cqw', y: '46cqw' },
+    5: { x: '-31cqw', y: '46cqw' },
+    6: { x: '-34cqw', y: '26cqw' },
+    7: { x: '-34cqw', y: '-8cqw' },
+    8: { x: '-31cqw', y: '-30cqw' },
   },
 };
 
@@ -40,14 +40,14 @@ const foldToOffsetsBySeatCount: Record<number, Record<number, { x: string; y: st
   },
   9: {
     0: { x: '0', y: '-30cqw', rotate: '-20deg' },
-    1: { x: '20cqw', y: '-15cqw', rotate: '15deg' },
-    2: { x: '24cqw', y: '0', rotate: '-15deg' },
-    3: { x: '20cqw', y: '15cqw', rotate: '15deg' },
-    4: { x: '9cqw', y: '27cqw', rotate: '-15deg' },
-    5: { x: '-9cqw', y: '27cqw', rotate: '20deg' },
-    6: { x: '-20cqw', y: '15cqw', rotate: '15deg' },
-    7: { x: '-24cqw', y: '0', rotate: '-15deg' },
-    8: { x: '-20cqw', y: '-15cqw', rotate: '-15deg' },
+    1: { x: '20cqw', y: '-20cqw', rotate: '15deg' },
+    2: { x: '22cqw', y: '-5cqw', rotate: '-15deg' },
+    3: { x: '22cqw', y: '17cqw', rotate: '15deg' },
+    4: { x: '20cqw', y: '30cqw', rotate: '-15deg' },
+    5: { x: '-20cqw', y: '30cqw', rotate: '20deg' },
+    6: { x: '-22cqw', y: '17cqw', rotate: '15deg' },
+    7: { x: '-22cqw', y: '-5cqw', rotate: '-15deg' },
+    8: { x: '-20cqw', y: '-20cqw', rotate: '-15deg' },
   },
 };
 

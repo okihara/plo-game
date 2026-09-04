@@ -69,15 +69,16 @@ const positionStylesBySeatCount: Record<number, Record<number, string>> = {
     5: 'bottom-[25.74cqw] right-[-14.05cqw]', // 右下
   },
   9: {
+    // ボードを挟んで下に5人（自分＋左右2人ずつ）、上に4人（左右2人ずつ）
     0: 'bottom-[-13.16cqw] left-1/2 -translate-x-1/2', // 自分
-    1: 'bottom-[10cqw] left-[-14.05cqw]', // 左下
-    2: 'top-[42cqw] left-[-14.05cqw]', // 左中
-    3: 'top-[14cqw] left-[-14.05cqw]', // 左上
-    4: 'top-[-1cqw] left-[7cqw]', // 上左
-    5: 'top-[-1cqw] right-[7cqw]', // 上右
-    6: 'top-[14cqw] right-[-14.05cqw]', // 右上
-    7: 'top-[42cqw] right-[-14.05cqw]', // 右中
-    8: 'bottom-[10cqw] right-[-14.05cqw]', // 右下
+    1: 'bottom-[5cqw] left-[-14.05cqw]', // 左下
+    2: 'top-[92cqw] left-[-14.05cqw]', // 左中下（ボードの下）
+    3: 'top-[36cqw] left-[-14.05cqw]', // 左中上（ボードの上）
+    4: 'top-[6cqw] left-[-14.05cqw]', // 左上
+    5: 'top-[6cqw] right-[-14.05cqw]', // 右上
+    6: 'top-[36cqw] right-[-14.05cqw]', // 右中上（ボードの上）
+    7: 'top-[92cqw] right-[-14.05cqw]', // 右中下（ボードの下）
+    8: 'bottom-[5cqw] right-[-14.05cqw]', // 右下
   },
 };
 
@@ -96,8 +97,8 @@ const betPositionStylesBySeatCount: Record<number, Record<number, string>> = {
     1: 'top-[2cqw] right-[-17cqw]',
     2: 'top-[2cqw] right-[-17cqw]',
     3: 'top-[2cqw] right-[-17cqw]',
-    4: 'top-[18cqw] left-[6cqw]',
-    5: 'top-[18cqw] right-[6cqw]',
+    4: 'top-[2cqw] right-[-17cqw]',
+    5: 'top-[2cqw] left-[-17cqw]',
     6: 'top-[2cqw] left-[-17cqw]',
     7: 'top-[2cqw] left-[-17cqw]',
     8: 'top-[2cqw] left-[-17cqw]',
