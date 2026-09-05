@@ -54,9 +54,15 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav, onRefresh }
 
   if (rows.length === 0) return null;
 
+  // テーブル（129cqw 固定）の下に残る高さは 9:16 で約 48cqw しかない。
+  // 9人卓は行数が多いので行間と文字を詰めて全員を 1 画面に収める。
+  const compact = rows.length > 6;
+  const rowFontSize = compact ? '2.7cqw' : '3cqw';
+  const rowLineHeight = compact ? 1.25 : 1.5;
+
   return (
-    <div className="py-[5cqw]">
-      <div className={`bg-black px-[2cqw] py-[2cqw] flex flex-col gap-[1cqw] ${rows.length > 6 ? 'h-[64cqw]' : 'h-[43cqw]'} overflow-hidden`}>
+    <div className={`flex-1 min-h-0 ${compact ? 'py-[1.5cqw]' : 'py-[3cqw]'}`}>
+      <div className={`bg-black px-[2cqw] ${compact ? 'py-[1.5cqw] gap-[0.5cqw]' : 'py-[2cqw] gap-[1cqw]'} flex flex-col h-full overflow-y-auto`}>
         <div className="flex items-center justify-between gap-[1cqw] pb-[0.6cqw] border-b border-white/10 shrink-0">
           <button
             type="button"
@@ -100,7 +106,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav, onRefresh }
             : (p.holeCards ?? []);
           if (p.isSittingOut) {
             return (
-              <div key={seatIndex} style={{ display: 'flex', opacity: 0.15, fontSize: '3cqw' }}>
+              <div key={seatIndex} style={{ display: 'flex', opacity: 0.15, fontSize: rowFontSize, lineHeight: rowLineHeight, flexShrink: 0 }}>
                 <div style={{ width: '60%', display: 'flex', gap: 4 }}>
                   <span>#{seatIndex + 1}</span>
                   <span style={{ flex: 1 }}>EMPTY</span>
@@ -109,7 +115,7 @@ export function SpectatorAllHands({ gameState, holeCardsBySeat, nav, onRefresh }
             );
           }
           return (
-            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.25 : 1, fontSize: '3cqw' }}>
+            <div key={seatIndex} style={{ display: 'flex', opacity: p.folded ? 0.25 : 1, fontSize: rowFontSize, lineHeight: rowLineHeight, flexShrink: 0 }}>
               <div style={{ width: '65%', display: 'flex', gap: 4 }}>
                 <span>#{seatIndex + 1}</span>
                 <span
