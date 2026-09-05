@@ -14,7 +14,7 @@ import { WeeklyChampions } from '../components/WeeklyChampions';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;
-  onCreatePrivate: (blinds: string, maxPlayers: 6 | 9) => void;
+  onCreatePrivate: (blinds: string, maxPlayers: 6 | 9, isPractice: boolean) => void;
   onJoinPrivate: (inviteCode: string) => void;
   onJoinTournament: (tournamentId: string) => void;
   onViewMyResult: (tournamentId: string) => void;
@@ -56,6 +56,8 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   const [announcement, setAnnouncement] = useState<{ isActive: boolean; message: string } | null>(null);
   const [showPrivateDialog, setShowPrivateDialog] = useState(false);
   const [privateSeatCount, setPrivateSeatCount] = useState<6 | 9>(6);
+  /** コーチング用の練習卓（毎ハンド 100BB に戻る・バンクロールは動かない） */
+  const [privatePractice, setPrivatePractice] = useState(false);
   const [tournamentSummary, setTournamentSummary] = useState<{ status: 'scheduled' | 'running' | 'none'; time?: string; isRegistrationOpen?: boolean; deadlineTime?: string }>({ status: 'none' });
   // 結果発表バナー用。シーズン名をハードコードせずサーバーの公開済みシーズンに追従する
   const [latestSeason, setLatestSeason] = useState<{ id: number; name: string } | null>(null);
@@ -501,7 +503,20 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
                 ))}
               </div>
               <button
-                onClick={() => { onCreatePrivate('1/3', privateSeatCount); setShowPrivateDialog(false); }}
+                onClick={() => setPrivatePractice(v => !v)}
+                className={`w-full mb-[2.5cqw] px-[3cqw] py-[2cqw] rounded-[2cqw] border text-left transition-all ${
+                  privatePractice
+                    ? 'bg-forest text-white border-forest'
+                    : 'bg-cream-50 text-cream-700 border-cream-300'
+                }`}
+              >
+                <span className="block text-[3cqw] font-bold">練習モード（毎ハンド100BB）</span>
+                <span className={`block text-[2.5cqw] ${privatePractice ? 'text-white/80' : 'text-cream-700'}`}>
+                  ハンドごとに全員のスタックが戻り、所持チップは増減しません
+                </span>
+              </button>
+              <button
+                onClick={() => { onCreatePrivate('1/3', privateSeatCount, privatePractice); setShowPrivateDialog(false); }}
                 disabled={!!maintenance?.isActive}
                 className="w-full py-[3cqw] text-[3.5cqw] bg-cream-800 text-white rounded-[2cqw] font-bold disabled:opacity-40 transition-all active:scale-[0.97] shadow-[0_4px_12px_rgba(139,126,106,0.3)]"
               >

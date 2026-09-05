@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react'
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { Player as PlayerType, evaluateRazzHand, getVariantConfig, isDrawStreet, VARIANT_BADGE_BG, VARIANT_DISPLAY_NAMES } from '../logic';
 import { evaluateCurrentHand, evaluateCurrentHoldemHand, evaluateStudHand, evaluateCurrentOmahaHiLoHand, evaluateStudHiLoHand, evaluate27LowHand, formatHandName, findUsedHoleCardIndices } from '../logic/handEvaluator';
-import { DoorOpen, Settings, History, Copy, Check, Pause, Play, Eye, EyeOff } from 'lucide-react';
+import { DoorOpen, Settings, History, Copy, Check, Pause, Play, Eye, EyeOff, RefreshCw } from 'lucide-react';
 import { PokerTable } from './PokerTable';
 import { MyCards } from './MyCards';
 import { ActionPanel } from './ActionPanel';
@@ -413,8 +413,14 @@ export function GameTable({
 
           {/* コーチング操作（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示）。
               左下の席の真下に置く。席の高さは席数で変わるため縦位置を切り替える */}
-          {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands) && (
+          {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands || pauseState.isPractice) && (
             <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] z-[160] flex flex-col items-start gap-[1.5cqw]`}>
+              {/* 練習卓は所持チップが動かないので、卓にいる全員に分かるよう常時表示する */}
+              {pauseState.isPractice && (
+                <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
+                  <RefreshCw style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">練習卓 100BB</span>
+                </div>
+              )}
               {pauseState.canControl ? (
                 <>
                   {/* ハンド中に止めると手番が宙吊りになるため、ポーズはハンドの切れ目でだけ押せる。

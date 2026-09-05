@@ -450,8 +450,8 @@ class WebSocketService {
   }
 
   // Private table
-  createPrivateTable(blinds: string, maxPlayers: 6 | 9 = 6): void {
-    this.socket?.emit('private:create', { blinds, maxPlayers });
+  createPrivateTable(blinds: string, maxPlayers: 6 | 9 = 6, isPractice = false): void {
+    this.socket?.emit('private:create', { blinds, maxPlayers, isPractice });
   }
 
   joinPrivateTable(inviteCode: string): void {
