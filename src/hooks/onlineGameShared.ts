@@ -68,6 +68,8 @@ export interface PauseState {
   revealAllHands: boolean;
   /** いまポーズを開始できるか。手番が宙吊りになるためハンド中は不可（再開はいつでも可） */
   canPause: boolean;
+  /** 練習卓（毎ハンド全員のスタックが 100BB に戻り、バンクロールは動かない） */
+  isPractice: boolean;
 }
 
 export const NO_PAUSE: PauseState = {
@@ -76,6 +78,7 @@ export const NO_PAUSE: PauseState = {
   pausedUntil: null,
   revealAllHands: false,
   canPause: false,
+  isPractice: false,
 };
 
 /**
@@ -90,5 +93,6 @@ export function derivePauseState(state: ClientGameState, myOdId: string | null):
     pausedUntil: state.pausedUntil ?? null,
     revealAllHands: state.revealAllHands ?? false,
     canPause: !state.isHandInProgress,
+    isPractice: state.isPractice ?? false,
   };
 }

@@ -67,9 +67,15 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
   private allInEVInput: EVJobInput | null = null;
   private blinds: string = '';
   private readonly tournamentId: string | null;
+  /**
+   * 練習卓（コーチング用の毎ハンド 100BB リセット卓）では収支が補填・没収を含むため、
+   * ハンド履歴は残しつつスタッツ集計だけを行わない。
+   */
+  private readonly skipStats: boolean;
 
-  constructor(options?: { tournamentId?: string }) {
+  constructor(options?: { tournamentId?: string; skipStats?: boolean }) {
     this.tournamentId = options?.tournamentId ?? null;
+    this.skipStats = options?.skipStats ?? false;
   }
 
   /**
@@ -228,13 +234,15 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
 
       // スタッツキャッシュ更新 (fire-and-forget) — tournamentIdの有無でキャッシュ先を切替。
       // EV は即時には渡さない（null）。後追いで totalAllInEVProfit を差分補正する。
-      updatePlayerStats(
-        gameState,
-        seats,
-        this.startChips,
-        null,
-        this.tournamentId != null,
-      ).catch(err => console.error('Stats cache update failed:', err));
+      if (!this.skipStats) {
+        updatePlayerStats(
+          gameState,
+          seats,
+          this.startChips,
+          null,
+          this.tournamentId != null,
+        ).catch(err => console.error('Stats cache update failed:', err));
+      }
 
       // オールインEV: ワーカーで計算し、結果が出たら履歴とスタッツを後追い更新（fire-and-forget）。
       // EV はリアルタイム表示に使わないため、計算待ちでメインのイベントループを塞がない。
@@ -253,7 +261,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
                   where: { id: p.id },
                   data: { allInEVProfit: evProfit },
                 });
-                if (p.userId) {
+                if (p.userId && !this.skipStats) {
                   // 即時に profit を加算済みなので、EV との差分だけ足して帳尻を合わせる。
                   await prisma.playerStatsCache.update({
                     where: { userId: p.userId },
