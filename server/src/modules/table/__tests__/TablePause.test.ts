@@ -33,8 +33,11 @@ vi.mock('../../../shared/logic/equityCalculator.js', () => ({
 
 const OWNER = 'player_0';
 
-/** ポーズ検証用: 作成者付きプライベート卓でハンドを1つ進行させる */
-function setupPrivateHand(): {
+/**
+ * ポーズ検証用: 作成者付きプライベート卓に着席だけさせる。
+ * ハンドはまだ始めていない = 手動ポーズを受け付けるハンドの切れ目。
+ */
+function setupPrivateTable(): {
   table: TableInstance;
   io: Server;
   odIds: string[];
@@ -48,8 +51,14 @@ function setupPrivateHand(): {
     ownerOdId: OWNER,
   });
   const { odIds, sockets, seatMap } = seatNPlayers(table, 3, 600);
-  table.triggerMaybeStartHand();
   return { table, io, odIds, sockets, seatMap };
+}
+
+/** 上の卓でハンドを1つ進行させた状態 */
+function setupPrivateHand(): ReturnType<typeof setupPrivateTable> {
+  const ctx = setupPrivateTable();
+  ctx.table.triggerMaybeStartHand();
+  return ctx;
 }
 
 describe('コーチング用ポーズ', () => {
@@ -64,7 +73,7 @@ describe('コーチング用ポーズ', () => {
 
   describe('権限', () => {
     it('プライベート卓の作成者だけが操作できる', () => {
-      const { table } = setupPrivateHand();
+      const { table } = setupPrivateTable();
 
       expect(table.canControlCoaching(OWNER)).toBe(true);
       expect(table.canControlCoaching('player_1')).toBe(false);
@@ -82,7 +91,6 @@ describe('コーチング用ポーズ', () => {
       const io = createMockIO();
       const table = new TableInstance(io, '1/2');
       seatNPlayers(table, 3, 600);
-      table.triggerMaybeStartHand();
 
       expect(table.canControlCoaching(OWNER)).toBe(false);
       expect(table.pause(OWNER).ok).toBe(false);
@@ -90,68 +98,66 @@ describe('コーチング用ポーズ', () => {
     });
   });
 
+  describe('ポーズできるタイミング', () => {
+    it('ハンド中は手番が宙吊りになるためポーズできない', () => {
+      const { table } = setupPrivateHand();
+      expect(table.isHandInProgress).toBe(true);
+
+      const rejected = table.pause(OWNER);
+      expect(rejected.ok).toBe(false);
+      expect(table.isPaused).toBe(false);
+    });
+
+    it('ハンド中でもポーズ中なら再開できる（ハンドオープンの自動ポーズ解除用）', () => {
+      const { table } = setupPrivateTable();
+      table.pause(OWNER);
+
+      expect(table.resume(OWNER).ok).toBe(true);
+      expect(table.isPaused).toBe(false);
+    });
+
+    it('ハンドの切れ目ならポーズできる', () => {
+      const { table } = setupPrivateTable();
+      expect(table.isHandInProgress).toBe(false);
+
+      expect(table.pause(OWNER).ok).toBe(true);
+      expect(table.isPaused).toBe(true);
+    });
+  });
+
   describe('進行の停止', () => {
-    it('ポーズ中はアクションが拒否され、再開すると通る', () => {
+    it('ポーズ中は次のハンドが始まらない', () => {
+      const { table } = setupPrivateTable();
+
+      table.pause(OWNER);
+      table.triggerMaybeStartHand();
+
+      expect(table.isHandInProgress).toBe(false);
+    });
+
+    it('再開すると次のハンドが始まる', () => {
+      const { table } = setupPrivateTable();
+
+      table.pause(OWNER);
+      table.triggerMaybeStartHand();
+      expect(table.isHandInProgress).toBe(false);
+
+      table.resume(OWNER);
+      expect(table.isHandInProgress).toBe(true);
+    });
+
+    it('ハンド中のアクションはポーズの影響を受けずに通る', () => {
       const { table, odIds, sockets, seatMap } = setupPrivateHand();
       const current = findCurrentPlayer(table, odIds, sockets, seatMap)!;
       expect(current).not.toBeNull();
 
-      table.pause(OWNER);
-      expect(table.handleAction(current.odId, 'fold', 0)).toBe(false);
-      // 手番は動いていない
-      expect(table.getClientGameState().currentPlayerSeat).toBe(current.seatIndex);
-
-      table.resume(OWNER);
+      // ハンド中はポーズが弾かれるので、手番はそのまま進められる
+      expect(table.pause(OWNER).ok).toBe(false);
       expect(table.handleAction(current.odId, 'fold', 0)).toBe(true);
     });
 
-    it('ポーズ中はタイムアウトの自動フォールドが起きない', async () => {
-      const { table, odIds, sockets, seatMap } = setupPrivateHand();
-      const current = findCurrentPlayer(table, odIds, sockets, seatMap)!;
-
-      table.pause(OWNER);
-      await vi.advanceTimersByTimeAsync(TABLE_CONSTANTS.ACTION_TIMEOUT_PREFLOP_MS * 3);
-
-      expect(table.getClientGameState().currentPlayerSeat).toBe(current.seatIndex);
-    });
-
-    it('再開すると残り時間でタイムアウトが復活する', async () => {
-      const { table, odIds, sockets, seatMap } = setupPrivateHand();
-      const current = findCurrentPlayer(table, odIds, sockets, seatMap)!;
-
-      table.pause(OWNER);
-      await vi.advanceTimersByTimeAsync(60_000);
-      table.resume(OWNER);
-
-      // 再開直後はまだ同じ手番
-      expect(table.getClientGameState().currentPlayerSeat).toBe(current.seatIndex);
-
-      // 残り時間（最大でもプリフロップ持ち時間）が経過すればタイムアウトで進む
-      await vi.advanceTimersByTimeAsync(TABLE_CONSTANTS.ACTION_TIMEOUT_PREFLOP_MS + 1000);
-      expect(table.getClientGameState().currentPlayerSeat).not.toBe(current.seatIndex);
-    });
-
-    it('再開後もタイマーリングの分母は元の持ち時間のままで、締め切りだけ残り時間で復元される', async () => {
-      const { table } = setupPrivateHand();
-      const before = table.getClientGameState();
-      const total = before.actionTimeoutMs!;
-      expect(total).toBe(TABLE_CONSTANTS.ACTION_TIMEOUT_PREFLOP_MS);
-
-      const elapsedBeforePause = 6_000;
-      await vi.advanceTimersByTimeAsync(elapsedBeforePause);
-      table.pause(OWNER);
-      await vi.advanceTimersByTimeAsync(60_000);
-      table.resume(OWNER);
-
-      const after = table.getClientGameState();
-      // 分母（リング全長）は変わらない
-      expect(after.actionTimeoutMs).toBe(total);
-      // 締め切りはポーズ前の残り時間ぶん先（リングは途中から再開する）
-      expect(after.actionTimeoutAt! - Date.now()).toBe(total - elapsedBeforePause);
-    });
-
     it('ポーズが最大時間で自動解除される', async () => {
-      const { table } = setupPrivateHand();
+      const { table } = setupPrivateTable();
 
       table.pause(OWNER);
       expect(table.isPaused).toBe(true);
@@ -161,7 +167,7 @@ describe('コーチング用ポーズ', () => {
     });
 
     it('ポーズ中に離席が起きたら卓を凍らせ続けない', () => {
-      const { table, odIds } = setupPrivateHand();
+      const { table, odIds } = setupPrivateTable();
 
       table.pause(OWNER);
       table.unseatPlayer(odIds[1]);
@@ -172,7 +178,7 @@ describe('コーチング用ポーズ', () => {
 
   describe('クライアントへの通知', () => {
     it('ポーズ状態と操作権者が ClientGameState に乗る', () => {
-      const { table } = setupPrivateHand();
+      const { table } = setupPrivateTable();
 
       const before = table.getClientGameState();
       expect(before.isPaused).toBeUndefined();
@@ -182,8 +188,6 @@ describe('コーチング用ポーズ', () => {
       const paused = table.getClientGameState();
       expect(paused.isPaused).toBe(true);
       expect(paused.pausedUntil).toBeGreaterThan(Date.now());
-      // ポーズ中はカウントダウンを止める
-      expect(paused.actionTimeoutAt).toBeNull();
     });
 
     it('通常卓にはポーズ関連のフィールドが乗らない', () => {

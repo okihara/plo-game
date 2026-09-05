@@ -487,14 +487,19 @@ export class TableInstance {
   }
 
   /**
-   * 卓の進行を止める。手番のタイマーは残り時間を保持したまま停止し、
-   * ポーズ中のアクションはサーバー側で拒否される。
+   * 卓の進行を止める（次のハンドを始めない）。
+   * ハンドの途中で止めると手番のプレイヤーが宙吊りになるため、手動ポーズは
+   * ハンドの切れ目でだけ受け付ける。ハンドオープン中の自動ポーズ
+   * （autoPauseForHandReview）はハンド終了後に doPause を直接呼ぶので対象外。
    */
   public pause(odId: string): { ok: true } | { ok: false; message: string } {
     if (!this.canControlCoaching(odId)) {
       return { ok: false, message: 'ポーズできるのはルーム作成者だけです' };
     }
     if (this.paused) return { ok: true };
+    if (this.isHandInProgress) {
+      return { ok: false, message: 'ハンド中はポーズできません。ハンドが終わってからお試しください' };
+    }
 
     this.doPause(`by ${odId}`);
     return { ok: true };

@@ -63,27 +63,39 @@ describe('プライベート卓のコーチング動線', () => {
       expect(socket.emit).not.toHaveBeenCalledWith('table:error', expect.anything());
     });
 
-    it('作成者でない観戦者は操作できない', () => {
+    // 拒否はサーバーログに残すだけで、クライアントには何も返さない。
+    // table:error は「卓に入れなかった」致命的失敗のチャネルで、受け取った
+    // クライアントが「ロビーに戻る」モーダルを出してしまうため。
+    it('作成者でない観戦者は操作できず、エラーも返らない', () => {
       const { table } = tm.createPrivateTable('1/2', 'coach');
       const socket = mockSocket({ odId: 'stranger', odConnectionMode: 'spectate', odSpectatingTableId: table.id });
 
       handleTablePause(socket, tm);
       expect(table.isPaused).toBe(false);
-      expect(socket.emit).toHaveBeenCalledWith(
-        'table:error',
-        expect.objectContaining({ message: expect.stringMatching(/作成者/) })
-      );
+      expect(socket.emit).not.toHaveBeenCalledWith('table:error', expect.anything());
     });
 
-    it('着席も観戦もしていなければテーブルを解決できない', () => {
+    it('着席も観戦もしていなければ何も起きない', () => {
       tm.createPrivateTable('1/2', 'coach');
       const socket = mockSocket({ odId: 'coach', odConnectionMode: 'spectate' });
 
       handleTablePause(socket, tm);
-      expect(socket.emit).toHaveBeenCalledWith(
-        'table:error',
-        expect.objectContaining({ message: expect.stringMatching(/見つかりません/) })
-      );
+      expect(socket.emit).not.toHaveBeenCalledWith('table:error', expect.anything());
+    });
+
+    it('ハンド中のポーズは弾かれるが、エラーは返らない', () => {
+      const { table } = tm.createPrivateTable('1/2', 'coach');
+      for (const odId of ['coach', 'student_1', 'student_2']) {
+        table.seatPlayer(testSeatParams(odId, odId, createMockSocket(), 200));
+      }
+      table.triggerMaybeStartHand();
+      expect(table.isHandInProgress).toBe(true);
+
+      const socket = mockSocket({ odId: 'coach', odConnectionMode: 'spectate', odSpectatingTableId: table.id });
+      handleTablePause(socket, tm);
+
+      expect(table.isPaused).toBe(false);
+      expect(socket.emit).not.toHaveBeenCalledWith('table:error', expect.anything());
     });
   });
 

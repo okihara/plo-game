@@ -143,7 +143,7 @@ export function WatchGame({ tableId, inviteCode, tournamentId, onNavigateWatchTa
           </button>
         </div>
       ) : (
-        <div className="relative h-full w-full min-h-0">
+        <div className="relative h-full w-full min-h-0 flex flex-col">
           <GameTable
             gameState={gameState}
             mySeat={null}

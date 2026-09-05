@@ -85,7 +85,8 @@ async function handleTableLeaveImpl(socket: AuthenticatedSocket, tableManager: T
 
 /**
  * コーチング用ポーズの ON/OFF。
- * 権限判定と進行制御は TableInstance 側が持つ（ここは odId → テーブル解決とエラー応答のみ）。
+ * 権限判定と進行制御は TableInstance 側が持つ（ここは odId → テーブル解決のみ）。
+ * 拒否されたときはクライアントに返さずログだけ残す（logCoachingRejection 参照）。
  */
 export function handleTablePause(socket: AuthenticatedSocket, tableManager: TableManager): void {
   applyPauseCommand(socket, tableManager, 'pause');
@@ -108,22 +109,39 @@ function resolveCoachingTable(socket: AuthenticatedSocket, tableManager: TableMa
   );
 }
 
+/**
+ * コーチング操作の拒否はクライアントに返さずサーバーログにだけ残す。
+ * table:error は「卓に入れなかった／卓から切れた」致命的失敗のチャネルで、
+ * 受け取ったクライアントは「ロビーに戻る」モーダルを出す。操作が弾かれただけで
+ * それを出すのは過剰なうえ、コーチング操作は押せる条件を UI 側が出し分けており
+ * （作成者のみ・ハンドの切れ目のみ）、ここに到達するのは state が一瞬古いときだけ。
+ */
+function logCoachingRejection(
+  socket: AuthenticatedSocket,
+  command: 'pause' | 'resume' | 'reveal_hands',
+  reason: string,
+  tableId?: string
+): void {
+  console.log(`[Coaching] ${command} rejected: ${reason} (odId=${socket.odId}${tableId ? `, table=${tableId}` : ''})`);
+}
+
 function applyPauseCommand(socket: AuthenticatedSocket, tableManager: TableManager, command: 'pause' | 'resume'): void {
   const table = resolveCoachingTable(socket, tableManager);
   if (!table) {
-    socket.emit('table:error', { message: 'テーブルが見つかりません' });
+    logCoachingRejection(socket, command, 'テーブルが見つかりません');
     return;
   }
 
   const result = command === 'pause' ? table.pause(socket.odId!) : table.resume(socket.odId!);
   if (!result.ok) {
-    socket.emit('table:error', { message: result.message });
+    logCoachingRejection(socket, command, result.message, table.id);
   }
 }
 
 /**
  * コーチング用ハンドオープンの ON/OFF。
- * 権限判定と公開処理は TableInstance 側が持つ（ここは odId → テーブル解決とエラー応答のみ）。
+ * 権限判定と公開処理は TableInstance 側が持つ（ここは odId → テーブル解決のみ）。
+ * 拒否されたときはクライアントに返さずログだけ残す（logCoachingRejection 参照）。
  */
 export function handleTableRevealHands(
   socket: AuthenticatedSocket,
@@ -132,13 +150,13 @@ export function handleTableRevealHands(
 ): void {
   const table = resolveCoachingTable(socket, tableManager);
   if (!table) {
-    socket.emit('table:error', { message: 'テーブルが見つかりません' });
+    logCoachingRejection(socket, 'reveal_hands', 'テーブルが見つかりません');
     return;
   }
 
   const result = table.setRevealAllHands(socket.odId!, !!data?.enabled);
   if (!result.ok) {
-    socket.emit('table:error', { message: result.message });
+    logCoachingRejection(socket, 'reveal_hands', result.message, table.id);
   }
 }
 
