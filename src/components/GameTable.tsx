@@ -417,9 +417,12 @@ export function GameTable({
             <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] z-[160] flex flex-col items-start gap-[1.5cqw]`}>
               {pauseState.canControl ? (
                 <>
+                  {/* ハンド中に止めると手番が宙吊りになるため、ポーズはハンドの切れ目でだけ押せる。
+                      再開はいつでも押せる（ハンドオープンの自動ポーズを解除する導線） */}
                   <button
                     onClick={pauseState.isPaused ? onResume : onPause}
-                    className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.isPaused ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
+                    disabled={!pauseState.isPaused && !pauseState.canPause}
+                    className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.isPaused ? COACHING_PILL_ON : COACHING_PILL_OFF} disabled:opacity-40 disabled:active:scale-100`}
                     style={{ fontSize: '2.5cqw' }}
                   >
                     {pauseState.isPaused

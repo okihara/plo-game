@@ -66,6 +66,8 @@ export interface PauseState {
   pausedUntil: number | null;
   /** ハンド完了時に全員のホールカードが公開される設定になっている */
   revealAllHands: boolean;
+  /** いまポーズを開始できるか。手番が宙吊りになるためハンド中は不可（再開はいつでも可） */
+  canPause: boolean;
 }
 
 export const NO_PAUSE: PauseState = {
@@ -73,6 +75,7 @@ export const NO_PAUSE: PauseState = {
   canControl: false,
   pausedUntil: null,
   revealAllHands: false,
+  canPause: false,
 };
 
 /**
@@ -86,5 +89,6 @@ export function derivePauseState(state: ClientGameState, myOdId: string | null):
     canControl: !!myOdId && state.pauseOwnerOdId === myOdId,
     pausedUntil: state.pausedUntil ?? null,
     revealAllHands: state.revealAllHands ?? false,
+    canPause: !state.isHandInProgress,
   };
 }
