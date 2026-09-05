@@ -116,14 +116,14 @@ export function GameTable({
   const [showSettingsPopup, setShowSettingsPopup] = useState(false);
   const [selectedPlayer, setSelectedPlayer] = useState<PlayerType | null>(null);
   const [showHandHistory, setShowHandHistory] = useState(false);
-  const [copiedLink, setCopiedLink] = useState<'code' | 'invite' | 'watch' | null>(null);
+  const [copiedLink, setCopiedLink] = useState<'code' | 'invite' | null>(null);
   const [showInvitePopover, setShowInvitePopover] = useState(false);
   const [selectedCardIndices, setSelectedCardIndices] = useState<Set<number>>(new Set());
   const [centerNotice, setCenterNotice] = useState<string | null>(null);
   const noticeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /** 招待コード/招待リンク/観戦リンクをクリップボードへ。押した項目だけ「コピー済み」に切り替える */
-  const copyLink = useCallback((kind: 'code' | 'invite' | 'watch', text: string) => {
+  /** 招待コード・招待リンクをクリップボードへ。押した項目だけ「コピー済み」に切り替える */
+  const copyLink = useCallback((kind: 'code' | 'invite', text: string) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedLink(kind);
       setTimeout(() => setCopiedLink(null), NOTICE_DISPLAY_MS);
@@ -351,21 +351,6 @@ export function GameTable({
                           {copiedLink === 'invite'
                             ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
                             : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 招待リンクをコピー</>}
-                        </button>
-                        {/* コーチが席を外して観戦に回るための導線（観戦席からもポーズを操作できる） */}
-                        <button
-                          onClick={() =>
-                            copyLink(
-                              'watch',
-                              `${window.location.origin}/watch/${gameState.tableId}?invite=${privateTableInfo.inviteCode}`
-                            )
-                          }
-                          className="w-full mt-[2cqw] px-[4cqw] py-[2cqw] bg-white text-forest border border-forest rounded-[2cqw] font-bold flex items-center justify-center gap-[1cqw] transition-all active:scale-[0.97]"
-                          style={{ fontSize: '2.8cqw' }}
-                        >
-                          {copiedLink === 'watch'
-                            ? <><Check style={{ width: '3cqw', height: '3cqw' }} /> コピー済み</>
-                            : <><Copy style={{ width: '3cqw', height: '3cqw' }} /> 観戦リンクをコピー</>}
                         </button>
                       </div>
                     </>
