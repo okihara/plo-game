@@ -70,6 +70,14 @@ function chipsBySeat(table: TableInstance): number[] {
     .map(s => s.chips);
 }
 
+/** ブラインドを引かれる前の持ち点（手元のチップ + そのハンドでポットに出した分） */
+function stackTotalsBySeat(table: TableInstance): number[] {
+  return table
+    .getClientGameState()
+    .players.filter((p): p is NonNullable<typeof p> => p !== null)
+    .map(p => p.chips + p.currentBet);
+}
+
 describe('練習卓（毎ハンド 100BB リセット）', () => {
   beforeEach(() => {
     resetSocketCounter();
@@ -87,10 +95,7 @@ describe('練習卓（毎ハンド 100BB リセット）', () => {
     table.triggerMaybeStartHand();
 
     // ブラインドを引かれる前の持ち点が揃っている（配ったスタック = ポットに出た分 + 手元）
-    const state = table.getClientGameState();
-    const totalBySeat = state.players
-      .filter(p => p !== null && !p.isSittingOut)
-      .map(p => (p!.chips ?? 0) + (p!.currentBet ?? 0));
+    const totalBySeat = stackTotalsBySeat(table);
     expect(totalBySeat).toEqual([PRACTICE_STACK, PRACTICE_STACK, PRACTICE_STACK]);
   });
 
@@ -104,10 +109,7 @@ describe('練習卓（毎ハンド 100BB リセット）', () => {
     expect(new Set(chipsBySeat(table)).size).toBeGreaterThan(1);
 
     table.triggerMaybeStartHand();
-    const state = table.getClientGameState();
-    const totalBySeat = state.players
-      .filter(p => p !== null && !p.isSittingOut)
-      .map(p => (p!.chips ?? 0) + (p!.currentBet ?? 0));
+    const totalBySeat = stackTotalsBySeat(table);
     expect(totalBySeat).toEqual([PRACTICE_STACK, PRACTICE_STACK, PRACTICE_STACK]);
   });
 
@@ -134,10 +136,7 @@ describe('練習卓（毎ハンド 100BB リセット）', () => {
     expect(new Set(afterHand).size).toBeGreaterThan(1);
 
     table.triggerMaybeStartHand();
-    const state = table.getClientGameState();
-    const totalBySeat = state.players
-      .filter(p => p !== null && !p.isSittingOut)
-      .map(p => (p!.chips ?? 0) + (p!.currentBet ?? 0));
+    const totalBySeat = stackTotalsBySeat(table);
     expect(totalBySeat).not.toEqual([PRACTICE_STACK, PRACTICE_STACK, PRACTICE_STACK]);
   });
 
