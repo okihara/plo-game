@@ -211,14 +211,23 @@ export class TableManager {
     return Array.from(this.tables.values()).filter(t => t.isPrivate);
   }
 
-  /** @param ownerOdId 作成者。コーチング用ポーズを操作できる唯一のプレイヤー */
-  public createPrivateTable(blinds: string, ownerOdId: string, maxPlayers?: number): { table: TableInstance; inviteCode: string } {
+  /**
+   * @param ownerOdId 作成者。コーチング用ポーズを操作できる唯一のプレイヤー
+   * @param isPractice 練習卓（毎ハンド 100BB リセット・バンクロール非反映）にするか
+   */
+  public createPrivateTable(
+    blinds: string,
+    ownerOdId: string,
+    maxPlayers?: number,
+    isPractice?: boolean
+  ): { table: TableInstance; inviteCode: string } {
     const inviteCode = this.generateInviteCode();
     // バストで全員いなくなるケースは unseatAndCashOut を通らないため、
     // バスト処理の完了時点でも寿命を評価する
     let created: TableInstance | null = null;
     const table = new TableInstance(this.io, blinds, false, {
       isPrivate: true,
+      isPractice: isPractice ?? false,
       inviteCode,
       ownerOdId,
       maxPlayers,

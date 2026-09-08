@@ -5,6 +5,11 @@ export const TABLE_CONSTANTS = {
   MAX_PLAYERS: 6,
   /** プライベート卓で選択できる席数 */
   PRIVATE_ALLOWED_MAX_PLAYERS: [6, 9] as readonly number[],
+  /**
+   * プライベート卓のバイイン（bigBlind の倍数）。
+   * 練習卓（isPractice）が毎ハンド全員を戻すスタックも同じ額。
+   */
+  PRIVATE_BUYIN_BB: 100,
   DEFAULT_AVATAR_COUNT: 15,
   DEFAULT_BUYIN_MULTIPLIER: 200, // bigBlind * 200
   MIN_PLAYERS_TO_START: 3,
@@ -25,7 +30,7 @@ export const TABLE_CONSTANTS = {
    * コーチング用ポーズの最大時間。卓が凍ったまま放置されるのを防ぐため、
    * これを超えたら自動的に再開する。
    */
-  PAUSE_MAX_MS: 15 * 60 * 1000,
+  PAUSE_MAX_MS: 30 * 60 * 1000,
   /** ポーズ解除時、手番のプレイヤーに最低限これだけの持ち時間を残す */
   PAUSE_RESUME_MIN_ACTION_MS: 5000,
   ACTION_ANIMATION_DELAY_MS: 1200,    // ストリート変更前のアクション演出待ち
