@@ -92,6 +92,8 @@ export interface CoachingInfo {
   isPaused: boolean;
   /** コーチング機能を操作できるプレイヤー（プライベート卓の作成者）。いない卓では null */
   ownerOdId: string | null;
+  /** 練習卓（毎ハンド全員のスタックが同額に戻る）か */
+  isPractice: boolean;
   /** 自動解除の時刻（UNIXタイムスタンプ、ミリ秒）。ポーズ中のみ */
   pausedUntil: number | null;
   /** ハンド完了時に全員のホールカードを公開する */

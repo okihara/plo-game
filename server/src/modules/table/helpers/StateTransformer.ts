@@ -80,6 +80,7 @@ export class StateTransformer {
       ...(coaching?.ownerOdId ? { pauseOwnerOdId: coaching.ownerOdId } : {}),
       ...(coaching?.isPaused && coaching.pausedUntil ? { pausedUntil: coaching.pausedUntil } : {}),
       ...(coaching?.revealAllHands ? { revealAllHands: true as const } : {}),
+      ...(coaching?.isPractice ? { isPractice: true as const } : {}),
     };
 
     if (!gameState) {

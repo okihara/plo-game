@@ -30,7 +30,7 @@ export interface ClientToServerEvents {
   'matchmaking:leave': () => void;
 
   // Private table
-  'private:create': (data: { blinds: string; maxPlayers?: 6 | 9 }) => void;
+  'private:create': (data: { blinds: string; maxPlayers?: 6 | 9; isPractice?: boolean }) => void;
   'private:join': (data: { inviteCode: string }) => void;
   /** コーチング用ポーズ（プライベートキャッシュ卓の作成者のみ） */
   'table:pause': () => void;
@@ -170,6 +170,8 @@ export interface ClientGameState {
   pausedUntil?: number;
   /** コーチング用ハンドオープンが ON。ハンド完了時に全員のホールカードが公開される。 */
   revealAllHands?: boolean;
+  /** 練習卓。毎ハンド全員のスタックが同額に戻り、バンクロールは動かない。 */
+  isPractice?: boolean;
 }
 
 export interface TableInfo {

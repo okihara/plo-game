@@ -33,6 +33,11 @@ export class TableInstance {
   public isFastFold: boolean = false;
   public readonly variant: GameVariant = 'plo';
   public readonly isPrivate: boolean = false;
+  /**
+   * コーチング用の練習卓。毎ハンド全員のスタックを同じ額に戻し、
+   * バンクロールの増減・スタッツ集計を行わない（ハンド履歴だけは残す）。
+   */
+  public readonly isPractice: boolean = false;
   public readonly inviteCode: string | null = null;
   /** プライベート卓の作成者。コーチング用ポーズを操作できる唯一のプレイヤー */
   public readonly ownerOdId: string | null = null;
@@ -91,13 +96,14 @@ export class TableInstance {
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; isPractice?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
     this.isHorse = options?.isHorse ?? false;
     this.variant = this.isHorse ? 'limit_holdem' : (options?.variant ?? 'plo');
     this.isPrivate = options?.isPrivate ?? false;
+    this.isPractice = options?.isPractice ?? false;
     this.maxPlayers = options?.maxPlayers ?? TABLE_CONSTANTS.MAX_PLAYERS;
     this.inviteCode = options?.inviteCode ?? null;
     this.ownerOdId = options?.ownerOdId ?? null;
@@ -125,9 +131,11 @@ export class TableInstance {
     this.variantAdapter = new VariantAdapter(this.variant);
     const rakeOptions = this.gameMode === 'tournament' ? { rakePercent: 0, rakeCapBB: 0 } : undefined;
     this.actionController = new ActionController(this.broadcast, this.variantAdapter, rakeOptions);
-    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder(
-      this.gameMode === 'tournament' && this.tournamentId ? { tournamentId: this.tournamentId } : undefined
-    );
+    this.historyRecorder = options?.historyRecorder ?? new HandHistoryRecorder({
+      ...(this.gameMode === 'tournament' && this.tournamentId ? { tournamentId: this.tournamentId } : {}),
+      // 練習卓は履歴だけ残してスタッツには混ぜない
+      ...(this.isPractice ? { skipStats: true } : {}),
+    });
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
   }
 
@@ -471,6 +479,25 @@ export class TableInstance {
     this.maybeStartHand();
   }
 
+  /** 練習卓が毎ハンド全員に配り直すスタック（bomb pot は bb=0 なので ante を基準にする） */
+  private get practiceStack(): number {
+    const base = this.bigBlind > 0 ? this.bigBlind : this.ante;
+    return base * TABLE_CONSTANTS.PRIVATE_BUYIN_BB;
+  }
+
+  /**
+   * 練習卓: 着席中の全員のスタックを practiceStack に戻す。
+   * バストで席を失う前（次ハンドの開始時）に呼ぶので、誰も卓から飛ばない。
+   */
+  private resetSeatsToPracticeStack(): void {
+    const seats = this.playerManager.getSeats();
+    for (let i = 0; i < this.maxPlayers; i++) {
+      if (seats[i]) {
+        this.playerManager.updateChips(i, this.practiceStack);
+      }
+    }
+  }
+
   // ========== コーチング用ポーズ ==========
 
   public get isPaused(): boolean {
@@ -614,6 +641,7 @@ export class TableInstance {
       ownerOdId: this.isPrivate && this.gameMode === 'cash' ? this.ownerOdId : null,
       pausedUntil: this.pausedUntil,
       revealAllHands: this.revealAllHands,
+      isPractice: this.isPractice,
     };
   }
 
@@ -1056,6 +1084,11 @@ export class TableInstance {
     // Restore dealer position (startNewHand will increment it)
     if (this.lastDealerPosition >= 0) {
       this.gameState.dealerPosition = this.lastDealerPosition;
+    }
+
+    // 練習卓は毎ハンド同じスタックから始める（前ハンドの勝ち負けを持ち越さない）
+    if (this.isPractice) {
+      this.resetSeatsToPracticeStack();
     }
 
     // Clear waiting flags and sync chips from seats to game state
@@ -1568,7 +1601,8 @@ export class TableInstance {
       if (!seat) continue;
       if (seat.leftForFastFold) {
         this.playerManager.unseatPlayer(i);
-      } else if (seat.chips <= 0) {
+        // 練習卓は次のハンドの頭で全員に配り直すので、飛んでも席を失わない
+      } else if (seat.chips <= 0 && !this.isPractice) {
         // コールバックでバスト処理を委譲（キャッシュ/トーナメントで挙動が異なる）
         const chipsAtHandStart = startChipsBySeat.get(i) ?? 0;
         const shouldUnseat = this.lifecycleCallbacks.onPlayerBusted(

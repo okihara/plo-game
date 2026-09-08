@@ -56,13 +56,23 @@ function serializePlayerOp(odId: string, fn: () => Promise<void>): Promise<void>
   return next;
 }
 
+/**
+ * 着席に失敗した／着席前に切れたときにバイインを返す。
+ * 練習卓はそもそも控除していないので何もしない。
+ */
+async function refundBuyIn(table: TableInstance, odId: string, buyIn: number): Promise<void> {
+  if (table.isPractice) return;
+  await cashOutPlayer(odId, buyIn);
+}
+
 // テーブルから離席してキャッシュアウトする共通処理
 export async function unseatAndCashOut(table: TableInstance, odId: string, tableManager: TableManager): Promise<void> {
   // unseat 経路に乗ったら、もう grace 復帰の対象ではないのでタイマーを止める
   tableManager.clearDisconnectTimer(odId);
   const result = table.unseatPlayer(odId);
   tableManager.removePlayerFromTracking(odId);
-  if (result) {
+  // 練習卓のスタックは毎ハンド配り直した練習用のチップなので、バンクロールには戻さない
+  if (result && !table.isPractice) {
     await cashOutPlayer(result.odId, result.chips, table.id);
   }
   // プライベートテーブルは無人になっても即削除せず、TTL 付きで削除を予約する
@@ -498,7 +508,7 @@ export function handlePrivateCreate(
 
 async function handlePrivateCreateImpl(
   socket: AuthenticatedSocket,
-  data: { blinds: string; maxPlayers?: number },
+  data: { blinds: string; maxPlayers?: number; isPractice?: boolean },
   tableManager: TableManager
 ): Promise<void> {
   if (maintenanceService.isMaintenanceActive()) {
@@ -518,6 +528,8 @@ async function handlePrivateCreateImpl(
   }
 
   const { blinds, maxPlayers } = data;
+  // 練習卓は毎ハンドスタックを配り直すので、バンクロールとはやり取りしない
+  const isPractice = !!data.isPractice;
 
   if (maxPlayers !== undefined && !TABLE_CONSTANTS.PRIVATE_ALLOWED_MAX_PLAYERS.includes(maxPlayers)) {
     socket.emit('table:error', { message: 'Invalid maxPlayers' });
@@ -531,14 +543,18 @@ async function handlePrivateCreateImpl(
       return;
     }
     const [, bb] = parts.map(Number);
-    const buyIn = bb * 100;
+    const buyIn = bb * TABLE_CONSTANTS.PRIVATE_BUYIN_BB;
 
     const user = await prisma.user.findUnique({
       where: { id: socket.odId },
       include: { bankroll: true },
     });
 
-    if (!user?.bankroll || user.bankroll.balance < buyIn) {
+    if (!user) {
+      socket.emit('table:error', { message: 'ログインが必要です' });
+      return;
+    }
+    if (!isPractice && (!user.bankroll || user.bankroll.balance < buyIn)) {
       socket.emit('table:error', { message: 'Insufficient balance' });
       return;
     }
@@ -550,18 +566,20 @@ async function handlePrivateCreateImpl(
     }
 
     // Create private table
-    const { table, inviteCode } = tableManager.createPrivateTable(blinds, socket.odId, maxPlayers);
+    const { table, inviteCode } = tableManager.createPrivateTable(blinds, socket.odId, maxPlayers, isPractice);
 
-    // Deduct buy-in
-    const deducted = await deductBuyIn(socket.odId, buyIn);
-    if (!deducted) {
-      tableManager.removeTable(table.id);
-      socket.emit('table:error', { message: 'Insufficient balance' });
-      return;
+    // Deduct buy-in（練習卓はバンクロールを動かさない）
+    if (!isPractice) {
+      const deducted = await deductBuyIn(socket.odId, buyIn);
+      if (!deducted) {
+        tableManager.removeTable(table.id);
+        socket.emit('table:error', { message: 'Insufficient balance' });
+        return;
+      }
     }
 
     if (!socket.connected) {
-      await cashOutPlayer(socket.odId, buyIn);
+      await refundBuyIn(table, socket.odId, buyIn);
       tableManager.removeTable(table.id);
       return;
     }
@@ -579,10 +597,10 @@ async function handlePrivateCreateImpl(
     if (seatNumber !== null) {
       tableManager.setPlayerTable(socket.odId, table.id);
       socket.emit('private:created', { tableId: table.id, inviteCode });
-      console.log(`[Private] Table created: ${table.id} (code: ${inviteCode}) by ${socket.odId}`);
+      console.log(`[Private] Table created: ${table.id} (code: ${inviteCode}, practice: ${isPractice}) by ${socket.odId}`);
       // triggerMaybeStartHand は呼ばない（1人では開始しない）
     } else {
-      await cashOutPlayer(socket.odId, buyIn);
+      await refundBuyIn(table, socket.odId, buyIn);
       tableManager.removeTable(table.id);
       socket.emit('table:error', { message: 'Failed to create table' });
     }
@@ -625,14 +643,20 @@ async function handlePrivateJoinImpl(
 
   try {
     const [, bb] = table.blinds.split('/').map(Number);
-    const buyIn = bb * 100;
+    const buyIn = bb * TABLE_CONSTANTS.PRIVATE_BUYIN_BB;
+    // 練習卓は毎ハンドスタックを配り直すので、バンクロールとはやり取りしない
+    const isPractice = table.isPractice;
 
     const user = await prisma.user.findUnique({
       where: { id: socket.odId },
       include: { bankroll: true },
     });
 
-    if (!user?.bankroll || user.bankroll.balance < buyIn) {
+    if (!user) {
+      socket.emit('table:error', { message: 'ログインが必要です' });
+      return;
+    }
+    if (!isPractice && (!user.bankroll || user.bankroll.balance < buyIn)) {
       socket.emit('table:error', { message: 'Insufficient balance' });
       return;
     }
@@ -643,21 +667,23 @@ async function handlePrivateJoinImpl(
       await unseatAndCashOut(currentTable, socket.odId!, tableManager);
     }
 
-    // Deduct buy-in
-    const deducted = await deductBuyIn(socket.odId!, buyIn);
-    if (!deducted) {
-      socket.emit('table:error', { message: 'Insufficient balance' });
-      return;
+    // Deduct buy-in（練習卓はバンクロールを動かさない）
+    if (!isPractice) {
+      const deducted = await deductBuyIn(socket.odId!, buyIn);
+      if (!deducted) {
+        socket.emit('table:error', { message: 'Insufficient balance' });
+        return;
+      }
     }
 
     if (!socket.connected) {
-      await cashOutPlayer(socket.odId!, buyIn);
+      await refundBuyIn(table, socket.odId!, buyIn);
       return;
     }
 
     // await の間に空室 TTL が満了して卓が消えている可能性がある
     if (!tableManager.getTable(table.id)) {
-      await cashOutPlayer(socket.odId!, buyIn);
+      await refundBuyIn(table, socket.odId!, buyIn);
       socket.emit('table:error', { message: 'テーブルが見つかりません' });
       return;
     }
@@ -679,7 +705,7 @@ async function handlePrivateJoinImpl(
       socket.emit('private:created', { tableId: table.id, inviteCode });
       table.triggerMaybeStartHand();
     } else {
-      await cashOutPlayer(socket.odId!, buyIn);
+      await refundBuyIn(table, socket.odId!, buyIn);
       socket.emit('table:error', { message: 'No available seat' });
     }
   } catch (err) {
