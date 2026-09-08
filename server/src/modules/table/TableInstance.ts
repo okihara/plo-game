@@ -551,7 +551,7 @@ export class TableInstance {
 
   /**
    * ハンドオープン中はハンド終了時に自動でポーズし、公開されたハンドを検討する時間を作る。
-   * 作成者が「再開」を押すまで次のハンドは始まらない（15分で自動解除）。
+   * 作成者が「再開」を押すまで次のハンドは始まらない（30分で自動解除）。
    * @returns 自動ポーズしたら true
    */
   private autoPauseForHandReview(): boolean {

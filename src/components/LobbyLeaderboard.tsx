@@ -34,7 +34,7 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
       .finally(() => setLoaded(true));
   }, [refreshKey]);
 
-  const N = 5;
+  const N = 3;
   const sorted = [...rankings]
     .sort((a, b) => b.totalAllInEVProfit - a.totalAllInEVProfit)
     .slice(0, N);
@@ -43,12 +43,12 @@ export function LobbyLeaderboard({ userId, onShowFull, refreshKey }: LobbyLeader
 
   return (
     <div
-      className="mt-[2cqw] bg-white border border-cream-300 rounded-[3cqw] px-[3cqw] py-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
+      className="mt-[1cqw] bg-white border border-cream-300 rounded-[3cqw] px-[3cqw] py-[2cqw] shadow-[0_2px_8px_rgba(139,126,106,0.12)] cursor-pointer hover:bg-cream-50 transition-colors"
       onClick={onShowFull}
     >
       <div className="flex items-center justify-between mb-[1.5cqw]">
         <div>
-          <span className="text-[3.2cqw] font-bold text-cream-900">週間ランキング</span>
+          <span className="text-[3.2cqw] font-bold text-cream-900">リング週間ランキング</span>
           <span className="text-[2.5cqw] text-cream-700 ml-[1.5cqw]">{getWeekRange()}</span>
         </div>
         <span className="text-[2.8cqw] text-cream-700">もっと見る &gt;</span>
