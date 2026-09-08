@@ -25,7 +25,7 @@ export const TABLE_CONSTANTS = {
    * コーチング用ポーズの最大時間。卓が凍ったまま放置されるのを防ぐため、
    * これを超えたら自動的に再開する。
    */
-  PAUSE_MAX_MS: 15 * 60 * 1000,
+  PAUSE_MAX_MS: 30 * 60 * 1000,
   /** ポーズ解除時、手番のプレイヤーに最低限これだけの持ち時間を残す */
   PAUSE_RESUME_MIN_ACTION_MS: 5000,
   ACTION_ANIMATION_DELAY_MS: 1200,    // ストリート変更前のアクション演出待ち
