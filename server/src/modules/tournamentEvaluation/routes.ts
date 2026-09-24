@@ -63,11 +63,14 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
 
     const tournamentIds = completed.map(r => r.tournamentId);
 
-    const handGroups = await prisma.handHistory.groupBy({
+    // HandHistory と JOIN すると全トナメハンドを走査する並列ハッシュ集計になり
+    // /dev/shm 枯渇（53100）を起こしたため、非正規化済みの HandHistoryPlayer.tournamentId で
+    // (userId, tournamentId) カバリングインデックスだけで数える。1ハンド1行なので件数＝ハンド数。
+    const handGroups = await prisma.handHistoryPlayer.groupBy({
       by: ['tournamentId'],
       where: {
+        userId,
         tournamentId: { in: tournamentIds },
-        players: { some: { userId } },
       },
       _count: { _all: true },
     });
