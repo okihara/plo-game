@@ -31,6 +31,20 @@ npx tsx scripts/ops/daily-ops-tick.ts --prod --only=create   # 未作成なら�
 曜日ごとのバリアント・トナメ名・設定値は `src/modules/tournament/weeklySchedule.ts` が単一の真実の源泉。
 作成後はサーバーのアクティブ一覧に載ったかまで確認する（載っていなければエラーになる）。
 
+## 大型大会の確認（告知用）
+
+デイリー以外の特別トナメ（開催中 / 3日以内に開始）を拾う読み取り専用スクリプト。
+`/tournament-announce` の Step 1.6 が毎回これを回し、見つかった日だけ告知に1行添える。
+
+```bash
+cd server
+npx tsx scripts/ops/upcoming-specials.ts --prod            # 開催中 + 3日以内
+npx tsx scripts/ops/upcoming-specials.ts --prod --days=7   # 窓を広げる
+```
+
+判定は `src/modules/tournament/weeklySchedule.ts` の曜日プランとの差分（名前が違う / 規模が大きい / 進行中）。
+その日のプランどおりのデイリーは除外されるので、今夜のトナメ自体は出てこない。
+
 `announce` / `start` / `progress` / `result` / `ranking` ステップは **スキル側へ移行済みで使っていない**
 （tick 内の LLM 生成と `TweetDraft` 経由の投稿は残っているが休眠状態）。二重投稿になるので、
 scheduled task と併用して `--only` なしで tick を回さないこと。
