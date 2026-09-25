@@ -1,16 +1,14 @@
 import { useState } from 'react';
 import { TournamentCard } from '../components/TournamentList';
-import type { TournamentLobbyInfo } from '@plo/shared';
+import type { TournamentEntryStatus, TournamentLobbyInfo } from '@plo/shared';
 
 type Preset = {
   label: string;
   tournament: TournamentLobbyInfo;
   winner?: { displayName: string; avatarUrl?: string | null } | null;
-  isRegistered?: boolean;
-  canReenter?: boolean;
+  entryStatus?: TournamentEntryStatus;
   isLoggedIn?: boolean;
   hasParticipated?: boolean;
-  isEliminated?: boolean;
 };
 
 const baseTournament: TournamentLobbyInfo = {
@@ -42,7 +40,7 @@ const presets: Preset[] = [
     label: 'waiting / 登録済み',
     tournament: { ...baseTournament, registeredPlayers: 13 },
     isLoggedIn: true,
-    isRegistered: true,
+    entryStatus: 'entered',
   },
   {
     label: 'waiting / 未ログイン',
@@ -62,7 +60,7 @@ const presets: Preset[] = [
       registrationDeadlineAt: new Date(Date.now() + 20 * 60 * 1000).toISOString(),
     },
     isLoggedIn: true,
-    isRegistered: true,
+    entryStatus: 'entered',
   },
   {
     label: 'running / リエントリー可',
@@ -77,7 +75,7 @@ const presets: Preset[] = [
       registrationDeadlineAt: new Date(Date.now() + 35 * 60 * 1000).toISOString(),
     },
     isLoggedIn: true,
-    canReenter: true,
+    entryStatus: 'can_reenter',
   },
   {
     label: 'running / 脱落済み',
@@ -91,7 +89,7 @@ const presets: Preset[] = [
       isRegistrationOpen: false,
     },
     isLoggedIn: true,
-    isEliminated: true,
+    entryStatus: 'eliminated',
     hasParticipated: true,
   },
   {
@@ -183,13 +181,11 @@ export function TournamentCardDebug() {
         <TournamentCard
           tournament={current.tournament}
           winner={current.winner}
-          isRegistered={current.isRegistered ?? false}
+          entryStatus={current.entryStatus ?? null}
           isRegistering={false}
-          canReenter={current.canReenter ?? false}
           isReentering={false}
           isLoggedIn={current.isLoggedIn ?? true}
           hasParticipated={current.hasParticipated ?? false}
-          isEliminated={current.isEliminated ?? false}
           onRegister={() => console.log('[debug] onRegister')}
           onReenter={() => console.log('[debug] onReenter')}
           onEnter={() => console.log('[debug] onEnter')}

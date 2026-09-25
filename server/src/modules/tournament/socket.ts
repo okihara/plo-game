@@ -10,6 +10,7 @@ import { unseatAndCashOut } from '../game/handlers.js';
 import { prisma } from '../../config/database.js';
 import { reportError } from '../../config/sentry.js';
 import { buildPlayerProfile } from '../profile/playerProfile.js';
+import { resolveEntryStatus } from './entryStatus.js';
 
 type PrismaTx = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -125,9 +126,9 @@ export function registerTournamentHandlers(
         where: { tournamentId_userId: { tournamentId: data.tournamentId, userId: odId } },
         select: { reentryCount: true },
       });
-      if (reg && reg.reentryCount > player.reentryCount) {
-        // DB課金済み → enterPlayer でリエントリー（handleReentry が呼ばれる）
-        const result = tournament.enterPlayer(odId, player.odName, socket);
+      if (reg && resolveEntryStatus(tournament, odId, reg.reentryCount) === 'reentry_pending') {
+        // REST で課金済み → メモリ側のリエントリーを実行して卓に戻す
+        const result = tournament.resumePaidReentry(odId, socket);
         if (!result.success) {
           socket.emit('tournament:error', { message: result.error ?? 'リエントリーに失敗しました' });
           return;
