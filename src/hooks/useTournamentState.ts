@@ -7,10 +7,12 @@ import type {
   TournamentCompletedData,
   TournamentPlayerEliminatedData,
   FinishedTournamentsWindow,
+  MyTournamentEntry,
+  TournamentEntryStatus,
 } from '@plo/shared';
 
 // Re-export shared types for components that import from this hook
-export type { TournamentLobbyInfo, ClientTournamentState, TournamentCompletedData, TournamentPlayerEliminatedData, FinishedTournamentsWindow } from '@plo/shared';
+export type { TournamentLobbyInfo, ClientTournamentState, TournamentCompletedData, TournamentPlayerEliminatedData, FinishedTournamentsWindow, TournamentEntryStatus } from '@plo/shared';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -23,7 +25,9 @@ export function useTournamentState() {
   const initialListFetchedRef = useRef(false);
   const listRequestSeqRef = useRef(0);
   const [tournamentState, setTournamentState] = useState<ClientTournamentState | null>(null);
-  const [registeredTournamentId, setRegisteredTournamentId] = useState<string | null>(null);
+  // 進行中トーナメントへの自分の参加状態。サーバー（一覧API）の判定だけを反映し、クライアントでは書き換えない
+  const [myEntryStatuses, setMyEntryStatuses] = useState<ReadonlyMap<string, TournamentEntryStatus>>(new Map());
+  const [myFinishedTournamentIds, setMyFinishedTournamentIds] = useState<Set<string>>(new Set());
   const [isConnected, setIsConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -61,7 +65,6 @@ export function useTournamentState() {
     wsService.disconnect();
     setIsConnected(false);
     setTournamentState(null);
-    setRegisteredTournamentId(null);
   }, []);
 
   const refreshList = useCallback(async (nextWeekOffset?: number) => {
@@ -76,9 +79,7 @@ export function useTournamentState() {
       if (requestSeq !== listRequestSeqRef.current) return;
       const data = (await res.json()) as {
         tournaments?: TournamentLobbyInfo[];
-        myTournamentId?: string | null;
-        canReenterTournamentId?: string | null;
-        myEliminatedTournamentId?: string | null;
+        myEntries?: MyTournamentEntry[];
         myFinishedTournamentIds?: string[];
         finishedWindow?: FinishedTournamentsWindow;
       };
@@ -88,10 +89,7 @@ export function useTournamentState() {
         weekOffsetRef.current = offset;
         setWeekOffset(offset);
       }
-      // DB参加記録に基づいて参加状態を更新
-      setRegisteredTournamentId(data.myTournamentId ?? null);
-      setCanReenterTournamentId(data.canReenterTournamentId ?? null);
-      setMyEliminatedTournamentId(data.myEliminatedTournamentId ?? null);
+      setMyEntryStatuses(new Map((data.myEntries ?? []).map((e) => [e.tournamentId, e.status])));
       setMyFinishedTournamentIds(new Set(data.myFinishedTournamentIds ?? []));
     } catch {
       if (requestSeq !== listRequestSeqRef.current) return;
@@ -115,16 +113,13 @@ export function useTournamentState() {
       if (!res.ok || !data.success) {
         return { success: false, error: data.error ?? '登録に失敗しました' };
       }
-      setRegisteredTournamentId(tournamentId);
+      // 参加状態はサーバーの判定を取り直して反映する
+      await refreshList();
       return { success: true };
     } catch {
       return { success: false, error: '通信エラーが発生しました' };
     }
-  }, []);
-
-  const [canReenterTournamentId, setCanReenterTournamentId] = useState<string | null>(null);
-  const [myEliminatedTournamentId, setMyEliminatedTournamentId] = useState<string | null>(null);
-  const [myFinishedTournamentIds, setMyFinishedTournamentIds] = useState<Set<string>>(new Set());
+  }, [refreshList]);
 
   const reenter = useCallback(async (tournamentId: string): Promise<{ success: boolean; error?: string }> => {
     try {
@@ -136,8 +131,6 @@ export function useTournamentState() {
       if (!res.ok || !data.success) {
         return { success: false, error: data.error ?? 'リエントリーに失敗しました' };
       }
-      setCanReenterTournamentId(null);
-      setRegisteredTournamentId(tournamentId);
       return { success: true };
     } catch {
       return { success: false, error: '通信エラーが発生しました' };
@@ -159,10 +152,6 @@ export function useTournamentState() {
 
       onTournamentState: (state) => {
         setTournamentState(state);
-        // 再接続時: tournament:state が来た = このトーナメントに参加中
-        if (state.tournamentId) {
-          setRegisteredTournamentId(state.tournamentId);
-        }
       },
 
       onTournamentTableAssigned: (_data) => {
@@ -192,7 +181,7 @@ export function useTournamentState() {
 
       onTournamentEliminated: (data) => {
         setElimination(data);
-        setRegisteredTournamentId(null);
+        void refreshList();
       },
 
       onTournamentFinalTable: () => {
@@ -201,7 +190,7 @@ export function useTournamentState() {
 
       onTournamentCompleted: (data) => {
         setCompletedData(data);
-        setRegisteredTournamentId(null);
+        void refreshList();
       },
 
       onTournamentError: (data) => {
@@ -211,7 +200,7 @@ export function useTournamentState() {
 
       onTournamentCancelled: () => {
         setTournamentState(null);
-        setRegisteredTournamentId(null);
+        void refreshList();
         setError('トーナメントがキャンセルされました');
       },
 
@@ -244,9 +233,7 @@ export function useTournamentState() {
     weekOffset,
 
     // Registration
-    registeredTournamentId,
-    canReenterTournamentId,
-    myEliminatedTournamentId,
+    myEntryStatuses,
     myFinishedTournamentIds,
     register,
     reenter,

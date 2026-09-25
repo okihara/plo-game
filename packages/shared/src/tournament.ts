@@ -123,6 +123,24 @@ export interface TournamentLobbyInfo {
   gameVariant: GameVariant;  // 'plo' | 'plo5' (UI バッジ表示用)
 }
 
+// --- My Entry Status ---
+
+/**
+ * ログインユーザーから見た、進行中トーナメントへの参加状態。
+ * サーバーが DB の参加記録とメモリ上のプレイヤー状態から一意に決める（クライアントは表示するだけ）。
+ *
+ * - entered: 参加中（未着席を含む）。卓に入れば着席する
+ * - reentry_pending: リエントリー課金済みだが未復帰。卓に入れば復帰する
+ * - can_reenter: 脱落済みでリエントリー可能
+ * - eliminated: 脱落済みでリエントリー不可
+ */
+export type TournamentEntryStatus = 'entered' | 'reentry_pending' | 'can_reenter' | 'eliminated';
+
+export interface MyTournamentEntry {
+  tournamentId: string;
+  status: TournamentEntryStatus;
+}
+
 // --- Finished Tournaments Pagination Window ---
 
 /** /api/tournaments のレスポンスに付く、終了済みトーナメントの週ページネーション情報。 */

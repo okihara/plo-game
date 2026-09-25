@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useTournamentState, TournamentLobbyInfo, FinishedTournamentsWindow } from '../hooks/useTournamentState';
+import { useTournamentState, TournamentLobbyInfo, FinishedTournamentsWindow, TournamentEntryStatus } from '../hooks/useTournamentState';
 import {
   useTournamentEvaluations,
   type TournamentEvalEligibleMeta,
@@ -60,9 +60,7 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     isListLoading,
     finishedWindow,
     weekOffset,
-    registeredTournamentId,
-    canReenterTournamentId,
-    myEliminatedTournamentId,
+    myEntryStatuses,
     myFinishedTournamentIds,
     register,
     reenter,
@@ -88,19 +86,12 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     if (user) void refreshEvalMeta();
   }, [user, refreshEvalMeta]);
 
-  useEffect(() => {
-    if (registeredTournamentId) {
-      setRegistering(null);
-      setReentering(null);
-    }
-  }, [registeredTournamentId]);
-
   const handleRegister = async (tournamentId: string) => {
     if (!user) return;
     setRegistering(tournamentId);
     const result = await register(tournamentId);
+    setRegistering(null);
     if (!result.success) {
-      setRegistering(null);
       setEntryError(result.error ?? '登録に失敗しました');
     }
   };
@@ -109,10 +100,13 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
     if (!user) return;
     setReentering(tournamentId);
     const result = await reenter(tournamentId);
+    setReentering(null);
     if (!result.success) {
-      setReentering(null);
       setEntryError(result.error ?? 'リエントリーに失敗しました');
+      return;
     }
+    // 課金済み・未着席の時間を作らないよう、そのまま卓に入って復帰させる
+    onJoinTournament(tournamentId);
   };
 
   const handleEvalGenerate = async (tournamentId: string) => {
@@ -215,13 +209,11 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
                     key={t.id}
                     tournament={t}
                     winner={t.winner ?? null}
-                    isRegistered={registeredTournamentId === t.id}
+                    entryStatus={myEntryStatuses.get(t.id) ?? null}
                     isRegistering={registering === t.id}
-                    canReenter={canReenterTournamentId === t.id}
                     isReentering={reentering === t.id}
                     isLoggedIn={!!user}
                     hasParticipated={myFinishedTournamentIds.has(t.id)}
-                    isEliminated={myEliminatedTournamentId === t.id}
                     onRegister={() => handleRegister(t.id)}
                     onReenter={() => handleReenter(t.id)}
                     onEnter={() => onJoinTournament(t.id)}
@@ -333,13 +325,11 @@ function WeekPager({
 export function TournamentCard({
   tournament: t,
   winner,
-  isRegistered,
+  entryStatus,
   isRegistering,
-  canReenter,
   isReentering,
   isLoggedIn,
   hasParticipated,
-  isEliminated,
   onRegister,
   onReenter,
   onEnter,
@@ -357,13 +347,12 @@ export function TournamentCard({
   tournament: TournamentLobbyInfo;
   /** 完了トナメの優勝者。displayName はサーバー側でマスク済みを想定。 */
   winner?: { displayName: string; avatarUrl?: string | null } | null;
-  isRegistered: boolean;
+  /** 進行中トーナメントへの自分の参加状態（未参加なら null）。サーバーの判定をそのまま渡す */
+  entryStatus: TournamentEntryStatus | null;
   isRegistering: boolean;
-  canReenter: boolean;
   isReentering: boolean;
   isLoggedIn: boolean;
   hasParticipated: boolean;
-  isEliminated: boolean;
   onRegister: () => void;
   onReenter: () => void;
   onEnter: () => void;
@@ -601,7 +590,7 @@ export function TournamentCard({
           <div className="text-center text-[3cqw] text-cream-700 py-[2cqw]">
             ログインすると参加できます
           </div>
-        ) : isRegistered ? (
+        ) : entryStatus === 'entered' || entryStatus === 'reentry_pending' ? (
           <button
             type="button"
             onClick={onEnter}
@@ -609,7 +598,7 @@ export function TournamentCard({
           >
             テーブルに入る
           </button>
-        ) : canReenter ? (
+        ) : entryStatus === 'can_reenter' ? (
           <button
             type="button"
             onClick={onReenter}
@@ -625,7 +614,7 @@ export function TournamentCard({
               <>リエントリー ({t.buyIn.toLocaleString()} chips)</>
             )}
           </button>
-        ) : t.isRegistrationOpen && !isEliminated ? (
+        ) : t.isRegistrationOpen && entryStatus === null ? (
           <button
             type="button"
             onClick={onRegister}
@@ -641,7 +630,7 @@ export function TournamentCard({
               <>参加登録 ({t.buyIn.toLocaleString()} chips)</>
             )}
           </button>
-        ) : isEliminated ? (
+        ) : entryStatus === 'eliminated' ? (
           <button
             type="button"
             onClick={onViewMyResult}
