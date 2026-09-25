@@ -7,7 +7,7 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { CURRENT_SEASON } from './seasonConfig.js';
-import { computeSeasonRanking, type UserRankAgg } from './computeSeasonRanking.js';
+import { computeSeasonRanking, takeTop, type RankedUser } from './computeSeasonRanking.js';
 import { fetchAvatarUrls } from './avatar.js';
 
 export const LIVE_RANKING_TOP_N = 30;
@@ -29,9 +29,9 @@ export interface LiveRankEntry {
 }
 
 export interface LiveRankingMe extends LiveRankEntry {
-  /** ひとつ上の順位に並ぶ/抜くのに必要な RP（1位なら null） */
+  /** ひとつ上の順位に並ぶのに必要な RP（1位なら null） */
   rpToNext: number | null;
-  /** TOP30 入りに必要な RP（既に TOP30 内なら null） */
+  /** TOP30 入り（30位に並ぶ）に必要な RP（既に TOP30 内なら null） */
   rpToTop: number | null;
 }
 
@@ -41,6 +41,7 @@ export interface LiveRankingView {
   rankedPlayers: number;
   /** TOP 何位まで top に載せるか（見出し・「TOP◯◯まであと」表示用） */
   topN: number;
+  /** topN 位以内の全員（同順位がいれば topN 人を超える） */
   top: LiveRankEntry[];
   /** 自分が TOP30 圏外のとき、自分の前後 LIVE_RANKING_AROUND 人（自分含む）。圏内・未ランクなら空 */
   around: LiveRankEntry[];
@@ -50,9 +51,9 @@ export interface LiveRankingView {
 
 type RankRow = Omit<LiveRankEntry, 'avatarUrl'>;
 
-function toRow(u: UserRankAgg, index: number): RankRow {
+function toRow(u: RankedUser): RankRow {
   return {
-    position: index + 1,
+    position: u.position,
     userId: u.userId,
     name: u.name,
     totalRp: u.totalRp,
@@ -64,39 +65,42 @@ function toRow(u: UserRankAgg, index: number): RankRow {
 }
 
 /**
- * ソート済みランキングから表示用ビュー（アバター抜き）を組み立てる純粋関数。
- * 順位は aggregateRanking の並び順（RP 降順・同点はエントリー少ない順）の index + 1。
+ * 順位つきランキング（aggregateRanking の結果）から表示用ビュー（アバター抜き）を組み立てる純粋関数。
+ * 同RPは同順位なので、「ひとつ上」は自分より RP が多い中で最も近い順位を指す。
  */
 export function buildLiveRankingRows(
-  ranking: UserRankAgg[],
+  ranking: RankedUser[],
   userId: string | undefined,
   topN = LIVE_RANKING_TOP_N,
   aroundRadius = LIVE_RANKING_AROUND,
 ): { top: RankRow[]; around: RankRow[]; me: (RankRow & { rpToNext: number | null; rpToTop: number | null }) | null } {
   const rows = ranking.map(toRow);
-  const top = rows.slice(0, topN);
+  const top = takeTop(rows, topN);
 
   const myIndex = userId ? rows.findIndex((r) => r.userId === userId) : -1;
   if (myIndex < 0) return { top, around: [], me: null };
 
   const mine = rows[myIndex];
-  const above = myIndex > 0 ? rows[myIndex - 1] : null;
+  // 自分と同順位の先頭のひとつ前 = 自分より RP が多い中で最も近い人
+  const above = mine.position > 1 ? rows[mine.position - 2] : null;
+  const inTop = mine.position <= topN;
+  // 圏外なら TOP 最下位（topN 番目の行）の RP に並べば圏内
   const topBorder = rows[topN - 1];
   const me = {
     ...mine,
     rpToNext: above ? above.totalRp - mine.totalRp : null,
-    rpToTop: myIndex >= topN && topBorder ? topBorder.totalRp - mine.totalRp : null,
+    rpToTop: !inTop && topBorder ? topBorder.totalRp - mine.totalRp : null,
   };
 
-  const around = myIndex >= topN
-    ? rows.slice(Math.max(topN, myIndex - aroundRadius), myIndex + aroundRadius + 1)
-    : [];
+  const around = inTop
+    ? []
+    : rows.slice(Math.max(top.length, myIndex - aroundRadius), myIndex + aroundRadius + 1);
 
   return { top, around, me };
 }
 
 interface RankingCache {
-  ranking: UserRankAgg[];
+  ranking: RankedUser[];
   tournamentsCounted: number;
   expiresAt: number;
 }

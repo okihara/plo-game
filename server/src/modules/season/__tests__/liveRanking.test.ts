@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildLiveRankingRows } from '../liveRanking.js';
-import type { UserRankAgg } from '../computeSeasonRanking.js';
+import { assignPositions, type UserRankAgg } from '../computeSeasonRanking.js';
 
 function user(i: number, totalRp: number): UserRankAgg {
   return {
@@ -16,8 +16,13 @@ function user(i: number, totalRp: number): UserRankAgg {
   };
 }
 
+/** RP の配列（降順）から順位つきランキングを作る。userId は u1, u2, ... */
+function rankingOf(rps: number[]) {
+  return assignPositions(rps.map((rp, i) => user(i + 1, rp)));
+}
+
 // RP 降順に並んだ 10 人（u1=100RP, u2=90RP, ..., u10=10RP）
-const ranking = Array.from({ length: 10 }, (_, i) => user(i + 1, 100 - i * 10));
+const ranking = rankingOf([100, 90, 80, 70, 60, 50, 40, 30, 20, 10]);
 
 describe('buildLiveRankingRows', () => {
   it('userId 未指定なら TOP N のみ返す', () => {
@@ -56,7 +61,29 @@ describe('buildLiveRankingRows', () => {
   });
 
   it('best が Infinity なら null に変換する', () => {
-    const { top } = buildLiveRankingRows([{ ...user(1, 5), best: Infinity }], undefined, 3, 2);
+    const { top } = buildLiveRankingRows(assignPositions([{ ...user(1, 5), best: Infinity }]), undefined, 3, 2);
     expect(top[0].best).toBeNull();
+  });
+
+  describe('同RPは同順位', () => {
+    // u1=100, u2=90, u3=90, u4=80, u5=80, u6=80, u7=50
+    const tied = rankingOf([100, 90, 90, 80, 80, 80, 50]);
+
+    it('N位に並んだ人は全員 TOP に入る', () => {
+      const { top } = buildLiveRankingRows(tied, undefined, 4, 2);
+      expect(top.map((r) => r.position)).toEqual([1, 2, 2, 4, 4, 4]);
+    });
+
+    it('ひとつ上は自分より RP が多い中で最も近い人', () => {
+      expect(buildLiveRankingRows(tied, 'u3', 4, 2).me).toMatchObject({ position: 2, rpToNext: 10 });
+      expect(buildLiveRankingRows(tied, 'u6', 4, 2).me).toMatchObject({ position: 4, rpToNext: 10 });
+    });
+
+    it('圏外なら N位の RP に並ぶまでの差を返し、around は TOP の後ろから', () => {
+      const { me, around } = buildLiveRankingRows(tied, 'u7', 3, 2);
+      // 3位以内 = 1, 2, 2 の3人。3番目の行（90RP）に並べば圏内
+      expect(me).toMatchObject({ position: 7, rpToNext: 30, rpToTop: 40 });
+      expect(around.map((r) => r.userId)).toEqual(['u5', 'u6', 'u7']);
+    });
   });
 });

@@ -82,7 +82,7 @@ function MyRankCard({ userId, data }: { userId?: string; data: LiveRankingView }
           )}
           {me.rpToNext != null && (
             <span className="bg-white/15 rounded-[1.5cqw] px-[2cqw] py-[1cqw] text-[2.6cqw] font-bold">
-              {me.rpToNext === 0 ? 'ひとつ上と同点' : `ひとつ上まであと ${me.rpToNext}RP`}
+              ひとつ上まであと {me.rpToNext}RP
             </span>
           )}
         </div>

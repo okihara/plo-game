@@ -17,9 +17,9 @@ export interface LiveRankEntry {
 }
 
 export interface LiveRankingMe extends LiveRankEntry {
-  /** ひとつ上の順位までに必要な RP（1位なら null） */
+  /** ひとつ上の順位に並ぶのに必要な RP（1位なら null） */
   rpToNext: number | null;
-  /** TOP N 入りに必要な RP（既に圏内なら null） */
+  /** TOP N 入り（N位に並ぶ）に必要な RP（既に圏内なら null） */
   rpToTop: number | null;
 }
 
@@ -29,6 +29,7 @@ export interface LiveRankingView {
   tournamentsCounted: number;
   rankedPlayers: number;
   topN: number;
+  /** topN 位以内の全員（同順位がいれば topN 人を超える） */
   top: LiveRankEntry[];
   around: LiveRankEntry[];
   me: LiveRankingMe | null;
