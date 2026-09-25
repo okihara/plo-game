@@ -264,6 +264,33 @@ export class TournamentInstance {
       return { success: false, error: 'リエントリー期限を過ぎています' };
     }
 
+    this.applyReentry(player, socket);
+    return { success: true };
+  }
+
+  /**
+   * 課金済みリエントリーの復帰処理。
+   *
+   * REST でリエントリーを課金した時点で期限・上限は検証済みなので、ここでは再検証しない。
+   * 課金後に着席する前に期限を越えても、払った分は必ず卓に戻す。
+   */
+  public resumePaidReentry(odId: string, socket: Socket): { success: boolean; error?: string } {
+    const player = this.players.get(odId);
+    if (!player) {
+      return { success: false, error: 'トーナメントに参加していません' };
+    }
+    if (player.status !== 'eliminated') {
+      return { success: false, error: 'プレイ中のためリエントリーできません' };
+    }
+    const status = this.getStatus();
+    if (status === 'completed' || status === 'cancelled') {
+      return { success: false, error: 'トーナメントは終了しています' };
+    }
+    this.applyReentry(player, socket);
+    return { success: true };
+  }
+
+  private applyReentry(player: TournamentPlayer, socket: Socket): void {
     player.reentryCount++;
     player.chips = this.config.startingChips;
     player.status = 'playing';
@@ -282,7 +309,6 @@ export class TournamentInstance {
     this.checkAndExecuteBalance();
 
     this.broadcastTournamentState();
-    return { success: true };
   }
 
   // ============================================

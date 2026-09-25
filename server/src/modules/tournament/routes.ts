@@ -5,8 +5,9 @@ import { prisma } from '../../config/database.js';
 import { env } from '../../config/env.js';
 import { maskName } from '../../shared/utils.js';
 import { TournamentConfig, TournamentLobbyInfo, TournamentStatus, FinishedTournamentsWindow } from './types.js';
-import type { GameVariant } from '@plo/shared';
+import type { GameVariant, MyTournamentEntry } from '@plo/shared';
 import { resolveBlindSchedule, type BlindStructureId } from './constants.js';
+import { resolveEntryStatus } from './entryStatus.js';
 
 const JST_OFFSET_MS = 9 * 60 * 60 * 1000;
 const ONE_WEEK_MS = 7 * 24 * 60 * 60 * 1000;
@@ -161,44 +162,33 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
       });
       const tournaments = [...active, ...finished];
 
-      // オプショナル認証: ログイン済みならDB参加記録を返す
-      let myTournamentId: string | null = null;
-      let canReenterTournamentId: string | null = null;
-      let myEliminatedTournamentId: string | null = null;
+      // オプショナル認証: ログイン済みなら進行中トーナメントへの参加状態を返す
+      let myEntries: MyTournamentEntry[] = [];
       try {
         await request.jwtVerify();
         const { userId } = request.user as { userId: string };
-        // 進行中トーナメントへの参加記録を検索
         const activeTournamentIds = activeTournaments
           .filter(t => t.status !== 'completed' && t.status !== 'cancelled')
           .map(t => t.id);
         if (activeTournamentIds.length > 0) {
-          const reg = await prisma.tournamentRegistration.findFirst({
+          const regs = await prisma.tournamentRegistration.findMany({
             where: { userId, tournamentId: { in: activeTournamentIds } },
-            select: { tournamentId: true },
+            select: { tournamentId: true, reentryCount: true },
           });
-          if (reg) {
+          myEntries = regs.flatMap((reg) => {
             const t = tournamentManager.getTournament(reg.tournamentId);
-            const player = t?.getPlayer(userId);
-            if (!player || player.status !== 'eliminated') {
-              myTournamentId = reg.tournamentId;
-            } else if (t?.canReenter(userId)) {
-              // eliminated かつリエントリー可能
-              canReenterTournamentId = reg.tournamentId;
-            } else {
-              // eliminated かつリエントリー不可（締切後）
-              myEliminatedTournamentId = reg.tournamentId;
-            }
-          }
+            if (!t) return [];
+            return [{ tournamentId: reg.tournamentId, status: resolveEntryStatus(t, userId, reg.reentryCount) }];
+          });
         }
       } catch {
-        // 未認証 — myTournamentId は null のまま
+        // 未認証 — myEntries は空のまま
       }
 
       // 終了済みトーナメントへの参加履歴
       let myFinishedTournamentIds: string[] = [];
       try {
-        if (!myTournamentId) await request.jwtVerify(); // 上で認証済みならスキップされる
+        await request.jwtVerify();
         const { userId } = request.user as { userId: string };
         const finishedIds = tournaments.filter(t => t.status === 'completed' || t.status === 'cancelled').map(t => t.id);
         if (finishedIds.length > 0) {
@@ -214,9 +204,7 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
 
       return {
         tournaments,
-        myTournamentId,
-        canReenterTournamentId,
-        myEliminatedTournamentId,
+        myEntries,
         myFinishedTournamentIds,
         finishedWindow,
       };
@@ -492,28 +480,40 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         return reply.status(404).send({ error: 'トーナメントが見つかりません' });
       }
 
-      if (!tournament.canReenter(userId)) {
+      const reg = await prisma.tournamentRegistration.findUnique({
+        where: { tournamentId_userId: { tournamentId, userId } },
+        select: { reentryCount: true },
+      });
+      if (!reg) {
+        return reply.status(400).send({ error: 'このトーナメントに参加していません' });
+      }
+
+      const entryStatus = resolveEntryStatus(tournament, userId, reg.reentryCount);
+      // 課金済みで未復帰なら二重課金せず成功を返す（卓に入れば復帰する）
+      if (entryStatus === 'reentry_pending') {
+        return { success: true, tournamentId };
+      }
+      if (entryStatus !== 'can_reenter') {
         return reply.status(400).send({ error: 'リエントリーできません' });
       }
 
       const buyIn = tournament.config.buyIn;
-
       const maxReentries = tournament.config.maxReentries;
       // GUEST role はリエントリー上限の対象外
       const isGuest = tournament.getPlayer(userId)?.role === 'GUEST';
+      if (!isGuest && reg.reentryCount >= maxReentries) {
+        return reply.status(400).send({ error: 'リエントリー上限に達しています' });
+      }
 
       try {
         await prisma.$transaction(async (tx) => {
-          // DBの reentryCount で上限チェック（メモリとの不整合を防止）
-          const reg = await tx.tournamentRegistration.findUnique({
-            where: { tournamentId_userId: { tournamentId, userId } },
-            select: { reentryCount: true },
+          // 読み取り時の reentryCount を条件に更新する（連打などの同時リクエストで二重課金しない）
+          const counted = await tx.tournamentRegistration.updateMany({
+            where: { tournamentId, userId, reentryCount: reg.reentryCount },
+            data: { reentryCount: { increment: 1 } },
           });
-          if (!reg) {
-            throw new Error('REENTRY_LIMIT_REACHED');
-          }
-          if (!isGuest && reg.reentryCount >= maxReentries) {
-            throw new Error('REENTRY_LIMIT_REACHED');
+          if (counted.count === 0) {
+            throw new Error('REENTRY_ALREADY_PAID');
           }
 
           const updated = await tx.bankroll.updateMany({
@@ -526,18 +526,16 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
           await tx.transaction.create({
             data: { userId, type: 'TOURNAMENT_BUY_IN', amount: -buyIn },
           });
-          await tx.tournamentRegistration.update({
-            where: { tournamentId_userId: { tournamentId, userId } },
-            data: { reentryCount: { increment: 1 } },
-          });
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : '';
+        // 同時リクエストの片方が先に課金済み → そちらの結果で復帰待ちになっている
+        if (msg === 'REENTRY_ALREADY_PAID') {
+          return { success: true, tournamentId };
+        }
         const message = msg === 'INSUFFICIENT_BALANCE'
           ? '残高が不足しています'
-          : msg === 'REENTRY_LIMIT_REACHED'
-            ? 'リエントリー上限に達しています'
-            : 'リエントリーに失敗しました';
+          : 'リエントリーに失敗しました';
         return reply.status(400).send({ error: message });
       }
 

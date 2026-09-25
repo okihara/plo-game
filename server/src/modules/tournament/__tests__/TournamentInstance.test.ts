@@ -1931,6 +1931,32 @@ it('リエントリー成功でチップがリセットされプライズプー�
       expect(tournament.canReenter(odIds[0])).toBe(false);
     });
 
+    it('resumePaidReentry: 課金後に期限を越えても卓に戻す', () => {
+      const tournament = createReentryTournament({ reentryDeadlineLevel: 1 });
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+      simulateBust(tournament, odIds[0], 100);
+      expect(tournament.canReenter(odIds[0])).toBe(true);
+
+      // REST で課金した後、着席前にレベル2へ進む
+      vi.advanceTimersByTime(5 * 60 * 1000);
+
+      const result = tournament.resumePaidReentry(odIds[0], createMockSocket());
+      expect(result.success).toBe(true);
+      const player = tournament.getPlayer(odIds[0]);
+      expect(player?.status).toBe('playing');
+      expect(player?.reentryCount).toBe(1);
+      expect(player?.tableId).not.toBeNull();
+    });
+
+    it('resumePaidReentry: playingプレイヤーは不可', () => {
+      const tournament = createReentryTournament();
+      const { odIds } = startAndEnterNPlayers(tournament, 3);
+
+      const result = tournament.resumePaidReentry(odIds[0], createMockSocket());
+      expect(result.success).toBe(false);
+      expect(tournament.getPlayer(odIds[0])?.reentryCount).toBe(0);
+    });
+
     it('canReenter: playingプレイヤーは不可', () => {
       const tournament = createReentryTournament();
       const { odIds } = startAndEnterNPlayers(tournament, 3);
