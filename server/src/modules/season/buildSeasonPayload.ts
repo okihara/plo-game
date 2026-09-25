@@ -10,6 +10,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { CURRENT_SEASON, seasonBadgePrefix } from './seasonConfig.js';
 import { computeSeasonRanking } from './computeSeasonRanking.js';
+import { fetchAvatarUrls } from './avatar.js';
 import { computeSeasonAwards, type Award, type MateRef } from './computeSeasonAwards.js';
 import { seasonBadgeTypeForRank, badgeDisplayMeta } from '../badges/badgeService.js';
 
@@ -96,13 +97,7 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
 
   const topRanking = ranking.slice(0, TOP_N);
 
-  const users = await prisma.user.findMany({
-    where: { id: { in: topRanking.map((u) => u.userId) } },
-    select: { id: true, avatarUrl: true, twitterAvatarUrl: true, useTwitterAvatar: true },
-  });
-  const avatarById = new Map(
-    users.map((u) => [u.id, u.useTwitterAvatar && u.twitterAvatarUrl ? u.twitterAvatarUrl : u.avatarUrl ?? null]),
-  );
+  const avatarById = await fetchAvatarUrls(prisma, topRanking.map((u) => u.userId));
 
   const totalEntries = ranking.reduce((s, u) => s + u.entries, 0);
 

@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { prisma } from '../../config/database.js';
 import { CURRENT_SEASON, RESULT_SEASON, SEASONS, findSeasonById, type SeasonConfig } from './seasonConfig.js';
 import { buildSeasonPayload, type SeasonFullData } from './buildSeasonPayload.js';
+import { getLiveRanking } from './liveRanking.js';
 
 // シーズン確定後はスナップショット（SeasonSnapshot）を即返す。
 // スナップショット未生成の間（シーズン中のプレビュー）は重いライブ集計に
@@ -108,6 +109,13 @@ export async function seasonRoutes(fastify: FastifyInstance) {
     if (!data) return reply.code(202).send({ ready: false });
     const { players: _players, ...pub } = data;
     return { ready: true, ...pub };
+  });
+
+  // 進行中シーズンの RP ランキング（TOP30＋?userId= の本人順位と前後）。
+  // 結果発表前のシーズンでも順位だけは随時確認できるようにする軽量集計。
+  fastify.get('/live-ranking', async (request) => {
+    const { userId } = request.query as { userId?: string };
+    return getLiveRanking(prisma, userId || undefined);
   });
 
   // 閲覧者本人の個人データ（スマブラ戦績風）
