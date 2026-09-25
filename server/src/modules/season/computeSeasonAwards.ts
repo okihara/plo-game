@@ -18,6 +18,7 @@ import {
 } from '../stats/statsComputation.js';
 import { CURRENT_SEASON } from './seasonConfig.js';
 import { fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
+import { resolveAvatarUrl } from './avatar.js';
 
 /** "Kc" のようなカード文字列を Card オブジェクトに変換 */
 const toCard = (s: string): Card => ({ rank: s[0] as Card['rank'], suit: s[1] as Card['suit'] });
@@ -452,7 +453,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   for (const u of users) {
     displays.set(u.id, {
       name: resolveDisplayName(u),
-      avatarUrl: u.useTwitterAvatar && u.twitterAvatarUrl ? u.twitterAvatarUrl : u.avatarUrl ?? null,
+      avatarUrl: resolveAvatarUrl(u),
     });
   }
 

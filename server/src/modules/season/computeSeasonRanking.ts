@@ -7,6 +7,7 @@
  *   - 賞金分配 = 現行の PrizeCalculator デフォルトルール（上位15%ペイアウト）を一律適用して再算定
  *   - RP = ceil(再算定後の賞金額 / 1000)。賞金 0 円なら 0RP
  *   - Bot (User.provider='bot') はランキングから除外（エントリー数には含める）
+ *   - 順位は同RPなら同順位（1, 2, 2, 4 …の競技方式）。並び順は同RP内で出場数が少ない方が先
  */
 import type { PrismaClient } from '@prisma/client';
 import { maskName } from '../../shared/utils.js';
@@ -30,6 +31,11 @@ export interface UserRankAgg {
   totalPrize: number;
 }
 
+/** 順位つきのランキング行。同RPは同じ position になる */
+export interface RankedUser extends UserRankAgg {
+  position: number;
+}
+
 export interface SeasonTournamentRow {
   id: string;
   name: string;
@@ -46,7 +52,7 @@ export interface SeasonTournamentRow {
 }
 
 export interface SeasonRankingResult {
-  ranking: UserRankAgg[];
+  ranking: RankedUser[];
   tournamentsCounted: number;
   tournamentsSkipped: number;
 }
@@ -54,6 +60,22 @@ export interface SeasonRankingResult {
 export function resolveDisplayName(user: { username: string; displayName: string | null; nameMasked: boolean }): string {
   if (user.displayName) return user.displayName;
   return user.nameMasked ? maskName(user.username) : user.username;
+}
+
+/**
+ * RP 降順に並んだ行へ順位を振る。同RPは同順位で、次の順位は人数分飛ぶ（100, 90, 90, 80 → 1, 2, 2, 4）。
+ */
+export function assignPositions<T extends { totalRp: number }>(sorted: T[]): (T & { position: number })[] {
+  let position = 0;
+  return sorted.map((u, i) => {
+    if (i === 0 || u.totalRp !== sorted[i - 1].totalRp) position = i + 1;
+    return { ...u, position };
+  });
+}
+
+/** 順位が n 位以内の行を返す（n 位に同点が複数いれば全員含むので n 件を超えることがある） */
+export function takeTop<T extends { position: number }>(ranked: T[], n: number): T[] {
+  return ranked.filter((u) => u.position <= n);
 }
 
 export function fetchSeasonTournaments(prisma: PrismaClient): Promise<SeasonTournamentRow[]> {
@@ -123,9 +145,11 @@ export function aggregateRanking(tournaments: SeasonTournamentRow[]): SeasonRank
     }
   }
 
-  const ranking = Array.from(agg.values())
-    .filter((u) => u.totalRp > 0)
-    .sort((a, b) => b.totalRp - a.totalRp || a.entries - b.entries);
+  const ranking = assignPositions(
+    Array.from(agg.values())
+      .filter((u) => u.totalRp > 0)
+      .sort((a, b) => b.totalRp - a.totalRp || a.entries - b.entries),
+  );
 
   return { ranking, tournamentsCounted, tournamentsSkipped };
 }
@@ -203,15 +227,12 @@ export function computeRankingDiff(
   const current = currentResult.ranking;
   const previous = aggregateRanking(prevTournaments).ranking;
 
-  const currentPos = new Map<string, number>();
-  current.forEach((u, i) => currentPos.set(u.userId, i + 1));
-  const previousPos = new Map<string, number>();
-  previous.forEach((u, i) => previousPos.set(u.userId, i + 1));
+  const currentPos = new Map<string, number>(current.map((u) => [u.userId, u.position]));
+  const previousPos = new Map<string, number>(previous.map((u) => [u.userId, u.position]));
   const previousRp = new Map<string, number>(previous.map((u) => [u.userId, u.totalRp]));
 
-  const limit = Math.min(topN, current.length);
-  const topEntries: RankingDiffEntry[] = current.slice(0, limit).map((u, i) => {
-    const pos = i + 1;
+  const topEntries: RankingDiffEntry[] = takeTop(current, topN).map((u) => {
+    const pos = u.position;
     const prevPos = previousPos.get(u.userId) ?? null;
     const prevRp = previousRp.get(u.userId) ?? 0;
     return {
@@ -226,7 +247,7 @@ export function computeRankingDiff(
       best: u.best === Infinity ? null : u.best,
       previousPosition: prevPos,
       positionDelta: prevPos === null ? null : prevPos - pos,
-      isNewToTop: prevPos === null || prevPos > limit,
+      isNewToTop: prevPos === null || prevPos > topN,
     };
   });
 

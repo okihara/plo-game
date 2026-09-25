@@ -63,7 +63,8 @@ TITLE_H = 140
 FOOTER_LINE_H = 30
 FOOTER_H = 24 + FOOTER_LINE_H * len(footers) if footers else 20
 
-HALF = 15
+# 同順位で TOP30 が 31 人以上になることがあるので、2カラムに収まるよう行数を可変にする
+HALF = max(15, (len(rows) + 1) // 2)
 left_rows = rows[:HALF]
 right_rows = rows[HALF:HALF * 2]
 col_rows = max(len(left_rows), len(right_rows))

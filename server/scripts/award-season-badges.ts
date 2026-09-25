@@ -7,6 +7,7 @@
  *   それ以外の参加者（RP圏外含む） → {prefix}_member（参加記念）
  * 1人につき1枚に整合する（既存が別の帯なら貼り替え、参加していない既存は削除）。冪等。
  * top10/top30 のみ実順位を rank に保存（UIで右上表示）。
+ * 順位は同RP同順位（境目で並んだ人は全員その帯のバッジ）。
  *
  * 実行:
  *   cd server && npx tsx scripts/award-season-badges.ts            # ローカルDB
@@ -19,7 +20,7 @@ import { PrismaClient } from '@prisma/client';
 import { config as loadDotenv } from 'dotenv';
 import { join } from 'path';
 import { fileURLToPath } from 'url';
-import { computeSeasonRanking, resolveDisplayName } from '../src/modules/season/computeSeasonRanking.js';
+import { computeSeasonRanking, resolveDisplayName, takeTop } from '../src/modules/season/computeSeasonRanking.js';
 import { CURRENT_SEASON, seasonBadgePrefix } from '../src/modules/season/seasonConfig.js';
 import { seasonBadgeTypes, seasonBadgeTypeForRank } from '../src/modules/badges/badgeService.js';
 
@@ -51,9 +52,8 @@ async function main() {
   const { ranking, tournaments, tournamentsCounted } = await computeSeasonRanking(prisma);
   console.log(`対象トーナメント: ${tournamentsCounted}件 / ランクイン(RP>0): ${ranking.length}人`);
 
-  // 順位（1始まり）と表示名
-  const rankByUser = new Map<string, number>();
-  ranking.forEach((u, i) => rankByUser.set(u.userId, i + 1));
+  // 順位（1始まり・同RPは同順位）と表示名
+  const rankByUser = new Map<string, number>(ranking.map(u => [u.userId, u.position]));
   const nameByUser = new Map<string, string>(ranking.map(u => [u.userId, u.name]));
 
   // 参加者（Bot以外の全エントラント）を収集
@@ -112,8 +112,8 @@ async function main() {
 
   // 表彰台のログ
   console.log('\n-- 上位 --');
-  for (const u of ranking.slice(0, 10)) {
-    console.log(`  ${rankByUser.get(u.userId)}位 ${u.name} (RP=${u.totalRp})`);
+  for (const u of takeTop(ranking, 10)) {
+    console.log(`  ${u.position}位 ${u.name} (RP=${u.totalRp})`);
   }
 
   console.log(`\n新規付与: ${toCreate.length}件 / 削除(貼り替え含む): ${toDeleteIds.length}件`);

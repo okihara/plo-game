@@ -77,7 +77,8 @@ export function buildRankingText(diff: RankingDiff): string {
   const lines: string[] = [];
   lines.push(`【${CURRENT_SEASON.name} RPランキング】${diff.latestTournament.name} 終了時点`);
   lines.push('');
-  for (const e of diff.top.slice(0, TOP_LINES)) {
+  // 同順位で3位以内に並んだ人は全員載せる
+  for (const e of diff.top.filter((e) => e.position <= TOP_LINES)) {
     lines.push(topLine(e));
   }
   lines.push('');

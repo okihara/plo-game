@@ -9,7 +9,8 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { CURRENT_SEASON, seasonBadgePrefix } from './seasonConfig.js';
-import { computeSeasonRanking } from './computeSeasonRanking.js';
+import { computeSeasonRanking, takeTop } from './computeSeasonRanking.js';
+import { fetchAvatarUrls } from './avatar.js';
 import { computeSeasonAwards, type Award, type MateRef } from './computeSeasonAwards.js';
 import { seasonBadgeTypeForRank, badgeDisplayMeta } from '../badges/badgeService.js';
 
@@ -94,23 +95,18 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
   ]);
   const { awards, rankings, participation, statsByUser, handsScanned } = awardsResult;
 
-  const topRanking = ranking.slice(0, TOP_N);
+  // 同順位で TOP_N 位に並んだ人は全員載せる
+  const topRanking = takeTop(ranking, TOP_N);
 
-  const users = await prisma.user.findMany({
-    where: { id: { in: topRanking.map((u) => u.userId) } },
-    select: { id: true, avatarUrl: true, twitterAvatarUrl: true, useTwitterAvatar: true },
-  });
-  const avatarById = new Map(
-    users.map((u) => [u.id, u.useTwitterAvatar && u.twitterAvatarUrl ? u.twitterAvatarUrl : u.avatarUrl ?? null]),
-  );
+  const avatarById = await fetchAvatarUrls(prisma, topRanking.map((u) => u.userId));
 
   const totalEntries = ranking.reduce((s, u) => s + u.entries, 0);
 
   // RPランキング内順位の逆引き
   const rankPos = new Map<string, number>();
   const rankRp = new Map<string, number>();
-  ranking.forEach((u, i) => {
-    rankPos.set(u.userId, i + 1);
+  ranking.forEach((u) => {
+    rankPos.set(u.userId, u.position);
     rankRp.set(u.userId, u.totalRp);
   });
 
@@ -182,10 +178,10 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
       totalEntries,
       handsScanned,
     },
-    ranking: topRanking.map((u, i) => {
-      const badge = badgeDisplayMeta(seasonBadgeTypeForRank(seasonBadgePrefix(CURRENT_SEASON), i + 1));
+    ranking: topRanking.map((u) => {
+      const badge = badgeDisplayMeta(seasonBadgeTypeForRank(seasonBadgePrefix(CURRENT_SEASON), u.position));
       return {
-        position: i + 1,
+        position: u.position,
         userId: u.userId,
         name: u.name,
         avatarUrl: avatarById.get(u.userId) ?? null,

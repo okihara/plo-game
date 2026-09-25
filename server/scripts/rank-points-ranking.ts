@@ -30,6 +30,7 @@ import {
   computeRankingDiff,
   fetchSeasonTournaments,
   rpFromAmount,
+  takeTop,
 } from '../src/modules/season/computeSeasonRanking.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -76,21 +77,20 @@ async function main() {
   const { ranking, tournamentsCounted, tournamentsSkipped } = aggregateRanking(tournaments);
 
   if (TSV || imageArg) {
-    const limit = Math.min(TOP, ranking.length);
     const today = new Date().toISOString().slice(0, 10);
     const lines: string[] = [];
     lines.push(`#title=BabyPLO トーナメントランキング ${SEASON_NAME}`);
     lines.push(`#subtitle=${SEASON_LABEL} / 完了トナメ ${tournamentsCounted} 本の集計（${today}時点）`);
     // #footer は複数行可（render-rp-ranking.py が行ごとに描画する）
     // 配分％は PrizeCalculator.getDefaultPercentages の実値（6名以上は線形+1位ボーナスの自動生成）
-    lines.push(`#footer=RP = トナメごとの賞金額 ÷ 1000（切り上げ）。シーズン内の合計RPで順位付け（同RPは出場数が少ない方が上位）`);
+    lines.push(`#footer=RP = トナメごとの賞金額 ÷ 1000（切り上げ）。シーズン内の合計RPで順位付け（同RPは同順位）`);
     lines.push(`#footer=入賞圏 = リエントリー込み総エントリー数の上位15%（切り捨て・最低1名）。賞金プールの配分は下記のとおり`);
     lines.push(`#footer=入賞3名: 55 / 28 / 17%　　入賞4名: 50 / 24 / 16 / 10%　　入賞5名: 45 / 22 / 15 / 11 / 7%`);
     lines.push(`#footer=入賞6名: 33.57 / 22.14 / 17.71 / 13.29 / 8.86 / 4.43%　　入賞7名: 30 / 20 / 16.67 / 13.33 / 10 / 6.67 / 3.33%`);
     lines.push(`#footer=（入賞8名以上も同じルールで、1位に厚めの線形配分を自動生成）`);
-    ranking.slice(0, limit).forEach((u, i) => {
+    takeTop(ranking, TOP).forEach((u) => {
       lines.push([
-        i + 1,
+        u.position,
         u.name,
         u.totalRp,
         u.entries,
@@ -138,14 +138,14 @@ async function main() {
   }
   console.log('');
 
-  const limit = Math.min(TOP, ranking.length);
-  console.log(`=== 通算ランキング TOP ${limit} ===`);
+  const topRows = takeTop(ranking, TOP);
+  console.log(`=== 通算ランキング TOP ${TOP}（${topRows.length}人） ===`);
   const header = `${'順位'.padStart(4)}  ${'RP'.padStart(6)}  ${'出場'.padStart(4)}  ${'優勝'.padStart(4)}  ${'RP圏'.padStart(4)}  ${'最高'.padStart(4)}  ${'賞金'.padStart(9)}  名前`;
   console.log(header);
   console.log('-'.repeat(header.length));
-  ranking.slice(0, limit).forEach((u, i) => {
+  topRows.forEach((u) => {
     console.log(
-      `${String(i + 1).padStart(4)}  ${String(u.totalRp).padStart(6)}  ${String(u.entries).padStart(4)}  ${String(u.wins).padStart(4)}  ${String(u.itm).padStart(4)}  ${String(u.best === Infinity ? '-' : u.best).padStart(4)}  ${u.totalPrize.toLocaleString().padStart(9)}  ${u.name}`
+      `${String(u.position).padStart(4)}  ${String(u.totalRp).padStart(6)}  ${String(u.entries).padStart(4)}  ${String(u.wins).padStart(4)}  ${String(u.itm).padStart(4)}  ${String(u.best === Infinity ? '-' : u.best).padStart(4)}  ${u.totalPrize.toLocaleString().padStart(9)}  ${u.name}`
     );
   });
 }

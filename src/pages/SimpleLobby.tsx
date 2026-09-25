@@ -3,7 +3,7 @@ import { Pencil, Trophy, Settings, Zap, Users } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { ProfilePopup } from '../components/ProfilePopup';
 import { ProfileEditDialog } from '../components/ProfileEditDialog';
-import { RankingPopup } from '../components/RankingPopup';
+import { RankingPopup, type RankingMode } from '../components/RankingPopup';
 import { HandHistoryPanel } from '../components/HandHistoryPanel';
 import { BottomNavigation, type LobbyTab } from '../components/BottomNavigation';
 import { TournamentList } from '../components/TournamentList';
@@ -48,6 +48,7 @@ const TABLE_OPTIONS: TableOption[] = [
 export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, initialTab = 'home' }: SimpleLobbyProps) {
   const { user, loading, refreshUser } = useAuth();
   const [activeTab, setActiveTab] = useState<LobbyTab>(initialTab);
+  const [rankingMode, setRankingMode] = useState<RankingMode>('ring');
   const [showProfileEdit, setShowProfileEdit] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -164,7 +165,13 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
   };
 
   const handleTabChange = (tab: LobbyTab) => {
+    setRankingMode('ring');
     setActiveTab(tab);
+  };
+
+  const openSeasonRanking = () => {
+    setRankingMode('season');
+    setActiveTab('ranking');
   };
 
   const renderHomeTab = () => (
@@ -425,12 +432,13 @@ export function SimpleLobby({ onPlayOnline, onCreatePrivate, onJoinPrivate, onJo
             onViewMyResult={onViewMyResult}
             onViewResults={onViewResults}
             onWatchFinalTable={onWatchFinalTable}
+            onOpenSeasonRanking={openSeasonRanking}
           />
         );
       case 'history':
         return <HandHistoryPanel />;
       case 'ranking':
-        return <RankingPopup userId={user?.id} />;
+        return <RankingPopup key={rankingMode} userId={user?.id} initialMode={rankingMode} />;
       case 'profile':
         return renderProfileTab();
       default:
