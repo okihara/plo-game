@@ -10,6 +10,7 @@ import { Trophy, Clock, Loader2, ChevronLeft, ChevronRight } from 'lucide-react'
 import { AlertDialogOverlay } from './AlertDialog';
 import { TournamentEvaluationPopup } from './TournamentEvaluationPopup';
 import { VariantBadge } from './VariantBadge';
+import { SeasonRankBanner } from './SeasonRankBanner';
 
 const API_BASE = import.meta.env.VITE_SERVER_URL || '';
 
@@ -18,6 +19,8 @@ interface TournamentListProps {
   onViewMyResult: (tournamentId: string) => void;
   onViewResults: (tournamentId: string) => void;
   onWatchFinalTable: (tournamentId: string, tableId: string) => void;
+  /** 上部の自分のRP順位バナーから、シーズンRPランキング全体を開く */
+  onOpenSeasonRanking?: () => void;
 }
 
 function formatTime(isoString?: string): string {
@@ -52,7 +55,7 @@ function statusLabel(status: string): { text: string; color: string } {
   }
 }
 
-export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable }: TournamentListProps) {
+export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults, onWatchFinalTable, onOpenSeasonRanking }: TournamentListProps) {
   const { user } = useAuth();
   const {
     tournaments,
@@ -173,6 +176,12 @@ export function TournamentList({ onJoinTournament, onViewMyResult, onViewResults
       )}
 
       <div className="flex-1 min-h-0 overflow-y-auto">
+        {user && (
+          <div className="px-[4cqw] pt-[4cqw]">
+            <SeasonRankBanner userId={user.id} onOpen={onOpenSeasonRanking} />
+          </div>
+        )}
+
         {isListLoading && (
           <div className="flex items-center justify-center py-[20cqw]">
             <Loader2 className="w-[6cqw] h-[6cqw] animate-spin text-cream-700 shrink-0" />

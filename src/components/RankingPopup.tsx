@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { DEFAULT_AVATAR_URL } from '@plo/shared';
 import { fetchRankings } from '../utils/rankingsCache';
 import { formatProfit, ordinalSuffix, type RankingEntry } from './RankingUtils';
+import { SeasonRpRanking } from './SeasonRpRanking';
 
 const MAX_DISPLAY_ALL = 30;
 const MAX_DISPLAY_PERIOD = 15;
@@ -9,10 +10,19 @@ const MAX_DISPLAY_PERIOD = 15;
 interface RankingPopupProps {
   userId?: string;
   onClose?: () => void;
+  /** 開いたときに表示するモード（既定はリングゲーム） */
+  initialMode?: RankingMode;
 }
 
+export type RankingMode = 'ring' | 'season';
+type Mode = RankingMode;
 type Tab = 'profit' | 'winrate';
 type Period = 'daily' | 'weekly' | 'all';
+
+const MODE_LABELS: Record<Mode, string> = {
+  ring: 'リングゲーム',
+  season: 'シーズンRP',
+};
 
 const PERIOD_LABELS: Record<Period, string> = {
   daily: '今日',
@@ -61,7 +71,8 @@ function formatWinrate(evProfit: number, hands: number): string {
   return perHand >= 0 ? `+${perHand.toFixed(1)}` : perHand.toFixed(1);
 }
 
-export function RankingPopup({ userId, onClose }: RankingPopupProps) {
+export function RankingPopup({ userId, onClose, initialMode = 'ring' }: RankingPopupProps) {
+  const [mode, setMode] = useState<Mode>(initialMode);
   const [rankings, setRankings] = useState<RankingEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('profit');
@@ -109,6 +120,25 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
           {/* Header */}
           <h2 className="text-[5cqw] font-bold text-cream-900 mb-[3cqw]">ランキング</h2>
 
+          {/* Mode selector */}
+          <div className="flex mb-[3cqw] bg-cream-100 rounded-[2cqw] p-[0.8cqw]">
+            {(['ring', 'season'] as Mode[]).map(m => (
+              <button
+                key={m}
+                onClick={() => setMode(m)}
+                className={`flex-1 py-[1.5cqw] text-[3cqw] font-bold rounded-[1.5cqw] transition-all ${
+                  mode === m ? 'bg-forest text-white shadow-sm' : 'text-cream-700'
+                }`}
+              >
+                {MODE_LABELS[m]}
+              </button>
+            ))}
+          </div>
+
+          {mode === 'season' ? (
+            <SeasonRpRanking userId={userId} />
+          ) : (
+          <>
           {/* Period selector */}
           <div className="flex mb-[2cqw] gap-[1.5cqw]">
             {(['daily', 'weekly', 'all'] as Period[]).map(p => (
@@ -248,6 +278,8 @@ export function RankingPopup({ userId, onClose }: RankingPopupProps) {
                 あなたの順位: <span className="font-bold text-cream-900">{myRank}位</span> / {allSorted.length}人
               </span>
             </div>
+          )}
+          </>
           )}
         </div>
       </div>
