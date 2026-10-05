@@ -608,6 +608,19 @@ export function tournamentRoutes(deps: { tournamentManager: TournamentManager })
         return reply.status(404).send({ error: 'Tournament not found' });
       }
 
+      // 完了済みを中止すると、賞金を払った上でバイインまで全額返金し、結果も CANCELLED で上書きしてしまう
+      const memStatus = tournament.getStatus();
+      if (memStatus === 'completed' || memStatus === 'cancelled') {
+        return reply.status(400).send({ error: 'トーナメントは既に終了しています' });
+      }
+      const dbTournament = await prisma.tournament.findUnique({
+        where: { id: request.params.id },
+        select: { status: true },
+      });
+      if (dbTournament?.status === 'COMPLETED' || dbTournament?.status === 'CANCELLED') {
+        return reply.status(400).send({ error: 'トーナメントは既に終了しています' });
+      }
+
       tournament.cancel();
 
       // バイイン返還 + ステータス更新をトランザクションで一括処理

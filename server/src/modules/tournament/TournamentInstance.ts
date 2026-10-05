@@ -182,8 +182,13 @@ export class TournamentInstance {
     }
 
     // --- 新規参加 ---
-    if (this.getStatus() === 'waiting') {
+    const status = this.getStatus();
+    if (status === 'waiting') {
       return { success: false, error: 'トーナメントはまだ開始されていません' };
+    }
+    // 完了/中止後は BlindScheduler が止まっているため、下の自動開始で running に蘇生させない
+    if (status === 'completed' || status === 'cancelled') {
+      return { success: false, error: 'トーナメントは終了しています' };
     }
 
     // BlindScheduler 未開始なら開始（予定時刻を過ぎて最初のプレイヤーが来た時）
@@ -319,6 +324,9 @@ export class TournamentInstance {
    * トーナメント開始
    */
   public start(): { success: boolean; error?: string } {
+    if (this.status === 'completed' || this.status === 'cancelled') {
+      return { success: false, error: 'トーナメントは終了しています' };
+    }
     if (this.blindScheduler.isStarted()) {
       return { success: false, error: 'トーナメントは既に開始しています' };
     }
