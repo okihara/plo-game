@@ -87,17 +87,46 @@ function unseenCards(dead: Card[]): Card[] {
   return createDeck().filter(c => !deadKeys.has(cardKey(c)));
 }
 
-/** ヒーローのカードを除いた残りから、相手が作れる最強の役（＝その時点のナッツ） */
-function nutHand(board: Card[], heroHole: Card[]): HandRank {
+type BoardTexture = {
+  /** その時点のナッツ（ヒーローのカードを除いた残りから相手が作れる最強の役） */
+  nuts: HandRank;
+  straightPossible: boolean;
+  flushPossible: boolean;
+  paired: boolean;
+};
+
+/** 相手が作れる役を全組み合わせで調べる（「このボードでストレートは作れない」等を確定させる） */
+function analyzeBoard(board: Card[], heroHole: Card[]): BoardTexture {
   const unseen = unseenCards([...board, ...heroHole]);
-  let best: HandRank | null = null;
+  let nuts: HandRank | null = null;
+  let straightPossible = false;
+  let flushPossible = false;
   for (let i = 0; i < unseen.length; i++) {
     for (let j = i + 1; j < unseen.length; j++) {
       const h = findBestPLOHand([unseen[i], unseen[j]], board)!.hand;
-      if (!best || compareRank(h, best) > 0) best = h;
+      if (!nuts || compareRank(h, nuts) > 0) nuts = h;
+      if (h.rank === 5 || h.rank === 9) straightPossible = true;
+      if (h.rank === 6 || h.rank === 9) flushPossible = true;
     }
   }
-  return best!;
+  const ranks = board.map(c => c.rank);
+  return { nuts: nuts!, straightPossible, flushPossible, paired: new Set(ranks).size < ranks.length };
+}
+
+/** ホールカードのスート構成（ダブルスーテッド等）。PLO5 の3枚同スートも書く */
+export function describeSuitStructure(hole: Card[]): string {
+  const bySuit = new Map<string, Card[]>();
+  for (const c of hole) bySuit.set(c.suit, [...(bySuit.get(c.suit) ?? []), c]);
+  const suited = [...bySuit.entries()].filter(([, cs]) => cs.length >= 2);
+  if (suited.length === 0) return 'スーテッドなし（レインボー）';
+  const kind = suited.length >= 2 ? 'ダブルスーテッド' : 'シングルスーテッド';
+  const detail = suited
+    .map(([suit, cs]) => {
+      const high = Math.max(...cs.map(c => getRankValue(c.rank)));
+      return `${suit}${cs.length}枚（${r(high)}ハイ）`;
+    })
+    .join('・');
+  return `${kind}: ${detail}`;
 }
 
 /** 次の1枚でストレート以上に改善するカードを役ごとに数える */
@@ -106,8 +135,7 @@ function countOuts(hole: Card[], board: Card[], current: HandRank): Map<string, 
   for (const c of unseenCards([...board, ...hole])) {
     const next = findBestPLOHand(hole, [...board, c])!.hand;
     if (next.rank >= OUTS_MIN_RANK && next.rank > current.rank) {
-      const name = next.rank >= 7 ? 'フルハウス以上' : next.name;
-      counts.set(name, (counts.get(name) ?? 0) + 1);
+      counts.set(next.name, (counts.get(next.name) ?? 0) + 1);
     }
   }
   return counts;
@@ -147,7 +175,7 @@ export function buildHandFacts(hand: TournamentHandExport): string | null {
   const others = hand.players.filter(p => !p.isCurrentUser);
   const maxOther = Math.max(0, ...others.map(p => p.startChips));
   lines.push(
-    `- ヒーロー: ${posOf(me.seatPosition)} / 開始スタック ${fmtBb(me.startChips, bb)} / ホール [${fmtCards(heroHole)}]`
+    `- ヒーロー: ${posOf(me.seatPosition)} / 開始スタック ${fmtBb(me.startChips, bb)} / ホール [${fmtCards(heroHole)}]（${describeSuitStructure(heroHole)}）`
   );
   lines.push(
     `- 他プレイヤーの開始スタック: ${others.map(p => `${posOf(p.seatPosition)} ${p.username} ${fmtBb(p.startChips, bb)}`).join(', ')}`
@@ -163,6 +191,22 @@ export function buildHandFacts(hand: TournamentHandExport): string | null {
     lines.push(`  - ${st.label}${boardLabel}: ${acts.map(a => describeAction(a, whoOf(a.seatIndex), bb)).join(' → ')}`);
   }
 
+  const textures = new Map<number, BoardTexture>();
+  const textureLines: string[] = [];
+  for (const st of STREETS) {
+    if (st.boardSize === 0 || board.length < st.boardSize) continue;
+    const b = board.slice(0, st.boardSize);
+    const t = analyzeBoard(b, heroHole);
+    textures.set(st.boardSize, t);
+    textureLines.push(
+      `  - ${st.label} [${fmtCards(b)}]: ナッツ ${describeHandRank(t.nuts)}／ストレート${t.straightPossible ? '作れる' : '作れない'}／フラッシュ${t.flushPossible ? '作れる' : '作れない'}／ボードペア${t.paired ? 'あり' : 'なし'}`
+    );
+  }
+  if (textureLines.length > 0) {
+    lines.push('- ボードで相手が作れる役（ヒーローのカードを除く全組み合わせで計算済み）:');
+    lines.push(...textureLines);
+  }
+
   // ヒーローがフォールドしたストリート以降は役を書かない
   const heroFoldStreet = actions.find(a => a.seatIndex === me.seatPosition && a.action === 'fold')?.street ?? null;
   const heroFoldIdx = heroFoldStreet ? STREETS.findIndex(s => s.key === heroFoldStreet) : Infinity;
@@ -172,11 +216,8 @@ export function buildHandFacts(hand: TournamentHandExport): string | null {
     if (st.boardSize === 0 || board.length < st.boardSize || idx > heroFoldIdx) continue;
     const b = board.slice(0, st.boardSize);
     const best = findBestPLOHand(heroHole, b)!;
-    const nuts = nutHand(b, heroHole);
-    const nutText =
-      compareRank(best.hand, nuts) >= 0
-        ? 'ナッツ'
-        : `ナッツではない（この時点のナッツ: ${describeHandRank(nuts)}）`;
+    const nuts = textures.get(st.boardSize)!.nuts;
+    const nutText = compareRank(best.hand, nuts) >= 0 ? 'ナッツ' : 'ナッツではない';
     let text =
       `  - ${st.label} [${fmtCards(b)}]: ${describeHandRank(best.hand, best.holeUsed)}` +
       `（ホール ${fmtCards(best.holeUsed)} + ボード ${fmtCards(best.boardUsed)}）／${nutText}`;

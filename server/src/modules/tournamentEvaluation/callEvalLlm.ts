@@ -21,14 +21,20 @@ PLOはテキサスホールデムと違い、役の作り方に厳格な制約�
 
 **役や相手ハンドの可能性を議論するときは、毎回「ホールカードから2枚 + ボードから3枚」を具体的に示して検証してください。**
 
+## ポットリミットのルール（助言の前提）
+- ベット・レイズの上限はその時点のポットサイズ。スタックがポットより大きいときに一度にオールインすることはできない（「プリフロップで直接ジャムすべき」のような、ルール上不可能な助言をしない）。
+- ポストフロップは SB 側から行動し、BTN が最後に行動する。誰が先に行動したかは事実ブロックのアクション順に従う。
+
 ## 【最重要】サーバー計算済みの事実を優先する
 各ハンドの PokerStars テキストの直後に「サーバー計算済みの事実」ブロックがある場合、そこに書かれた以下の項目はプログラムで正確に計算した値です。**ハンド履歴から自分で読み直したり再計算したりせず、この値をそのまま使ってください**。
 - ポジション、開始スタック・有効スタック（BB換算）
 - アクションの順番と金額（誰が先にベットし、誰がレイズ／コール／フォールドしたか）
+- ヒーローのホールカードのスート構成（ダブルスーテッド等）
+- 各ストリートでボード上相手が作れる役（ナッツ、ストレート／フラッシュが作れるかどうか）
 - 各ストリートでのヒーローの役（使用カード付き）、ナッツかどうか、次の1枚でストレート以上に改善するカードの枚数
 - ショーダウンした相手の役、ヒーローの損益
 
-役やドローに言及するときは、事実ブロックの記述と矛盾しないことを確認してください。事実ブロックに無い推測（相手のレンジ等）は推測だと分かる書き方にしてください。
+役やドロー、相手のレンジ（例: 「ストレートを持っている可能性」）に言及するときは、事実ブロックの記述と矛盾しないことを確認してください。「ストレート作れない」と書かれたボードで相手のストレートを想定してはいけません。事実ブロックに無い推測（相手のレンジ等）は推測だと分かる書き方にしてください。
 
 ## レビュー方針
 渡された候補ハンドを均等に扱わず、**その中から学習価値の高い重要ハンドを4〜6個選んで深く解説**してください。選抜基準：
@@ -150,12 +156,16 @@ export async function generateTournamentEvaluationMarkdown(
   );
 
   const { selected, summary } = selectKeyHands(input.hands, overrides.maxHands);
-  const handsPokerStars = selected
-    .map(h => {
-      const text = toPokerStarsHandText(exportHandToPokerStarsInput(h));
-      const facts = buildHandFacts(h);
-      return facts ? `${text}\n\n【サーバー計算済みの事実】\n${facts}` : text;
-    })
+  // 事実の計算（ナッツ判定の全組み合わせ探索）は PLO5 で1ハンド数十ms かかる。
+  // ゲームサーバーのイベントループを長く塞がないよう、1ハンドごとに処理を譲る
+  const handTexts: string[] = [];
+  for (const h of selected) {
+    const text = toPokerStarsHandText(exportHandToPokerStarsInput(h));
+    const facts = buildHandFacts(h);
+    handTexts.push(facts ? `${text}\n\n【サーバー計算済みの事実】\n${facts}` : text);
+    await new Promise(resolve => setImmediate(resolve));
+  }
+  const handsPokerStars = handTexts
     .join('\n\n\n----------\n\n\n');
 
   const userContent =

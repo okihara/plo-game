@@ -70,7 +70,10 @@ describe('buildHandFacts', () => {
       hand({ heroHole: ['Qh', 'Th', '2c', '2d'], board: ['3h', 'Kh', 'Jh'], actions: preflopCall })
     )!;
     expect(facts).toContain('Kハイのフラッシュ（ホール Qh Th');
-    expect(facts).toContain('ナッツではない（この時点のナッツ: Aハイのフラッシュ）');
+    expect(facts).toContain('ナッツではない');
+    expect(facts).toContain('フロップ [3h Kh Jh]: ナッツ Aハイのフラッシュ／ストレート作れない／フラッシュ作れる／ボードペアなし');
+    // 9h・Ah でストレートフラッシュ
+    expect(facts).toContain('次の1枚でストレート以上に改善: 2枚（ストレートフラッシュ 2）');
   });
 
   it('セットとトリップスを区別し、ショーダウンした相手の役も書く', () => {
@@ -85,7 +88,7 @@ describe('buildHandFacts', () => {
     )!;
     expect(facts).toContain('5のスリーカード（セット: ホールのポケットペア使用）');
     // ナッツ（ポケット99のセット）にはセット/トリップスの区別を付けない
-    expect(facts).toContain('この時点のナッツ: 9のスリーカード）');
+    expect(facts).toContain('フロップ [5h 9s 4c]: ナッツ 9のスリーカード／ストレート作れない／フラッシュ作れない');
     // 相手はホールの 9d を使えない（Qs Qh で2枚使用済み）ので Q のワンペア
     expect(facts).toContain('ショーダウン: SB villain [9d 8c Qs Qh] → Qのワンペア（ホール Qs Qh');
     expect(facts).toContain('結果: ヒーロー +6BB');
@@ -107,6 +110,15 @@ describe('buildHandFacts', () => {
     expect(facts).toContain('ヒーローの最大有効スタック: 12.4BB');
     expect(facts).toMatch(/プリフロップ: \S+ raise to 3BB → \S+ call 3BB → \S+\(ヒーロー\) fold/);
     expect(facts).not.toContain('ヒーローの役');
+  });
+
+  it('ターンでストレートが作れないボードをそう書く', () => {
+    // 検証で「86xx の既成ストレート」と誤ったボード
+    const facts = buildHandFacts(
+      hand({ heroHole: ['Ad', 'Kd', '7s', '2s'], board: ['Ah', '7c', '5d', 'Kc'], actions: preflopCall })
+    )!;
+    expect(facts).toContain('ターン [Ah 7c 5d Kc]: ナッツ Aのスリーカード／ストレート作れない／フラッシュ作れない');
+    expect(facts).toContain('ダブルスーテッド: d2枚（Aハイ）・s2枚（7ハイ）');
   });
 
   it('カードが読めないハンドは null', () => {
