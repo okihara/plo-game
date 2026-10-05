@@ -94,6 +94,30 @@ export function findUsedHoleCardIndices(
   return [...used];
 }
 
+/**
+ * オマハ系のベストハンドと、実際に使ったホール2枚・ボード3枚を返す。
+ * ボード3〜5枚に対応（フロップ・ターン時点の評価やナッツ判定にも使える）。
+ * 表示名の PLO フラッシュ補正はしない（呼び出し側で使用カードから組み立てる想定）。
+ */
+export function findBestPLOHand(
+  holeCards: Card[],
+  communityCards: Card[],
+): { hand: HandRank; holeUsed: Card[]; boardUsed: Card[] } | null {
+  if (holeCards.length < 2 || communityCards.length < 3) return null;
+
+  let best: { hand: HandRank; holeUsed: Card[]; boardUsed: Card[] } | null = null;
+  const boardCombos = getCombinations(communityCards, 3);
+  for (const holeCombo of getCombinations(holeCards, 2)) {
+    for (const boardCombo of boardCombos) {
+      const hand = evaluateFiveCardHand([...holeCombo, ...boardCombo]);
+      if (!best || compareHands(hand, best.hand) > 0) {
+        best = { hand, holeUsed: holeCombo, boardUsed: boardCombo };
+      }
+    }
+  }
+  return best;
+}
+
 function getCombinations<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
 
