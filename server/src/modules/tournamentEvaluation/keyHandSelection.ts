@@ -107,8 +107,9 @@ export function selectKeyHands(
 ): KeyHandSelection {
   const featured = hands.map((hand, index) => ({ hand, index, f: computeHandFeatures(hand) }));
 
+  // 上限なし（旧挙動との比較用）は候補判定もせず全ハンドを渡す
   const ranked = featured
-    .filter(x => x.f !== null && isCandidate(x.f))
+    .filter(x => x.f !== null && (!Number.isFinite(maxHands) || isCandidate(x.f)))
     .sort((a, b) => scoreHand(b.f!) - scoreHand(a.f!));
 
   const picked = new Set(ranked.slice(0, maxHands).map(x => x.index));

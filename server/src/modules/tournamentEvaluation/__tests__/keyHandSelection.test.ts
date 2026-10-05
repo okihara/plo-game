@@ -132,6 +132,12 @@ describe('selectKeyHands', () => {
     expect(summary.omittedProfitBb).toBeCloseTo(17);
   });
 
+  it('上限なしなら候補外のハンドも含めて全ハンドを返す', () => {
+    const hands = [foldedPreflop(1), foldedPreflop(2), foldedPreflop(3)];
+    const { selected } = selectKeyHands(hands, Number.POSITIVE_INFINITY);
+    expect(selected).toHaveLength(3);
+  });
+
   it('空配列でも落ちない', () => {
     const { selected, summary } = selectKeyHands([]);
     expect(selected).toEqual([]);

@@ -40,6 +40,7 @@ const PRICES: Record<string, { input: number; cached: number; output: number }> 
   'gpt-5.4-nano': { input: 0.2, cached: 0.02, output: 1.25 },
   'gpt-5.1': { input: 1.25, cached: 0.125, output: 10 },
   'gpt-5-mini': { input: 0.25, cached: 0.025, output: 2 },
+  'gpt-6-luna': { input: 0.1, cached: 0.01, output: 0.5 },
 };
 
 if (isProd && !process.env.DATABASE_PROD_PUBLIC_URL) {
