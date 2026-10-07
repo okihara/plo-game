@@ -11,8 +11,7 @@ import { SettingsPopup } from '../components/SettingsPopup';
 
 import { LobbyLeaderboard } from '../components/LobbyLeaderboard';
 import { WeeklyChampions } from '../components/WeeklyChampions';
-
-const DISCORD_INVITE_URL = 'https://discord.com/invite/p34UPVDTW';
+import { DISCORD_INVITE_URL } from '@plo/shared';
 
 interface SimpleLobbyProps {
   onPlayOnline: (blinds: string, isFastFold?: boolean, variant?: string) => void;

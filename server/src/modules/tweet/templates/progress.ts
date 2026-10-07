@@ -3,6 +3,7 @@
  */
 import { formatJstTime } from '../../../shared/timeJst.js';
 import { assertTweetLength } from './tweetLength.js';
+import { TWEET_FOOTER_LINES } from './footer.js';
 
 export interface ProgressTextInput {
   tournamentName: string;
@@ -18,8 +19,7 @@ export function buildProgressText(input: ProgressTextInput): string {
     `ここまで ${input.totalEntries}エントリー🔥`,
     `レイトレジは ${deadline} まで。まだ間に合います💪`,
     '',
-    '#BabyPLO',
-    'https://baby-plo.app',
+    ...TWEET_FOOTER_LINES,
   ].join('\n');
   return assertTweetLength(text);
 }
