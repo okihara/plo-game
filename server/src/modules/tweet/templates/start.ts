@@ -3,6 +3,7 @@
  */
 import { formatJstTime } from '../../../shared/timeJst.js';
 import { assertTweetLength } from './tweetLength.js';
+import { TWEET_FOOTER_LINES } from './footer.js';
 
 export interface StartTextInput {
   tournamentName: string;
@@ -17,8 +18,7 @@ export function buildStartText(input: StartTextInput): string {
     `レイトレジは ${deadline} まで受付中。`,
     'いまからでも間に合います💪',
     '',
-    '#BabyPLO',
-    'https://baby-plo.app',
+    ...TWEET_FOOTER_LINES,
   ].join('\n');
   return assertTweetLength(text);
 }

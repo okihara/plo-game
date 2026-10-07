@@ -8,6 +8,7 @@
 import { VARIANT_DISPLAY_NAMES, type GameVariant } from '@plo/shared';
 import type { AnnounceContext } from '../data/announceData.js';
 import { assertTweetLength } from './tweetLength.js';
+import { TWEET_FOOTER_LINES } from './footer.js';
 
 /** 告知文で使う種目の読み表記（略称だけで通じないものは補足つき） */
 const VARIANT_ANNOUNCE_LABELS: Partial<Record<GameVariant, string>> = {
@@ -48,7 +49,6 @@ export function buildAnnounceFallbackText(
   }
 
   lines.push('');
-  lines.push('#BabyPLO');
-  lines.push('https://baby-plo.app');
+  lines.push(...TWEET_FOOTER_LINES);
   return assertTweetLength(lines.join('\n'));
 }

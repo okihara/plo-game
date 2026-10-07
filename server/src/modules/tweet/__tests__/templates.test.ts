@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { DISCORD_INVITE_URL } from '@plo/shared';
 import { buildStartText } from '../templates/start.js';
 import { buildProgressText } from '../templates/progress.js';
 import { buildRankingText, pickHighlight } from '../templates/ranking.js';
@@ -40,6 +41,7 @@ describe('buildStartText / buildProgressText', () => {
     expect(text).toContain('22:40');
     expect(text).toContain('#BabyPLO');
     expect(text).toContain('https://baby-plo.app');
+    expect(text.endsWith(`https://baby-plo.app\n${DISCORD_INVITE_URL}`)).toBe(true);
   });
 
   it('PROGRESS にエントリー数と締切が入る', () => {
