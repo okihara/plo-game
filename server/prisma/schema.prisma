@@ -8,31 +8,31 @@ datasource db {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  username      String    @unique
-  displayName   String?
-  avatarUrl     String?
+  id               String    @id @default(cuid())
+  email            String    @unique
+  username         String    @unique
+  displayName      String?
+  avatarUrl        String?
   twitterAvatarUrl String?
-  provider      String    // google, discord, apple
-  providerId    String
-  role          Role      @default(PLAYER)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  lastLoginAt   DateTime?
-  nameMasked    Boolean   @default(true)
-  useTwitterAvatar Boolean @default(false)
+  provider         String // google, discord, apple
+  providerId       String
+  role             Role      @default(PLAYER)
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  lastLoginAt      DateTime?
+  nameMasked       Boolean   @default(true)
+  useTwitterAvatar Boolean   @default(false)
 
-  bankroll      Bankroll?
-  statsCache    PlayerStatsCache?
-  tournamentStatsCache TournamentStatsCache?
-  transactions  Transaction[]
-  handHistories HandHistoryPlayer[]
-  badges        Badge[]
-  ownedLabels   PlayerLabel[]   @relation("LabelOwner")
-  receivedLabels PlayerLabel[]  @relation("LabelTarget")
-  tournamentRegistrations TournamentRegistration[]
-  tournamentResults       TournamentResult[]
+  bankroll                      Bankroll?
+  statsCache                    PlayerStatsCache?
+  tournamentStatsCache          TournamentStatsCache?
+  transactions                  Transaction[]
+  handHistories                 HandHistoryPlayer[]
+  badges                        Badge[]
+  ownedLabels                   PlayerLabel[]              @relation("LabelOwner")
+  receivedLabels                PlayerLabel[]              @relation("LabelTarget")
+  tournamentRegistrations       TournamentRegistration[]
+  tournamentResults             TournamentResult[]
   /// トーナメントAI評価の日次クォータ消費日（Asia/Tokyo の YYYY-MM-DD）。成功時のみ更新。
   tournamentEvalConsumedJstDate String?
   tournamentEvaluations         TournamentUserEvaluation[]
@@ -83,20 +83,20 @@ enum TransactionType {
 }
 
 model HandHistory {
-  id             String   @id @default(cuid())
-  tableId        String
-  tournamentId   String?  // NULL = cash game
-  handNumber     Int
-  blinds         String   // e.g., "10/20"
-  communityCards String[] // Array of card strings (bomb pot 時は board1 を格納)
+  id              String   @id @default(cuid())
+  tableId         String
+  tournamentId    String? // NULL = cash game
+  handNumber      Int
+  blinds          String // e.g., "10/20"
+  communityCards  String[] // Array of card strings (bomb pot 時は board1 を格納)
   communityCards2 String[] @default([]) // bomb pot 時の board2。通常 variant では空
-  potSize        Int
-  rakeAmount     Int      @default(0)
-  winners        String[] // Array of winner user IDs
-  actions        Json     // Full action history
-  dealerPosition Int      @default(-1)  // -1 = unknown (legacy data)
-  maxPlayers     Int      @default(6)   // 卓の席数（6 or 9）。既存データはすべて 6-max
-  createdAt      DateTime @default(now())
+  potSize         Int
+  rakeAmount      Int      @default(0)
+  winners         String[] // Array of winner user IDs
+  actions         Json // Full action history
+  dealerPosition  Int      @default(-1) // -1 = unknown (legacy data)
+  maxPlayers      Int      @default(6) // 卓の席数（6 or 9）。既存データはすべて 6-max
+  createdAt       DateTime @default(now())
 
   players HandHistoryPlayer[]
 
@@ -106,16 +106,16 @@ model HandHistory {
 }
 
 model HandHistoryPlayer {
-  id            String  @id @default(cuid())
+  id            String    @id @default(cuid())
   handHistoryId String
   userId        String?
-  username      String  @default("")
+  username      String    @default("")
   seatPosition  Int
   holeCards     String[] // Array of card strings
-  finalHand     String?  // e.g., "Full House, Aces full of Kings"
-  startChips    Int      @default(0) // Chips at hand start (before blinds)
-  profit        Int      // Can be negative for losses
-  allInEVProfit Int?     // EV-based profit for all-in runouts (null = not all-in hand)
+  finalHand     String? // e.g., "Full House, Aces full of Kings"
+  startChips    Int       @default(0) // Chips at hand start (before blinds)
+  profit        Int // Can be negative for losses
+  allInEVProfit Int? // EV-based profit for all-in runouts (null = not all-in hand)
   // HandHistory からの非正規化コピー。ユーザー単位の履歴クエリを JOIN なしで捌くために持つ。
   // null = 旧データ未バックフィル（scripts/backfill-hhp-denorm.ts で埋める）
   tournamentId  String?
@@ -197,7 +197,7 @@ model TournamentStatsCache {
 
 model DailyBonus {
   id        String   @id @default(cuid())
-  odId   String   @unique
+  odId      String   @unique
   claimedAt DateTime @default(now())
 
   @@index([odId, claimedAt])
@@ -206,7 +206,7 @@ model DailyBonus {
 model Badge {
   id        String   @id @default(cuid())
   userId    String
-  type      String   // "hands_100", "hands_500", "hands_1000", "hands_5000", "daily_rank_1", "weekly_rank_1", "season1_top10"
+  type      String // "hands_100", "hands_500", "hands_1000", "hands_5000", "daily_rank_1", "weekly_rank_1", "season1_top10"
   rank      Int?     @map("rankPosition") // 順位付きバッジ（シーズンTOP10など）の順位。順位を持たないバッジは null。物理列名は Postgres の集約関数 rank() との衝突を避けて rankPosition にしている
   awardedAt DateTime @default(now())
 
@@ -220,7 +220,7 @@ model PlayerLabel {
   id           String   @id @default(cuid())
   ownerId      String
   targetUserId String
-  color        String   // red, blue, green, yellow, orange, purple, gray, teal
+  color        String // red, blue, green, yellow, orange, purple, gray, teal
   note         String   @default("")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
@@ -244,8 +244,8 @@ model MaintenanceMode {
 
 model WeeklyRankingSnapshot {
   id        String   @id @default(cuid())
-  weekStart DateTime @unique  // 週の開始日時 (月曜 JST 0:00 = UTC 15:00)
-  rankings  Json     // RankingEntry[] のJSON配列
+  weekStart DateTime @unique // 週の開始日時 (月曜 JST 0:00 = UTC 15:00)
+  rankings  Json // RankingEntry[] のJSON配列
   createdAt DateTime @default(now())
 
   @@index([weekStart])
@@ -257,8 +257,8 @@ model WeeklyRankingSnapshot {
 
 model SeasonSnapshot {
   id          String   @id @default(cuid())
-  seasonName  String   @unique  // CURRENT_SEASON.name（例: "シーズン１"）
-  data        Json     // SeasonPayload（season/stats/ranking/awards）
+  seasonName  String   @unique // CURRENT_SEASON.name（例: "シーズン１"）
+  data        Json // SeasonPayload（season/stats/ranking/awards）
   generatedAt DateTime @default(now())
 }
 
@@ -280,16 +280,24 @@ enum TournamentEvaluationStatus {
 }
 
 model TournamentUserEvaluation {
-  id             String                       @id @default(cuid())
-  userId         String
-  tournamentId   String
-  status         TournamentEvaluationStatus
+  id                String                     @id @default(cuid())
+  userId            String
+  tournamentId      String
+  status            TournamentEvaluationStatus
   /// 生成結果（例: { markdown: string }）
-  content        Json?
-  errorMessage   String?
-  model          String?
-  promptVersion  String                       @default("1")
-  createdAt      DateTime                     @default(now())
+  content           Json?
+  errorMessage      String?
+  model             String?
+  promptVersion     String                     @default("1")
+  /// LLM のトークン使用量（コスト把握用）。旧データは null
+  inputTokens       Int?
+  cachedInputTokens Int?
+  outputTokens      Int?
+  reasoningTokens   Int?
+  /// トナメ全体のハンド数と、そのうち LLM に渡したハンド数
+  handsTotal        Int?
+  handsSent         Int?
+  createdAt         DateTime                   @default(now())
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   tournament Tournament @relation(fields: [tournamentId], references: [id], onDelete: Cascade)
@@ -300,30 +308,30 @@ model TournamentUserEvaluation {
 }
 
 model Tournament {
-  id                     String           @id @default(cuid())
-  name                   String
-  status                 TournamentStatus @default(WAITING)
-  buyIn                  Int
-  startingChips          Int
-  minPlayers             Int              @default(6)
-  maxPlayers             Int              @default(54)
-  blindSchedule          Json             // BlindLevel[]
-  prizePool              Int              @default(0)
-  registrationLevels     Int              @default(4)
-  payoutPercentage       Json             @default("[50, 30, 20]")
-  allowReentry           Boolean          @default(true)
-  maxReentries           Int              @default(2)
-  reentryDeadlineLevel   Int              @default(4)
-  scheduledStartTime     DateTime?
-  startedAt              DateTime?
-  completedAt            DateTime?
-  createdAt              DateTime         @default(now())
-  gameVariant            String           @default("plo")  // 'plo' | 'plo5'
+  id                   String           @id @default(cuid())
+  name                 String
+  status               TournamentStatus @default(WAITING)
+  buyIn                Int
+  startingChips        Int
+  minPlayers           Int              @default(6)
+  maxPlayers           Int              @default(54)
+  blindSchedule        Json // BlindLevel[]
+  prizePool            Int              @default(0)
+  registrationLevels   Int              @default(4)
+  payoutPercentage     Json             @default("[50, 30, 20]")
+  allowReentry         Boolean          @default(true)
+  maxReentries         Int              @default(2)
+  reentryDeadlineLevel Int              @default(4)
+  scheduledStartTime   DateTime?
+  startedAt            DateTime?
+  completedAt          DateTime?
+  createdAt            DateTime         @default(now())
+  gameVariant          String           @default("plo") // 'plo' | 'plo5'
 
-  registrations TournamentRegistration[]
-  results       TournamentResult[]
+  registrations   TournamentRegistration[]
+  results         TournamentResult[]
   userEvaluations TournamentUserEvaluation[]
-  tweetDrafts   TweetDraft[]
+  tweetDrafts     TweetDraft[]
 
   @@index([status])
   @@index([scheduledStartTime])
@@ -381,29 +389,29 @@ enum TweetStatus {
 }
 
 model TweetDraft {
-  id                String       @id @default(cuid())
-  kind              TweetKind
-  status            TweetStatus  @default(PENDING)
+  id     String      @id @default(cuid())
+  kind   TweetKind
+  status TweetStatus @default(PENDING)
 
-  tournamentId      String?
-  tournament        Tournament?  @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
+  tournamentId String?
+  tournament   Tournament? @relation(fields: [tournamentId], references: [id], onDelete: SetNull)
 
-  scheduledFor      DateTime
-  generatedText     String?      @db.Text
-  editedText        String?      @db.Text
-  promptVersion     String?
-  promptInputJson   Json?
+  scheduledFor    DateTime
+  generatedText   String?  @db.Text
+  editedText      String?  @db.Text
+  promptVersion   String?
+  promptInputJson Json?
 
   attachedImagePath String?
   inReplyToTweetId  String?
   postedTweetId     String?
   postedAt          DateTime?
 
-  errorMessage      String?      @db.Text
-  retryCount        Int          @default(0)
+  errorMessage String? @db.Text
+  retryCount   Int     @default(0)
 
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@unique([kind, tournamentId])
   @@index([status, scheduledFor])

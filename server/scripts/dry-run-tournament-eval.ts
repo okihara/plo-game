@@ -1,13 +1,20 @@
 /// <reference types="node" />
 /**
- * 新プロンプト（PROMPT_VERSION=3）でトーナメント評価を dry-run 生成する。
+ * 現行プロンプトでトーナメント評価を dry-run 生成する。
  * DB には書き込まず、日次クォータも消費しない。LLM 呼び出しコストだけ発生する。
  *
  *   cd server && npx tsx scripts/dry-run-tournament-eval.ts --prod --tournamentId=<id> --userId=<id>
  *
+ * モデル比較用オプション:
+ *   --model=gpt-5.4-mini   使うモデル（既定は TOURNAMENT_EVAL_MODEL）
+ *   --effort=low           reasoning_effort（既定は TOURNAMENT_EVAL_REASONING_EFFORT、未設定なら送らない）
+ *   --all-hands            ハンドの事前選別をせず全ハンドを渡す（旧挙動との比較用）
+ *   --out=<path>           評価本文の書き出し先（既定は標準出力）
+ *
  * 直近の完了トーナメントを一覧するとき:
  *   cd server && npx tsx scripts/dry-run-tournament-eval.ts --prod --list-recent
  */
+import { writeFileSync } from 'fs';
 import { config } from 'dotenv';
 import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
@@ -20,6 +27,21 @@ const isProd = process.argv.includes('--prod');
 const listRecent = process.argv.includes('--list-recent');
 const tournamentIdArg = process.argv.find(a => a.startsWith('--tournamentId='))?.split('=')[1];
 const userIdArg = process.argv.find(a => a.startsWith('--userId='))?.split('=')[1];
+const modelArg = process.argv.find(a => a.startsWith('--model='))?.split('=')[1];
+const effortArg = process.argv.find(a => a.startsWith('--effort='))?.split('=')[1];
+const outArg = process.argv.find(a => a.startsWith('--out='))?.split('=')[1];
+const allHands = process.argv.includes('--all-hands');
+
+/** USD / 1M tokens（Standard tier, 2026-10 時点）。コストの目安表示のみに使う */
+const PRICES: Record<string, { input: number; cached: number; output: number }> = {
+  'gpt-5.5': { input: 5, cached: 0.5, output: 30 },
+  'gpt-5.4': { input: 2.5, cached: 0.25, output: 15 },
+  'gpt-5.4-mini': { input: 0.75, cached: 0.075, output: 4.5 },
+  'gpt-5.4-nano': { input: 0.2, cached: 0.02, output: 1.25 },
+  'gpt-5.1': { input: 1.25, cached: 0.125, output: 10 },
+  'gpt-5-mini': { input: 0.25, cached: 0.025, output: 2 },
+  'gpt-6-luna': { input: 0.1, cached: 0.01, output: 0.5 },
+};
 
 if (isProd && !process.env.DATABASE_PROD_PUBLIC_URL) {
   console.error('ERROR: DATABASE_PROD_PUBLIC_URL が .env に設定されていません');
@@ -106,18 +128,47 @@ async function dryRun(tournamentId: string, userId: string) {
   console.error('--- LLM 呼び出し開始 ---');
 
   const t0 = Date.now();
-  const out = await generateTournamentEvaluationMarkdown({
-    tournamentName: tournament.name,
-    buyIn: tournament.buyIn,
-    position: result.position,
-    prize: result.prize,
-    reentries: result.reentries,
-    hands,
-  });
+  const out = await generateTournamentEvaluationMarkdown(
+    {
+      tournamentName: tournament.name,
+      buyIn: tournament.buyIn,
+      position: result.position,
+      prize: result.prize,
+      reentries: result.reentries,
+      hands,
+    },
+    {
+      model: modelArg,
+      reasoningEffort: effortArg,
+      maxHands: allHands ? Number.POSITIVE_INFINITY : undefined,
+    }
+  );
   const elapsedMs = Date.now() - t0;
-  console.error(`--- 完了 ${elapsedMs}ms / model=${out.model} / promptVersion=${out.promptVersion} ---\n`);
+  console.error(`--- 完了 ${elapsedMs}ms / model=${out.model} / promptVersion=${out.promptVersion} ---`);
+  console.error(`LLMに渡したハンド数: ${out.handsSent} / ${out.handsTotal}`);
+  if (out.usage) {
+    const u = out.usage;
+    console.error(
+      `tokens: input=${u.inputTokens} (cached=${u.cachedInputTokens}) output=${u.outputTokens} (reasoning=${u.reasoningTokens})`
+    );
+    const price = PRICES[out.model];
+    if (price) {
+      const usd =
+        ((u.inputTokens - u.cachedInputTokens) * price.input +
+          u.cachedInputTokens * price.cached +
+          u.outputTokens * price.output) /
+        1_000_000;
+      console.error(`推定コスト: $${usd.toFixed(4)}`);
+    }
+  }
+  console.error('');
 
-  console.log(out.markdown);
+  if (outArg) {
+    writeFileSync(outArg, out.markdown);
+    console.error(`本文を書き出しました: ${outArg}`);
+  } else {
+    console.log(out.markdown);
+  }
 
   console.error('\n--- 簡易集計 ---');
   console.error(`出力文字数: ${out.markdown.length}`);
