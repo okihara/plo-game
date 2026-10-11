@@ -30,7 +30,7 @@ plo-game（BabyPLO）の毎日トナメ **開催告知** ツイート下書き�
 
 - **トナメ名プレフィックス**: `BabyPLO Daily M/D`（曜日物・祝日はユーザー指示に従って `Holiday` `Blue Monday` `Happy Friday` などに置換）
 - **開始時刻**: 22:00（固定）
-- **URL**: `https://baby-plo.app`（アプリ）＋ `https://discord.com/invite/p34UPVDTW`（Discord招待）。値の源泉は `packages/shared/src/links.ts`
+- **URL**: `https://baby-plo.app`（アプリ）＋ `https://discord.gg/Q3Gsfexgm5`（Discord招待）。値の源泉は `packages/shared/src/links.ts`
 - **ハッシュタグ**: `#BabyPLO`
 - **参加費**: 無料（フリーロール）
 
@@ -173,7 +173,7 @@ cd server && npx tsx scripts/ops/upcoming-specials.ts --prod   # 読み取りの
 ```
 #BabyPLO
 https://baby-plo.app
-https://discord.com/invite/p34UPVDTW
+https://discord.gg/Q3Gsfexgm5
 ```
 
 ### Step 3: 生成ルール
