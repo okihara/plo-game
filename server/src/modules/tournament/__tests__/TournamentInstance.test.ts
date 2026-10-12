@@ -856,6 +856,24 @@ describe('TournamentInstance', () => {
 
       expect(tournament.getTableCount()).toBe(0);
     });
+
+    it('完了後に未着席の登録者が入っても running に戻らない', () => {
+      const tournament = new TournamentInstance(io, createTestConfig());
+      startAndEnterNPlayers(tournament, 2);
+
+      simulateBust(tournament, 'player_1', 500);
+      simulateHandSettled(tournament, [
+        { odId: 'player_0', seatIndex: 0, chips: 3000 },
+      ]);
+      expect(tournament.getStatus()).toBe('completed');
+
+      const result = tournament.enterPlayer('late_player', 'Late Player', createMockSocket());
+
+      expect(result.success).toBe(false);
+      expect(tournament.getStatus()).toBe('completed');
+      expect(tournament.start().success).toBe(false);
+      expect(tournament.getStatus()).toBe('completed');
+    });
   });
 
   // ============================================

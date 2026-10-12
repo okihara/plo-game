@@ -9,3 +9,4 @@ export * from './tournament';
 export * from './tournamentMetrics';
 export * from './pokerStarsHandHistory';
 export * from './icm';
+export * from './links';

@@ -19,6 +19,7 @@ import { dirname, join } from 'path';
 import { fileURLToPath } from 'url';
 import { readFileSync, existsSync } from 'fs';
 import { postTweet, getCredentialsFromEnv } from '../src/modules/tweet/twitterClient.js';
+import { weightedTweetLength, MAX_WEIGHTED_LENGTH } from '../src/modules/tweet/templates/tweetLength.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: join(__dirname, '..', '.env') });
@@ -49,7 +50,11 @@ async function main() {
   console.log('--- 投稿プレビュー ---');
   console.log(text);
   console.log('---');
-  console.log(`文字数: ${[...text].length}`);
+  const weighted = weightedTweetLength(text);
+  console.log(`文字数: ${[...text].length}（weighted ${weighted} / ${MAX_WEIGHTED_LENGTH}）`);
+  if (weighted > MAX_WEIGHTED_LENGTH) {
+    console.log('⚠️ weighted が上限を超えています。本文を短くしてください');
+  }
   console.log(`画像: ${hasImage ? IMAGE_PATH : '(なし)'}`);
 
   if (!CONFIRM) {
