@@ -9,10 +9,10 @@ afterEach(() => {
 });
 
 describe('engineSelector', () => {
-  it('未設定なら比率は 1（全量 v2）', () => {
+  it('未設定なら比率は 0（全量 v1）', () => {
     delete process.env.BOT_ENGINE_V2_RATIO;
-    expect(v2Ratio()).toBe(1);
-    expect(getEngineForBot('AnyBot')).toBe('v2');
+    expect(v2Ratio()).toBe(0);
+    expect(getEngineForBot('AnyBot')).toBe('v1');
   });
 
   it('割当は決定的（同じ名前は常に同じエンジン）', () => {
