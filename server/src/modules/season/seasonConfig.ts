@@ -33,10 +33,9 @@ export const SEASON_2: SeasonConfig = {
 export const SEASON_3: SeasonConfig = {
   id: 3,
   name: 'シーズン３',
-  label: '2026 9/1 -',
+  label: '2026 9/1 - 10/31',
   start: new Date('2026-09-01T00:00:00+09:00'),
-  // end は未定。確定するまでの暫定値（この日付までの完了トナメを集計対象に含める）。
-  end: new Date('2026-12-31T23:59:59.999+09:00'),
+  end: new Date('2026-10-31T23:59:59.999+09:00'),
 };
 
 /** 定義済みシーズン（古い順）。特設ページのアーカイブ一覧もこれを元に作る。 */
