@@ -96,5 +96,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --tsv
 | ------------------------ | ----------------------------------------------- |
 | `restart-bots.sh`        | Bot プロセスの停止・再起動。`--stop-only` で停止のみ。引数: `[BOT_COUNT] [SERVER_URL]`  |
 | `process-badge-image.py` | バッジ元画像を 256x256 / 512x512 に加工。引数: `<元画像> <出力名>` |
+| `pg-disk-review.ts`      | Postgres のディスク使用内訳（DB・テーブル・インデックス・WAL・レプリケーションスロット）を表示 |
+| `count-bot-only-hands.ts` | Bot のみのハンド数を月別・リング/トナメ別に TABLESAMPLE で推定。`--sample=2`（%） |
+| `delete-bot-only-hands.ts` | 古い Bot のみリングハンドを削除（既定は dry-run、`--apply` で削除）。`--days=30` `--batch=2000` `--vacuum` |
 
 
