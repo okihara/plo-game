@@ -70,9 +70,9 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 ```
 【シーズン<N> RPランキング更新】<トナメ名>終了後
 
-🏆 1位 <name1>（<totalRp> / <マーカー>）
-  2位 <name2>（<totalRp> / <マーカー>）
-  3位 <name3>（<totalRp> / <マーカー>）
+1位 <name1>（<totalRp> / <マーカー>）
+2位 <name2>（<totalRp> / <マーカー>）
+3位 <name3>（<totalRp> / <マーカー>）
 
 今回の目玉:
 <1〜2 行のコメント>
@@ -104,7 +104,8 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
   - 「ふちがち さんが 23位 → 9位 に急浮上して一気に TOP 10 入り」
   - 「IOwOI9 さんが 3位 → 2位 に上昇、トップ争いが一段加速」
   - 「1位のゆたちん さんは今日も勝ってリードを広げる展開」
-- 絵文字は 🏆 を 1 位に 1 個だけ。ダラダラ付けない
+- **順位行（1位〜5位の行）には絵文字を一切付けない**（🏆・🥇 などのメダル系も不可）。行頭は「1位 」から始め、2位以下もインデントせず揃える
+- 絵文字は「今回の目玉」のコメントに使うとしても 1 個まで。ダラダラ付けない
 - ハッシュタグは `#BabyPLO` のみ
 - `name` はマスク済みの前提なので加工しない
 
@@ -143,9 +144,9 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --top=30 --image=/tmp
 ```
 【シーズン<N> RPランキング更新】BabyPLO Holiday 4/19 終了後
 
-🏆 1位 ゆたちん（766 / --）
-  2位 IOwOI9（703 / ↑1）
-  3位 da*****a（698 / ↓1）
+1位 ゆたちん（766 / --）
+2位 IOwOI9（703 / ↑1）
+3位 da*****a（698 / ↓1）
 
 今回の目玉:
 ふちがち さんが 23位 → 9位 に急浮上、ノーリエントリー優勝で一気に TOP 10 入り🔥
