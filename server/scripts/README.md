@@ -99,5 +99,6 @@ cd server && npx tsx scripts/rank-points-ranking.ts --prod --tsv
 | `pg-disk-review.ts`      | Postgres のディスク使用内訳（DB・テーブル・インデックス・WAL・レプリケーションスロット）を表示 |
 | `count-bot-only-hands.ts` | Bot のみのハンド数を月別・リング/トナメ別に TABLESAMPLE で推定。`--sample=2`（%） |
 | `delete-bot-only-hands.ts` | 古い Bot のみリングハンドを削除（既定は dry-run、`--apply` で削除）。`--days=30` `--batch=2000` `--vacuum` |
+| `reindex-hand-history.ts` | HandHistory / HandHistoryPlayer のインデックスを REINDEX CONCURRENTLY で作り直して縮める（既定は dry-run、`--apply` で実行）。中断時の `_ccnew` 残骸も検出・削除 |
 
 
