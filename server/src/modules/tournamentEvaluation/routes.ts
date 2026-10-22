@@ -5,7 +5,11 @@ import { env } from '../../config/env.js';
 import { reportError } from '../../config/sentry.js';
 import { fetchTournamentHandsForUser } from '../history/tournamentHandsForUser.js';
 import { getJstDateString } from './jstDate.js';
-import { generateTournamentEvaluationMarkdown } from './callEvalLlm.js';
+import {
+  PROMPT_VERSION,
+  generateTournamentEvaluationMarkdown,
+  type TournamentEvaluationResult,
+} from './callEvalLlm.js';
 import {
   expireStalePendingEvaluationsForUser,
   isEvaluationPendingFresh,
@@ -233,7 +237,7 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
             userId,
             tournamentId,
             status: 'PENDING',
-            promptVersion: '2',
+            promptVersion: PROMPT_VERSION,
           },
         });
         return { kind: 'created' as const, pendingRow: row };
@@ -258,11 +262,9 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
 
     const { pendingRow } = pendingOutcome;
 
-    let markdown: string;
-    let model: string;
-    let promptVersion: string;
+    let out: TournamentEvaluationResult;
     try {
-      const out = await generateTournamentEvaluationMarkdown({
+      out = await generateTournamentEvaluationMarkdown({
         tournamentName: tournament.name,
         buyIn: tournament.buyIn,
         position: result.position,
@@ -270,9 +272,6 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
         reentries: result.reentries,
         hands,
       });
-      markdown = out.markdown;
-      model = out.model;
-      promptVersion = out.promptVersion;
     } catch (e) {
       const message = e instanceof Error ? e.message : 'LLM request failed';
       reportError(e, '[tournamentEvaluation] LLM error', { userId, evaluationId: pendingRow.id });
@@ -285,6 +284,8 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
       });
       return reply.code(502).send({ error: 'Failed to generate evaluation', detail: message });
     }
+
+    const { markdown, model, promptVersion, usage, handsTotal, handsSent } = out;
 
     try {
       await prisma.$transaction(async tx => {
@@ -309,6 +310,9 @@ export async function tournamentEvaluationRoutes(fastify: FastifyInstance) {
             model,
             promptVersion,
             errorMessage: null,
+            handsTotal,
+            handsSent,
+            ...(usage ?? {}),
           },
         });
       });

@@ -19,6 +19,8 @@ const envSchema = z.object({
   /** トーナメントAI評価（OpenAI Chat Completions）。未設定時は生成APIは503。 */
   TOURNAMENT_EVAL_OPENAI_API_KEY: z.string().optional(),
   TOURNAMENT_EVAL_MODEL: z.string().default('gpt-5.4'),
+  /** 未設定なら送らない（gpt-5.4 系の既定は none） */
+  TOURNAMENT_EVAL_REASONING_EFFORT: z.string().optional(),
   /** Sentry エラー監視。未設定時は無効。 */
   SENTRY_DSN: z.string().optional(),
   /** Sentry に送る environment タグ。未設定時は NODE_ENV を使う。 */

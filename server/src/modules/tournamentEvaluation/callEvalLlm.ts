@@ -1,12 +1,9 @@
-import {
-  toPokerStarsHandText,
-  type PokerStarsHandAction,
-  type PokerStarsHandInput,
-} from '@plo/shared';
+import { toPokerStarsHandText, type PokerStarsHandInput } from '@plo/shared';
 import { env } from '../../config/env.js';
 import type { TournamentHandExport } from '../history/tournamentHandsForUser.js';
+import { formatHandsSummary, normalizeActions, selectKeyHands } from './keyHandSelection.js';
 
-const SYSTEM_PROMPT = `あなたはPot Limit Omahaのトーナメントコーチです。ユーザーは1トーナメントに参加し、公式結果（JSONの概要）と、参加した全ハンドがPokerStars形式のテキストで渡されます。
+const SYSTEM_PROMPT = `あなたはPot Limit Omahaのトーナメントコーチです。ユーザーは1トーナメントに参加し、公式結果（JSONの概要）、全ハンドの集計値、そしてサーバーが事前に抽出した重要候補ハンド（ポットが大きい・オールインが絡む・損益の振れが大きい等）がPokerStars形式のテキストで渡されます。候補以外のハンドは集計値にのみ反映されています。
 
 ## 【最重要】PLOの役作成ルール（絶対厳守）
 PLOはテキサスホールデムと違い、役の作り方に厳格な制約があります。**この制約を間違えた解説は致命的な誤り**なので、役について言及する前に必ず確認してください。
@@ -24,12 +21,12 @@ PLOはテキサスホールデムと違い、役の作り方に厳格な制約�
 **役や相手ハンドの可能性を議論するときは、毎回「ホールカードから2枚 + ボードから3枚」を具体的に示して検証してください。**
 
 ## レビュー方針
-全ハンドを均等に扱わず、**学習価値の高い重要ハンドを4〜6個選んで深く解説**してください。選抜基準：
+渡された候補ハンドを均等に扱わず、**その中から学習価値の高い重要ハンドを4〜6個選んで深く解説**してください。選抜基準：
 - ポットが大きい／オールインが絡む
 - 判断が難しい、または代替ラインが明確に存在する
 - プリフロップ〜リバーのどこかに学びがある
 
-選ばなかったハンドは「その他のハンド」として1〜2行だけ触れるか、触れなくてよい。
+選ばなかったハンドは「その他のハンド」として1〜2行だけ触れるか、触れなくてよい。全体傾向（VPIP・PFR等）に触れるときは集計値を根拠にする。
 
 ## 各ハンドの解説密度
 選抜ハンドは以下を含めて密度高く書く：
@@ -45,21 +42,7 @@ PLOはテキサスホールデムと違い、役の作り方に厳格な制約�
 - 次の質問は求めず、まとめで終わる。
 `;
 
-const PROMPT_VERSION = '4';
-
-function normalizeActions(raw: unknown): PokerStarsHandAction[] {
-  if (!Array.isArray(raw)) return [];
-  return raw
-    .filter((a): a is Record<string, unknown> => a !== null && typeof a === 'object')
-    .map(a => ({
-      seatIndex: Number(a.seatIndex),
-      odId: typeof a.odId === 'string' ? a.odId : undefined,
-      odName: String(a.odName ?? ''),
-      action: String(a.action ?? ''),
-      amount: Number(a.amount ?? 0),
-      street: typeof a.street === 'string' ? a.street : undefined,
-    }));
-}
+export const PROMPT_VERSION = '5';
 
 function exportHandToPokerStarsInput(hand: TournamentHandExport): PokerStarsHandInput {
   // 5 枚ホールカードのプレイヤーがいれば PLO5 と判定 (DB スキーマに gameVariant
@@ -89,20 +72,59 @@ function exportHandToPokerStarsInput(hand: TournamentHandExport): PokerStarsHand
   };
 }
 
-export async function generateTournamentEvaluationMarkdown(input: {
-  tournamentName: string;
-  buyIn: number;
-  position: number;
-  prize: number;
-  reentries: number;
-  hands: TournamentHandExport[];
-}): Promise<{ markdown: string; model: string; promptVersion: string }> {
+/** OpenAI の usage から保存・コスト集計に使う値だけを取り出したもの */
+export type EvalTokenUsage = {
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  reasoningTokens: number;
+};
+
+type OpenAiUsage = {
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  prompt_tokens_details?: { cached_tokens?: number };
+  completion_tokens_details?: { reasoning_tokens?: number };
+};
+
+function toEvalTokenUsage(u: OpenAiUsage | undefined): EvalTokenUsage | null {
+  if (!u) return null;
+  return {
+    inputTokens: u.prompt_tokens ?? 0,
+    cachedInputTokens: u.prompt_tokens_details?.cached_tokens ?? 0,
+    outputTokens: u.completion_tokens ?? 0,
+    reasoningTokens: u.completion_tokens_details?.reasoning_tokens ?? 0,
+  };
+}
+
+export type TournamentEvaluationResult = {
+  markdown: string;
+  model: string;
+  promptVersion: string;
+  usage: EvalTokenUsage | null;
+  handsTotal: number;
+  handsSent: number;
+};
+
+export async function generateTournamentEvaluationMarkdown(
+  input: {
+    tournamentName: string;
+    buyIn: number;
+    position: number;
+    prize: number;
+    reentries: number;
+    hands: TournamentHandExport[];
+  },
+  /** モデル比較用（dry-run スクリプト）。本番経路では env の値と既定の上限を使う */
+  overrides: { model?: string; reasoningEffort?: string; maxHands?: number } = {}
+): Promise<TournamentEvaluationResult> {
   const apiKey = env.TOURNAMENT_EVAL_OPENAI_API_KEY;
   if (!apiKey?.trim()) {
     throw new Error('TOURNAMENT_EVAL_OPENAI_API_KEY is not configured');
   }
 
-  const model = env.TOURNAMENT_EVAL_MODEL;
+  const model = overrides.model ?? env.TOURNAMENT_EVAL_MODEL;
+  const reasoningEffort = overrides.reasoningEffort ?? env.TOURNAMENT_EVAL_REASONING_EFFORT;
   const tournamentMeta = JSON.stringify(
     {
       name: input.tournamentName,
@@ -117,14 +139,17 @@ export async function generateTournamentEvaluationMarkdown(input: {
     0
   );
 
-  const handsPokerStars = input.hands
+  const { selected, summary } = selectKeyHands(input.hands, overrides.maxHands);
+  const handsPokerStars = selected
     .map(h => toPokerStarsHandText(exportHandToPokerStarsInput(h)))
     .join('\n\n\n----------\n\n\n');
 
   const userContent =
     '## トーナメント概要（JSON）\n```json\n' +
     tournamentMeta +
-    '\n```\n\n## 全ハンド（PokerStars形式）\n' +
+    '\n```\n\n## 全ハンドの集計\n' +
+    formatHandsSummary(summary) +
+    '\n\n## 重要候補ハンド（PokerStars形式・時系列順）\n' +
     handsPokerStars;
 
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -136,6 +161,7 @@ export async function generateTournamentEvaluationMarkdown(input: {
     body: JSON.stringify({
       model,
       max_completion_tokens: 10000,
+      ...(reasoningEffort ? { reasoning_effort: reasoningEffort } : {}),
       messages: [
         { role: 'system', content: SYSTEM_PROMPT },
         {
@@ -154,11 +180,19 @@ export async function generateTournamentEvaluationMarkdown(input: {
 
   const data = (await res.json()) as {
     choices?: Array<{ message?: { content?: string | null } }>;
+    usage?: OpenAiUsage;
   };
   const markdown = data.choices?.[0]?.message?.content?.trim();
   if (!markdown) {
     throw new Error('OpenAI returned empty content');
   }
 
-  return { markdown, model, promptVersion: PROMPT_VERSION };
+  return {
+    markdown,
+    model,
+    promptVersion: PROMPT_VERSION,
+    usage: toEvalTokenUsage(data.usage),
+    handsTotal: summary.totalHands,
+    handsSent: summary.selectedHands,
+  };
 }
