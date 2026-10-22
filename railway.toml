@@ -3,7 +3,8 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "cd server && npx prisma db push --schema=./prisma/schema.prisma && node --import tsx src/index.ts"
+# Dockerfile ビルドでは startCommand がシェルを通さず実行されるため sh -c で包む
+startCommand = "sh -c 'cd server && npx prisma db push --schema=./prisma/schema.prisma && node --import tsx src/index.ts'"
 healthcheckPath = "/health"
 healthcheckTimeout = 300
 restartPolicyType = "ON_FAILURE"
