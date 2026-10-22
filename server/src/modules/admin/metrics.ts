@@ -31,6 +31,7 @@ export interface LatencyStats {
 }
 
 export interface RuntimeMetrics {
+  nodeVersion: string;
   eventLoopDelay: LatencyStats & {
     minMs: number;
     stddevMs: number;
@@ -116,6 +117,7 @@ export function getRuntimeMetrics(): RuntimeMetrics {
   eventLoopDelay.reset();
 
   return {
+    nodeVersion: process.version,
     eventLoopDelay: eventLoopMetrics,
     cpu: {
       cores: cpuCount,
