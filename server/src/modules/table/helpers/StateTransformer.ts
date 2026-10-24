@@ -2,6 +2,7 @@
 
 import { GameState, Player, Rank, Suit } from '../../../shared/logic/types.js';
 import { ClientGameState, OnlinePlayer } from '../../../shared/types/websocket.js';
+import type { PlayerHudStats } from '@plo/shared';
 import { SeatInfo, PendingAction, CoachingInfo } from '../types.js';
 
 /** 裏カードの値を隠してダミー値に置換（セキュリティ: 他プレイヤーに見せない） */
@@ -14,6 +15,9 @@ export function toProtocolHoleCards(player: Player | null): OnlinePlayer['cards'
     );
 }
 
+/** 卓内 HUD の参照関数。HUD を出さない卓では渡さない */
+export type HudLookup = (odId: string) => PlayerHudStats | undefined;
+
 export class StateTransformer {
   /**
    * SeatInfoからOnlinePlayerを生成
@@ -22,9 +26,12 @@ export class StateTransformer {
   static seatToOnlinePlayer(
     seat: SeatInfo | null,
     seatIndex: number,
-    player: Player | null
+    player: Player | null,
+    hudLookup?: HudLookup,
   ): OnlinePlayer | null {
     if (!seat) return null;
+
+    const hud = hudLookup?.(seat.odId);
 
     const base: OnlinePlayer = {
       odId: seat.odId,
@@ -38,6 +45,7 @@ export class StateTransformer {
       hasActed: player?.hasActed ?? false,
       isConnected: seat.socket?.connected ?? false,
       cards: toProtocolHoleCards(player),
+      ...(hud ? { hud } : {}),
     };
 
     // FastFold移動済みプレイヤー: folded状態で表示を維持
@@ -66,6 +74,7 @@ export class StateTransformer {
     bigBlind: number,
     validActions?: { action: string; minAmount: number; maxAmount: number }[] | null,
     coaching?: CoachingInfo,
+    hudLookup?: HudLookup,
   ): ClientGameState {
     // タイムアウト情報を計算。締め切りは残り時間ベース、分母（リングの全長）は元の持ち時間で固定し、
     // ポーズ再開後もタイマーリングの進行位置が保たれるようにする
@@ -87,7 +96,7 @@ export class StateTransformer {
       return {
         tableId,
         players: seats.map((seat, i) =>
-          this.seatToOnlinePlayer(seat, i, null)
+          this.seatToOnlinePlayer(seat, i, null, hudLookup)
         ),
         communityCards: [],
         pot: 0,
@@ -114,7 +123,7 @@ export class StateTransformer {
     return {
       tableId,
       players: seats.map((seat, i) =>
-        this.seatToOnlinePlayer(seat, i, gameState.players[i])
+        this.seatToOnlinePlayer(seat, i, gameState.players[i], hudLookup)
       ),
       communityCards: gameState.communityCards,
       boards: gameState.boards,

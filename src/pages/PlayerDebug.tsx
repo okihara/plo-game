@@ -115,6 +115,7 @@ export function PlayerDebug() {
   const [debugSeatCount, setDebugSeatCount] = useState<6 | 9>(6);
   const [playerState, setPlayerState] = useState<PlayerState>('normal');
   const [showCards, setShowCards] = useState(true);
+  const [showHud, setShowHud] = useState(false);
   const [showBet, setShowBet] = useState(false);
   const [betAmount, setBetAmount] = useState(250);
 
@@ -139,6 +140,7 @@ export function PlayerDebug() {
     folded: playerState === 'folded',
     isAllIn: playerState === 'allin',
     currentBet: showBet ? betAmount : 0,
+    ...(showHud ? { hud: { hands: 42, vpip: 38, pfr: 21, threeBet: 9 } } : {}),
   });
 
   // Determine props based on state
@@ -309,6 +311,16 @@ export function PlayerDebug() {
                       className="w-4 h-4"
                     />
                     <span className="text-sm">カードを表示</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={showHud}
+                      onChange={(e) => setShowHud(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">卓内 HUD を表示</span>
                   </label>
 
                   <label className="flex items-center gap-3 cursor-pointer">

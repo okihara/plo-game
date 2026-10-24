@@ -244,6 +244,14 @@ export function getPositionLabel(
   return getPositionLabelsBySeat(dealerPosition, allSeats, options).get(seatPosition) ?? '';
 }
 
+/** 卓内 HUD（プライベート卓で、その卓で遊んだハンドだけから集計した簡易スタッツ）。% は整数に丸め済み */
+export interface PlayerHudStats {
+  hands: number;
+  vpip: number;
+  pfr: number;
+  threeBet: number;
+}
+
 export interface Player {
   id: number;
   name: string;
@@ -261,6 +269,7 @@ export interface Player {
   odId?: string;  // Online user ID (for stats lookup)
   isShowdown?: boolean;  // ショウダウン時にカードを表示
   nameplate?: NameplateDecoration;  // ネームプレート装飾（オンラインのみ、profile から転写）
+  hud?: PlayerHudStats;  // 卓内 HUD（プライベート卓のみ）
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'
