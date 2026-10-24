@@ -3,7 +3,7 @@
 import { prisma } from '../../config/database.js';
 import { GameState } from '../../shared/logic/types.js';
 import { SeatInfo } from '../table/types.js';
-import { computeIncrementForPlayer } from './statsComputation.js';
+import { computeHandIncrements } from './handIncrements.js';
 import { checkHandCountBadges, /* checkWinCountBadges, */ checkBadBeatBadges } from '../badges/badgeService.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
 
@@ -21,50 +21,10 @@ export async function updatePlayerStats(
   allInEVProfits?: Map<number, number> | null,
   isTournament: boolean = false,
 ): Promise<void> {
-  const actions = gameState.handHistory.map(a => ({
-    seatIndex: a.playerId,
-    odId: seats[a.playerId]?.odId ?? `unknown_${a.playerId}`,
-    action: a.action,
-    amount: a.amount,
-    street: a.street,
-  }));
-
-  const winnerOdIds = gameState.winners
-    .map(w => seats[w.playerId]?.odId ?? '')
-    .filter(Boolean);
-
-  const activeSeatPositions: number[] = [];
-  const playerInfos: { odId: string; seatPosition: number; finalHand: string | null }[] = [];
-
-  for (let i = 0; i < seats.length; i++) {
-    const seat = seats[i];
-    if (seat && startChips.has(i)) {
-      activeSeatPositions.push(i);
-      const winner = gameState.winners.find(w => w.playerId === i);
-      const player = gameState.players[i];
-      const finalHand = winner?.handName ?? (
-        !player.folded && (player.holeCards.length === 4 || player.holeCards.length === 5) && gameState.communityCards.length === 5
-          ? 'evaluated' // showdown参加マーカー
-          : null
-      );
-      playerInfos.push({ odId: seat.odId, seatPosition: i, finalHand });
-    }
-  }
-
   const upserts: Promise<unknown>[] = [];
 
-  for (let i = 0; i < seats.length; i++) {
-    const seat = seats[i];
-    if (!seat || !startChips.has(i) || !isAuthenticatedUser(seat.odId)) continue;
-
-    const profit = gameState.players[i].chips - startChips.get(i)!;
-    const allInEVProfit = allInEVProfits?.get(i) ?? null;
-    const inc = computeIncrementForPlayer(
-      seat.odId, i, profit, actions,
-      gameState.dealerPosition, winnerOdIds,
-      activeSeatPositions, gameState.communityCards.length,
-      playerInfos, allInEVProfit,
-    );
+  for (const { odId, inc } of computeHandIncrements(gameState, seats, startChips, allInEVProfits)) {
+    if (!isAuthenticatedUser(odId)) continue;
 
     const updateData = {
       handsPlayed: { increment: inc.handsPlayed },
@@ -91,8 +51,8 @@ export async function updatePlayerStats(
       wsdCount: { increment: inc.wsdCount },
     };
     const upsertArgs = {
-      where: { userId: seat.odId },
-      create: { userId: seat.odId, ...inc },
+      where: { userId: odId },
+      create: { userId: odId, ...inc },
       update: updateData,
     };
     upserts.push(

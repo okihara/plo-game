@@ -15,6 +15,7 @@ import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
 import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
+import { TableHudTracker } from './helpers/TableHudTracker.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
@@ -95,6 +96,8 @@ export class TableInstance {
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
+  /** 卓内 HUD（プライベートのキャッシュ卓のみ。それ以外は null） */
+  private readonly hudTracker: TableHudTracker | null;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; isPractice?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number }) {
     this.id = nanoid(12);
@@ -137,6 +140,7 @@ export class TableInstance {
       ...(this.isPractice ? { skipStats: true } : {}),
     });
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
+    this.hudTracker = this.isPrivate && this.gameMode === 'cash' ? new TableHudTracker() : null;
   }
 
   // ============================================
@@ -819,6 +823,7 @@ export class TableInstance {
       this.bigBlind,
       va,
       this.getCoachingInfo(),
+      this.hudTracker ? (odId) => this.hudTracker!.get(odId) : undefined,
     );
   }
 
@@ -1498,6 +1503,8 @@ export class TableInstance {
       winners: [...this.gameState.winners],
       handHistory: [...this.gameState.handHistory],
     };
+    // 卓内 HUD は recordHandComplete が startChips を次ハンド用に触る前に集計する
+    this.hudTracker?.recordHand(gameStateSnapshot, seatsSnapshot, this.historyRecorder.getStartChips());
     this.historyRecorder.recordHandComplete(
       this.id,
       gameStateSnapshot,
