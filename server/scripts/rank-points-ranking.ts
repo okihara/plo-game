@@ -140,7 +140,7 @@ async function main() {
 
   const topRows = takeTop(ranking, TOP);
   console.log(`=== 通算ランキング TOP ${TOP}（${topRows.length}人） ===`);
-  const header = `${'順位'.padStart(4)}  ${'RP'.padStart(6)}  ${'出場'.padStart(4)}  ${'優勝'.padStart(4)}  ${'RP圏'.padStart(4)}  ${'最高'.padStart(4)}  ${'賞金'.padStart(9)}  名前`;
+  const header = `${'順位'.padStart(4)}  ${'RP'.padStart(6)}  ${'出場'.padStart(4)}  ${'優勝'.padStart(4)}  ${'ITM数'.padStart(4)}  ${'最高'.padStart(4)}  ${'賞金'.padStart(9)}  名前`;
   console.log(header);
   console.log('-'.repeat(header.length));
   topRows.forEach((u) => {
