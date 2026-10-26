@@ -96,12 +96,14 @@ model HandHistory {
   actions        Json     // Full action history
   dealerPosition Int      @default(-1)  // -1 = unknown (legacy data)
   maxPlayers     Int      @default(6)   // 卓の席数（6 or 9）。既存データはすべて 6-max
+  isPrivate      Boolean  @default(false) // プライベート卓（練習卓を含む）のハンド。プライベート卓 HUD の集計対象
   createdAt      DateTime @default(now())
 
   players HandHistoryPlayer[]
 
   @@index([tableId])
   @@index([tournamentId])
+  @@index([isPrivate])
   @@index([createdAt])
 }
 

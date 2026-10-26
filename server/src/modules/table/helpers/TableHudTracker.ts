@@ -1,64 +1,68 @@
-// 卓内 HUD: この卓で遊んだハンドだけからプレイヤーごとの簡易スタッツを集計する（メモリのみ、卓と寿命を共にする）
+// プライベート卓 HUD: DB の累計（着席時に読み込み）に、この卓で読み込み後に終わったハンドを足して返す
 
 import type { PlayerHudStats } from '@plo/shared';
 import { GameState } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
-import { computeHandIncrements, toActionEntries } from '../../stats/handIncrements.js';
-import { computeFlopHudIncrement, FlopHudIncrement } from '../../stats/statsComputation.js';
+import { addHud, computeHandHud, emptyHud } from '../../stats/hudStats.js';
 
-interface HudCounts extends FlopHudIncrement {
-  detailedHands: number;
-  vpipCount: number;
-  pfrCount: number;
-  threeBetCount: number;
-  threeBetOpportunity: number;
-}
-
-function percent(count: number, total: number): number {
-  return total > 0 ? Math.round((count / total) * 100) : 0;
-}
+export type HudLoader = (odId: string, before: Date) => Promise<PlayerHudStats>;
 
 export class TableHudTracker {
-  /** 席移動・離席→再着席しても同じ卓なら引き継ぐため odId で持つ */
-  private readonly counts = new Map<string, HudCounts>();
+  /** DB から読んだ累計（読み込み完了まで無い） */
+  private readonly base = new Map<string, PlayerHudStats>();
+  /** 読み込み開始以降にこの卓で終わったハンドの分 */
+  private readonly live = new Map<string, PlayerHudStats>();
+  private readonly loadSeq = new Map<string, number>();
+
+  constructor(
+    private readonly loader: HudLoader,
+    private readonly onUpdate: () => void,
+  ) {}
+
+  /** 着席時に呼ぶ。他の卓で遊んだ分も反映するため毎回読み直す */
+  load(odId: string): void {
+    const seq = (this.loadSeq.get(odId) ?? 0) + 1;
+    this.loadSeq.set(odId, seq);
+    this.base.delete(odId);
+    this.live.set(odId, emptyHud());
+    this.loader(odId, new Date())
+      .then(hud => {
+        if (this.loadSeq.get(odId) !== seq) return;
+        this.base.set(odId, hud);
+        this.onUpdate();
+      })
+      .catch(err => console.error(`HUD load failed for ${odId}:`, err));
+  }
 
   recordHand(
     gameState: GameState,
     seats: (SeatInfo | null)[],
     startChips: Map<number, number>,
   ): void {
-    const actions = toActionEntries(gameState, seats);
-    for (const { odId, inc } of computeHandIncrements(gameState, seats, startChips)) {
-      const flop = computeFlopHudIncrement(odId, actions);
-      const c = this.counts.get(odId) ?? {
-        detailedHands: 0, vpipCount: 0, pfrCount: 0, threeBetCount: 0, threeBetOpportunity: 0,
-        donkCount: 0, donkOpportunity: 0, checkRaiseCount: 0, checkRaiseOpportunity: 0, bmcbCount: 0, bmcbOpportunity: 0,
-      };
-      c.detailedHands += inc.detailedHands;
-      c.vpipCount += inc.vpipCount;
-      c.pfrCount += inc.pfrCount;
-      c.threeBetCount += inc.threeBetCount;
-      c.threeBetOpportunity += inc.threeBetOpportunity;
-      c.donkCount += flop.donkCount;
-      c.donkOpportunity += flop.donkOpportunity;
-      c.checkRaiseCount += flop.checkRaiseCount;
-      c.checkRaiseOpportunity += flop.checkRaiseOpportunity;
-      c.bmcbCount += flop.bmcbCount;
-      c.bmcbOpportunity += flop.bmcbOpportunity;
-      this.counts.set(odId, c);
+    const players = seats.flatMap((seat, i) => (seat && startChips.has(i) ? [{ seatIndex: i, odId: seat.odId }] : []));
+    const huds = computeHandHud({
+      actions: gameState.handHistory.map(a => ({
+        seatIndex: a.playerId,
+        odId: seats[a.playerId]?.odId ?? `seat_${a.playerId}`,
+        action: a.action,
+        amount: a.amount,
+        street: a.street,
+      })),
+      dealerPosition: gameState.dealerPosition,
+      players,
+      smallBlind: gameState.smallBlind,
+      bigBlind: gameState.bigBlind,
+    });
+    for (const [odId, hud] of huds) {
+      const live = this.live.get(odId);
+      if (live) this.live.set(odId, addHud(live, hud));
     }
   }
 
   get(odId: string): PlayerHudStats | undefined {
-    const c = this.counts.get(odId);
-    if (!c) return undefined;
-    return {
-      vpip: percent(c.vpipCount, c.detailedHands),
-      pfr: percent(c.pfrCount, c.detailedHands),
-      threeBet: percent(c.threeBetCount, c.threeBetOpportunity),
-      donk: percent(c.donkCount, c.donkOpportunity),
-      checkRaise: percent(c.checkRaiseCount, c.checkRaiseOpportunity),
-      bmcb: percent(c.bmcbCount, c.bmcbOpportunity),
-    };
+    const base = this.base.get(odId);
+    if (!base) return undefined;
+    const hud = addHud(base, this.live.get(odId) ?? emptyHud());
+    return hud.hands > 0 ? hud : undefined;
   }
 }

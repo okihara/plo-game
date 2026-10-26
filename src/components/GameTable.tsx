@@ -518,6 +518,7 @@ export function GameTable({
               onClose={closeProfile}
               onLabelChange={setLabel}
               onLabelRemove={removeLabel}
+              hud={selectedPlayer.hud}
             />
           )}
 

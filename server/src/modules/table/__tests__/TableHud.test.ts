@@ -1,6 +1,8 @@
-// 卓内 HUD: プライベート卓でだけ、その卓で遊んだハンドから集計した VPIP/PFR/3Bet/ハンド数を配る
+// プライベート卓 HUD: プライベート卓でだけ、DB の累計にこの卓で遊んだハンドを足して配る
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TableInstance } from '../TableInstance.js';
+import { emptyHud } from '../../stats/hudStats.js';
+import { loadPrivateHud } from '../../stats/privateHud.js';
 import {
   createMockIO,
   seatNPlayers,
@@ -24,6 +26,10 @@ vi.mock('../../maintenance/MaintenanceService.js', () => ({
 
 vi.mock('../../stats/updateStatsIncremental.js', () => ({
   updatePlayerStats: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('../../stats/privateHud.js', () => ({
+  loadPrivateHud: vi.fn(),
 }));
 
 vi.mock('../../../shared/logic/equityCalculator.js', () => ({
@@ -67,22 +73,41 @@ function hudByOdId(table: TableInstance) {
   );
 }
 
-describe('卓内 HUD', () => {
+/** DB にある累計（各プレイヤー共通） */
+function dbHud(hands: number) {
+  return { ...emptyHud(), hands, vpip: { n: hands, d: hands } };
+}
+
+describe('プライベート卓 HUD', () => {
   beforeEach(() => {
     resetSocketCounter();
     vi.useFakeTimers();
+    vi.mocked(loadPrivateHud).mockReset().mockResolvedValue(dbHud(0));
   });
 
   afterEach(() => {
     vi.useRealTimers();
   });
 
-  it('ハンド前は HUD を付けない', () => {
+  it('累計 0 ハンドなら HUD を付けない', async () => {
     const table = createTable({ isPrivate: true });
     seatNPlayers(table, 3);
-    table.triggerMaybeStartHand();
+    await vi.advanceTimersByTimeAsync(0);
 
     for (const hud of hudByOdId(table).values()) expect(hud).toBeUndefined();
+  });
+
+  it('DB の累計にこの卓のハンドを足す', async () => {
+    vi.mocked(loadPrivateHud).mockResolvedValue(dbHud(10));
+    const table = createTable({ isPrivate: true });
+    const { odIds, sockets, seatMap } = seatNPlayers(table, 3);
+    await vi.advanceTimersByTimeAsync(0);
+    expect(hudByOdId(table).get(odIds[0])?.hands).toBe(10);
+
+    table.triggerMaybeStartHand();
+    const opener = await raiseThenFoldToCompletion(table, odIds, sockets, seatMap);
+
+    expect(hudByOdId(table).get(opener)).toMatchObject({ hands: 11, vpip: { n: 11, d: 11 }, pfr: { n: 1, d: 1 } });
   });
 
   it.each([
@@ -91,14 +116,15 @@ describe('卓内 HUD', () => {
   ])('$name ではハンド完了ごとに全員の HUD を集計する', async ({ isPractice }) => {
     const table = createTable({ isPrivate: true, isPractice });
     const { odIds, sockets, seatMap } = seatNPlayers(table, 3);
+    await vi.advanceTimersByTimeAsync(0);
     table.triggerMaybeStartHand();
 
     const opener = await raiseThenFoldToCompletion(table, odIds, sockets, seatMap);
 
     const huds = hudByOdId(table);
-    expect(huds.get(opener)).toMatchObject({ vpip: 100, pfr: 100, threeBet: 0 });
+    expect(huds.get(opener)).toMatchObject({ hands: 1, vpip: { n: 1, d: 1 }, pfr: { n: 1, d: 1 } });
     for (const odId of odIds.filter(id => id !== opener)) {
-      expect(huds.get(odId)).toMatchObject({ vpip: 0, pfr: 0 });
+      expect(huds.get(odId)).toMatchObject({ hands: 1, vpip: { n: 0, d: 1 }, pfr: { n: 0, d: 1 } });
     }
   });
 
@@ -110,5 +136,6 @@ describe('卓内 HUD', () => {
     await raiseThenFoldToCompletion(table, odIds, sockets, seatMap);
 
     for (const hud of hudByOdId(table).values()) expect(hud).toBeUndefined();
+    expect(loadPrivateHud).not.toHaveBeenCalled();
   });
 });

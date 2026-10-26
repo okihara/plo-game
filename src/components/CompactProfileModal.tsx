@@ -4,6 +4,8 @@ import { usePlayerStats } from '../hooks/usePlayerStats';
 import { getAvatarImage } from './ProfilePopup';
 import { BadgeOverlay } from './BadgeOverlay';
 import { LABEL_COLORS, type PlayerLabel } from '../hooks/usePlayerLabels';
+import { HUD_STAT_KEYS, type PlayerHudStats } from '../logic';
+import { HUD_STAT_LABELS, hudPercent } from '../utils/hud';
 
 interface CompactProfileModalProps {
   name: string;
@@ -20,6 +22,8 @@ interface CompactProfileModalProps {
   /** ラベル（色・メモ）の保存。未指定なら編集UIを出さない */
   onLabelChange?: (targetUserId: string, color: string, note: string) => void;
   onLabelRemove?: (targetUserId: string) => void;
+  /** プライベート卓 HUD。あれば主要スタッツの代わりに HUD の詳細を出す */
+  hud?: PlayerHudStats;
 }
 
 /**
@@ -38,6 +42,7 @@ export function CompactProfileModal({
   onClose,
   onLabelChange,
   onLabelRemove,
+  hud,
 }: CompactProfileModalProps) {
   const { loading, stats, tournamentStats, badges } = usePlayerStats(userId);
   const displayStats = mode === 'tournament' ? tournamentStats : stats;
@@ -116,8 +121,28 @@ export function CompactProfileModal({
           </div>
         </div>
 
-        {/* 主要スタッツ */}
-        {loading ? (
+        {/* 主要スタッツ（プライベート卓では HUD の詳細） */}
+        {hud ? (
+          <div className="grid grid-cols-4 gap-[1.2cqw]">
+            {[
+              { label: 'ハンド数', value: hud.hands.toLocaleString(), sub: '' },
+              ...HUD_STAT_KEYS.map(key => ({
+                label: HUD_STAT_LABELS[key],
+                value: hudPercent(hud[key]) === '-' ? '-' : `${hudPercent(hud[key])}%`,
+                sub: `${hud[key].n}/${hud[key].d}`,
+              })),
+            ].map(item => (
+              <div
+                key={item.label}
+                className="bg-white rounded-[2cqw] border border-cream-200/90 px-[1cqw] py-[1.2cqw] flex flex-col items-center gap-[0.6cqw]"
+              >
+                <span className="text-[2.4cqw] text-cream-800 font-medium leading-none whitespace-nowrap">{item.label}</span>
+                <span className="text-[3.4cqw] font-bold text-cream-900 tabular-nums leading-none">{item.value}</span>
+                {item.sub && <span className="text-[2.4cqw] text-cream-800 tabular-nums leading-none">({item.sub})</span>}
+              </div>
+            ))}
+          </div>
+        ) : loading ? (
           <div className="flex flex-col items-center py-[4cqw]">
             <div className="w-[5cqw] h-[5cqw] border-2 border-cream-300 border-t-forest rounded-full animate-spin" />
             <p className="text-cream-800 text-[2.5cqw] mt-[1.2cqw]">読み込み中...</p>

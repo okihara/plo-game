@@ -16,6 +16,7 @@ import { StateTransformer } from './helpers/StateTransformer.js';
 import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { TableHudTracker } from './helpers/TableHudTracker.js';
+import { loadPrivateHud } from '../stats/privateHud.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
@@ -96,7 +97,7 @@ export class TableInstance {
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
-  /** 卓内 HUD（プライベートのキャッシュ卓のみ。それ以外は null） */
+  /** プライベート卓 HUD（プライベートのキャッシュ卓のみ。それ以外は null） */
   private readonly hudTracker: TableHudTracker | null;
 
   constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; isPractice?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number }) {
@@ -138,9 +139,12 @@ export class TableInstance {
       ...(this.gameMode === 'tournament' && this.tournamentId ? { tournamentId: this.tournamentId } : {}),
       // 練習卓は履歴だけ残してスタッツには混ぜない
       ...(this.isPractice ? { skipStats: true } : {}),
+      ...(this.isPrivate ? { isPrivate: true } : {}),
     });
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
-    this.hudTracker = this.isPrivate && this.gameMode === 'cash' ? new TableHudTracker() : null;
+    this.hudTracker = this.isPrivate && this.gameMode === 'cash'
+      ? new TableHudTracker(loadPrivateHud, () => this.broadcastGameState())
+      : null;
   }
 
   // ============================================
@@ -187,6 +191,8 @@ export class TableInstance {
       console.warn(`[Table ${this.id}] seatPlayer failed: odId=${odId}, odName=${odName}, buyIn=${buyIn}, preferredSeat=${preferredSeat}, handInProgress=${this.isHandInProgress}`);
       return null;
     }
+
+    this.hudTracker?.load(odId);
 
     if (socket) {
       socket.join(this.roomName);
@@ -1503,7 +1509,7 @@ export class TableInstance {
       winners: [...this.gameState.winners],
       handHistory: [...this.gameState.handHistory],
     };
-    // 卓内 HUD は recordHandComplete が startChips を次ハンド用に触る前に集計する
+    // HUD は recordHandComplete が startChips を次ハンド用に触る前に集計する
     this.hudTracker?.recordHand(gameStateSnapshot, seatsSnapshot, this.historyRecorder.getStartChips());
     this.historyRecorder.recordHandComplete(
       this.id,

@@ -131,7 +131,7 @@ export interface OnlinePlayer {
   hasActed: boolean;
   isConnected: boolean;
   cards: Card[];  // Stud: 全カード配布順（裏カードはダミー値+isUp:false）, PLO: []
-  /** 卓内 HUD。プライベート卓でのみ付与（その卓で1ハンド以上プレイした人のみ） */
+  /** プライベート卓 HUD。プライベート卓でのみ付与（累計1ハンド以上の人のみ） */
   hud?: PlayerHudStats;
 }
 
