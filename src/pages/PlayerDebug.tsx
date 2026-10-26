@@ -140,7 +140,7 @@ export function PlayerDebug() {
     folded: playerState === 'folded',
     isAllIn: playerState === 'allin',
     currentBet: showBet ? betAmount : 0,
-    ...(showHud ? { hud: { hands: 42, vpip: 38, pfr: 21, threeBet: 9 } } : {}),
+    ...(showHud ? { hud: { vpip: 38, pfr: 21, threeBet: 9, donk: 12, checkRaise: 8, bmcb: 45 } } : {}),
   });
 
   // Determine props based on state

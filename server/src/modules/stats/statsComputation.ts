@@ -1,6 +1,6 @@
 // ハンドスタッツの純粋な計算ロジック（DB依存なし）
 
-interface ActionEntry {
+export interface ActionEntry {
   seatIndex: number;
   odId: string;
   action: string;
@@ -254,6 +254,66 @@ export function computeIncrementForPlayer(
           }
         }
       }
+    }
+  }
+
+  return inc;
+}
+
+/** 卓内 HUD 用のフロップ指標（DB には保存しない）。各 *Opportunity が分母 */
+export interface FlopHudIncrement {
+  donkCount: number;
+  donkOpportunity: number;
+  checkRaiseCount: number;
+  checkRaiseOpportunity: number;
+  bmcbCount: number;
+  bmcbOpportunity: number;
+}
+
+/**
+ * フロップのドンクベット / チェックレイズ / BMCB（Bet vs Missed CBet）を判定する。
+ * ベット判定は CBet と同じく bet / raise のみ（allin は含めない）。
+ */
+export function computeFlopHudIncrement(userId: string, actions: ActionEntry[]): FlopHudIncrement {
+  const inc: FlopHudIncrement = {
+    donkCount: 0, donkOpportunity: 0,
+    checkRaiseCount: 0, checkRaiseOpportunity: 0,
+    bmcbCount: 0, bmcbOpportunity: 0,
+  };
+  const isBet = (a: ActionEntry) => a.action === 'bet' || a.action === 'raise';
+
+  const flopActions = actions.filter(a => a.street === 'flop');
+  const userIdx = flopActions.findIndex(a => a.odId === userId);
+  if (userIdx === -1) return inc;
+  const userFirst = flopActions[userIdx];
+  const betBeforeUser = flopActions.slice(0, userIdx).some(isBet);
+
+  let pfa: string | null = null;
+  for (const a of actions) {
+    if (a.street === 'preflop' && isBet(a)) pfa = a.odId;
+  }
+
+  if (pfa && pfa !== userId && !betBeforeUser) {
+    const pfaIdx = flopActions.findIndex(a => a.odId === pfa);
+    // ドンク: PFA より先に、誰もベットしていない状態で行動する
+    if (pfaIdx > userIdx) {
+      inc.donkOpportunity = 1;
+      if (isBet(userFirst)) inc.donkCount = 1;
+    }
+    // BMCB: PFA がチェックした後、誰もベットしていない状態で行動する
+    if (pfaIdx !== -1 && pfaIdx < userIdx && flopActions[pfaIdx].action === 'check') {
+      inc.bmcbOpportunity = 1;
+      if (isBet(userFirst)) inc.bmcbCount = 1;
+    }
+  }
+
+  // チェックレイズ: チェックした後に他者のベットを受け、再び行動する
+  if (userFirst.action === 'check') {
+    const rest = flopActions.slice(userIdx + 1);
+    const nextUserIdx = rest.findIndex(a => a.odId === userId);
+    if (nextUserIdx !== -1 && rest.slice(0, nextUserIdx).some(isBet)) {
+      inc.checkRaiseOpportunity = 1;
+      if (isBet(rest[nextUserIdx])) inc.checkRaiseCount = 1;
     }
   }
 

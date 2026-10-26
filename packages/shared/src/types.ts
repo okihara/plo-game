@@ -246,10 +246,15 @@ export function getPositionLabel(
 
 /** 卓内 HUD（プライベート卓で、その卓で遊んだハンドだけから集計した簡易スタッツ）。% は整数に丸め済み */
 export interface PlayerHudStats {
-  hands: number;
   vpip: number;
   pfr: number;
   threeBet: number;
+  /** フロップのドンクベット率 */
+  donk: number;
+  /** フロップのチェックレイズ率 */
+  checkRaise: number;
+  /** フロップの Bet vs Missed CBet 率 */
+  bmcb: number;
 }
 
 export interface Player {

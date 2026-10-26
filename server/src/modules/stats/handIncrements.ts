@@ -2,12 +2,23 @@
 
 import { GameState } from '../../shared/logic/types.js';
 import { SeatInfo } from '../table/types.js';
-import { computeIncrementForPlayer, StatsIncrement } from './statsComputation.js';
+import { computeIncrementForPlayer, StatsIncrement, ActionEntry } from './statsComputation.js';
 
 export interface SeatIncrement {
   seatIndex: number;
   odId: string;
   inc: StatsIncrement;
+}
+
+/** GameState のアクション履歴を odId 付きのスタッツ計算用に変換する */
+export function toActionEntries(gameState: GameState, seats: (SeatInfo | null)[]): ActionEntry[] {
+  return gameState.handHistory.map(a => ({
+    seatIndex: a.playerId,
+    odId: seats[a.playerId]?.odId ?? `unknown_${a.playerId}`,
+    action: a.action,
+    amount: a.amount,
+    street: a.street,
+  }));
 }
 
 /** ハンド開始時に着席していた（startChips を持つ）全員分の増分を返す */
@@ -17,13 +28,7 @@ export function computeHandIncrements(
   startChips: Map<number, number>,
   allInEVProfits?: Map<number, number> | null,
 ): SeatIncrement[] {
-  const actions = gameState.handHistory.map(a => ({
-    seatIndex: a.playerId,
-    odId: seats[a.playerId]?.odId ?? `unknown_${a.playerId}`,
-    action: a.action,
-    amount: a.amount,
-    street: a.street,
-  }));
+  const actions = toActionEntries(gameState, seats);
 
   const winnerOdIds = gameState.winners
     .map(w => seats[w.playerId]?.odId ?? '')

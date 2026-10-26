@@ -96,9 +96,9 @@ describe('卓内 HUD', () => {
     const opener = await raiseThenFoldToCompletion(table, odIds, sockets, seatMap);
 
     const huds = hudByOdId(table);
-    expect(huds.get(opener)).toEqual({ hands: 1, vpip: 100, pfr: 100, threeBet: 0 });
+    expect(huds.get(opener)).toMatchObject({ vpip: 100, pfr: 100, threeBet: 0 });
     for (const odId of odIds.filter(id => id !== opener)) {
-      expect(huds.get(odId)).toMatchObject({ hands: 1, vpip: 0, pfr: 0 });
+      expect(huds.get(odId)).toMatchObject({ vpip: 0, pfr: 0 });
     }
   });
 
