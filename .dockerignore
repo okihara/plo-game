@@ -1,0 +1,13 @@
+**/node_modules
+dist
+.git
+**/.env
+**/*.env.local
+**/*.log
+.DS_Store
+server/src/modules/ogp/fonts/
+server/src/modules/quiz/fonts/
+server/data/
+server/scripts/reports/
+server/logs/
+assets/badge-sources/
