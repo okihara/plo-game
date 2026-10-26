@@ -3,7 +3,7 @@
  * 過去のプライベート卓（練習卓を含む）のハンドに HandHistory.isPrivate = true を付ける。
  * 履歴には卓の種類が残っていないため、次の条件で推定する:
  *   - トナメ外
- *   - プライベート卓機能があった期間（2026-03-01〜05-22、2026-08-17〜）
+ *   - プライベート卓に入れた期間（2026-03-01〜03-23 にロビーの入口を非表示、2026-08-17〜）
  *   - その卓で Bot が一度も座っていない（ファストフォールド卓には Bot が入る）
  *
  * 実行:
@@ -34,7 +34,7 @@ const CANDIDATE_TABLES = `
   JOIN "HandHistoryPlayer" p ON p."handHistoryId" = h.id
   LEFT JOIN "User" u ON u.id = p."userId"
   WHERE h."tournamentId" IS NULL
-    AND ((h."createdAt" >= '2026-03-01' AND h."createdAt" < '2026-05-23') OR h."createdAt" >= '2026-08-17')
+    AND ((h."createdAt" >= '2026-03-01' AND h."createdAt" < '2026-03-24') OR h."createdAt" >= '2026-08-17')
   GROUP BY h."tableId"
   HAVING bool_and(u.provider IS DISTINCT FROM 'bot')`;
 
