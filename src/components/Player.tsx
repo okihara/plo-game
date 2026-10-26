@@ -291,20 +291,23 @@ export function Player({
           )}
           <div className="text-[3.5cqw] text-white truncate">{player.name}</div>
           <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
-          {/* 卓内 HUD（プライベート卓のみ）: VPIP / PFR / 3Bet | Donk / XR / BMCB。左下はディーラーボタンが被るのでボタンの右から始める */}
+          {/* 卓内 HUD（プライベート卓のみ）: 1行目 VPIP / PFR / 3Bet、2行目 Donk / XR / BMCB。左下はディーラーボタンが被るのでボタンの右から始める */}
           {player.hud && (
-            <div className="absolute top-full left-[9.5cqw] mt-[0.5cqw] bg-black/80 rounded px-[1.2cqw] text-[2.5cqw] leading-[1.3] text-white whitespace-nowrap">
-              <span className="text-sky-300">{player.hud.vpip}</span>
-              <span className="text-gray-400">/</span>
-              <span className="text-amber-300">{player.hud.pfr}</span>
-              <span className="text-gray-400">/</span>
-              <span className="text-rose-300">{player.hud.threeBet}</span>
-              <span className="text-gray-400 mx-[0.6cqw]">|</span>
-              <span>{player.hud.donk}</span>
-              <span className="text-gray-400">/</span>
-              <span>{player.hud.checkRaise}</span>
-              <span className="text-gray-400">/</span>
-              <span>{player.hud.bmcb}</span>
+            <div className="absolute top-full left-[9.5cqw] mt-[0.5cqw] bg-black/80 rounded px-[1.2cqw] text-[3.5cqw] leading-[1.2] text-white whitespace-nowrap">
+              <div>
+                <span className="text-sky-300">{player.hud.vpip}</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-amber-300">{player.hud.pfr}</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-rose-300">{player.hud.threeBet}</span>
+              </div>
+              <div>
+                {player.hud.donk}
+                <span className="text-gray-400">/</span>
+                {player.hud.checkRaise}
+                <span className="text-gray-400">/</span>
+                {player.hud.bmcb}
+              </div>
             </div>
           )}
         </div>
