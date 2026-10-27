@@ -101,6 +101,30 @@ describe('computeHandHud', () => {
     expect(hud(actions, 'BB').checkRaise).toEqual({ n: 1, d: 1 });
   });
 
+  it('XR: 間に別の人のレイズが入っても数える', () => {
+    const actions = [
+      ...folds('UTG', 'HJ'), act('CO', 'raise', 7), act('BTN', 'call', 7), act('SB', 'fold'), act('BB', 'call', 5),
+      flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'raise', 40), flop('BB', 'raise', 120), ...['CO', 'BTN'].map(id => flop(id, 'fold')),
+    ];
+    expect(hud(actions, 'BB').checkRaise).toEqual({ n: 1, d: 1 });
+    const called = [
+      ...folds('UTG', 'HJ'), act('CO', 'raise', 7), act('BTN', 'call', 7), act('SB', 'fold'), act('BB', 'call', 5),
+      flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'raise', 40), flop('BB', 'fold'),
+    ];
+    expect(hud(called, 'BB').checkRaise).toEqual({ n: 0, d: 1 });
+  });
+
+  it('Steal: 4人卓は BTN の前の席（UTG 表示）も対象', () => {
+    // 4人卓・ディーラー席0: BTN=0, SB=1, BB=2, UTG=3
+    const four = players.slice(0, 4).map((p, i) => ({ ...p, odId: ['D', 'S', 'B', 'U'][i] }));
+    const actions = [
+      { seatIndex: 3, odId: 'U', action: 'raise', amount: 7, street: 'preflop' },
+      ...['D', 'S', 'B'].map((id, i) => ({ seatIndex: i, odId: id, action: 'fold', amount: 0, street: 'preflop' })),
+    ];
+    const h = computeHandHud({ actions, dealerPosition: 0, players: four, smallBlind: 1, bigBlind: 2 }).get('U')!;
+    expect(h.steal).toEqual({ n: 1, d: 1 });
+  });
+
   it('BMCB: レイザーのチェック後にベット', () => {
     const actions = [
       ...folds('UTG', 'HJ'), act('CO', 'raise', 7), act('BTN', 'call', 7), ...folds('SB', 'BB'),

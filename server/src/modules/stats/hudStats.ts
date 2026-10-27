@@ -125,8 +125,9 @@ export function computeHandHud(input: HudHandInput): Map<string, PlayerHudStats>
 
     if (firstPre !== -1) {
       const before = pre.slice(0, firstPre);
-      // Steal: CO / BTN / SB で前が全員フォールド
-      if (['CO', 'BTN', 'SB'].includes(positions.get(seat) ?? '') && before.every(a => a.action === 'fold')) {
+      // Steal: CO / BTN / SB で前が全員フォールド（4人卓は BTN の前の席が UTG 表示なのでそれを CO とみなす）
+      const stealPositions = positions.size === 4 ? ['UTG', 'BTN', 'SB'] : ['CO', 'BTN', 'SB'];
+      if (stealPositions.includes(positions.get(seat) ?? '') && before.every(a => a.action === 'fold')) {
         mark('steal', pre[firstPre].aggressive);
       }
       // BB vs オープン: 1人のオープン、ほか全員フォールド
@@ -149,9 +150,9 @@ export function computeHandHud(input: HudHandInput): Map<string, PlayerHudStats>
         if (pfaFlop !== -1 && pfaFlop < myFlop && flop[pfaFlop].action === 'check') mark('bmcb', flop[myFlop].aggressive);
       }
 
-      // XR: チェック後に他者のベットを受けたとき
+      // XR: チェック後に他者のベットを受けたとき（間に別の人のレイズが入っても数える）
       if (flop[myFlop].action === 'check' && firstFlopAggr > myFlop && flop[firstFlopAggr].odId !== odId) {
-        const r = responseTo(flop, odId, firstFlopAggr);
+        const r = nextActionOf(flop, odId, firstFlopAggr + 1);
         if (r !== -1) mark('checkRaise', flop[r].aggressive);
       }
 
