@@ -3,6 +3,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TableInstance } from '../TableInstance.js';
 import { emptyHud } from '../../stats/hudStats.js';
 import { loadPrivateHud } from '../../stats/privateHud.js';
+import { prisma } from '../../../config/database.js';
 import {
   createMockIO,
   seatNPlayers,
@@ -83,6 +84,7 @@ describe('プライベート卓 HUD', () => {
     resetSocketCounter();
     vi.useFakeTimers();
     vi.mocked(loadPrivateHud).mockReset().mockResolvedValue(dbHud(0));
+    vi.mocked(prisma.handHistory.create).mockClear();
   });
 
   afterEach(() => {
@@ -137,5 +139,21 @@ describe('プライベート卓 HUD', () => {
 
     for (const hud of hudByOdId(table).values()) expect(hud).toBeUndefined();
     expect(loadPrivateHud).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    { name: 'プライベート卓', isPrivate: true, isPractice: false, expected: true },
+    { name: '練習卓', isPrivate: true, isPractice: true, expected: true },
+    { name: '公開卓', isPrivate: false, isPractice: false, expected: undefined },
+  ])('$name のハンド履歴に isPrivate を記録する', async ({ isPrivate, isPractice, expected }) => {
+    const table = createTable({ isPrivate, isPractice });
+    const { odIds, sockets, seatMap } = seatNPlayers(table, 3);
+    await vi.advanceTimersByTimeAsync(0);
+    table.triggerMaybeStartHand();
+
+    await raiseThenFoldToCompletion(table, odIds, sockets, seatMap);
+
+    const data = vi.mocked(prisma.handHistory.create).mock.calls[0][0].data;
+    expect(data.isPrivate).toBe(expected);
   });
 });

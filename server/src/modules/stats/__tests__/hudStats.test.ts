@@ -110,6 +110,30 @@ describe('computeHandHud', () => {
     expect(hud(actions, 'CO').foldToCbet).toEqual({ n: 0, d: 0 });
   });
 
+  it('コールになるオールインはアグレッシブに数えない', () => {
+    // BTN の 3bet オールイン（合計 199）に、CO が 7 + 192 = 199 でコールオールイン
+    const actions = [...folds('UTG', 'HJ'), act('CO', 'raise', 7), act('BTN', 'allin', 199), ...folds('SB', 'BB'), act('CO', 'allin', 192)];
+    expect(hud(actions, 'BTN').threeBet).toEqual({ n: 1, d: 1 });
+    expect(hud(actions, 'CO')).toMatchObject({ vpip: { n: 1, d: 1 }, foldTo3Bet: { n: 0, d: 1 }, fourBet: { n: 0, d: 1 } });
+  });
+
+  it('ヘッズアップ: ディーラー（SB）のオープンはスチール、BB はオープンを受けた扱い', () => {
+    const hu = [{ seatIndex: 0, odId: 'D' }, { seatIndex: 3, odId: 'X' }];
+    const actions = [
+      { seatIndex: 0, odId: 'D', action: 'raise', amount: 5, street: 'preflop' },
+      { seatIndex: 3, odId: 'X', action: 'fold', amount: 0, street: 'preflop' },
+    ];
+    const huds = computeHandHud({ actions, dealerPosition: 0, players: hu, smallBlind: 1, bigBlind: 2 });
+    expect(huds.get('D')!.steal).toEqual({ n: 1, d: 1 });
+    expect(huds.get('X')!).toMatchObject({ bbFoldVsOpen: { n: 1, d: 1 }, bb3BetVsOpen: { n: 0, d: 1 } });
+  });
+
+  it('ディーラー不明ならポジション依存のスタッツは機会なし', () => {
+    const actions = [...folds('UTG', 'HJ'), act('CO', 'raise', 7), ...folds('BTN', 'SB', 'BB')];
+    const h = computeHandHud({ actions, dealerPosition: -1, players, smallBlind: 1, bigBlind: 2 }).get('CO')!;
+    expect(h).toMatchObject({ hands: 1, pfr: { n: 1, d: 1 }, steal: { n: 0, d: 0 } });
+  });
+
   it('VPIP / PFR / 3Bet', () => {
     const actions = [act('UTG', 'call', 2), act('HJ', 'raise', 9), act('CO', 'raise', 30), ...folds('BTN', 'SB', 'BB', 'UTG', 'HJ')];
     expect(hud(actions, 'UTG')).toMatchObject({ vpip: { n: 1, d: 1 }, pfr: { n: 0, d: 1 }, threeBet: { n: 0, d: 0 } });
