@@ -518,7 +518,8 @@ export function GameTable({
               onClose={closeProfile}
               onLabelChange={setLabel}
               onLabelRemove={removeLabel}
-              hud={selectedPlayer.hud}
+              // タップ時の snapshot ではなく最新の状態から引く（読み込み完了・ハンド完了で更新される）
+              hud={gameState.players.find(p => p.odId === selectedPlayer.odId)?.hud}
             />
           )}
 
