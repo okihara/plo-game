@@ -69,9 +69,9 @@ export interface GameTableProps {
 }
 
 /** コーチングの操作ボタンと状態表示に共通のピル形状（作成者かどうかで中身だけ変わる） */
-const COACHING_PILL = 'flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] rounded-full shadow-md transition-all';
-const COACHING_PILL_ON = 'bg-forest text-white';
-const COACHING_PILL_OFF = 'bg-white/90 text-cream-800';
+const COACHING_ICON = 'flex items-center justify-center w-[8cqw] h-[8cqw] rounded-full transition-all active:scale-[0.97]';
+const COACHING_ICON_ON = 'bg-forest text-white';
+const COACHING_ICON_OFF = 'bg-white/20 text-white/80 hover:text-white';
 
 export function GameTable({
   gameState,
@@ -294,6 +294,46 @@ export function GameTable({
               <Settings className="w-[5cqw] h-[5cqw]" />
             </button>
           </div>
+          {/* コーチング操作（作成者にはボタン、それ以外の着席者・観戦者には ON の状態だけアイコンで表示）。
+              卓の上は席の HUD と、上の角は 9 人卓の上段の席と重なるため、自分のホールカードの左に横に並べる */}
+          <div className="absolute top-[140cqw] left-[4cqw] z-10 flex flex-row gap-[2cqw]">
+            {pauseState?.canControl ? (
+              <>
+                {/* ハンド中に止めると手番が宙吊りになるため、ポーズはハンドの切れ目でだけ押せる。
+                    再開はいつでも押せる（ハンドオープンの自動ポーズを解除する導線） */}
+                <button
+                  onClick={pauseState.isPaused ? onResume : onPause}
+                  disabled={!pauseState.isPaused && !pauseState.canPause}
+                  aria-label={pauseState.isPaused ? '再開' : 'ポーズ'}
+                  className={`${COACHING_ICON} ${pauseState.isPaused ? COACHING_ICON_ON : COACHING_ICON_OFF} disabled:opacity-40`}
+                >
+                  {pauseState.isPaused ? <Play className="w-[4.5cqw] h-[4.5cqw]" /> : <Pause className="w-[4.5cqw] h-[4.5cqw]" />}
+                </button>
+                {onToggleRevealHands && (
+                  <button
+                    onClick={() => onToggleRevealHands(!pauseState.revealAllHands)}
+                    aria-label={pauseState.revealAllHands ? 'ハンドオープン中' : 'ハンドオープン'}
+                    className={`${COACHING_ICON} ${pauseState.revealAllHands ? COACHING_ICON_ON : COACHING_ICON_OFF}`}
+                  >
+                    {pauseState.revealAllHands ? <Eye className="w-[4.5cqw] h-[4.5cqw]" /> : <EyeOff className="w-[4.5cqw] h-[4.5cqw]" />}
+                  </button>
+                )}
+              </>
+            ) : (
+              <>
+                {pauseState?.isPaused && (
+                  <div aria-label="ポーズ中" className={`${COACHING_ICON} ${COACHING_ICON_ON} pointer-events-none`}>
+                    <Pause className="w-[4.5cqw] h-[4.5cqw]" />
+                  </div>
+                )}
+                {pauseState?.revealAllHands && (
+                  <div aria-label="ハンドオープン中" className={`${COACHING_ICON} ${COACHING_ICON_ON} pointer-events-none`}>
+                    <Eye className="w-[4.5cqw] h-[4.5cqw]" />
+                  </div>
+                )}
+              </>
+            )}
+          </div>
       {/* バリアント + ブラインド（中央上部）。タブ自体はクリーム。種目名を囲む小さな
           ラベルボックスの背景色だけ variant ごとに変える（VARIANT_BADGE_BG）。色定義の
           ない plo（デフォルト）はラベル背景なし。
@@ -319,6 +359,12 @@ export function GameTable({
               ? blindsLabel + (gameState.ante > 0 ? ` +${gameState.ante}` : '')
               : `ante ${gameState.ante}`}
           </span>
+            {/* 練習卓は所持チップが動かないので、卓にいる全員に分かるよう常時表示する */}
+            {pauseState?.isPractice && (
+              <span className="flex items-center gap-[0.8cqw] px-[1.8cqw] py-[0.5cqw] bg-forest text-white rounded-full font-bold" style={{ fontSize: '2.3cqw' }}>
+                <RefreshCw style={{ width: '2.5cqw', height: '2.5cqw' }} />練習卓
+              </span>
+            )}
             {/* 招待コードボタン（プライベートテーブル・観戦時は非表示）: 種目・レートのバッジ内に置く */}
             {showInviteButton && (
                 <div className="relative pointer-events-auto">
@@ -409,61 +455,6 @@ export function GameTable({
               isDrawPhase={isDraw && isCurrentDrawStreet}
               selectedCardIndices={selectedCardIndices}
             />
-          )}
-
-          {/* コーチング操作（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示）。
-              左下の席の真下に置く。席の高さは席数で変わるため縦位置を切り替える */}
-          {pauseState && (pauseState.canControl || pauseState.isPaused || pauseState.revealAllHands || pauseState.isPractice) && (
-            <div className={`absolute ${tableSeatCount === 9 ? 'top-[120cqw]' : 'top-[105cqw]'} left-[3.4cqw] z-[160] flex flex-col items-start gap-[1.5cqw]`}>
-              {/* 練習卓は所持チップが動かないので、卓にいる全員に分かるよう常時表示する */}
-              {pauseState.isPractice && (
-                <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
-                  <RefreshCw style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">練習卓 100BB</span>
-                </div>
-              )}
-              {pauseState.canControl ? (
-                <>
-                  {/* ハンド中に止めると手番が宙吊りになるため、ポーズはハンドの切れ目でだけ押せる。
-                      再開はいつでも押せる（ハンドオープンの自動ポーズを解除する導線） */}
-                  <button
-                    onClick={pauseState.isPaused ? onResume : onPause}
-                    disabled={!pauseState.isPaused && !pauseState.canPause}
-                    className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.isPaused ? COACHING_PILL_ON : COACHING_PILL_OFF} disabled:opacity-40 disabled:active:scale-100`}
-                    style={{ fontSize: '2.5cqw' }}
-                  >
-                    {pauseState.isPaused
-                      ? <><Play style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">再開</span></>
-                      : <><Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ</span></>}
-                  </button>
-
-                  {onToggleRevealHands && (
-                    <button
-                      onClick={() => onToggleRevealHands(!pauseState.revealAllHands)}
-                      className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.revealAllHands ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
-                      style={{ fontSize: '2.5cqw' }}
-                    >
-                      {pauseState.revealAllHands
-                        ? <><Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span></>
-                        : <><EyeOff style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ハンドオープン</span></>}
-                    </button>
-                  )}
-                </>
-              ) : (
-                // 操作はできないが、卓が止まっている・ハンドが公開される状態は全員に知らせる
-                <>
-                  {pauseState.isPaused && (
-                    <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
-                      <Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ中</span>
-                    </div>
-                  )}
-                  {pauseState.revealAllHands && (
-                    <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
-                      <Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span>
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
           )}
 
           {!isSpectator && myPlayer && (
