@@ -69,9 +69,9 @@ export interface GameTableProps {
 }
 
 /** コーチングの操作ボタンと状態表示に共通のピル形状（作成者かどうかで中身だけ変わる） */
-const COACHING_ICON = 'flex items-center justify-center w-[8cqw] h-[8cqw] rounded-full transition-all active:scale-[0.97]';
-const COACHING_ICON_ON = 'bg-forest text-white';
-const COACHING_ICON_OFF = 'bg-white/20 text-white/80 hover:text-white';
+const COACHING_PILL = 'flex items-center gap-[1cqw] px-[2.5cqw] py-[1cqw] rounded-full shadow-md transition-all';
+const COACHING_PILL_ON = 'bg-forest text-white';
+const COACHING_PILL_OFF = 'bg-white/90 text-cream-800';
 
 export function GameTable({
   gameState,
@@ -294,9 +294,9 @@ export function GameTable({
               <Settings className="w-[5cqw] h-[5cqw]" />
             </button>
           </div>
-          {/* コーチング操作（作成者にはボタン、それ以外の着席者・観戦者には ON の状態だけアイコンで表示）。
-              卓の上は席の HUD と、上の角は 9 人卓の上段の席と重なるため、自分のホールカードの左に横に並べる */}
-          <div className="absolute top-[140cqw] left-[4cqw] z-10 flex flex-row gap-[2cqw]">
+          {/* コーチング操作（作成者には操作ボタン、それ以外の着席者・観戦者には同じ場所に状態表示）。
+              卓の上は席の HUD と重なるため、自分のホールカードの左上（席より下）に縦に並べる */}
+          <div className="absolute top-[122cqw] left-[3.4cqw] z-10 flex flex-col items-start gap-[1cqw]">
             {pauseState?.canControl ? (
               <>
                 {/* ハンド中に止めると手番が宙吊りになるため、ポーズはハンドの切れ目でだけ押せる。
@@ -304,31 +304,37 @@ export function GameTable({
                 <button
                   onClick={pauseState.isPaused ? onResume : onPause}
                   disabled={!pauseState.isPaused && !pauseState.canPause}
-                  aria-label={pauseState.isPaused ? '再開' : 'ポーズ'}
-                  className={`${COACHING_ICON} ${pauseState.isPaused ? COACHING_ICON_ON : COACHING_ICON_OFF} disabled:opacity-40`}
+                  className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.isPaused ? COACHING_PILL_ON : COACHING_PILL_OFF} disabled:opacity-40 disabled:active:scale-100`}
+                  style={{ fontSize: '2.5cqw' }}
                 >
-                  {pauseState.isPaused ? <Play className="w-[4.5cqw] h-[4.5cqw]" /> : <Pause className="w-[4.5cqw] h-[4.5cqw]" />}
+                  {pauseState.isPaused
+                    ? <><Play style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">再開</span></>
+                    : <><Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ</span></>}
                 </button>
+
                 {onToggleRevealHands && (
                   <button
                     onClick={() => onToggleRevealHands(!pauseState.revealAllHands)}
-                    aria-label={pauseState.revealAllHands ? 'ハンドオープン中' : 'ハンドオープン'}
-                    className={`${COACHING_ICON} ${pauseState.revealAllHands ? COACHING_ICON_ON : COACHING_ICON_OFF}`}
+                    className={`${COACHING_PILL} active:scale-[0.97] ${pauseState.revealAllHands ? COACHING_PILL_ON : COACHING_PILL_OFF}`}
+                    style={{ fontSize: '2.5cqw' }}
                   >
-                    {pauseState.revealAllHands ? <Eye className="w-[4.5cqw] h-[4.5cqw]" /> : <EyeOff className="w-[4.5cqw] h-[4.5cqw]" />}
+                    {pauseState.revealAllHands
+                      ? <><Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span></>
+                      : <><EyeOff style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ハンドオープン</span></>}
                   </button>
                 )}
               </>
             ) : (
+              // 操作はできないが、卓が止まっている・ハンドが公開される状態は全員に知らせる
               <>
                 {pauseState?.isPaused && (
-                  <div aria-label="ポーズ中" className={`${COACHING_ICON} ${COACHING_ICON_ON} pointer-events-none`}>
-                    <Pause className="w-[4.5cqw] h-[4.5cqw]" />
+                  <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
+                    <Pause style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">ポーズ中</span>
                   </div>
                 )}
                 {pauseState?.revealAllHands && (
-                  <div aria-label="ハンドオープン中" className={`${COACHING_ICON} ${COACHING_ICON_ON} pointer-events-none`}>
-                    <Eye className="w-[4.5cqw] h-[4.5cqw]" />
+                  <div className={`${COACHING_PILL} ${COACHING_PILL_ON} pointer-events-none`} style={{ fontSize: '2.5cqw' }}>
+                    <Eye style={{ width: '3cqw', height: '3cqw' }} /><span className="font-bold">オープン中</span>
                   </div>
                 )}
               </>
