@@ -72,10 +72,13 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
    * ハンド履歴は残しつつスタッツ集計だけを行わない。
    */
   private readonly skipStats: boolean;
+  /** プライベート卓（練習卓を含む）。プライベート卓 HUD の集計対象を見分けるため履歴に残す */
+  private readonly isPrivate: boolean;
 
-  constructor(options?: { tournamentId?: string; skipStats?: boolean }) {
+  constructor(options?: { tournamentId?: string; skipStats?: boolean; isPrivate?: boolean }) {
     this.tournamentId = options?.tournamentId ?? null;
     this.skipStats = options?.skipStats ?? false;
+    this.isPrivate = options?.isPrivate ?? false;
   }
 
   /**
@@ -222,6 +225,7 @@ export class HandHistoryRecorder implements IHandHistoryRecorder {
           actions,
           dealerPosition: gameState.dealerPosition,
           maxPlayers: gameState.players.length,
+          ...(this.isPrivate ? { isPrivate: true } : {}),
           players: {
             create: playerRecords,
           },

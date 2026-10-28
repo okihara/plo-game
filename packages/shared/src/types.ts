@@ -244,6 +244,24 @@ export function getPositionLabel(
   return getPositionLabelsBySeat(dealerPosition, allSeats, options).get(seatPosition) ?? '';
 }
 
+/** プライベート卓 HUD の各スタッツ。並び順は詳細表示の順 */
+export const HUD_STAT_KEYS = [
+  'vpip', 'pfr', 'threeBet', 'donk', 'checkRaise', 'bmcb',
+  'foldTo3Bet', 'fourBet', 'foldTo4Bet',
+  'cbet', 'threeBetCbet', 'foldToCbet',
+  'bbFoldVsOpen', 'bb3BetVsOpen', 'steal',
+] as const;
+export type HudStatKey = typeof HUD_STAT_KEYS[number];
+
+/** 回数（n）と機会数（d）。% はクライアントで n / d から出す */
+export interface HudRatio {
+  n: number;
+  d: number;
+}
+
+/** プライベート卓 HUD（トナメ・ファストフォールド以外の卓で遊んだハンドの累計） */
+export type PlayerHudStats = { hands: number } & Record<HudStatKey, HudRatio>;
+
 export interface Player {
   id: number;
   name: string;
@@ -261,6 +279,7 @@ export interface Player {
   odId?: string;  // Online user ID (for stats lookup)
   isShowdown?: boolean;  // ショウダウン時にカードを表示
   nameplate?: NameplateDecoration;  // ネームプレート装飾（オンラインのみ、profile から転写）
+  hud?: PlayerHudStats;  // プライベート卓 HUD（プライベート卓のみ）
 }
 
 export type Street = 'preflop' | 'flop' | 'turn' | 'river' | 'showdown'
