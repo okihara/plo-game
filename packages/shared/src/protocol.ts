@@ -1,6 +1,6 @@
 // WebSocket event types shared between client and server
 
-import type { Action, Card, Position, Player } from './types';
+import type { Action, Card, Position, Player, PlayerHudStats } from './types';
 import { getRingPositions } from './types';
 import type { PlayerProfile } from './profile';
 import type {
@@ -131,6 +131,8 @@ export interface OnlinePlayer {
   hasActed: boolean;
   isConnected: boolean;
   cards: Card[];  // Stud: 全カード配布順（裏カードはダミー値+isUp:false）, PLO: []
+  /** プライベート卓 HUD。プライベート卓でのみ付与（累計1ハンド以上の人のみ） */
+  hud?: PlayerHudStats;
 }
 
 // Client-safe game state (hides other players' hole cards)
@@ -228,6 +230,7 @@ export function convertOnlinePlayerToPlayer(
     avatarUrl: online.profile.avatarUrl,
     odId: online.odId,
     nameplate: online.profile.nameplate,
+    hud: online.hud,
   };
 }
 

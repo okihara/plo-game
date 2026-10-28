@@ -4,6 +4,7 @@ import { Player as PlayerType, Action, GameVariant, NameplateDecoration, DEFAULT
 import { LastAction, ActionTimeoutAt } from '../hooks/useOnlineGameState';
 import { useGameSettings } from '../contexts/GameSettingsContext';
 import { PlayerCards } from './PlayerCards';
+import { hudPercent } from '../utils/hud';
 
 interface PlayerProps {
   player: PlayerType;
@@ -291,6 +292,27 @@ export function Player({
           )}
           <div className="text-[3.5cqw] text-white truncate">{player.name}</div>
           <div className="text-[4cqw] text-emerald-400">{formatChips(player.chips)}</div>
+          {/* プライベート卓 HUD: 1行目 VPIP / PFR / 3Bet (ハンド数)、2行目 Donk / XR / BMCB。左下はディーラーボタンが被るのでボタンの右から始める。
+              一番下の席（自分）はプレートの下に自分のホールカードが来るため上側に出す */}
+          {player.hud && (
+            <div className={`absolute ${positionIndex === 0 ? 'bottom-full mb-[0.5cqw]' : 'top-full mt-[0.5cqw]'} left-[9.5cqw] bg-black/80 rounded px-[1.2cqw] text-[3.5cqw] leading-[1.2] text-white whitespace-nowrap`}>
+              <div>
+                <span className="text-sky-300">{hudPercent(player.hud.vpip)}</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-amber-300">{hudPercent(player.hud.pfr)}</span>
+                <span className="text-gray-400">/</span>
+                <span className="text-rose-300">{hudPercent(player.hud.threeBet)}</span>
+                <span className="text-gray-300"> ({player.hud.hands})</span>
+              </div>
+              <div>
+                {hudPercent(player.hud.donk)}
+                <span className="text-gray-400">/</span>
+                {hudPercent(player.hud.checkRaise)}
+                <span className="text-gray-400">/</span>
+                {hudPercent(player.hud.bmcb)}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

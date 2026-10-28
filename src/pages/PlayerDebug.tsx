@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Player } from '../components/Player';
-import { Player as PlayerType, Card as CardType, Action, GameVariant, getVariantConfig } from '../logic/types';
+import { Player as PlayerType, Card as CardType, Action, GameVariant, getVariantConfig, type PlayerHudStats } from '../logic/types';
 import { GameSettingsProvider } from '../contexts/GameSettingsContext';
+import { CompactProfileModal } from '../components/CompactProfileModal';
 
 const sampleCardsOmaha: CardType[] = [
   { suit: 'h', rank: 'A' },
@@ -91,6 +92,15 @@ function getSampleCards(variant: GameVariant): CardType[] {
   }
 }
 
+const SAMPLE_HUD: PlayerHudStats = {
+  hands: 42,
+  vpip: { n: 16, d: 42 }, pfr: { n: 9, d: 42 }, threeBet: { n: 2, d: 22 },
+  donk: { n: 1, d: 8 }, checkRaise: { n: 1, d: 12 }, bmcb: { n: 5, d: 11 },
+  foldTo3Bet: { n: 2, d: 3 }, fourBet: { n: 1, d: 3 }, foldTo4Bet: { n: 0, d: 0 },
+  cbet: { n: 4, d: 6 }, threeBetCbet: { n: 1, d: 1 }, foldToCbet: { n: 2, d: 5 },
+  bbFoldVsOpen: { n: 3, d: 5 }, bb3BetVsOpen: { n: 1, d: 5 }, steal: { n: 7, d: 12 },
+};
+
 const createPlayer = (name: string, overrides: Partial<PlayerType> = {}): PlayerType => ({
   id: 0,
   name,
@@ -115,6 +125,8 @@ export function PlayerDebug() {
   const [debugSeatCount, setDebugSeatCount] = useState<6 | 9>(6);
   const [playerState, setPlayerState] = useState<PlayerState>('normal');
   const [showCards, setShowCards] = useState(true);
+  const [showHud, setShowHud] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const [showBet, setShowBet] = useState(false);
   const [betAmount, setBetAmount] = useState(250);
 
@@ -139,6 +151,7 @@ export function PlayerDebug() {
     folded: playerState === 'folded',
     isAllIn: playerState === 'allin',
     currentBet: showBet ? betAmount : 0,
+    ...(showHud ? { hud: SAMPLE_HUD } : {}),
   });
 
   // Determine props based on state
@@ -314,6 +327,16 @@ export function PlayerDebug() {
                   <label className="flex items-center gap-3 cursor-pointer">
                     <input
                       type="checkbox"
+                      checked={showHud}
+                      onChange={(e) => setShowHud(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm">HUD を表示</span>
+                  </label>
+
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
                       checked={showBet}
                       onChange={(e) => setShowBet(e.target.checked)}
                       className="w-4 h-4"
@@ -482,6 +505,9 @@ export function PlayerDebug() {
               <div className="bg-black rounded-lg shadow-[0_2px_8px_rgba(139,126,106,0.12)] flex items-center justify-center p-4">
                 {/* 実機と同じ9:16コンテナ */}
                 <div className="@container flex flex-col w-full max-w-[600px] aspect-[9/16] bg-[#1a1510] overflow-hidden relative">
+                  {showProfile && (
+                    <CompactProfileModal name={player.name} avatarId={player.avatarId} hud={player.hud} onClose={() => setShowProfile(false)} />
+                  )}
                   {/* PokerTableと同じ構造: h-[129cqw] */}
                   <div className="h-[129cqw] relative flex items-center justify-center p-2.5 min-h-0">
                     <div className="@container h-[85%] aspect-[0.7] bg-[radial-gradient(ellipse_at_center,#1a5a3a_0%,#0f4028_50%,#0a2a1a_100%)] rounded-[45%] border-[1.4cqw] border-[#8B7E6A] shadow-[0_0_0_0.8cqw_#6B5E4A,0_0_3cqw_rgba(0,0,0,0.5),inset_0_0_6cqw_rgba(255,255,255,0.05)] relative">
@@ -519,6 +545,7 @@ export function PlayerDebug() {
                             variant={variant}
                             wonBoards={dbbpWonBoards}
                             wonHiLoSides={hiLoWonSides}
+                            onAvatarClick={() => setShowProfile(true)}
                           />
                         );
                       })}
