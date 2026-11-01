@@ -17,7 +17,7 @@ import {
   type StatsIncrement,
 } from '../stats/statsComputation.js';
 import { CURRENT_SEASON } from './seasonConfig.js';
-import { fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
+import { assignPositionsBy, fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
 import { resolveAvatarUrl } from './avatar.js';
 
 /** "Kc" のようなカード文字列を Card オブジェクトに変換 */
@@ -38,6 +38,7 @@ export interface AwardWinner {
   avatarUrl: string | null;
   value: number;
   valueLabel: string;
+  rank: number;
 }
 
 export interface Award {
@@ -366,7 +367,7 @@ export interface AwardRanking {
   category: string;
   title: string;
   emoji: string;
-  ranked: { userId: string; valueLabel: string }[];
+  ranked: { userId: string; valueLabel: string; rank: number }[];
 }
 
 /** 対戦相手の参照（一番同卓／一番ヘッズアップ） */
@@ -598,17 +599,18 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const rankings: AwardRanking[] = [];
   for (const spec of specs) {
     const sorted = [...spec.candidates].sort((a, b) => (spec.order === 'desc' ? b.value - a.value : a.value - b.value));
+    const ranked = assignPositionsBy(sorted, (c) => c.value);
     rankings.push({
       key: spec.key,
       category: spec.category,
       title: spec.title,
       emoji: spec.emoji,
-      ranked: sorted.map((c) => ({ userId: c.userId, valueLabel: c.valueLabel })),
+      ranked: ranked.map((c) => ({ userId: c.userId, valueLabel: c.valueLabel, rank: c.position })),
     });
-    const withDisplay = sorted
+    const withDisplay = ranked
       .map((c): AwardWinner | null => {
         const d = displays.get(c.userId);
-        return d ? { userId: c.userId, name: d.name, avatarUrl: d.avatarUrl, value: c.value, valueLabel: c.valueLabel } : null;
+        return d ? { userId: c.userId, name: d.name, avatarUrl: d.avatarUrl, value: c.value, valueLabel: c.valueLabel, rank: c.position } : null;
       })
       .filter((w): w is AwardWinner => w !== null);
     awards.push({
