@@ -32,6 +32,25 @@ interface StoredAction {
   street?: string;
 }
 
+/**
+ * オールインでランナウトまで行ったハンドかを履歴から判定する。
+ * トナメでは EV を計算しない（allInEVProfit が常に null）ため、アクションから見る。
+ * 全額コールは 'allin' でなく 'call' で記録されるので、リバーのアクションが無いまま
+ * ボードが5枚開いたハンドも対象にする。
+ */
+export function isAllInRunoutHand(
+  actions: Pick<StoredAction, 'action' | 'street'>[],
+  communityCardCount: number,
+  showdownPlayerCount: number,
+): boolean {
+  if (communityCardCount < 5 || showdownPlayerCount < 2) return false;
+  const beforeRiver = (street?: string) => street !== undefined && street !== 'river';
+  return (
+    actions.some((a) => a.action === 'allin' && beforeRiver(a.street)) ||
+    (actions.length > 0 && beforeRiver(actions[actions.length - 1].street))
+  );
+}
+
 export interface AwardWinner {
   userId: string;
   name: string;
@@ -226,6 +245,11 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
         seatPosition: p.seatPosition,
         finalHand: p.finalHand,
       }));
+      const allInRunout = isAllInRunoutHand(
+        actions,
+        h.communityCards.length,
+        h.players.filter((p) => p.finalHand).length,
+      );
 
       for (const p of h.players) {
         if (!p.userId || botIds.has(p.userId)) continue;
@@ -255,7 +279,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           bestHandName: '',
         };
         addIncrement(cur.inc, inc);
-        if (p.allInEVProfit != null) {
+        if (allInRunout && p.finalHand) {
           cur.allinHands += 1;
           if (h.winners.includes(p.userId)) cur.allinWins += 1;
         }
