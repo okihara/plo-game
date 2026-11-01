@@ -93,6 +93,7 @@ interface StatAcc {
   allinHands: number; // オールインでランナウトまで行ったハンド数
   allinWins: number; // うち勝ったハンド数
   maxPotWon: number;
+  maxPotBb: number;
   knockouts: number; // 相手をバストさせた回数（撃墜数）
   riverSuckouts: number; // リバーでまくった回数（ターンで負けていてリバーで勝った）
   riverBadBeats: number; // リバーで捲られた回数（ターンで勝っていてリバーで負けた）
@@ -140,6 +141,22 @@ function addIncrement(acc: StatsIncrement, inc: StatsIncrement): void {
   acc.wsdCount += inc.wsdCount;
 }
 
+/** リエントリー込みの総エントリー数。2未満のトナメは集計対象外。 */
+function countEntries(t: Awaited<ReturnType<typeof fetchSeasonTournaments>>[number]): number {
+  return t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
+}
+
+/** ポットを BB 換算する。blinds は "800/1600" 形式。読めない値は 0。 */
+export function potInBB(potSize: number, blinds: string): number {
+  const bb = Number(blinds.split('/')[1]);
+  return bb > 0 ? potSize / bb : 0;
+}
+
+/** 最多出場賞の表示。開催された全トナメに出場していれば皆勤と分かるようにする。 */
+export function appearanceLabel(played: number, held: number): string {
+  return played === held ? `${played}本（皆勤）` : `${played}本出場`;
+}
+
 /** TournamentResult から参加・成績系の集計を行う。 */
 function aggregateParticipation(
   tournaments: Awaited<ReturnType<typeof fetchSeasonTournaments>>,
@@ -147,7 +164,7 @@ function aggregateParticipation(
   const map = new Map<string, ParticipationAcc>();
 
   for (const t of tournaments) {
-    const totalEntries = t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
+    const totalEntries = countEntries(t);
     if (totalEntries < 2) continue;
     const prizes = PrizeCalculator.calculate(totalEntries, t.prizePool);
     const amountByPosition = new Map<number, number>(prizes.map((p) => [p.position, p.amount]));
@@ -217,6 +234,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
         communityCards2: true,
         dealerPosition: true,
         potSize: true,
+        blinds: true,
         actions: true,
         players: {
           select: {
@@ -273,6 +291,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           allinHands: 0,
           allinWins: 0,
           maxPotWon: 0,
+          maxPotBb: 0,
           knockouts: 0,
           riverSuckouts: 0,
           riverBadBeats: 0,
@@ -286,6 +305,9 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
         }
         if (h.winners.includes(p.userId) && h.potSize > cur.maxPotWon) {
           cur.maxPotWon = h.potSize;
+        }
+        if (h.winners.includes(p.userId)) {
+          cur.maxPotBb = Math.max(cur.maxPotBb, potInBB(h.potSize, h.blinds));
         }
         if (p.finalHand) {
           const cat = handCategory(p.finalHand);
@@ -412,14 +434,19 @@ export interface PlayerHandStat {
   threeBet: number | null;
   wsd: number | null;
   detailedHands: number;
+  vpipCount: number;
+  aggressiveActions: number;
   postflopActions: number;
+  threeBetCount: number;
   threeBetOpportunity: number;
+  wsdCount: number;
   wtsd: number;
   handWins: number; // ハンド勝利数
   nonShowdownWins: number; // ショーダウンせずに勝った回数
   allinHands: number;
   allinWins: number;
   maxPotWon: number;
+  maxPotBb: number;
   knockouts: number;
   riverSuckouts: number;
   riverBadBeats: number;
@@ -431,6 +458,9 @@ export interface PlayerHandStat {
 const fmtInt = (n: number) => Math.round(n).toLocaleString('en-US');
 const fmtPct = (n: number) => `${n.toFixed(1)}%`;
 const fmtSignedPct = (n: number) => `${n >= 0 ? '+' : '−'}${Math.abs(n).toFixed(1)}%`;
+const fmtRatio = (pct: number, numerator: number, denominator: number) =>
+  `${fmtPct(pct)} (${fmtInt(numerator)}/${fmtInt(denominator)})`;
+const fmtSignedInt = (n: number) => `${n >= 0 ? '+' : '−'}${fmtInt(Math.abs(n))}`;
 
 interface AwardSpec {
   key: string;
@@ -458,6 +488,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const botIds = new Set(bots.map((b) => b.id));
 
   const participation = aggregateParticipation(tournaments);
+  const heldTournaments = tournaments.filter((t) => countEntries(t) >= 2).length;
   const { map: stats, oppTable, oppHu } = await aggregateHandStats(prisma, botIds);
 
   // 表示用ユーザー情報をまとめて取得
@@ -514,14 +545,19 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       threeBet: i.threeBetOpportunity > 0 ? (i.threeBetCount / i.threeBetOpportunity) * 100 : null,
       wsd: i.wtsdCount > 0 ? (i.wsdCount / i.wtsdCount) * 100 : null,
       detailedHands: i.detailedHands,
+      vpipCount: i.vpipCount,
+      aggressiveActions: i.aggressiveActions,
       postflopActions: i.totalPostflopActions,
+      threeBetCount: i.threeBetCount,
       threeBetOpportunity: i.threeBetOpportunity,
+      wsdCount: i.wsdCount,
       wtsd: i.wtsdCount,
       handWins: i.winCount,
       nonShowdownWins: Math.max(0, i.winCount - i.wsdCount),
       allinHands: a.allinHands,
       allinWins: a.allinWins,
       maxPotWon: a.maxPotWon,
+      maxPotBb: a.maxPotBb,
       knockouts: a.knockouts,
       riverSuckouts: a.riverSuckouts,
       riverBadBeats: a.riverBadBeats,
@@ -538,11 +574,15 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const specs: AwardSpec[] = [
     // ===== 参加・継続系 =====
     {
-      key: 'iron_man', category: '参加・継続', title: '鉄人賞', emoji: '🔥', description: '最も多くエントリーした皆勤の猛者', order: 'desc',
+      key: 'iron_man', category: '参加・継続', title: '鉄人賞', emoji: '🔥', description: 'リエントリーを含めて最も多くエントリーした猛者', order: 'desc',
       candidates: partList.filter((p) => p.entries > 0).map((p) => ({ userId: p.userId, value: p.entries, valueLabel: `${p.entries}エントリー` })),
     },
     {
-      key: 'reentry_king', category: '参加・継続', title: '不屈の戦士', emoji: '♻️', description: '何度でも立ち向かった不屈の人', order: 'desc',
+      key: 'most_appearances', category: '参加・継続', title: '最多出場賞', emoji: '📅', description: '最も多くのトナメに出場した人', order: 'desc',
+      candidates: partList.filter((p) => p.tournaments > 0).map((p) => ({ userId: p.userId, value: p.tournaments, valueLabel: appearanceLabel(p.tournaments, heldTournaments) })),
+    },
+    {
+      key: 'reentry_king', category: '参加・継続', title: '不屈の戦士', emoji: '♻️', description: 'バストしても諦めず、リエントリーした回数が最も多い人', order: 'desc',
       candidates: partList.filter((p) => p.reentries > 0).map((p) => ({ userId: p.userId, value: p.reentries, valueLabel: `${p.reentries}回` })),
     },
     // ===== オールイン・アグレ系 =====
@@ -555,11 +595,11 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
     },
     {
       key: 'aggressive', category: 'オールイン・アグレ', title: 'アグレッシブ賞', emoji: '🚀', description: 'フロップ以降の攻撃性No.1', order: 'desc',
-      candidates: statList.filter((s) => s.postflopActions >= 50 && s.afq != null).map((s) => ({ userId: s.userId, value: s.afq!, valueLabel: `AFq ${fmtPct(s.afq!)}` })),
+      candidates: statList.filter((s) => s.postflopActions >= 50 && s.afq != null).map((s) => ({ userId: s.userId, value: s.afq!, valueLabel: `AFq ${fmtRatio(s.afq!, s.aggressiveActions, s.postflopActions)}` })),
     },
     {
       key: 'three_bet', category: 'オールイン・アグレ', title: '3ベット王', emoji: '⚔️', description: 'プリフロップで殴り続けた3Bet師', order: 'desc',
-      candidates: statList.filter((s) => s.threeBetOpportunity >= 20 && s.threeBet != null).map((s) => ({ userId: s.userId, value: s.threeBet!, valueLabel: `3Bet ${fmtPct(s.threeBet!)}` })),
+      candidates: statList.filter((s) => s.threeBetOpportunity >= 20 && s.threeBet != null).map((s) => ({ userId: s.userId, value: s.threeBet!, valueLabel: `3Bet ${fmtRatio(s.threeBet!, s.threeBetCount, s.threeBetOpportunity)}` })),
     },
     // ===== 成績・運系 =====
     {
@@ -571,8 +611,11 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
       candidates: partList.filter((p) => p.tournaments >= 5).map((p) => ({ userId: p.userId, value: (p.itm / p.tournaments) * 100, valueLabel: `ITM率 ${Math.round((p.itm / p.tournaments) * 100)}% (${p.itm}/${p.tournaments})` })),
     },
     {
-      key: 'biggest_pot', category: '成績・運', title: '一撃王', emoji: '💥', description: 'シーズン最大のポットを攫った一発', order: 'desc',
-      candidates: statList.filter((s) => s.maxPotWon > 0).map((s) => ({ userId: s.userId, value: s.maxPotWon, valueLabel: `${fmtInt(s.maxPotWon)} chips` })),
+      key: 'biggest_pot', category: '成績・運', title: '一撃王', emoji: '💥', description: 'シーズン最大のポットを攫った一発（BB換算）', order: 'desc',
+      candidates: statList.filter((s) => s.maxPotBb > 0).map((s) => {
+        const bb = Math.round(s.maxPotBb * 10) / 10;
+        return { userId: s.userId, value: bb, valueLabel: `${bb.toFixed(1)} BB` };
+      }),
     },
     {
       key: 'knockout_king', category: '成績・運', title: '撃墜王', emoji: '🥊', description: '相手をバストさせた回数No.1', order: 'desc',
@@ -584,7 +627,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
         .filter((p) => p.tournaments >= 10 && p.invested > 0)
         .map((p) => {
           const roi = ((p.returned - p.invested) / p.invested) * 100;
-          return { userId: p.userId, value: roi, valueLabel: `総ROI ${fmtSignedPct(roi)}` };
+          return { userId: p.userId, value: roi, valueLabel: `総ROI ${fmtSignedPct(roi)} (${fmtSignedInt(p.returned - p.invested)}/${fmtInt(p.invested)})` };
         }),
     },
     {
@@ -593,22 +636,22 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
         .filter((p) => p.tournaments >= 10 && p.roiCount > 0)
         .map((p) => {
           const roi = (p.roiSum / p.roiCount) * 100;
-          return { userId: p.userId, value: roi, valueLabel: `平均ROI ${fmtSignedPct(roi)}` };
+          return { userId: p.userId, value: roi, valueLabel: `平均ROI ${fmtSignedPct(roi)} (${fmtSignedPct(p.roiSum * 100)}/${p.roiCount}戦)` };
         }),
     },
     // ===== スタイル系 =====
     {
       key: 'rock', category: 'スタイル', title: '鉄壁タイト賞', emoji: '🛡️', description: '滅多に参加しない鉄壁スタイル（50ハンド以上）', order: 'asc',
       // VPIP 0% は実質 AFK の全フォールド口座なので除外し、実際にプレイした最タイトを選ぶ
-      candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null && s.vpip > 0).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
+      candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null && s.vpip > 0).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtRatio(s.vpip!, s.vpipCount, s.detailedHands)}` })),
     },
     {
       key: 'maniac', category: 'スタイル', title: 'ハイVPIP', emoji: '🎪', description: 'ルースアグレッシブスタイル（50ハンド以上）', order: 'desc',
-      candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtPct(s.vpip!)}` })),
+      candidates: statList.filter((s) => s.detailedHands >= 50 && s.vpip != null).map((s) => ({ userId: s.userId, value: s.vpip!, valueLabel: `VPIP ${fmtRatio(s.vpip!, s.vpipCount, s.detailedHands)}` })),
     },
     {
       key: 'showdown_king', category: 'スタイル', title: 'ショーダウンの鬼', emoji: '👑', description: 'ショーダウンで勝ち切る勝負強さ（10回以上）', order: 'desc',
-      candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `ショーダウン勝利 ${fmtPct(s.wsd!)}` })),
+      candidates: statList.filter((s) => s.wtsd >= 10 && s.wsd != null).map((s) => ({ userId: s.userId, value: s.wsd!, valueLabel: `ショーダウン勝利 ${fmtRatio(s.wsd!, s.wsdCount, s.wtsd)}` })),
     },
     {
       key: 'no_showdown_king', category: 'スタイル', title: 'ノーショーダウンの鬼', emoji: '🃏', description: '勝利のうちショーダウンせずに勝った割合No.1（50勝以上）', order: 'desc',
