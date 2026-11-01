@@ -41,9 +41,8 @@ export const SEASON_3: SeasonConfig = {
 export const SEASON_4: SeasonConfig = {
   id: 4,
   name: 'シーズン４',
-  label: '2026 11/1 -',
+  label: '2026 11/1 - 12/31',
   start: new Date('2026-11-01T00:00:00+09:00'),
-  // end は未定。確定するまでの暫定値（この日付までの完了トナメを集計対象に含める）。
   end: new Date('2026-12-31T23:59:59.999+09:00'),
 };
 
