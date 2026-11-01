@@ -1,7 +1,18 @@
 import { describe, it, expect } from 'vitest';
-import { appearanceLabel, isAllInRunoutHand } from '../computeSeasonAwards.js';
+import { appearanceLabel, isAllInRunoutHand, potInBB } from '../computeSeasonAwards.js';
 
 const act = (action: string, street?: string) => ({ action, street });
+
+describe('potInBB', () => {
+  it('ポットをビッグブラインドの枚数に換算する', () => {
+    expect(potInBB(1_419_600, '2000/4000')).toBe(354.9);
+  });
+
+  it('ブラインドが読めないときは 0', () => {
+    expect(potInBB(1000, '')).toBe(0);
+    expect(potInBB(1000, '0/0')).toBe(0);
+  });
+});
 
 describe('appearanceLabel', () => {
   it('全トナメに出場していれば皆勤と表示する', () => {
