@@ -63,14 +63,19 @@ export function resolveDisplayName(user: { username: string; displayName: string
 }
 
 /**
- * RP 降順に並んだ行へ順位を振る。同RPは同順位で、次の順位は人数分飛ぶ（100, 90, 90, 80 → 1, 2, 2, 4）。
+ * 値の順に並んだ行へ順位を振る。同じ値は同順位で、次の順位は人数分飛ぶ（100, 90, 90, 80 → 1, 2, 2, 4）。
  */
-export function assignPositions<T extends { totalRp: number }>(sorted: T[]): (T & { position: number })[] {
+export function assignPositionsBy<T>(sorted: T[], valueOf: (row: T) => number): (T & { position: number })[] {
   let position = 0;
   return sorted.map((u, i) => {
-    if (i === 0 || u.totalRp !== sorted[i - 1].totalRp) position = i + 1;
+    if (i === 0 || valueOf(u) !== valueOf(sorted[i - 1])) position = i + 1;
     return { ...u, position };
   });
+}
+
+/** RP 降順に並んだ行へ順位を振る。 */
+export function assignPositions<T extends { totalRp: number }>(sorted: T[]): (T & { position: number })[] {
+  return assignPositionsBy(sorted, (u) => u.totalRp);
 }
 
 /** 順位が n 位以内の行を返す（n 位に同点が複数いれば全員含むので n 件を超えることがある） */

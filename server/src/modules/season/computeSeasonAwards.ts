@@ -17,7 +17,7 @@ import {
   type StatsIncrement,
 } from '../stats/statsComputation.js';
 import { CURRENT_SEASON } from './seasonConfig.js';
-import { fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
+import { assignPositionsBy, fetchSeasonTournaments, resolveDisplayName } from './computeSeasonRanking.js';
 import { resolveAvatarUrl } from './avatar.js';
 
 /** "Kc" のようなカード文字列を Card オブジェクトに変換 */
@@ -32,12 +32,32 @@ interface StoredAction {
   street?: string;
 }
 
+/**
+ * オールインでランナウトまで行ったハンドかを履歴から判定する。
+ * トナメでは EV を計算しない（allInEVProfit が常に null）ため、アクションから見る。
+ * 全額コールは 'allin' でなく 'call' で記録されるので、リバーのアクションが無いまま
+ * ボードが5枚開いたハンドも対象にする。
+ */
+export function isAllInRunoutHand(
+  actions: Pick<StoredAction, 'action' | 'street'>[],
+  communityCardCount: number,
+  showdownPlayerCount: number,
+): boolean {
+  if (communityCardCount < 5 || showdownPlayerCount < 2) return false;
+  const beforeRiver = (street?: string) => street !== undefined && street !== 'river';
+  return (
+    actions.some((a) => a.action === 'allin' && beforeRiver(a.street)) ||
+    (actions.length > 0 && beforeRiver(actions[actions.length - 1].street))
+  );
+}
+
 export interface AwardWinner {
   userId: string;
   name: string;
   avatarUrl: string | null;
   value: number;
   valueLabel: string;
+  rank: number;
 }
 
 export interface Award {
@@ -226,6 +246,11 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
         seatPosition: p.seatPosition,
         finalHand: p.finalHand,
       }));
+      const allInRunout = isAllInRunoutHand(
+        actions,
+        h.communityCards.length,
+        h.players.filter((p) => p.finalHand).length,
+      );
 
       for (const p of h.players) {
         if (!p.userId || botIds.has(p.userId)) continue;
@@ -255,7 +280,7 @@ async function aggregateHandStats(prisma: PrismaClient, botIds: Set<string>): Pr
           bestHandName: '',
         };
         addIncrement(cur.inc, inc);
-        if (p.allInEVProfit != null) {
+        if (allInRunout && p.finalHand) {
           cur.allinHands += 1;
           if (h.winners.includes(p.userId)) cur.allinWins += 1;
         }
@@ -366,7 +391,7 @@ export interface AwardRanking {
   category: string;
   title: string;
   emoji: string;
-  ranked: { userId: string; valueLabel: string }[];
+  ranked: { userId: string; valueLabel: string; rank: number }[];
 }
 
 /** 対戦相手の参照（一番同卓／一番ヘッズアップ） */
@@ -598,17 +623,18 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const rankings: AwardRanking[] = [];
   for (const spec of specs) {
     const sorted = [...spec.candidates].sort((a, b) => (spec.order === 'desc' ? b.value - a.value : a.value - b.value));
+    const ranked = assignPositionsBy(sorted, (c) => c.value);
     rankings.push({
       key: spec.key,
       category: spec.category,
       title: spec.title,
       emoji: spec.emoji,
-      ranked: sorted.map((c) => ({ userId: c.userId, valueLabel: c.valueLabel })),
+      ranked: ranked.map((c) => ({ userId: c.userId, valueLabel: c.valueLabel, rank: c.position })),
     });
-    const withDisplay = sorted
+    const withDisplay = ranked
       .map((c): AwardWinner | null => {
         const d = displays.get(c.userId);
-        return d ? { userId: c.userId, name: d.name, avatarUrl: d.avatarUrl, value: c.value, valueLabel: c.valueLabel } : null;
+        return d ? { userId: c.userId, name: d.name, avatarUrl: d.avatarUrl, value: c.value, valueLabel: c.valueLabel, rank: c.position } : null;
       })
       .filter((w): w is AwardWinner => w !== null);
     awards.push({

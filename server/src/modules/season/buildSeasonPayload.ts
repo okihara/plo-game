@@ -125,7 +125,7 @@ export async function buildSeasonPayload(prisma: PrismaClient): Promise<SeasonFu
           key: r.key,
           title: r.title,
           emoji: r.emoji,
-          rank: idx + 1,
+          rank: r.ranked[idx].rank,
           total: r.ranked.length,
           valueLabel: r.ranked[idx].valueLabel,
         });
