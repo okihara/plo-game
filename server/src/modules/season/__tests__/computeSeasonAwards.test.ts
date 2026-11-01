@@ -1,7 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { isAllInRunoutHand } from '../computeSeasonAwards.js';
+import { appearanceLabel, isAllInRunoutHand, potInBB } from '../computeSeasonAwards.js';
 
 const act = (action: string, street?: string) => ({ action, street });
+
+describe('potInBB', () => {
+  it('ポットをビッグブラインドの枚数に換算する', () => {
+    expect(potInBB(1_419_600, '2000/4000')).toBe(354.9);
+  });
+
+  it('ブラインドが読めないときは 0', () => {
+    expect(potInBB(1000, '')).toBe(0);
+    expect(potInBB(1000, '0/0')).toBe(0);
+  });
+});
+
+describe('appearanceLabel', () => {
+  it('全トナメに出場していれば皆勤と表示する', () => {
+    expect(appearanceLabel(60, 60)).toBe('60本（皆勤）');
+  });
+
+  it('1本でも欠席があれば出場本数を表示する', () => {
+    expect(appearanceLabel(58, 60)).toBe('58本出場');
+  });
+});
 
 describe('isAllInRunoutHand', () => {
   it('リバー前のオールインがコールされてランナウトしたら対象', () => {
