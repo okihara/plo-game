@@ -38,18 +38,27 @@ export const SEASON_3: SeasonConfig = {
   end: new Date('2026-10-31T23:59:59.999+09:00'),
 };
 
+export const SEASON_4: SeasonConfig = {
+  id: 4,
+  name: 'シーズン４',
+  label: '2026 11/1 -',
+  start: new Date('2026-11-01T00:00:00+09:00'),
+  // end は未定。確定するまでの暫定値（この日付までの完了トナメを集計対象に含める）。
+  end: new Date('2026-12-31T23:59:59.999+09:00'),
+};
+
 /** 定義済みシーズン（古い順）。特設ページのアーカイブ一覧もこれを元に作る。 */
-export const SEASONS: SeasonConfig[] = [SEASON_1, SEASON_2, SEASON_3];
+export const SEASONS: SeasonConfig[] = [SEASON_1, SEASON_2, SEASON_3, SEASON_4];
 
 /** 進行中のシーズン。ライブ集計（RPランキング・バッジ付与等）の対象。 */
-export const CURRENT_SEASON: SeasonConfig = SEASON_3;
+export const CURRENT_SEASON: SeasonConfig = SEASON_4;
 
 /**
  * 結果発表ページ（/season）が既定で表示する確定済みシーズン。
  * 新シーズンの終了後、スナップショット生成が済んだらここを切り替える。
  * これより新しいシーズンはアーカイブ一覧にも出さない（集計途中を公開しないため）。
  */
-export const RESULT_SEASON: SeasonConfig = SEASON_2;
+export const RESULT_SEASON: SeasonConfig = SEASON_3;
 
 /** バッジ type の接頭辞（例 season1 → 'season1_no1' 等。BADGE_META と対応）。 */
 export function seasonBadgePrefix(season: SeasonConfig): string {
