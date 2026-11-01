@@ -1,7 +1,17 @@
 import { describe, it, expect } from 'vitest';
-import { isAllInRunoutHand } from '../computeSeasonAwards.js';
+import { appearanceLabel, isAllInRunoutHand } from '../computeSeasonAwards.js';
 
 const act = (action: string, street?: string) => ({ action, street });
+
+describe('appearanceLabel', () => {
+  it('全トナメに出場していれば皆勤と表示する', () => {
+    expect(appearanceLabel(60, 60)).toBe('60本（皆勤）');
+  });
+
+  it('1本でも欠席があれば出場本数を表示する', () => {
+    expect(appearanceLabel(58, 60)).toBe('58本出場');
+  });
+});
 
 describe('isAllInRunoutHand', () => {
   it('リバー前のオールインがコールされてランナウトしたら対象', () => {

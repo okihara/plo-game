@@ -140,6 +140,16 @@ function addIncrement(acc: StatsIncrement, inc: StatsIncrement): void {
   acc.wsdCount += inc.wsdCount;
 }
 
+/** リエントリー込みの総エントリー数。2未満のトナメは集計対象外。 */
+function countEntries(t: Awaited<ReturnType<typeof fetchSeasonTournaments>>[number]): number {
+  return t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
+}
+
+/** 最多出場賞の表示。開催された全トナメに出場していれば皆勤と分かるようにする。 */
+export function appearanceLabel(played: number, held: number): string {
+  return played === held ? `${played}本（皆勤）` : `${played}本出場`;
+}
+
 /** TournamentResult から参加・成績系の集計を行う。 */
 function aggregateParticipation(
   tournaments: Awaited<ReturnType<typeof fetchSeasonTournaments>>,
@@ -147,7 +157,7 @@ function aggregateParticipation(
   const map = new Map<string, ParticipationAcc>();
 
   for (const t of tournaments) {
-    const totalEntries = t.results.length + t.results.reduce((s, r) => s + (r.reentries ?? 0), 0);
+    const totalEntries = countEntries(t);
     if (totalEntries < 2) continue;
     const prizes = PrizeCalculator.calculate(totalEntries, t.prizePool);
     const amountByPosition = new Map<number, number>(prizes.map((p) => [p.position, p.amount]));
@@ -458,6 +468,7 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const botIds = new Set(bots.map((b) => b.id));
 
   const participation = aggregateParticipation(tournaments);
+  const heldTournaments = tournaments.filter((t) => countEntries(t) >= 2).length;
   const { map: stats, oppTable, oppHu } = await aggregateHandStats(prisma, botIds);
 
   // 表示用ユーザー情報をまとめて取得
@@ -538,8 +549,12 @@ export async function computeSeasonAwards(prisma: PrismaClient): Promise<SeasonA
   const specs: AwardSpec[] = [
     // ===== 参加・継続系 =====
     {
-      key: 'iron_man', category: '参加・継続', title: '鉄人賞', emoji: '🔥', description: '最も多くエントリーした皆勤の猛者', order: 'desc',
+      key: 'iron_man', category: '参加・継続', title: '鉄人賞', emoji: '🔥', description: 'リエントリーを含めて最も多くエントリーした猛者', order: 'desc',
       candidates: partList.filter((p) => p.entries > 0).map((p) => ({ userId: p.userId, value: p.entries, valueLabel: `${p.entries}エントリー` })),
+    },
+    {
+      key: 'most_appearances', category: '参加・継続', title: '最多出場賞', emoji: '📅', description: '最も多くのトナメに出場した人', order: 'desc',
+      candidates: partList.filter((p) => p.tournaments > 0).map((p) => ({ userId: p.userId, value: p.tournaments, valueLabel: appearanceLabel(p.tournaments, heldTournaments) })),
     },
     {
       key: 'reentry_king', category: '参加・継続', title: '不屈の戦士', emoji: '♻️', description: '何度でも立ち向かった不屈の人', order: 'desc',
