@@ -83,6 +83,8 @@ interface AwardWinner {
   avatarUrl: string | null;
   value: number;
   valueLabel: string;
+  /** 同値は同順位。この項目を持たない古いスナップショットは未定義。 */
+  rank?: number;
 }
 
 interface Award {
@@ -308,7 +310,7 @@ function AwardCard({ award }: { award: Award }) {
               onClick={() => navigateToPlayer(r.userId)}
               className="flex items-center gap-[1.5cqw] px-[1cqw] active:opacity-70"
             >
-              <span className="text-[2.6cqw] text-cream-700 w-[4cqw]">{i + 2}位</span>
+              <span className="text-[2.6cqw] text-cream-700 w-[4cqw]">{r.rank ?? i + 2}位</span>
               <Avatar url={r.avatarUrl} name={r.name} size="w-[5cqw] h-[5cqw]" />
               <span className="flex-1 min-w-0 text-left text-[2.7cqw] text-cream-800 truncate">{r.name}</span>
               <span className="text-[2.6cqw] text-cream-700 shrink-0">{r.valueLabel}</span>
