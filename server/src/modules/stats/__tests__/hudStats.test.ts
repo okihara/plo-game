@@ -114,6 +114,45 @@ describe('computeHandHud', () => {
     expect(hud(called, 'BB').checkRaise).toEqual({ n: 0, d: 1 });
   });
 
+  it('Raise vs Bet: XR の場面も IP でのレイズも数え、レイズ済みのベットには数えない', () => {
+    const pre = [...folds('UTG', 'HJ'), act('CO', 'raise', 7), act('BTN', 'call', 7), act('SB', 'fold'), act('BB', 'call', 5)];
+    const actions = [...pre, flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'raise', 40), flop('BB', 'fold'), flop('CO', 'fold')];
+    // BTN: IP で CB にレイズ
+    expect(hud(actions, 'BTN').raiseVsBet).toEqual({ n: 1, d: 1 });
+    // BB: ベットとレイズの両方を受けたので機会なし（XR の機会はある）
+    expect(hud(actions, 'BB').raiseVsBet).toEqual({ n: 0, d: 0 });
+    expect(hud(actions, 'BB').checkRaise).toEqual({ n: 0, d: 1 });
+    // ベッター本人は機会なし
+    expect(hud(actions, 'CO').raiseVsBet).toEqual({ n: 0, d: 0 });
+
+    const xr = [...pre, flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'call', 10), flop('BB', 'raise', 60), flop('CO', 'fold'), flop('BTN', 'fold')];
+    expect(hud(xr, 'BB').raiseVsBet).toEqual({ n: 1, d: 1 });
+    expect(hud(xr, 'BTN').raiseVsBet).toEqual({ n: 0, d: 1 });
+  });
+
+  it('Raise vs Bet: リンプポットも数える', () => {
+    const actions = [
+      ...folds('UTG', 'HJ', 'CO', 'BTN'), act('SB', 'call', 1), act('BB', 'check'),
+      flop('SB', 'bet', 4), flop('BB', 'raise', 16), flop('SB', 'fold'),
+    ];
+    expect(hud(actions, 'BB').raiseVsBet).toEqual({ n: 1, d: 1 });
+  });
+
+  it('Fold to Raise: 自分のベットにレイズを受けたとき', () => {
+    const pre = [...folds('UTG', 'HJ'), act('CO', 'raise', 7), act('BTN', 'call', 7), act('SB', 'fold'), act('BB', 'call', 5)];
+    const folded = [...pre, flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'raise', 40), flop('BB', 'fold'), flop('CO', 'fold')];
+    expect(hud(folded, 'CO').foldToRaise).toEqual({ n: 1, d: 1 });
+    // レイズした側・ベットしていない側は機会なし
+    expect(hud(folded, 'BTN').foldToRaise).toEqual({ n: 0, d: 0 });
+    expect(hud(folded, 'BB').foldToRaise).toEqual({ n: 0, d: 0 });
+
+    const called = [...pre, flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'raise', 40), flop('BB', 'fold'), flop('CO', 'call', 30)];
+    expect(hud(called, 'CO').foldToRaise).toEqual({ n: 0, d: 1 });
+    // レイズに対してさらにリレイズが入ってから回ってきたときは数えない
+    const reraised = [...pre, flop('BB', 'check'), flop('CO', 'bet', 10), flop('BTN', 'raise', 40), flop('BB', 'raise', 120), flop('CO', 'fold'), flop('BTN', 'fold')];
+    expect(hud(reraised, 'CO').foldToRaise).toEqual({ n: 0, d: 0 });
+  });
+
   it('Steal: 4人卓は BTN の前の席（UTG 表示）も対象', () => {
     // 4人卓・ディーラー席0: BTN=0, SB=1, BB=2, UTG=3
     const four = players.slice(0, 4).map((p, i) => ({ ...p, odId: ['D', 'S', 'B', 'U'][i] }));

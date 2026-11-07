@@ -14,6 +14,8 @@ export const HUD_STAT_LABELS: Record<HudStatKey, string> = {
   cbet: 'CB',
   threeBetCbet: '3Bet CB',
   foldToCbet: 'Fold to CB',
+  raiseVsBet: 'Raise vs Bet',
+  foldToRaise: 'Fold to Raise',
   bbFoldVsOpen: 'BB Fold',
   bb3BetVsOpen: 'BB 3Bet',
   steal: 'Steal',
