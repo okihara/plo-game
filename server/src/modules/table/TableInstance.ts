@@ -10,7 +10,7 @@ import { nanoid } from 'nanoid';
 import { TABLE_CONSTANTS } from './constants.js';
 import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks, CoachingInfo } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
-import { chooseFastFoldButtonSeat } from './helpers/fastFoldButton.js';
+import { chooseFastFoldButtonSeat, chooseSeatAvoidingBlinds } from './helpers/blindRotation.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
@@ -161,7 +161,7 @@ export class TableInstance {
     buyIn: number;
     preferredSeat?: number;
     skipJoinedEmit?: boolean;
-    /** FastFold の卓移動で引き継ぐブラインド履歴 */
+    /** 卓移動で引き継ぐブラインド履歴（FastFold / トーナメントのテーブル移動） */
     handsSinceBlind?: number;
   }): number | null {
     const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit, handsSinceBlind } = params;
@@ -180,13 +180,25 @@ export class TableInstance {
       return null;
     }
 
+    // 卓移動してきた人（ブラインド履歴あり）は、直近ブラインドを払っていれば
+    // 着席直後に SB/BB にならない席を選ぶ。FF はボタン側で調整するので対象外。
+    const seatChoice = preferredSeat ?? (
+      !this.isFastFold && handsSinceBlind !== undefined
+        ? chooseSeatAvoidingBlinds({
+            seats: this.playerManager.getSeats(),
+            lastDealer: this.lastDealerPosition,
+            handsSinceBlind,
+          }) ?? undefined
+        : undefined
+    );
+
     const seatIndex = this.playerManager.seatPlayer({
       odId,
       odName,
       profile,
       socket,
       buyIn,
-      preferredSeat,
+      preferredSeat: seatChoice,
       isHandInProgress: this.isHandInProgress,
       handsSinceBlind,
     });
@@ -1039,6 +1051,29 @@ export class TableInstance {
     this.gameState.dealerPosition = (button - 1 + this.maxPlayers) % this.maxPlayers;
   }
 
+  /** このハンドで SB/BB を払った席を記録（卓移動時の席選び・FF のボタン決定に使う） */
+  private recordBlindSeats(): void {
+    if (!this.gameState) return;
+    const players = this.gameState.players;
+    const active = players.filter(p => !p.isSittingOut).length;
+    const blindSeats = new Set<number>();
+    players.forEach((p, i) => {
+      if (p.isSittingOut) return;
+      // ヘッズアップはボタンが SB を払う（position は 'BTN' 表記）
+      if (p.position === 'SB' || p.position === 'BB' || (active === 2 && p.position === 'BTN')) {
+        blindSeats.add(i);
+      }
+    });
+    this.playerManager.recordBlindSeats(blindSeats);
+  }
+
+  /** 最後にブラインドを払ってから何ハンド経ったか（卓移動で引き継ぐ用） */
+  public getHandsSinceBlind(odId: string): number | undefined {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return undefined;
+    return this.playerManager.getSeat(seatIndex)?.handsSinceBlind;
+  }
+
   private get minPlayersToStart(): number {
     if (this._minPlayersToStart !== null) return this._minPlayersToStart;
     if (this.isPrivate) return 2;
@@ -1155,13 +1190,7 @@ export class TableInstance {
     this.gameState = this.variantAdapter.startHand(this.gameState);
     this.lastDealerPosition = this.gameState.dealerPosition;
 
-    if (this.isFastFold) {
-      const blindSeats = new Set<number>();
-      this.gameState.players.forEach((p, i) => {
-        if (!p.isSittingOut && (p.position === 'SB' || p.position === 'BB')) blindSeats.add(i);
-      });
-      this.playerManager.recordBlindSeats(blindSeats);
-    }
+    this.recordBlindSeats();
 
     // ブラインド投入でオールインになったプレイヤーがいれば記録（プリフロップ = 0枚）
     if (this.gameState.players.some(p => p.isAllIn)) {

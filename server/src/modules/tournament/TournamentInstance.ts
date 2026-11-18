@@ -686,7 +686,7 @@ export class TournamentInstance {
     player: TournamentPlayer,
     table: TableInstance,
     chips: number,
-    options?: { skipJoinedEmit?: boolean }
+    options?: { skipJoinedEmit?: boolean; handsSinceBlind?: number }
   ): number | null {
     const seatIndex = table.seatPlayer({
       odId: player.odId,
@@ -695,6 +695,7 @@ export class TournamentInstance {
       socket: player.socket,
       buyIn: chips,
       skipJoinedEmit: options?.skipJoinedEmit,
+      handsSinceBlind: options?.handsSinceBlind,
     });
 
     if (seatIndex === null) {
@@ -1064,13 +1065,14 @@ export class TournamentInstance {
       reason: 'テーブルバランス調整',
     });
 
-    // チップを記録して離席
+    // チップとブラインド履歴を記録して離席
     const chips = fromTable.getPlayerChips(odId) ?? player.chips;
+    const handsSinceBlind = fromTable.getHandsSinceBlind(odId);
     fromTable.unseatPlayer(odId);
     this.untrackPlayerFromTable(odId, fromTableId);
 
-    // 新テーブルに着席
-    const seatIndex = this.seatPlayerAtTable(player, toTable, chips);
+    // 新テーブルに着席（直近ブラインドを払っていれば、すぐ SB/BB にならない席を選ぶ）
+    const seatIndex = this.seatPlayerAtTable(player, toTable, chips, { handsSinceBlind });
 
     if (seatIndex !== null) {
       player.socket?.emit('tournament:table_assigned', {
@@ -1134,10 +1136,11 @@ export class TournamentInstance {
         const oldTable = this.tables.get(player.tableId);
         if (oldTable && oldTable.id !== finalTable.id) {
           const chips = oldTable.getPlayerChips(player.odId) ?? player.chips;
+          const handsSinceBlind = oldTable.getHandsSinceBlind(player.odId);
           oldTable.unseatPlayer(player.odId);
           this.untrackPlayerFromTable(player.odId, player.tableId);
 
-          this.seatPlayerAtTable(player, finalTable, chips);
+          this.seatPlayerAtTable(player, finalTable, chips, { handsSinceBlind });
         }
       }
     }

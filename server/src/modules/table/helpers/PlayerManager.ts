@@ -4,7 +4,7 @@ import { Socket } from 'socket.io';
 import type { PlayerProfile } from '@plo/shared';
 import { SeatInfo } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
-import { HANDS_SINCE_BLIND_CAP } from './fastFoldButton.js';
+import { HANDS_SINCE_BLIND_CAP } from './blindRotation.js';
 
 export interface SeatPlayerParams {
   odId: string;
