@@ -4,6 +4,7 @@ import { Socket } from 'socket.io';
 import type { PlayerProfile } from '@plo/shared';
 import { SeatInfo } from '../types.js';
 import { TABLE_CONSTANTS } from '../constants.js';
+import { HANDS_SINCE_BLIND_CAP } from './fastFoldButton.js';
 
 export interface SeatPlayerParams {
   odId: string;
@@ -13,6 +14,7 @@ export interface SeatPlayerParams {
   buyIn: number;
   preferredSeat?: number;
   isHandInProgress: boolean;
+  handsSinceBlind?: number;
 }
 
 export class PlayerManager {
@@ -47,7 +49,7 @@ export class PlayerManager {
    * プレイヤーを着席させる
    */
   seatPlayer(params: SeatPlayerParams): number | null {
-    const { odId, odName, profile, socket, buyIn, preferredSeat, isHandInProgress } = params;
+    const { odId, odName, profile, socket, buyIn, preferredSeat, isHandInProgress, handsSinceBlind } = params;
 
     // 空き席を探す
     let seatIndex = preferredSeat ?? -1;
@@ -68,6 +70,7 @@ export class PlayerManager {
       buyIn,
       waitingForNextHand: isHandInProgress, // ハンド中に着席した場合は次のハンドから参加
       consecutiveTimeouts: 0,
+      handsSinceBlind,
     };
 
     return seatIndex;
@@ -102,6 +105,16 @@ export class PlayerManager {
         seat.waitingForNextHand = false;
       }
     }
+  }
+
+  /**
+   * ハンド開始時のブラインド記録（SB/BB を払った席は 0、それ以外は +1）
+   */
+  recordBlindSeats(blindSeats: ReadonlySet<number>): void {
+    this.seats.forEach((seat, i) => {
+      if (!seat || seat.waitingForNextHand) return;
+      seat.handsSinceBlind = blindSeats.has(i) ? 0 : (seat.handsSinceBlind ?? HANDS_SINCE_BLIND_CAP) + 1;
+    });
   }
 
   /**

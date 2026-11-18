@@ -15,8 +15,9 @@ function movePlayerToNewTable(params: {
   chips: number;
   sourceTable: TableInstance;
   tableManager: TableManager;
+  handsSinceBlind?: number;
 }): void {
-  const { odId, odName, profile, socket, chips, sourceTable, tableManager } = params;
+  const { odId, odName, profile, socket, chips, sourceTable, tableManager, handsSinceBlind } = params;
 
   tableManager.removePlayerFromTracking(odId);
   // 切断猶予中に FastFold で席を失うケースでも、grace timer を持ち越して新テーブルで
@@ -50,6 +51,7 @@ function movePlayerToNewTable(params: {
     socket,
     buyIn: chips,
     skipJoinedEmit: true,
+    handsSinceBlind,
   });
 
   if (seatNumber !== null) {
@@ -82,6 +84,7 @@ export function setupFastFoldCallback(table: TableInstance, tableManager: TableM
         chips: p.chips,
         sourceTable: table,
         tableManager,
+        handsSinceBlind: p.handsSinceBlind,
       });
     }
   };
@@ -118,5 +121,6 @@ export async function handleFastFoldMove(
     chips: unseatResult.chips,
     sourceTable: currentTable,
     tableManager,
+    handsSinceBlind: unseatResult.handsSinceBlind,
   });
 }

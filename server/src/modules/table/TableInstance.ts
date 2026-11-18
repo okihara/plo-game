@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import { TABLE_CONSTANTS } from './constants.js';
 import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks, CoachingInfo } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
+import { chooseFastFoldButtonSeat } from './helpers/fastFoldButton.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
@@ -58,7 +59,7 @@ export class TableInstance {
   private horseHandsPerRound: number = 0;
 
   // ファストフォールド: ハンド完了後に全プレイヤーを再割り当てするコールバック
-  public onFastFoldReassign?: (players: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket }[]) => void;
+  public onFastFoldReassign?: (players: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket; handsSinceBlind?: number }[]) => void;
 
   // ファストフォールド: タイムアウトフォールド時にテーブル移動するコールバック
   public onTimeoutFold?: (odId: string, socket: Socket) => Promise<void>;
@@ -160,8 +161,10 @@ export class TableInstance {
     buyIn: number;
     preferredSeat?: number;
     skipJoinedEmit?: boolean;
+    /** FastFold の卓移動で引き継ぐブラインド履歴 */
+    handsSinceBlind?: number;
   }): number | null {
-    const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit } = params;
+    const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit, handsSinceBlind } = params;
 
     // 二重着席ガード: 同じユーザーの現役席が既にあるなら着席させない。
     // 同一ユーザーの join（matchmaking:join / private:join 等）が並行して走った場合の最後の防衛線。
@@ -185,6 +188,7 @@ export class TableInstance {
       buyIn,
       preferredSeat,
       isHandInProgress: this.isHandInProgress,
+      handsSinceBlind,
     });
 
     if (seatIndex === null) {
@@ -290,7 +294,7 @@ export class TableInstance {
 
   // ファストフォールド用: フォールド済みプレイヤーを静かに離席させる
   // table:left は送信しない（table:change を代わりに送るため）
-  public unseatForFastFold(odId: string): { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket | null } | null {
+  public unseatForFastFold(odId: string): { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket | null; handsSinceBlind?: number } | null {
     const seatIndex = this.playerManager.findSeatByOdId(odId);
     if (seatIndex === -1) return null;
 
@@ -313,7 +317,7 @@ export class TableInstance {
     // 席情報は残してFastFold移動済みマーク（ハンド終了まで表示用に保持）
     this.playerManager.markLeftForFastFold(seatIndex);
 
-    return { odId, odName: seat.odName, profile: seat.profile, chips, socket };
+    return { odId, odName: seat.odName, profile: seat.profile, chips, socket, handsSinceBlind: seat.handsSinceBlind };
   }
 
   /**
@@ -1018,6 +1022,23 @@ export class TableInstance {
     this._minPlayersToStart = n;
   }
 
+  /**
+   * FastFold: startHand がボタンを「次の席」へ進めることを踏まえ、選んだ席の直前を
+   * dealerPosition にセットしておく（startHand 後にボタン＝選んだ席になる）。
+   */
+  private applyFastFoldButton(seats: ReadonlyArray<{ handsSinceBlind?: number } | null>): void {
+    if (!this.gameState) return;
+    const occupied = this.gameState.players
+      .map((p, i) => (p.isSittingOut ? -1 : i))
+      .filter(i => i !== -1);
+    const button = chooseFastFoldButtonSeat(
+      occupied,
+      seat => seats[seat]?.handsSinceBlind ?? Infinity,
+    );
+    if (button === null) return;
+    this.gameState.dealerPosition = (button - 1 + this.maxPlayers) % this.maxPlayers;
+  }
+
   private get minPlayersToStart(): number {
     if (this._minPlayersToStart !== null) return this._minPlayersToStart;
     if (this.isPrivate) return 2;
@@ -1125,9 +1146,22 @@ export class TableInstance {
     // 正しく開始時の値になり、Result の profit が「自分の投資を引いた純利益」になる)
     this.historyRecorder.recordHandStart(seats, this.gameState, this.blinds);
 
+    // FastFold: ボタンを回す代わりに、ブラインドが同じ人に連続しない位置を選ぶ
+    if (this.isFastFold) {
+      this.applyFastFoldButton(seats);
+    }
+
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
     this.lastDealerPosition = this.gameState.dealerPosition;
+
+    if (this.isFastFold) {
+      const blindSeats = new Set<number>();
+      this.gameState.players.forEach((p, i) => {
+        if (!p.isSittingOut && (p.position === 'SB' || p.position === 'BB')) blindSeats.add(i);
+      });
+      this.playerManager.recordBlindSeats(blindSeats);
+    }
 
     // ブラインド投入でオールインになったプレイヤーがいれば記録（プリフロップ = 0枚）
     if (this.gameState.players.some(p => p.isAllIn)) {
@@ -1656,7 +1690,7 @@ export class TableInstance {
 
     // ファストフォールド: 残り全プレイヤーを新テーブルに再割り当て
     if (this.isFastFold && this.onFastFoldReassign) {
-      const playersToMove: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket }[] = [];
+      const playersToMove: { odId: string; odName: string; profile: PlayerProfile; chips: number; socket: Socket; handsSinceBlind?: number }[] = [];
       const currentSeats = this.playerManager.getSeats();
       for (let i = 0; i < this.maxPlayers; i++) {
         const seat = currentSeats[i];
@@ -1675,6 +1709,7 @@ export class TableInstance {
             profile: seat.profile,
             chips: seat.chips,
             socket: seat.socket,
+            handsSinceBlind: seat.handsSinceBlind,
           });
           // 静かに離席（ルーム離脱 + 席クリア）
           seat.socket.leave(this.roomName);

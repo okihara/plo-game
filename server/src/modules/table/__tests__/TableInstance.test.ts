@@ -1925,3 +1925,38 @@ describe('TableInstance - canRemoveSafelyDuringHand', () => {
     expect(table.canRemoveSafelyDuringHand(folder!.odId)).toBe(false);
   });
 });
+
+describe('FastFold ボタン位置（ブラインド連続の回避）', () => {
+  it('直前ハンドでブラインドを払った人は次の卓で SB/BB にならない', () => {
+    for (let trial = 0; trial < 30; trial++) {
+      const io = createMockIO();
+      const table = new TableInstance(io, '1/2', true);
+      const recentBlinds = new Set<string>(['player_2', 'player_5']);
+      const seatOf = new Map<string, number>();
+      for (let i = 0; i < 6; i++) {
+        const odId = `player_${i}`;
+        const seat = table.seatPlayer({
+          ...testSeatParams(odId, `Player ${i}`, createMockSocket(), 600),
+          handsSinceBlind: recentBlinds.has(odId) ? 0 : 3,
+        });
+        seatOf.set(odId, seat!);
+      }
+      table.triggerMaybeStartHand();
+
+      const state = table.getClientGameState();
+      const blindSeats = state.players
+        .map((p, i) => (p && (p.position === 'SB' || p.position === 'BB') ? i : -1))
+        .filter(i => i !== -1);
+      expect(blindSeats).toHaveLength(2);
+      for (const odId of recentBlinds) {
+        expect(blindSeats).not.toContain(seatOf.get(odId));
+      }
+      // 引き継ぎ値の更新: ブラインドを払った席は 0、それ以外は +1
+      for (const [odId, seat] of seatOf) {
+        const r = table.unseatForFastFold(odId)!;
+        const expected = blindSeats.includes(seat) ? 0 : (recentBlinds.has(odId) ? 1 : 4);
+        expect(r.handsSinceBlind).toBe(expected);
+      }
+    }
+  });
+});

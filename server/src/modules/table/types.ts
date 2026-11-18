@@ -60,6 +60,11 @@ export interface SeatInfo {
    * 手動アクション成功で 0 にリセットされる。
    */
   consecutiveTimeouts: number;
+  /**
+   * 最後に SB/BB を払ってから何ハンド経ったか（0=直前ハンドで払った）。
+   * FastFold でテーブルを移っても引き継ぎ、ボタン位置決定に使う。未定義=記録なし（新規着席）。
+   */
+  handsSinceBlind?: number;
 }
 
 // ダッシュボード用：送信メッセージログ
