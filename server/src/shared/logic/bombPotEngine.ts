@@ -9,7 +9,7 @@
 //   - 各 contested side pot を半分ずつ 2 ボードに分け、ボード毎に独立評価
 
 import { GameState, Player, Position, POSITIONS, Action, Card } from './types.js';
-import { createDeck, shuffleDeck, dealCards } from './deck.js';
+import { createDeck, shuffleDeck, dealCards, sortHoleCards } from './deck.js';
 import { evaluatePLOHand, compareHands, formatHandName } from './handEvaluator.js';
 import {
   assignBlindPostingPositions,
@@ -162,7 +162,7 @@ export function startBombPotHand(state: GameState): GameState {
   for (let i = 0; i < 6; i++) {
     if (newState.players[i].isSittingOut) continue;
     const { cards, remainingDeck } = dealCards(newState.deck, HOLE_CARD_COUNT);
-    newState.players[i].holeCards = cards;
+    newState.players[i].holeCards = sortHoleCards(cards);
     newState.deck = remainingDeck;
   }
 

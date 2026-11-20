@@ -1,5 +1,5 @@
 import { GameState, Player, Position, POSITION_LABELS_BY_PLAYER_COUNT, getRingPositions, Action, getVariantConfig } from './types.js';
-import { createDeck, shuffleDeck, dealCards } from './deck.js';
+import { createDeck, shuffleDeck, dealCards, sortHoleCards } from './deck.js';
 import { evaluatePLOHand, evaluateOmahaHiLoHand, compareHands, formatHandName } from './handEvaluator.js';
 import { resolveHiLoShowdown } from './hiLoSplitPot.js';
 
@@ -148,7 +148,7 @@ export function startNewHand(state: GameState): GameState {
   for (let i = 0; i < newState.players.length; i++) {
     if (newState.players[i].isSittingOut) continue;
     const { cards, remainingDeck } = dealCards(newState.deck, holeCardCount);
-    newState.players[i].holeCards = cards;
+    newState.players[i].holeCards = sortHoleCards(cards);
     newState.deck = remainingDeck;
   }
 

@@ -4,7 +4,7 @@
 // ショーダウン: ハイ/ローでポットをスプリット（8-or-betterクオリファイ）
 
 import { GameState, Player, Position, POSITIONS, Action, Street } from './types.js';
-import { createDeck, shuffleDeck, dealCards } from './deck.js';
+import { createDeck, shuffleDeck, dealCards, sortHoleCards } from './deck.js';
 import {
   getActivePlayers,
   getPlayersWhoCanAct,
@@ -187,7 +187,7 @@ export function startOmahaHiLoHand(state: GameState): GameState {
   for (let i = 0; i < MAX_PLAYERS; i++) {
     if (newState.players[i].isSittingOut) continue;
     const { cards, remainingDeck } = dealCards(newState.deck, 4);
-    newState.players[i].holeCards = cards;
+    newState.players[i].holeCards = sortHoleCards(cards);
     newState.deck = remainingDeck;
   }
 

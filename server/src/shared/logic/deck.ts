@@ -1,1 +1,1 @@
-export { createDeck, shuffleDeck, dealCards, cardToString, getRankValue } from '@plo/shared';
+export { createDeck, shuffleDeck, dealCards, sortHoleCards, cardToString, getRankValue } from '@plo/shared';

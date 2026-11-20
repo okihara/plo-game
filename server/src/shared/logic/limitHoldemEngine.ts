@@ -3,7 +3,7 @@
 // ホールカード2枚、コミュニティカード5枚、ベストハンドは7枚から最強5枚
 
 import { GameState, Player, Position, POSITIONS, Action, Street } from './types.js';
-import { createDeck, shuffleDeck, dealCards } from './deck.js';
+import { createDeck, shuffleDeck, dealCards, sortHoleCards } from './deck.js';
 import {
   getActivePlayers,
   getPlayersWhoCanAct,
@@ -188,7 +188,7 @@ export function startLimitHoldemHand(state: GameState): GameState {
   for (let i = 0; i < MAX_PLAYERS; i++) {
     if (newState.players[i].isSittingOut) continue;
     const { cards, remainingDeck } = dealCards(newState.deck, 2);
-    newState.players[i].holeCards = cards;
+    newState.players[i].holeCards = sortHoleCards(cards);
     newState.deck = remainingDeck;
   }
 
