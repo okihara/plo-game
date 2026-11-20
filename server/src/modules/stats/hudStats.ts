@@ -156,6 +156,20 @@ export function computeHandHud(input: HudHandInput): Map<string, PlayerHudStats>
         if (r !== -1) mark('checkRaise', flop[r].aggressive);
       }
 
+      // Raise vs Bet: まだレイズのないベットを受けたとき（XR の場面も含む。ポジション・人数・ポットの種類は問わない）
+      if (firstFlopAggr !== -1 && flop[firstFlopAggr].odId !== odId) {
+        const r = responseTo(flop, odId, firstFlopAggr);
+        if (r !== -1) mark('raiseVsBet', flop[r].aggressive);
+      }
+      // Fold to Raise: 自分のベットにレイズを受けたとき（間にさらにレイズが入ったら数えない）
+      if (firstFlopAggr !== -1 && flop[firstFlopAggr].odId === odId) {
+        const raise = flop.findIndex((a, i) => i > firstFlopAggr && a.aggressive);
+        if (raise !== -1) {
+          const r = responseTo(flop, odId, raise);
+          if (r !== -1) mark('foldToRaise', flop[r].action === 'fold');
+        }
+      }
+
       if (headsUpFlop && noBetBefore) {
         // CB: シングルレイズドポットのレイザー
         if (raises.length === 1 && pfa === odId) mark('cbet', flop[myFlop].aggressive);

@@ -98,6 +98,7 @@ const SAMPLE_HUD: PlayerHudStats = {
   donk: { n: 1, d: 8 }, checkRaise: { n: 1, d: 12 }, bmcb: { n: 5, d: 11 },
   foldTo3Bet: { n: 2, d: 3 }, fourBet: { n: 1, d: 3 }, foldTo4Bet: { n: 0, d: 0 },
   cbet: { n: 4, d: 6 }, threeBetCbet: { n: 1, d: 1 }, foldToCbet: { n: 2, d: 5 },
+  raiseVsBet: { n: 2, d: 9 }, foldToRaise: { n: 1, d: 3 },
   bbFoldVsOpen: { n: 3, d: 5 }, bb3BetVsOpen: { n: 1, d: 5 }, steal: { n: 7, d: 12 },
 };
 
