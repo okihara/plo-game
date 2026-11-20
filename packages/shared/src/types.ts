@@ -249,6 +249,7 @@ export const HUD_STAT_KEYS = [
   'vpip', 'pfr', 'threeBet', 'donk', 'checkRaise', 'bmcb',
   'foldTo3Bet', 'fourBet', 'foldTo4Bet',
   'cbet', 'threeBetCbet', 'foldToCbet',
+  'raiseVsBet', 'foldToRaise',
   'bbFoldVsOpen', 'bb3BetVsOpen', 'steal',
 ] as const;
 export type HudStatKey = typeof HUD_STAT_KEYS[number];

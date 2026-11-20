@@ -1,9 +1,11 @@
-// プライベート卓 HUD のスタッツ計算（DB依存なし）。ポストフロップはフロップのみを見る。
+// 卓内 HUD のスタッツ計算（DB依存なし）。ポストフロップはフロップのみを見る。
 //
 // 「アグレッシブ」= bet / raise、またはベット額を上げるオールイン。
 // オールインがレイズかどうかはブラインド込みのストリート拠出額を再現して判定する。
 
 import { HUD_STAT_KEYS, getPositionLabelsBySeat, type HudStatKey, type PlayerHudStats } from '@plo/shared';
+import type { GameState } from '../../shared/logic/types.js';
+import type { SeatInfo } from '../table/types.js';
 
 export interface HudAction {
   seatIndex: number;
@@ -156,6 +158,20 @@ export function computeHandHud(input: HudHandInput): Map<string, PlayerHudStats>
         if (r !== -1) mark('checkRaise', flop[r].aggressive);
       }
 
+      // Raise vs Bet: まだレイズのないベットを受けたとき（XR の場面も含む。ポジション・人数・ポットの種類は問わない）
+      if (firstFlopAggr !== -1 && flop[firstFlopAggr].odId !== odId) {
+        const r = responseTo(flop, odId, firstFlopAggr);
+        if (r !== -1) mark('raiseVsBet', flop[r].aggressive);
+      }
+      // Fold to Raise: 自分のベットにレイズを受けたとき（間にさらにレイズが入ったら数えない）
+      if (firstFlopAggr !== -1 && flop[firstFlopAggr].odId === odId) {
+        const raise = flop.findIndex((a, i) => i > firstFlopAggr && a.aggressive);
+        if (raise !== -1) {
+          const r = responseTo(flop, odId, raise);
+          if (r !== -1) mark('foldToRaise', flop[r].action === 'fold');
+        }
+      }
+
       if (headsUpFlop && noBetBefore) {
         // CB: シングルレイズドポットのレイザー
         if (raises.length === 1 && pfa === odId) mark('cbet', flop[myFlop].aggressive);
@@ -173,4 +189,25 @@ export function computeHandHud(input: HudHandInput): Map<string, PlayerHudStats>
     result.set(odId, hud);
   }
   return result;
+}
+
+/** 終わったハンドの GameState から、配られた全員分の HUD 増分を返す（卓の HUD とトナメのキャッシュ加算で共用） */
+export function computeHandHudFromGameState(
+  gameState: GameState,
+  seats: (SeatInfo | null)[],
+  startChips: Map<number, number>,
+): Map<string, PlayerHudStats> {
+  return computeHandHud({
+    actions: gameState.handHistory.map(a => ({
+      seatIndex: a.playerId,
+      odId: seats[a.playerId]?.odId ?? `seat_${a.playerId}`,
+      action: a.action,
+      amount: a.amount,
+      street: a.street,
+    })),
+    dealerPosition: gameState.dealerPosition,
+    players: seats.flatMap((seat, i) => (seat && startChips.has(i) ? [{ seatIndex: i, odId: seat.odId }] : [])),
+    smallBlind: gameState.smallBlind,
+    bigBlind: gameState.bigBlind,
+  });
 }

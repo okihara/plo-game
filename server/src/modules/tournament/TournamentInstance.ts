@@ -25,6 +25,8 @@ import {
   TOURNAMENT_DISCONNECT_GRACE_MS,
 } from './constants.js';
 import { TABLE_CONSTANTS } from '../table/constants.js';
+import { TableHudTracker } from '../table/helpers/TableHudTracker.js';
+import { loadTournamentHud } from '../stats/hudLoader.js';
 
 /**
  * BlindLevel から TableInstance に渡す blinds 文字列を生成。
@@ -57,6 +59,18 @@ export class TournamentInstance {
   private standingsCache: { at: number; value: TournamentStandings } | null = null;
   private readonly io: Server;
   private readonly roomName: string;
+  /**
+   * 卓内 HUD（過去トナメの直近ハンドの累計）。全卓で共有し、卓移動しても DB を読み直さない。
+   * 読み込み完了時は本人が今いる卓にだけ配信する
+   */
+  private readonly hudTracker = new TableHudTracker(
+    loadTournamentHud,
+    (odId) => {
+      const tableId = this.players.get(odId)?.tableId;
+      if (tableId) this.tables.get(tableId)?.broadcastGameState();
+    },
+    true,
+  );
 
   // 外部通知用コールバック（結果データ付き）
   public onTournamentComplete?: (tournamentId: string, results: TournamentResult[]) => void;
@@ -669,6 +683,7 @@ export class TournamentInstance {
       lifecycleCallbacks: callbacks,
       tournamentId: this.id,
       variant: this.config.gameVariant,
+      hudTracker: this.hudTracker,
     });
 
     this.tables.set(table.id, table);
