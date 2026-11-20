@@ -62,7 +62,7 @@ export interface SeatInfo {
   consecutiveTimeouts: number;
   /**
    * 最後に SB/BB を払ってから何ハンド経ったか（0=直前ハンドで払った）。
-   * FastFold でテーブルを移っても引き継ぎ、ボタン位置決定に使う。未定義=記録なし（新規着席）。
+   * トーナメントのテーブル移動で引き継ぎ、移動先の席選びに使う。未定義=記録なし（新規着席）。
    */
   handsSinceBlind?: number;
 }
