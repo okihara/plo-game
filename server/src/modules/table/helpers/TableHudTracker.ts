@@ -1,4 +1,5 @@
-// プライベート卓 HUD: DB の累計（着席時に読み込み）に、この卓で読み込み後に終わったハンドを足して返す
+// 卓内 HUD: DB の累計（着席時に読み込み）に、読み込み後に終わったハンドを足して返す。
+// プライベート卓は卓ごとに持ち、トナメは1つを全卓で共有する（卓移動しても引き継ぐ）
 
 import type { PlayerHudStats } from '@plo/shared';
 import { GameState } from '../../../shared/logic/types.js';
@@ -17,10 +18,13 @@ export class TableHudTracker {
   constructor(
     private readonly loader: HudLoader,
     private readonly onUpdate: () => void,
+    /** true: 一度読み込んだ人は読み直さない（トナメの卓移動のたびに DB を読まないため） */
+    private readonly loadOnce = false,
   ) {}
 
-  /** 着席時に呼ぶ。他の卓で遊んだ分も反映するため毎回読み直す */
+  /** 着席時に呼ぶ。プライベート卓は他の卓で遊んだ分も反映するため毎回読み直す */
   load(odId: string): void {
+    if (this.loadOnce && this.loadSeq.has(odId)) return;
     const seq = (this.loadSeq.get(odId) ?? 0) + 1;
     this.loadSeq.set(odId, seq);
     this.base.delete(odId);

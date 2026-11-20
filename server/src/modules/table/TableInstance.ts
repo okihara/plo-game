@@ -97,10 +97,10 @@ export class TableInstance {
   private readonly historyRecorder: IHandHistoryRecorder;
   private readonly adminHelper: AdminHelper;
   private variantAdapter: VariantAdapter;
-  /** プライベート卓 HUD（プライベートのキャッシュ卓のみ。それ以外は null） */
+  /** 卓内 HUD（プライベートのキャッシュ卓とトナメ卓のみ。それ以外は null） */
   private readonly hudTracker: TableHudTracker | null;
 
-  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; isPractice?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number }) {
+  constructor(io: Server, blinds: string = '1/3', isFastFold: boolean = false, options?: { isPrivate?: boolean; isPractice?: boolean; inviteCode?: string; ownerOdId?: string; variant?: GameVariant; historyRecorder?: IHandHistoryRecorder; isHorse?: boolean; gameMode?: GameMode; lifecycleCallbacks?: TableLifecycleCallbacks; tournamentId?: string; maxPlayers?: number; hudTracker?: TableHudTracker }) {
     this.id = nanoid(12);
     this.blinds = blinds;
     this.isFastFold = isFastFold;
@@ -142,9 +142,10 @@ export class TableInstance {
       ...(this.isPrivate ? { isPrivate: true } : {}),
     });
     this.adminHelper = new AdminHelper(this.playerManager, this.broadcast, this.actionController);
-    this.hudTracker = this.isPrivate && this.gameMode === 'cash'
+    // トナメは TournamentInstance が全卓共有のものを渡す
+    this.hudTracker = options?.hudTracker ?? (this.isPrivate && this.gameMode === 'cash'
       ? new TableHudTracker(loadPrivateHud, () => this.broadcastGameState())
-      : null;
+      : null);
   }
 
   // ============================================

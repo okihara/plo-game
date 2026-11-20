@@ -78,6 +78,20 @@ describe('TableHudTracker', () => {
     expect(tracker.get('B')).toBeUndefined();
   });
 
+  it('loadOnce: 卓移動で座り直しても読み直さず、それまでの分を引き継ぐ', async () => {
+    const loader = vi.fn().mockResolvedValue(dbHud(10));
+    const tracker = new TableHudTracker(loader, () => {}, true);
+
+    tracker.load('A');
+    await flush();
+    tracker.recordHand(raiseFoldHand, seats, startChips);
+    tracker.load('A');
+    await flush();
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(tracker.get('A')?.hands).toBe(11);
+  });
+
   it('読み込みに失敗したら HUD を出さない', async () => {
     const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const tracker = new TableHudTracker(() => Promise.reject(new Error('db down')), () => {});
