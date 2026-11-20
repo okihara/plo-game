@@ -16,7 +16,7 @@ import { StateTransformer } from './helpers/StateTransformer.js';
 import { IHandHistoryRecorder, HandHistoryRecorder } from './helpers/HandHistoryRecorder.js';
 import { AdminHelper } from './helpers/AdminHelper.js';
 import { TableHudTracker } from './helpers/TableHudTracker.js';
-import { loadPrivateHud } from '../stats/privateHud.js';
+import { loadPrivateHud } from '../stats/hudLoader.js';
 import { VariantAdapter } from './helpers/VariantAdapter.js';
 import { maintenanceService } from '../maintenance/MaintenanceService.js';
 import { AuthenticatedSocket } from '../game/authMiddleware.js';
@@ -1691,7 +1691,8 @@ export class TableInstance {
     this.maybeStartHand();
   }
 
-  private broadcastGameState(): void {
+  /** 卓の状態をルーム全体に配信する（トナメの HUD 読み込み完了時に TournamentInstance からも呼ぶ） */
+  public broadcastGameState(): void {
     const clientState = this.getClientGameState();
     this.broadcast.emitToRoom('game:state', { state: clientState });
   }

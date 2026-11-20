@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prisma } from '../../../config/database.js';
-import { loadPrivateHud, loadTournamentHud, TOURNAMENT_HUD_HAND_LIMIT } from '../privateHud.js';
+import { loadPrivateHud, loadTournamentHud, TOURNAMENT_HUD_HAND_LIMIT } from '../hudLoader.js';
 
 vi.mock('../../../config/database.js', () => ({
   prisma: { handHistory: { findMany: vi.fn() }, handHistoryPlayer: { findMany: vi.fn() } },

@@ -17,7 +17,8 @@ export class TableHudTracker {
 
   constructor(
     private readonly loader: HudLoader,
-    private readonly onUpdate: () => void,
+    /** 読み込み完了時に呼ぶ。トナメは本人が今いる卓にだけ配信するため odId を渡す */
+    private readonly onUpdate: (odId: string) => void,
     /** true: 一度読み込んだ人は読み直さない（トナメの卓移動のたびに DB を読まないため） */
     private readonly loadOnce = false,
   ) {}
@@ -33,7 +34,7 @@ export class TableHudTracker {
       .then(hud => {
         if (this.loadSeq.get(odId) !== seq) return;
         this.base.set(odId, hud);
-        this.onUpdate();
+        this.onUpdate(odId);
       })
       .catch(err => console.error(`HUD load failed for ${odId}:`, err));
   }

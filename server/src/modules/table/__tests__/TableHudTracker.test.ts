@@ -48,6 +48,7 @@ describe('TableHudTracker', () => {
     await flush();
 
     expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(onUpdate).toHaveBeenCalledWith('A');
     expect(tracker.get('A')).toMatchObject({ hands: 11, vpip: { n: 1, d: 11 }, pfr: { n: 1, d: 1 } });
   });
 
