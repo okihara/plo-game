@@ -2,7 +2,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { TableInstance } from '../TableInstance.js';
 import { emptyHud } from '../../stats/hudStats.js';
-import { loadPrivateHud } from '../../stats/privateHud.js';
+import { loadPrivateHud } from '../../stats/hudLoader.js';
 import { prisma } from '../../../config/database.js';
 import {
   createMockIO,
@@ -29,7 +29,7 @@ vi.mock('../../stats/updateStatsIncremental.js', () => ({
   updatePlayerStats: vi.fn().mockResolvedValue(undefined),
 }));
 
-vi.mock('../../stats/privateHud.js', () => ({
+vi.mock('../../stats/hudLoader.js', () => ({
   loadPrivateHud: vi.fn(),
 }));
 

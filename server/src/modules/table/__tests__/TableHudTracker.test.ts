@@ -48,6 +48,7 @@ describe('TableHudTracker', () => {
     await flush();
 
     expect(onUpdate).toHaveBeenCalledTimes(1);
+    expect(onUpdate).toHaveBeenCalledWith('A');
     expect(tracker.get('A')).toMatchObject({ hands: 11, vpip: { n: 1, d: 11 }, pfr: { n: 1, d: 1 } });
   });
 
@@ -76,6 +77,20 @@ describe('TableHudTracker', () => {
 
     expect(tracker.get('A')?.hands).toBe(6);
     expect(tracker.get('B')).toBeUndefined();
+  });
+
+  it('loadOnce: 卓移動で座り直しても読み直さず、それまでの分を引き継ぐ', async () => {
+    const loader = vi.fn().mockResolvedValue(dbHud(10));
+    const tracker = new TableHudTracker(loader, () => {}, true);
+
+    tracker.load('A');
+    await flush();
+    tracker.recordHand(raiseFoldHand, seats, startChips);
+    tracker.load('A');
+    await flush();
+
+    expect(loader).toHaveBeenCalledTimes(1);
+    expect(tracker.get('A')?.hands).toBe(11);
   });
 
   it('読み込みに失敗したら HUD を出さない', async () => {

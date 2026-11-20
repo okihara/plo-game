@@ -1,12 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prisma } from '../../../config/database.js';
-import { loadPrivateHud } from '../privateHud.js';
+import { loadPrivateHud, loadTournamentHud } from '../hudLoader.js';
+import { hudToCacheFields } from '../hudCacheFields.js';
+import { emptyHud } from '../hudStats.js';
 
 vi.mock('../../../config/database.js', () => ({
-  prisma: { handHistory: { findMany: vi.fn() } },
+  prisma: { handHistory: { findMany: vi.fn() }, tournamentStatsCache: { findUnique: vi.fn() } },
 }));
 
 const findMany = vi.mocked(prisma.handHistory.findMany);
+const findCache = vi.mocked(prisma.tournamentStatsCache.findUnique);
 
 /** 3人卓・ディーラー席0（BTN=席0, SB=席1, BB=席2） */
 function hand(actions: { seatIndex: number; odId: string; action: string; amount: number }[], players: { seatPosition: number; userId: string | null }[]) {
@@ -60,5 +63,22 @@ describe('loadPrivateHud', () => {
   it('該当ハンドがなければ 0 ハンド', async () => {
     findMany.mockResolvedValue([] as never);
     expect((await loadPrivateHud('me', new Date())).hands).toBe(0);
+  });
+});
+
+describe('loadTournamentHud', () => {
+  beforeEach(() => findCache.mockReset());
+
+  it('TournamentStatsCache の HUD 列から読む（ハンド数は VPIP の分母）', async () => {
+    findCache.mockResolvedValue({ ...hudToCacheFields({ ...emptyHud(), hands: 12, vpip: { n: 3, d: 12 }, raiseVsBet: { n: 1, d: 4 } }) } as never);
+    const hud = await loadTournamentHud('me');
+
+    expect(findCache).toHaveBeenCalledWith({ where: { userId: 'me' } });
+    expect(hud).toMatchObject({ hands: 12, vpip: { n: 3, d: 12 }, raiseVsBet: { n: 1, d: 4 }, steal: { n: 0, d: 0 } });
+  });
+
+  it('キャッシュがない人は 0 ハンド', async () => {
+    findCache.mockResolvedValue(null as never);
+    expect((await loadTournamentHud('me')).hands).toBe(0);
   });
 });

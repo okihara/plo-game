@@ -1,9 +1,11 @@
-// プライベート卓 HUD のスタッツ計算（DB依存なし）。ポストフロップはフロップのみを見る。
+// 卓内 HUD のスタッツ計算（DB依存なし）。ポストフロップはフロップのみを見る。
 //
 // 「アグレッシブ」= bet / raise、またはベット額を上げるオールイン。
 // オールインがレイズかどうかはブラインド込みのストリート拠出額を再現して判定する。
 
 import { HUD_STAT_KEYS, getPositionLabelsBySeat, type HudStatKey, type PlayerHudStats } from '@plo/shared';
+import type { GameState } from '../../shared/logic/types.js';
+import type { SeatInfo } from '../table/types.js';
 
 export interface HudAction {
   seatIndex: number;
@@ -187,4 +189,25 @@ export function computeHandHud(input: HudHandInput): Map<string, PlayerHudStats>
     result.set(odId, hud);
   }
   return result;
+}
+
+/** 終わったハンドの GameState から、配られた全員分の HUD 増分を返す（卓の HUD とトナメのキャッシュ加算で共用） */
+export function computeHandHudFromGameState(
+  gameState: GameState,
+  seats: (SeatInfo | null)[],
+  startChips: Map<number, number>,
+): Map<string, PlayerHudStats> {
+  return computeHandHud({
+    actions: gameState.handHistory.map(a => ({
+      seatIndex: a.playerId,
+      odId: seats[a.playerId]?.odId ?? `seat_${a.playerId}`,
+      action: a.action,
+      amount: a.amount,
+      street: a.street,
+    })),
+    dealerPosition: gameState.dealerPosition,
+    players: seats.flatMap((seat, i) => (seat && startChips.has(i) ? [{ seatIndex: i, odId: seat.odId }] : [])),
+    smallBlind: gameState.smallBlind,
+    bigBlind: gameState.bigBlind,
+  });
 }
