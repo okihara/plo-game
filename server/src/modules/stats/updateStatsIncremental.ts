@@ -6,6 +6,8 @@ import { SeatInfo } from '../table/types.js';
 import { computeIncrementForPlayer } from './statsComputation.js';
 import { checkHandCountBadges, /* checkWinCountBadges, */ checkBadBeatBadges } from '../badges/badgeService.js';
 import { evaluatePLOHand } from '../../shared/logic/handEvaluator.js';
+import { computeHandHudFromGameState } from './hudStats.js';
+import { hudToCacheFields } from './hudCacheFields.js';
 
 export { computeIncrementForPlayer } from './statsComputation.js';
 
@@ -51,6 +53,9 @@ export async function updatePlayerStats(
     }
   }
 
+  // トナメは卓内 HUD の項目も TournamentStatsCache に加算する
+  const huds = isTournament ? computeHandHudFromGameState(gameState, seats, startChips) : null;
+
   const upserts: Promise<unknown>[] = [];
 
   for (let i = 0; i < seats.length; i++) {
@@ -95,11 +100,20 @@ export async function updatePlayerStats(
       create: { userId: seat.odId, ...inc },
       update: updateData,
     };
-    upserts.push(
-      isTournament
-        ? prisma.tournamentStatsCache.upsert(upsertArgs)
-        : prisma.playerStatsCache.upsert(upsertArgs)
-    );
+    if (huds) {
+      const hud = huds.get(seat.odId);
+      const hudFields = hud ? hudToCacheFields(hud) : {};
+      upserts.push(prisma.tournamentStatsCache.upsert({
+        ...upsertArgs,
+        create: { ...upsertArgs.create, ...hudFields },
+        update: {
+          ...updateData,
+          ...Object.fromEntries(Object.entries(hudFields).map(([k, v]) => [k, { increment: v }])),
+        },
+      }));
+    } else {
+      upserts.push(prisma.playerStatsCache.upsert(upsertArgs));
+    }
   }
 
   const results = await Promise.all(upserts);

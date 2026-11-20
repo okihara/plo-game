@@ -1,13 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { prisma } from '../../../config/database.js';
-import { loadPrivateHud, loadTournamentHud, TOURNAMENT_HUD_HAND_LIMIT } from '../hudLoader.js';
+import { loadPrivateHud, loadTournamentHud } from '../hudLoader.js';
+import { hudToCacheFields } from '../hudCacheFields.js';
+import { emptyHud } from '../hudStats.js';
 
 vi.mock('../../../config/database.js', () => ({
-  prisma: { handHistory: { findMany: vi.fn() }, handHistoryPlayer: { findMany: vi.fn() } },
+  prisma: { handHistory: { findMany: vi.fn() }, tournamentStatsCache: { findUnique: vi.fn() } },
 }));
 
 const findMany = vi.mocked(prisma.handHistory.findMany);
-const findPlayerRows = vi.mocked(prisma.handHistoryPlayer.findMany);
+const findCache = vi.mocked(prisma.tournamentStatsCache.findUnique);
 
 /** 3人卓・ディーラー席0（BTN=席0, SB=席1, BB=席2） */
 function hand(actions: { seatIndex: number; odId: string; action: string; amount: number }[], players: { seatPosition: number; userId: string | null }[]) {
@@ -65,43 +67,18 @@ describe('loadPrivateHud', () => {
 });
 
 describe('loadTournamentHud', () => {
-  beforeEach(() => findPlayerRows.mockReset());
+  beforeEach(() => findCache.mockReset());
 
-  const raiseFold = {
-    handHistory: hand(
-      [
-        { seatIndex: 0, odId: 'me', action: 'raise', amount: 7 },
-        { seatIndex: 1, odId: 'bob', action: 'fold', amount: 0 },
-        { seatIndex: 2, odId: 'carol', action: 'fold', amount: 0 },
-      ],
-      [{ seatPosition: 0, userId: 'me' }, { seatPosition: 1, userId: 'bob' }, { seatPosition: 2, userId: 'carol' }],
-    ),
-  };
-  const before = new Date('2026-11-20T00:00:00Z');
-  const where = { userId: 'me', tournamentId: { not: null }, createdAt: { lt: before } };
+  it('TournamentStatsCache の HUD 列から読む（ハンド数は VPIP の分母）', async () => {
+    findCache.mockResolvedValue({ ...hudToCacheFields({ ...emptyHud(), hands: 12, vpip: { n: 3, d: 12 }, raiseVsBet: { n: 1, d: 4 } }) } as never);
+    const hud = await loadTournamentHud('me');
 
-  it('上限件目の時刻を求め、それ以降のトナメのハンドだけを集計する', async () => {
-    const cutoff = new Date('2026-11-01T00:00:00Z');
-    findPlayerRows
-      .mockResolvedValueOnce([{ createdAt: cutoff }] as never)
-      .mockResolvedValueOnce([raiseFold] as never);
-    const hud = await loadTournamentHud('me', before);
-
-    expect(findPlayerRows).toHaveBeenNthCalledWith(1, expect.objectContaining({
-      where, orderBy: { createdAt: 'desc' }, skip: TOURNAMENT_HUD_HAND_LIMIT - 1, take: 1,
-    }));
-    expect(findPlayerRows).toHaveBeenNthCalledWith(2, expect.objectContaining({
-      where: { ...where, createdAt: { lt: before, gte: cutoff } },
-    }));
-    expect(hud).toMatchObject({ hands: 1, vpip: { n: 1, d: 1 }, pfr: { n: 1, d: 1 } });
+    expect(findCache).toHaveBeenCalledWith({ where: { userId: 'me' } });
+    expect(hud).toMatchObject({ hands: 12, vpip: { n: 3, d: 12 }, raiseVsBet: { n: 1, d: 4 }, steal: { n: 0, d: 0 } });
   });
 
-  it('上限に届かない人は全件を読む', async () => {
-    findPlayerRows
-      .mockResolvedValueOnce([] as never)
-      .mockResolvedValueOnce([raiseFold] as never);
-    await loadTournamentHud('me', before);
-
-    expect(findPlayerRows).toHaveBeenNthCalledWith(2, expect.objectContaining({ where }));
+  it('キャッシュがない人は 0 ハンド', async () => {
+    findCache.mockResolvedValue(null as never);
+    expect((await loadTournamentHud('me')).hands).toBe(0);
   });
 });

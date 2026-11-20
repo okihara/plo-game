@@ -4,7 +4,7 @@
 import type { PlayerHudStats } from '@plo/shared';
 import { GameState } from '../../../shared/logic/types.js';
 import { SeatInfo } from '../types.js';
-import { addHud, computeHandHud, emptyHud } from '../../stats/hudStats.js';
+import { addHud, computeHandHudFromGameState, emptyHud } from '../../stats/hudStats.js';
 
 export type HudLoader = (odId: string, before: Date) => Promise<PlayerHudStats>;
 
@@ -44,20 +44,7 @@ export class TableHudTracker {
     seats: (SeatInfo | null)[],
     startChips: Map<number, number>,
   ): void {
-    const players = seats.flatMap((seat, i) => (seat && startChips.has(i) ? [{ seatIndex: i, odId: seat.odId }] : []));
-    const huds = computeHandHud({
-      actions: gameState.handHistory.map(a => ({
-        seatIndex: a.playerId,
-        odId: seats[a.playerId]?.odId ?? `seat_${a.playerId}`,
-        action: a.action,
-        amount: a.amount,
-        street: a.street,
-      })),
-      dealerPosition: gameState.dealerPosition,
-      players,
-      smallBlind: gameState.smallBlind,
-      bigBlind: gameState.bigBlind,
-    });
+    const huds = computeHandHudFromGameState(gameState, seats, startChips);
     for (const [odId, hud] of huds) {
       const live = this.live.get(odId);
       if (live) this.live.set(odId, addHud(live, hud));
