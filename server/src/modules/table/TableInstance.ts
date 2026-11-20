@@ -10,6 +10,7 @@ import { nanoid } from 'nanoid';
 import { TABLE_CONSTANTS } from './constants.js';
 import { MessageLog, PendingAction, AdminSeat, DebugState, GameMode, TableLifecycleCallbacks, CoachingInfo } from './types.js';
 import { PlayerManager } from './helpers/PlayerManager.js';
+import { chooseSeatAvoidingBlinds } from './helpers/blindRotation.js';
 import { ActionController } from './helpers/ActionController.js';
 import { BroadcastService } from './helpers/BroadcastService.js';
 import { StateTransformer } from './helpers/StateTransformer.js';
@@ -161,8 +162,10 @@ export class TableInstance {
     buyIn: number;
     preferredSeat?: number;
     skipJoinedEmit?: boolean;
+    /** 卓移動で引き継ぐブラインド履歴（トーナメントのテーブル移動） */
+    handsSinceBlind?: number;
   }): number | null {
-    const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit } = params;
+    const { odId, odName, profile, socket, buyIn, preferredSeat, skipJoinedEmit, handsSinceBlind } = params;
 
     // 二重着席ガード: 同じユーザーの現役席が既にあるなら着席させない。
     // 同一ユーザーの join（matchmaking:join / private:join 等）が並行して走った場合の最後の防衛線。
@@ -178,14 +181,27 @@ export class TableInstance {
       return null;
     }
 
+    // 卓移動してきた人（ブラインド履歴あり）は、直近ブラインドを払っていれば
+    // 着席直後に SB/BB にならない席を選ぶ。FF は対象外。
+    const seatChoice = preferredSeat ?? (
+      !this.isFastFold && handsSinceBlind !== undefined
+        ? chooseSeatAvoidingBlinds({
+            seats: this.playerManager.getSeats(),
+            lastDealer: this.lastDealerPosition,
+            handsSinceBlind,
+          }) ?? undefined
+        : undefined
+    );
+
     const seatIndex = this.playerManager.seatPlayer({
       odId,
       odName,
       profile,
       socket,
       buyIn,
-      preferredSeat,
+      preferredSeat: seatChoice,
       isHandInProgress: this.isHandInProgress,
+      handsSinceBlind,
     });
 
     if (seatIndex === null) {
@@ -1019,6 +1035,29 @@ export class TableInstance {
     this._minPlayersToStart = n;
   }
 
+  /** このハンドで SB/BB を払った席を記録（卓移動時の席選びに使う） */
+  private recordBlindSeats(): void {
+    if (!this.gameState) return;
+    const players = this.gameState.players;
+    const active = players.filter(p => !p.isSittingOut).length;
+    const blindSeats = new Set<number>();
+    players.forEach((p, i) => {
+      if (p.isSittingOut) return;
+      // ヘッズアップはボタンが SB を払う（position は 'BTN' 表記）
+      if (p.position === 'SB' || p.position === 'BB' || (active === 2 && p.position === 'BTN')) {
+        blindSeats.add(i);
+      }
+    });
+    this.playerManager.recordBlindSeats(blindSeats);
+  }
+
+  /** 最後にブラインドを払ってから何ハンド経ったか（卓移動で引き継ぐ用） */
+  public getHandsSinceBlind(odId: string): number | undefined {
+    const seatIndex = this.playerManager.findSeatByOdId(odId);
+    if (seatIndex === -1) return undefined;
+    return this.playerManager.getSeat(seatIndex)?.handsSinceBlind;
+  }
+
   private get minPlayersToStart(): number {
     if (this._minPlayersToStart !== null) return this._minPlayersToStart;
     if (this.isPrivate) return 2;
@@ -1129,6 +1168,8 @@ export class TableInstance {
     // Start the hand (this will increment dealerPosition and update positions)
     this.gameState = this.variantAdapter.startHand(this.gameState);
     this.lastDealerPosition = this.gameState.dealerPosition;
+
+    this.recordBlindSeats();
 
     // ブラインド投入でオールインになったプレイヤーがいれば記録（プリフロップ = 0枚）
     if (this.gameState.players.some(p => p.isAllIn)) {

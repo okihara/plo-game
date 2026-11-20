@@ -1925,3 +1925,60 @@ describe('TableInstance - canRemoveSafelyDuringHand', () => {
     expect(table.canRemoveSafelyDuringHand(folder!.odId)).toBe(false);
   });
 });
+
+describe('卓移動の着席（ブラインド連続の回避）', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    resetSocketCounter();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.restoreAllMocks();
+  });
+
+  async function moveInAndPlayNextHand(handsSinceBlind: number | undefined) {
+    // 席 0,1,3,4 に着席（空席は 2 と 5）。初回ボタンは席 1。
+    const io = createMockIO();
+    const table = new TableInstance(io, '1/2', false);
+    const odIds: string[] = [];
+    const sockets: Socket[] = [];
+    const seatMap = [0, 1, 3, 4];
+    for (const seat of seatMap) {
+      const odId = `player_${seat}`;
+      const socket = createMockSocket();
+      table.seatPlayer(testSeatParams(odId, odId, socket, 600, { preferredSeat: seat }));
+      odIds.push(odId);
+      sockets.push(socket);
+    }
+    table.triggerMaybeStartHand();
+    expect(table.getClientGameState().dealerSeat).toBe(1);
+
+    // ハンド中に移動してくる。次ハンド: 席 2 に座れば BTN、席 5 に座れば BB
+    const moverSeat = table.seatPlayer({
+      ...testSeatParams('mover', 'Mover', createMockSocket(), 600),
+      handsSinceBlind,
+    })!;
+
+    for (let guard = 0; guard < 10 && table.isHandInProgress; guard++) {
+      const cur = findCurrentPlayer(table, odIds, sockets, seatMap);
+      if (!cur) break;
+      table.handleAction(cur.odId, 'fold', 0);
+    }
+    await vi.advanceTimersByTimeAsync(4_000);
+    expect(table.isHandInProgress).toBe(true);
+    return { moverSeat, position: table.getClientGameState().players[moverSeat]?.position };
+  }
+
+  it('直前にブラインドを払った人は、移動先の次ハンドで SB/BB にならない席に座る', async () => {
+    const { moverSeat, position } = await moveInAndPlayNextHand(0);
+    expect(moverSeat).toBe(2);
+    expect(position).toBe('BTN');
+  });
+
+  it('ブラインド履歴がない／しばらく払っていない人は従来どおり先頭の空席', async () => {
+    expect((await moveInAndPlayNextHand(undefined)).moverSeat).toBe(2);
+    resetSocketCounter();
+    const { moverSeat } = await moveInAndPlayNextHand(5);
+    expect(moverSeat).toBe(2);
+  });
+});
