@@ -3,7 +3,7 @@ import { wsService } from '../services/websocket';
 import { playActionSound } from '../services/actionSound';
 import type { ClientGameState, ClientTournamentState } from '@plo/shared';
 import type { Action, Card, GameState } from '../logic/types';
-import { convertClientStateToGameState, derivePauseState, NO_PAUSE } from './onlineGameShared';
+import { convertClientStateToGameState, derivePauseState, NO_PAUSE, sortCardsForTable } from './onlineGameShared';
 import type { PauseState } from './onlineGameShared';
 import type { LastAction, ActionTimeoutAt } from './useOnlineGameState';
 
@@ -205,7 +205,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
       },
       onHoleCards: ({ cards, seatIndex }) => {
         if (seatIndex === undefined) return;
-        setHoleCardsBySeat(prev => new Map(prev).set(seatIndex, cards));
+        setHoleCardsBySeat(prev => new Map(prev).set(seatIndex, sortCardsForTable(cards, clientStateRef.current)));
       },
       onActionTaken: ({ playerId, action, amount, drawCount }) => {
         playActionSound(action);
@@ -244,7 +244,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         const cardsMap = new Map<number, Card[]>();
         const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
-          cardsMap.set(p.seatIndex, p.cards);
+          cardsMap.set(p.seatIndex, sortCardsForTable(p.cards, clientStateRef.current));
           if (p.handName) handNamesMap.set(p.seatIndex, p.handName);
         }
         // players に載らない公開（Hi/Lo の重複行など）を winners.cards から席へ補完。
@@ -256,7 +256,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
             if (!w.cards?.length) continue;
             const seat = cs.players.findIndex(pl => pl?.odId === w.playerId);
             if (seat >= 0) {
-              cardsMap.set(seat, w.cards);
+              cardsMap.set(seat, sortCardsForTable(w.cards, cs));
               if (w.handName && !handNamesMap.has(seat)) handNamesMap.set(seat, w.handName);
             }
           }
@@ -268,7 +268,7 @@ export function useSpectatorGameState(watchTableId: string, inviteCode?: string)
         // コーチング用ハンドオープン（ハンド完了時のみ）。フォールド済みの席を足す。
         setShowdownCards(prev => {
           const next = new Map(prev);
-          for (const p of revealed) next.set(p.seatIndex, p.cards);
+          for (const p of revealed) next.set(p.seatIndex, sortCardsForTable(p.cards, clientStateRef.current));
           return next;
         });
       },

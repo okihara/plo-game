@@ -3,7 +3,7 @@ import { wsService } from '../services/websocket';
 import { playActionSound, playDealSound, playMyTurnSound } from '../services/actionSound';
 import type { ClientGameState } from '@plo/shared';
 import type { Card, Action, GameState } from '../logic/types';
-import { convertClientStateToGameState, derivePauseState, NO_PAUSE } from './onlineGameShared';
+import { convertClientStateToGameState, derivePauseState, NO_PAUSE, sortCardsForTable } from './onlineGameShared';
 import type { PauseState } from './onlineGameShared';
 import { dealAnimationTotalMs } from '../utils/dealAnimation';
 
@@ -452,7 +452,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
           prevStreetRef.current = null;
           prevCardCountRef.current = 0;
         }
-        setMyHoleCards(cards);
+        setMyHoleCards(sortCardsForTable(cards, clientStateRef.current));
       },
       onActionTaken: ({ playerId, action, amount, drawCount }) => {
         playActionSound(action);
@@ -496,7 +496,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         const cardsMap = new Map<number, Card[]>();
         const handNamesMap = new Map<number, string>();
         for (const p of showdownPlayers) {
-          cardsMap.set(p.seatIndex, p.cards);
+          cardsMap.set(p.seatIndex, sortCardsForTable(p.cards, clientStateRef.current));
           if (p.handName) {
             handNamesMap.set(p.seatIndex, p.handName);
           }
@@ -507,7 +507,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
             if (!w.cards?.length) continue;
             const seat = cs.players.findIndex(pl => pl?.odId === w.playerId);
             if (seat >= 0) {
-              cardsMap.set(seat, w.cards);
+              cardsMap.set(seat, sortCardsForTable(w.cards, cs));
               // showdownPlayers の役名は両ボード/両側の完全形 ("B1: X / B2: Y", "Hi / Lo")。
               // winners[].handName は単一ボード/単一側の部分形 ("Board 1: X") なので
               // 既に handNamesMap にある席は上書きしない。
@@ -524,7 +524,7 @@ export function useOnlineGameState(blinds: string = '1/3', isFastFold: boolean =
         // フォールドして伏せられていた席のカードを足す（役名は付けない）。
         setShowdownCards(prev => {
           const next = new Map(prev);
-          for (const p of revealed) next.set(p.seatIndex, p.cards);
+          for (const p of revealed) next.set(p.seatIndex, sortCardsForTable(p.cards, clientStateRef.current));
           return next;
         });
       },
