@@ -1,8 +1,17 @@
 import type { ClientGameState } from '@plo/shared';
-import { convertOnlinePlayerToPlayer } from '@plo/shared';
+import { convertOnlinePlayerToPlayer, sortHoleCardsForDisplay } from '@plo/shared';
 import type { Card, GameState, Street, GameVariant } from '../logic/types';
 
 export { convertOnlinePlayerToPlayer };
+
+/**
+ * サーバーから届いたホールカードを表示順に並べ替える（Omaha 系・Hold'em のみ。他は配られた順のまま）。
+ * 卓の状態がまだ届いていない場合は variant が分からないので並べ替えない。
+ */
+export function sortCardsForTable(cards: Card[], clientState: ClientGameState | null | undefined): Card[] {
+  if (!clientState) return cards;
+  return sortHoleCardsForDisplay(cards, (clientState.variant as GameVariant) ?? 'plo');
+}
 
 export function convertClientStateToGameState(
   clientState: ClientGameState,

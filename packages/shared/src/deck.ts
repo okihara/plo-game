@@ -1,4 +1,4 @@
-import { Card, Rank, Suit } from './types';
+import { Card, Rank, Suit, GameVariant, getVariantConfig } from './types';
 
 const SUITS: Suit[] = ['h', 'd', 'c', 's'];
 const RANKS: Rank[] = ['2', '3', '4', '5', '6', '7', '8', '9', 'T', 'J', 'Q', 'K', 'A'];
@@ -39,6 +39,17 @@ export function sortHoleCards(cards: Card[]): Card[] {
   return [...cards].sort((a, b) =>
     getRankValue(b.rank) - getRankValue(a.rank) || SUIT_SORT_ORDER[a.suit] - SUIT_SORT_ORDER[b.suit]
   );
+}
+
+/**
+ * 表示用にホールカードを並べ替える。
+ * Omaha 系・Hold'em のみ対象。Stud（配布順と表裏に意味がある）と
+ * Draw（交換カードをサーバー側のインデックスで指定する）は配られた順のまま返す。
+ */
+export function sortHoleCardsForDisplay(cards: Card[], variant: GameVariant): Card[] {
+  const { family } = getVariantConfig(variant);
+  if (family !== 'omaha' && family !== 'holdem') return cards;
+  return sortHoleCards(cards);
 }
 
 export function cardToString(card: Card): string {
